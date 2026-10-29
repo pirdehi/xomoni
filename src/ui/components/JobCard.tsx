@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Ban, Clock, Play, Pause, ScanSearch, Sparkles, Trash2 } from 'lucide-react';
 import { runner } from '../../engine/runner';
+import { workerTab } from '../../engine/worker-tab';
 import { db, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration } from '../../shared/filter';
 import type { Job } from '../../shared/types';
@@ -16,7 +17,11 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
   const now = useNow(1000);
   const active = run.jobId === job.id && run.status !== 'idle';
   const settings = useLiveQuery(getSettings, []);
-  const state = active ? { label: run.status === 'waiting' ? 'Waiting' : run.status === 'stopping' ? 'Stopping' : 'Running', tone: 'accent' as const } : JOB_STATE[job.state];
+  const state = !active
+    ? JOB_STATE[job.state]
+    : run.status === 'attention'
+      ? JOB_STATE.waiting
+      : { label: run.status === 'waiting' ? 'Waiting' : run.status === 'stopping' ? 'Stopping' : 'Running', tone: 'accent' as const };
 
   const { matched, done, skipped, failed, scanned } = job.stats;
   const settled = done + skipped + failed;
@@ -77,6 +82,11 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
         <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-xs text-ink-2">
           <span className="truncate">{run.message}</span>
           {run.waitUntil && <span className="tabular shrink-0 font-medium text-ink">{fmtDuration(run.waitUntil - now)}</span>}
+          {run.status === 'attention' && (
+            <button type="button" className="shrink-0 font-medium text-accent hover:underline" onClick={() => void workerTab.focus()}>
+              Open X window
+            </button>
+          )}
         </div>
       )}
       {!active && job.stateReason && job.state !== 'completed' && (
@@ -107,7 +117,7 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
           {job.state === 'queued' ? 'Start' : 'Resume'}
         </Button>
       )}
-      {!TERMINAL.has(job.state) && job.state !== 'running' && (
+      {!TERMINAL.has(job.state) && job.state !== 'running' && job.state !== 'waiting' && (
         <Button size="sm" variant="ghost" icon={<Ban size={13} />} onClick={() => db.jobs.update(job.id, { state: 'cancelled', finishedAt: Date.now() })}>
           Cancel
         </Button>

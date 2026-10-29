@@ -54,6 +54,7 @@ export const TARGET_PLURAL: Record<CleanupTarget, string> = { post: 'posts', rep
 export const JOB_STATE: Record<JobState, { label: string; tone: Tone }> = {
   queued: { label: 'Ready', tone: 'neutral' },
   running: { label: 'Running', tone: 'accent' },
+  waiting: { label: 'Needs you', tone: 'serious' },
   paused: { label: 'Paused', tone: 'warn' },
   blocked: { label: 'Stopped for safety', tone: 'critical' },
   completed: { label: 'Completed', tone: 'good' },

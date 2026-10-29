@@ -4,6 +4,7 @@ import { draftsFromTimeline, extractErrors, extractProfile, extractTweets, opNam
 import { estimateDuration, matchesFilter, parseIdList } from '../src/shared/filter';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from '../src/shared/time';
 import { sweepUrls } from '../src/engine/cleanup';
+import { isCheckPath, isLoginPath, needMessage, pageNeed } from '../src/shared/attention';
 import type { CleanupFilter, Item } from '../src/shared/types';
 
 const EPOCH = 1288834974657n;
@@ -217,5 +218,34 @@ describe('cleanup rules', () => {
     expect(q).toBe('from:me until:2024-01-02 filter:replies');
     expect(new URL(url).searchParams.get('f')).toBe('live');
     expect(sweepUrls({ ...base, target: 'like' }, 'me')).toEqual(['https://x.com/me/likes']);
+  });
+});
+
+describe('attention', () => {
+  const page = { loggedIn: true, locked: false, challenge: false, viewerId: ME };
+
+  it('recognises X login and check pages', () => {
+    expect(isLoginPath('/i/flow/login')).toBe(true);
+    expect(isLoginPath('/login')).toBe(true);
+    expect(isLoginPath('/home')).toBe(false);
+    expect(isCheckPath('/account/access')).toBe(true);
+    expect(isCheckPath('/account/login_challenge')).toBe(true);
+    expect(isCheckPath('/i/flow/consent_flow')).toBe(true);
+    expect(isCheckPath('/i/flow/login')).toBe(false);
+    expect(isCheckPath('/search')).toBe(false);
+  });
+
+  it('says what the person has to do, most basic first', () => {
+    expect(pageNeed(page, ME)).toBeNull();
+    expect(pageNeed({ ...page, loggedIn: false, viewerId: null }, ME)).toBe('login');
+    expect(pageNeed({ ...page, locked: true, challenge: true }, ME)).toBe('verify');
+    expect(pageNeed({ ...page, challenge: true }, ME)).toBe('verify');
+    expect(pageNeed({ ...page, viewerId: '2000' }, ME)).toBe('account');
+    expect(pageNeed({ ...page, loggedIn: false, viewerId: '2000' }, ME)).toBe('login');
+  });
+
+  it('names the account to log in to', () => {
+    expect(needMessage('login', 'me')).toContain('@me');
+    expect(needMessage('account', '')).toContain('your account');
   });
 });

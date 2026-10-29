@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pacing: PRESETS.careful,
   activeHours: { enabled: false, start: 8, end: 23 },
   maxConsecutiveFailures: 5,
+  notifications: true,
 };
 
 export const ACTION_LABELS: Record<ActionKind, string> = {

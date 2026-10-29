@@ -1,9 +1,11 @@
 // Runs one job at a time from the dashboard page. A Web Lock makes sure only
 // one open dashboard tab drives the worker.
+import { NEED_TITLE, type Need } from '../shared/attention';
 import { db } from '../shared/db';
+import { ATTENTION_ID, FINISHED_ID, clearNotification, notify } from '../shared/notify';
 import type { CleanupFilter, CleanupOptions, Job, JobState, ScanTarget } from '../shared/types';
 import { runCleanup } from './cleanup';
-import { JobContext, Stop } from './context';
+import { JobContext, NeedsYou, Stop } from './context';
 import { runScan } from './scan';
 import { Aborted } from './timers';
 import { WorkerGone } from './worker-tab';
@@ -12,13 +14,15 @@ const LOCK = 'xomoni-runner';
 
 export interface RunnerState {
   jobId: string | null;
-  status: 'idle' | 'running' | 'waiting' | 'stopping';
+  /** waiting = pacing / limits; attention = waiting for the person (see `need`). */
+  status: 'idle' | 'running' | 'waiting' | 'attention' | 'stopping';
   message: string;
   waitUntil: number | null;
+  need: Need | null;
   busyElsewhere: boolean;
 }
 
-const IDLE: RunnerState = { jobId: null, status: 'idle', message: '', waitUntil: null, busyElsewhere: false };
+const IDLE: RunnerState = { jobId: null, status: 'idle', message: '', waitUntil: null, need: null, busyElsewhere: false };
 
 type StopRequest = { state: Extract<JobState, 'paused' | 'cancelled'>; reason: string };
 
@@ -78,30 +82,43 @@ class Runner {
     this.controller = controller;
     this.stopRequest = null;
     Object.assign(job, { state: 'running', stateReason: '', startedAt: job.startedAt ?? Date.now(), finishedAt: null });
-    this.set({ jobId: job.id, status: 'running', message: 'Starting…', waitUntil: null });
+    this.set({ jobId: job.id, status: 'running', message: 'Starting…', waitUntil: null, need: null });
 
     const ctx = new JobContext(job, controller.signal, {
       status: (message, waitUntil) => {
-        if (this.state.status === 'stopping') return;
+        if (this.state.status === 'stopping' || this.state.status === 'attention') return;
         this.set({ status: waitUntil ? 'waiting' : 'running', message, waitUntil: waitUntil ?? null });
+      },
+      attention: (request) => {
+        if (this.state.status === 'stopping') return;
+        if (!request) {
+          clearNotification(ATTENTION_ID);
+          this.set({ status: 'running', message: 'Continuing…', waitUntil: null, need: null });
+          return;
+        }
+        this.set({ status: 'attention', message: request.message, waitUntil: null, need: request.need });
+        if (ctx.settings?.notifications !== false) {
+          void notify(ATTENTION_ID, `Xomoni needs you: ${NEED_TITLE[request.need]}`, `${request.message} “${job.title}” continues by itself afterwards.`, true);
+        }
       },
     });
 
     let final: { state: JobState; reason: string };
+    let stoppedByYou = false;
     try {
       await ctx.save();
       await ctx.init();
-      await ctx.connect();
       await ctx.log('info', 'system', `Started “${job.title}”`);
-      if (job.kind === 'scan') await runScan(ctx);
-      else await runCleanup(ctx);
+      await runSteps(ctx);
       final = { state: 'completed', reason: '' };
     } catch (err) {
-      if (err instanceof Aborted || controller.signal.aborted) final = this.stopRequest ?? { state: 'paused', reason: 'Stopped.' };
+      stoppedByYou = err instanceof Aborted || controller.signal.aborted;
+      if (stoppedByYou) final = this.stopRequest ?? { state: 'paused', reason: 'Stopped.' };
       else if (err instanceof Stop) final = { state: err.state, reason: err.message };
       else if (err instanceof WorkerGone) final = { state: 'paused', reason: 'The X worker window was closed. Resume to reopen it.' };
       else final = { state: 'failed', reason: err instanceof Error ? err.message : String(err) };
     }
+    clearNotification(ATTENTION_ID);
 
     try {
       job.state = final.state;
@@ -115,6 +132,9 @@ class Runner {
         'system',
         `${STATE_VERB[final.state]} “${job.title}” — ${summary}${final.reason ? `. ${final.reason}` : ''}`,
       );
+      if (!stoppedByYou && ctx.settings?.notifications !== false) {
+        void notify(FINISHED_ID, `Xomoni: ${STATE_VERB[final.state].replace(/:$/, '')} “${job.title}”`, `${summary}.${final.reason ? ` ${final.reason}` : ''}`);
+      }
     } finally {
       this.controller = null;
       this.stopRequest = null;
@@ -123,9 +143,29 @@ class Runner {
   }
 }
 
+/**
+ * Connects and runs the job's steps. When X needs the person (login, 2FA, a
+ * check), waits for them and runs the steps again: jobs are resumable, and
+ * everything already handled is skipped.
+ */
+async function runSteps(ctx: JobContext) {
+  for (;;) {
+    try {
+      await ctx.connect();
+      if (ctx.job.kind === 'scan') await runScan(ctx);
+      else await runCleanup(ctx);
+      return;
+    } catch (err) {
+      if (!(err instanceof NeedsYou) || ctx.signal.aborted) throw err;
+      await ctx.waitForYou(err);
+    }
+  }
+}
+
 const STATE_VERB: Record<JobState, string> = {
   queued: 'Queued',
   running: 'Running',
+  waiting: 'Waiting for you:',
   paused: 'Paused',
   blocked: 'Stopped for safety:',
   completed: 'Finished',
@@ -141,7 +181,7 @@ export async function recoverInterruptedJobs() {
     if (!lock) return;
     await db.jobs
       .where('state')
-      .equals('running')
+      .anyOf('running', 'waiting')
       .modify({ state: 'paused', stateReason: 'Xomoni was closed while this job was running. Resume to continue.' });
   });
 }

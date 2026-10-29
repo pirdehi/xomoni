@@ -90,7 +90,8 @@ export interface CleanupOptions {
 export type ScanTarget = 'posts' | 'replies' | 'likes' | 'history';
 
 export type JobKind = 'cleanup' | 'scan';
-export type JobState = 'queued' | 'running' | 'paused' | 'blocked' | 'completed' | 'cancelled' | 'failed';
+/** waiting = running, but paused until the person completes a login or X check. */
+export type JobState = 'queued' | 'running' | 'waiting' | 'paused' | 'blocked' | 'completed' | 'cancelled' | 'failed';
 
 export interface JobStats {
   matched: number;
@@ -180,4 +181,6 @@ export interface Settings {
   pacing: Record<ActionKind, PacingRule>;
   activeHours: { enabled: boolean; start: number; end: number };
   maxConsecutiveFailures: number;
+  /** Desktop notifications when X needs you and when a job ends. */
+  notifications: boolean;
 }

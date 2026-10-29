@@ -1,6 +1,7 @@
 // Performs one user-equivalent action at a time on the x.com page: the same
 // clicks a person would make. X's own code sends the request (with all of its
 // headers); success is only reported once X's response confirms it.
+import { isCheckPath, isLoginPath } from '../shared/attention';
 import { extractErrors } from '../shared/graphql';
 import type { ActionResult, ActorCommand, ContentState, PageInfo, ScrollResult, VisibleTweet } from '../shared/messages';
 import {
@@ -40,8 +41,9 @@ function pageInfo(): PageInfo {
     path,
     viewerId,
     handle: viewerHandle(),
-    loggedIn: !!viewerId && !path.startsWith('/i/flow/login') && path !== '/login',
+    loggedIn: !!viewerId && !isLoginPath(path),
     locked: path.startsWith('/account/access'),
+    challenge: isCheckPath(path),
     lang: document.documentElement.lang || '',
     hidden: document.hidden,
   };

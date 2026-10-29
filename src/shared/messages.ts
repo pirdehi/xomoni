@@ -21,6 +21,8 @@ export interface PageInfo {
   handle: string | null;
   loggedIn: boolean;
   locked: boolean;
+  /** X is showing one of its own check pages (unlock, login challenge, …). */
+  challenge: boolean;
   lang: string;
   hidden: boolean;
 }

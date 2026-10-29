@@ -1,11 +1,19 @@
 // Shared state and safety policy for one job run.
+import { type Need, needMessage, pageNeed } from '../shared/attention';
 import { addLog, db, getSettings } from '../shared/db';
 import type { ActionResult, PageInfo } from '../shared/messages';
-import { DAY } from '../shared/time';
+import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } from '../shared/types';
 import { Limiter } from './limiter';
-import { Aborted, randomBetween } from './timers';
-import { workerTab } from './worker-tab';
+import { Aborted, randomBetween, sleep } from './timers';
+import { NotReady, WorkerGone, workerTab } from './worker-tab';
+
+/** How long a job waits for the person before pausing. */
+const WAIT_FOR_YOU_MS = HOUR;
+/** The page must look right this long before continuing (X redirects mid-login). */
+const SETTLED_MS = 5000;
+/** The same check this many times with no progress in between means waiting won't help. */
+const MAX_REPEAT_NEEDS = 3;
 
 /** Thrown to end a run; `state` is what the job becomes. */
 export class Stop extends Error {
@@ -17,8 +25,22 @@ export class Stop extends Error {
   }
 }
 
+/** Thrown when only the person can continue: the runner waits for them, then restarts the job's steps. */
+export class NeedsYou extends Error {
+  constructor(
+    public need: Need,
+    message: string,
+    /** Raised from X's answer to an action, so the page may not show X's prompt yet. */
+    public fromAction = false,
+  ) {
+    super(message);
+  }
+}
+
 export interface RunnerHooks {
   status(message: string, waitUntil?: number | null): void;
+  /** Called with what X needs from the person, and with null once it's done. */
+  attention(need: NeedsYou | null): void;
 }
 
 export class JobContext {
@@ -28,6 +50,8 @@ export class JobContext {
   /** Ids already handled in this run (acted on, kept, or skipped). */
   attempted = new Set<string>();
   private consecutiveFailures = 0;
+  private repeatNeeds = 0;
+  private progressAtLastNeed = -1;
 
   constructor(
     public job: Job,
@@ -68,22 +92,64 @@ export class JobContext {
     this.status('Connecting to the X worker window…');
     if ((await workerTab.current()) == null) await workerTab.open();
     const info = await workerTab.waitReady(this.signal);
-    this.assertPage(info);
-    if (info.viewerId !== this.job.accountId) {
-      throw new Stop('blocked', 'The X worker window is signed in to a different account than this job.');
-    }
     const account = await db.accounts.get(this.job.accountId);
-    this.handle = info.handle || account?.handle || '';
+    this.handle ||= account?.handle ?? '';
+    this.assertPage(info);
+    this.handle = info.handle || this.handle;
     if (!this.handle) throw new Stop('blocked', 'Could not determine your @handle from X. Open your profile once in the worker window.');
     return info;
   }
 
+  /** Login, X checks and account switches all need the person, not a retry. */
   assertPage(info: PageInfo) {
-    if (info.locked) throw new Stop('blocked', 'X locked the account and wants you to verify it. Open the worker window, complete X’s check yourself, then resume.');
-    if (!info.loggedIn) throw new Stop('blocked', 'You are not logged in to X in the worker window. Log in there, then resume.');
     // X's session cookie is shared by every x.com tab, so switching accounts anywhere switches the worker too.
-    if (info.viewerId && info.viewerId !== this.job.accountId) {
-      throw new Stop('blocked', 'X is now signed in to a different account than this job. Switch back to the right account, then resume.');
+    const need = pageNeed(info, this.job.accountId);
+    if (need) throw new NeedsYou(need, needMessage(need, this.handle));
+  }
+
+  /**
+   * Waits — without acting — until the person has done what X asked for in the
+   * worker window. Pauses the job if that takes longer than an hour.
+   */
+  async waitForYou(request: NeedsYou) {
+    const { stats } = this.job;
+    const progress = stats.done + stats.skipped + stats.failed + stats.scanned;
+    this.repeatNeeds = progress === this.progressAtLastNeed ? this.repeatNeeds + 1 : 1;
+    this.progressAtLastNeed = progress;
+    if (this.repeatNeeds > MAX_REPEAT_NEEDS) {
+      throw new Stop('blocked', `X keeps asking for the same thing: ${request.message} Check the Xomoni window, then resume.`);
+    }
+
+    this.job.state = 'waiting';
+    this.job.stateReason = request.message;
+    await this.save();
+    await this.log('warn', 'system', `Waiting for you: ${request.message}`);
+    this.hooks.attention(request);
+
+    // An error code alone doesn't put X's prompt on screen; a fresh load does.
+    if (request.fromAction) await workerTab.navigate('https://x.com/home', this.signal).catch(rethrowIfStopped);
+
+    const deadline = Date.now() + WAIT_FOR_YOU_MS;
+    let settledSince = 0;
+    while (!settledSince || Date.now() - settledSince < SETTLED_MS) {
+      if (Date.now() > deadline) {
+        throw new Stop('paused', `Waited an hour for you. ${request.message} Then resume the job.`);
+      }
+      await sleep(1500, this.signal);
+      const info = await workerTab.ping();
+      settledSince = info && !pageNeed(info, this.job.accountId) ? settledSince || Date.now() : 0;
+    }
+
+    this.job.state = 'running';
+    this.job.stateReason = '';
+    await this.save();
+    await this.log('success', 'system', 'X is ready again — continuing');
+    this.hooks.attention(null);
+    if (request.need === 'verify') {
+      this.limiter.easeIn();
+      await this.limiter.cooldown(Date.now() + randomBetween(3, 6) * 60_000, 'Easing back in after X’s check');
+    } else {
+      await this.limiter.cooldown(Date.now() + randomBetween(10, 20) * 1000, 'Continuing shortly');
     }
   }
 
@@ -107,7 +173,17 @@ export class JobContext {
     const info = await workerTab.navigate(url, this.signal);
     this.limiter.after('read', 'done');
     this.assertPage(info);
-    return workerTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
+    try {
+      const content = await workerTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
+      // No posts can mean X moved the page to its login or a check.
+      if (content.kind !== 'tweets') await this.verifyPage();
+      return content;
+    } catch (err) {
+      if (!(err instanceof NotReady)) throw err;
+      // The page reloaded while loading — X redirecting to its login or a check page does that.
+      this.assertPage(await workerTab.waitReady(this.signal, info.bootId));
+      throw err;
+    }
   }
 
   async scroll() {
@@ -172,11 +248,11 @@ export class JobContext {
 
       case 'locked':
         await this.log('error', action, `Account locked${detail}`, target, outcome);
-        throw new Stop('blocked', 'X locked the account. Open X, complete its check yourself, then resume.');
+        throw new NeedsYou('verify', needMessage('verify', this.handle), true);
 
       case 'logged_out':
         await this.log('error', action, `Logged out${detail}`, target, outcome);
-        throw new Stop('blocked', 'You were logged out of X in the worker window. Log in, then resume.');
+        throw new NeedsYou('login', needMessage('login', this.handle), true);
 
       default: {
         this.consecutiveFailures++;
@@ -194,6 +270,11 @@ export class JobContext {
       }
     }
   }
+}
+
+/** A failed reload while waiting is fine (the person may be mid-login); a closed window or Pause is not. */
+function rethrowIfStopped(err: unknown) {
+  if (err instanceof Aborted || err instanceof WorkerGone) throw err;
 }
 
 const VERB: Record<ActionKind, string> = {

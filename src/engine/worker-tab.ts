@@ -55,7 +55,9 @@ export class WorkerTab {
     const id = await this.current();
     if (id == null) return;
     const tab = await chrome.tabs.get(id);
-    await chrome.windows.update(tab.windowId, { focused: true });
+    const win = await chrome.windows.get(tab.windowId);
+    await chrome.tabs.update(id, { active: true });
+    await chrome.windows.update(tab.windowId, { focused: true, ...(win.state === 'minimized' && { state: 'normal' as const }) });
   }
 
   async send<C extends ActorCommand>(command: C): Promise<Reply<C['cmd']>> {

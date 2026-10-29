@@ -8,7 +8,7 @@ import { JobCard } from '../components/JobCard';
 import { LogList } from '../components/LogList';
 import { Button, Card, EmptyState, PageHeader, Segmented, cx } from '../components/ui';
 
-const OPEN_STATES = new Set(['queued', 'running', 'paused', 'blocked', 'failed']);
+const OPEN_STATES = new Set(['queued', 'running', 'waiting', 'paused', 'blocked', 'failed']);
 
 export function JobsPage({ account, navigate }: PageProps) {
   const [filter, setFilter] = useState<'open' | 'all'>('open');

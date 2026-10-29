@@ -10,7 +10,7 @@ import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
 import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../shared/messages';
 import { DAY, searchDate } from '../shared/time';
 import type { ActionKind, CleanupFilter, Item, ItemKind } from '../shared/types';
-import { type JobContext, Stop } from './context';
+import { type JobContext, NeedsYou, Stop } from './context';
 import { sleep } from './timers';
 import { workerTab } from './worker-tab';
 
@@ -88,8 +88,8 @@ async function sweep(ctx: JobContext, url: string) {
       const targets = await pickTargets(ctx, await workerTab.send({ cmd: 'visible' }), passStart, unresolved);
       if (targets.length) {
         idle = 0;
-        for (const item of targets) {
-          await act(ctx, item, actionFor(ctx.job.filter!.target));
+        for (const [i, item] of targets.entries()) {
+          await handOffSafe(ctx, targets.slice(i), () => act(ctx, item, actionFor(ctx.job.filter!.target)));
           acted++;
         }
         continue;
@@ -195,6 +195,16 @@ const PROGRESS: Record<ActionKind, string> = {
   read: 'Loading',
 };
 
+/** Items not yet settled when a login or X check interrupts stay eligible for when the job continues. */
+async function handOffSafe(ctx: JobContext, unsettled: Item[], run: () => Promise<void>) {
+  try {
+    await run();
+  } catch (err) {
+    if (err instanceof NeedsYou) unsettled.forEach((item) => ctx.attempted.delete(item.id));
+    throw err;
+  }
+}
+
 async function act(ctx: JobContext, item: Item, action: ActionKind) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     await ctx.limiter.before(action);
@@ -236,7 +246,7 @@ async function deepClean(ctx: JobContext) {
       if ((await liveRepost(ctx.job.accountId, item.targetId))?.key !== item.key) continue;
     }
     ctx.attempted.add(item.id);
-    await visit(ctx, item, action);
+    await handOffSafe(ctx, [item], () => visit(ctx, item, action));
   }
 }
 

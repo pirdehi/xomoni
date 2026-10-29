@@ -4,7 +4,7 @@ import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
 import type { ItemDraft, ItemKind, Job } from '../shared/types';
 
 const ME = '1000';
-const page = { bootId: 'demo', url: 'https://x.com/home', path: '/home', viewerId: ME, handle: 'demo_user', loggedIn: true, locked: false, lang: 'en', hidden: false };
+const page = { bootId: 'demo', url: 'https://x.com/home', path: '/home', viewerId: ME, handle: 'demo_user', loggedIn: true, locked: false, challenge: false, lang: 'en', hidden: false };
 const tab = { id: 1, windowId: 1 };
 
 (globalThis as unknown as { chrome: unknown }).chrome = {
@@ -14,7 +14,8 @@ const tab = { id: 1, windowId: 1 };
     update: async () => tab,
     sendMessage: async (_id: number, msg: { command: { cmd: string } }) => (msg.command.cmd === 'ping' ? page : { outcome: 'done' }),
   },
-  windows: { create: async () => ({ id: 1, tabs: [tab] }), update: async () => undefined },
+  windows: { create: async () => ({ id: 1, tabs: [tab] }), get: async () => ({ id: 1, state: 'normal' }), update: async () => undefined },
+  notifications: { create: async () => '', clear: async () => true },
   storage: { session: { get: async () => ({ workerTab: 1 }), set: async () => undefined, remove: async () => undefined } },
 };
 

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Download, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { db, getSettings, kvSet } from '../../shared/db';
+import { FINISHED_ID, notify } from '../../shared/notify';
 import { ACTION_LABELS, PRESETS } from '../../shared/settings';
 import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/types';
 import type { PageProps } from '../App';
@@ -133,6 +134,24 @@ export function SettingsPage(_props: PageProps) {
                   ))}
                 </div>
               )}
+              <div className="flex items-start justify-between gap-3">
+                <Toggle
+                  checked={settings.notifications}
+                  onChange={(notifications) => save({ ...settings, notifications })}
+                  label="Desktop notifications"
+                  description="When X needs you (login, 2FA, a check) and when a job ends."
+                />
+                {settings.notifications && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0"
+                    onClick={() => void notify(FINISHED_ID, 'Xomoni notifications work', 'You’ll see alerts like this when X needs you.')}
+                  >
+                    Test
+                  </Button>
+                )}
+              </div>
               <Field label="Pause after this many failures in a row">
                 <input
                   className="field tabular w-24"
@@ -148,7 +167,8 @@ export function SettingsPage(_props: PageProps) {
                 </div>
                 <ul className="list-disc space-y-0.5 pl-4">
                   <li>Waits out X rate limits (HTTP 429 / code 88) and daily limits</li>
-                  <li>Stops on “looks automated” (code 226), account locks and logouts</li>
+                  <li>Stops on “looks automated” (code 226)</li>
+                  <li>Waits for you on logins, 2FA and X’s checks, then continues by itself</li>
                   <li>Never solves captchas, never touches your password or cookies</li>
                   <li>Counts an action only when X confirms it</li>
                 </ul>

@@ -4,8 +4,9 @@
   "short_name": "Xomoni",
   "version": "0.1.0",
   "description": "Clean up your own X account — delete old posts, replies, reposts and likes from a local dashboard. No API keys, rate-limit aware.",
+  "homepage_url": "https://github.com/pirdehi/xomoni",
   "minimum_chrome_version": "116",
-  "permissions": ["storage", "unlimitedStorage"],
+  "permissions": ["storage", "unlimitedStorage", "notifications"],
   "host_permissions": ["https://x.com/*"],
   "background": { "service_worker": "sw.js", "type": "module" },
   "action": {

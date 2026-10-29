@@ -108,6 +108,11 @@ export class Limiter {
     await this.wait(until, reason);
   }
 
+  /** After X checks the account, start again at a slower pace; it recovers with each success. */
+  easeIn() {
+    this.penalty = Math.max(this.penalty, 2);
+  }
+
   usage(action: ActionKind) {
     const now = Date.now();
     const stamps = this.stamps(action);

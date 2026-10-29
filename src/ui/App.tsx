@@ -1,5 +1,5 @@
 import {
-  Activity, CircleCheck, Database, ExternalLink, History, LayoutDashboard, ListChecks, LoaderCircle, Pause, Settings as SettingsIcon,
+  Activity, BellRing, CircleCheck, Database, ExternalLink, History, LayoutDashboard, ListChecks, LoaderCircle, Pause, Settings as SettingsIcon,
   Sparkles, TriangleAlert,
 } from 'lucide-react';
 import { type ComponentType, useEffect, useState } from 'react';
@@ -149,6 +149,9 @@ function WorkerChip({ worker }: { worker: WorkerStatus }) {
   } else if (info && !info.loggedIn) {
     text = 'Log in to X in the worker';
     icon = <TriangleAlert size={12} className="text-serious" />;
+  } else if (info?.challenge) {
+    text = 'X wants you to confirm it’s you';
+    icon = <TriangleAlert size={12} className="text-serious" />;
   } else if (info?.hidden) {
     text = 'Keep the X worker visible';
     icon = <TriangleAlert size={12} className="text-serious" />;
@@ -177,7 +180,43 @@ function WorkerChip({ worker }: { worker: WorkerStatus }) {
 function RunnerBanner() {
   const state = useRunner();
   const job = useLiveQuery(() => (state.jobId ? db.jobs.get(state.jobId) : undefined), [state.jobId]);
+  const attention = state.status === 'attention';
+  useEffect(() => {
+    if (!attention) return;
+    const title = document.title;
+    document.title = '(!) Needs you — Xomoni';
+    return () => void (document.title = title);
+  }, [attention]);
   if (state.status === 'idle') return null;
+  if (attention) {
+    return (
+      <div role="alert" className="sticky top-0 z-30 border-b border-line bg-surface">
+        <span className="absolute inset-y-0 left-0 w-1 bg-serious" />
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-8 py-3">
+          <div className="flex min-w-0 items-start gap-2.5 text-sm">
+            <BellRing size={16} className="mt-0.5 shrink-0 text-serious" />
+            <div className="min-w-0">
+              <div className="font-medium">X needs you to continue “{job?.title ?? 'this job'}”</div>
+              <div className="text-ink-2">{state.message} Xomoni continues by itself once you’re done.</div>
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<ExternalLink size={13} />}
+              onClick={() => workerTab.focus().catch((e) => toast(String(e?.message ?? e), 'critical'))}
+            >
+              Open X window
+            </Button>
+            <Button size="sm" icon={<Pause size={13} />} onClick={() => runner.pause()}>
+              Pause
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-8 py-2.5">

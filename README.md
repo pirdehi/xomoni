@@ -1,82 +1,175 @@
-# Xomoni — مدیریت و پاک‌سازی حساب X بدون API
+<div align="center">
 
-Xomoni یک افزونه‌ی Chrome است که داخل نشست واقعی خود شما روی x.com کار می‌کند. با آن می‌توانید پست‌ها، ریپلای‌ها، ریپوست‌ها و لایک‌های قدیمی‌تر از یک تاریخ را حذف کنید. همه‌ی کارها از یک داشبورد حرفه‌ای انجام می‌شود و سرعت کار با محدودیت‌های X هماهنگ است.
+<img src="public/icons/icon128.png" width="72" alt="Xomoni logo" />
 
-- **بدون API و بدون کلید:** روی همان دکمه‌هایی کلیک می‌کند که شما دستی می‌زنید. درخواست را خود وب‌اپ X می‌فرستد.
-- **تأیید از سرور:** یک عمل فقط وقتی «انجام‌شده» ثبت می‌شود که پاسخ X آن را تأیید کرده باشد.
-- **حریم خصوصی:** هیچ سروری وجود ندارد. داده‌ها فقط در IndexedDB همین مرورگر ذخیره می‌شوند. رمز و کوکی شما هیچ‌وقت خوانده نمی‌شود.
-- **ایمنی:** فاصله‌ی تصادفی بین کارها، استراحت بین دسته‌ها، سقف ساعتی و روزانه، پیروی از هدرهای rate-limit خود X، و توقف خودکار روی خطاهای 429، 226، 326 و قفل حساب.
+# Xomoni
 
-> تحقیق کامل (محدودیت‌های X، مقایسه‌ی روش‌ها، معماری و ریسک‌ها): [docs/RESEARCH.md](docs/RESEARCH.md)
+**Clean up your own X (Twitter) account — old posts, replies, reposts and likes — from a local dashboard. No API keys. Paced to stay within X's limits.**
+
+[![CI](https://github.com/pirdehi/xomoni/actions/workflows/ci.yml/badge.svg)](https://github.com/pirdehi/xomoni/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Chrome MV3](https://img.shields.io/badge/Chrome-MV3%20·%20116%2B-4285F4?logo=googlechrome&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+
+[فارسی](README.fa.md) · [Research notes](docs/RESEARCH.md) · [Report a bug](https://github.com/pirdehi/xomoni/issues)
+
+<img src="docs/screenshots/overview.png" alt="Xomoni dashboard overview" width="900" />
+
+</div>
 
 ---
 
-## نصب
+## Why Xomoni
 
-پیش‌نیاز: Node.js نسخه‌ی ۲۰ یا بالاتر، و Chrome (یا Edge/Brave) نسخه‌ی ۱۱۶ یا بالاتر.
+Deleting years of posts on X is harder than it should be:
+
+- **The official API is expensive and slow for this.** It is pay-per-use, and deleting a post through it is limited to 50 requests per 15 minutes.
+- **Scripts that call X's internal API break all the time.** X now requires a signed, single-use anti-bot header (`x-client-transaction-id`) on more and more requests. Tools that build their own requests keep failing.
+- **Copy-paste console scripts get accounts flagged.** They ignore X's limits and keep going after X has asked them to stop.
+
+Xomoni takes a different approach. It is a Chrome extension that works **inside your own logged-in X tab** and clicks the same buttons you would. X's own web app sends every request, with all its headers. Xomoni only *reads* X's responses, to confirm each action and to watch the rate-limit headers X returns.
+
+## Features
+
+- **Bulk cleanup by date:** delete posts, replies, reposts or likes older than a given date, or between two dates.
+- **Keep rules:** spare posts with at least N likes, posts containing given keywords, specific links you paste, and replies in your own threads.
+- **Preview before acting:** see exactly what matches, an estimated duration at your pacing, a JSON backup download, and a typed `DELETE` confirmation.
+- **Reaches past the ~3,200 profile limit:** sweeps X search (`from:you until:date`) in pages and imports your official X archive.
+- **Login and 2FA hand-off:** when X needs you (login, 2FA, captcha, email code, account unlock, wrong account), the job pauses, sends you a desktop notification, waits while you complete it in the X window, then **continues by itself**. Xomoni never asks for or stores your password.
+- **Resumable jobs:** pause, close the browser, and resume later without losing progress.
+- **Dashboard:** removal stats, a year-by-year chart, live limits and pacing, a jobs list, a searchable inventory, and an exportable activity log. Light and dark themes.
+- **Private by design:** no server and no telemetry. Everything stays in IndexedDB in your browser profile.
+
+| Cleanup wizard | Settings (dark) |
+|---|---|
+| <img src="docs/screenshots/cleanup.png" alt="Cleanup wizard" /> | <img src="docs/screenshots/settings-dark.png" alt="Settings in dark mode" /> |
+
+## How it works
+
+```mermaid
+flowchart LR
+    D["Dashboard<br/>(extension page)<br/>runner · limiter · rules"] -- "one command at a time" --> C["Content script<br/>in your x.com tab<br/>clicks X's buttons"]
+    C -- "click" --> X["X web app<br/>sends the request<br/>with its own headers"]
+    X -- "GraphQL response<br/>+ rate-limit headers" --> I["Interceptor<br/>(read-only)"]
+    I -- "confirmed / error code" --> C
+    C -- "result" --> D
+    I -- "posts seen" --> S["Service worker<br/>IndexedDB inventory"]
+```
+
+1. **Inventory.** Xomoni learns what is on your account from your X archive and from the timelines it loads.
+2. **Sweep.** For each rule it opens an X search (or your profile or likes page), then deletes or unlikes matching posts in place.
+3. **Deep clean.** Whatever still matches (usually archive-only items) is visited one by one. Each post's page is checked against the rule again before acting.
+4. **Confirm.** A post counts as removed only when X's response confirms it.
+
+If Xomoni cannot verify an item, it leaves the item alone.
+
+## Working within X's limits
+
+X doesn't publish limits for deleting or unliking on the web, so Xomoni is conservative by default and adapts to what X reports:
+
+| Mechanism | What Xomoni does |
+|---|---|
+| Pacing | Random delays between actions, longer breaks between batches, and rolling hourly and daily caps per action type. The **Careful** default is 6–12 s per delete, at most 150/hour and 1,000/day. |
+| X's rate-limit headers | Reads `x-rate-limit-remaining / reset` from X's own responses and waits before the window runs out. |
+| HTTP 429 / code 88 | Waits until the window resets, then slows down (adaptive back-off). |
+| Code 185 / 344 (daily limit) | Waits about 24 hours. |
+| Code 226 ("looks automated") | **Stops the job.** You resume it after using X normally for a while. |
+| Logout, 2FA, captcha, lock (326) | **Waits for you**, with a desktop notification. After an X check it eases back in at a slower pace. |
+| 5 failures in a row | Pauses. X may have changed its page. |
+| Active hours (optional) | Works only during the hours you choose. |
+
+The full research behind these choices (in Persian) is in [docs/RESEARCH.md](docs/RESEARCH.md). It covers X's limits, anti-automation signals, a comparison of approaches, and sources.
+
+## Install
+
+Xomoni isn't on the Chrome Web Store yet. Build it from source:
+
+**Requirements:** Node.js 20.19+ and Chrome, Edge or Brave version 116 or later.
 
 ```bash
+git clone https://github.com/pirdehi/xomoni.git
+cd xomoni
 npm install
 npm run build
 ```
 
-1. `chrome://extensions` را باز کنید و **Developer mode** را روشن کنید.
-2. **Load unpacked** را بزنید و پوشه‌ی `dist` را انتخاب کنید.
-3. روی آیکون Xomoni در نوار ابزار کلیک کنید تا داشبورد باز شود.
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and select the `dist` folder.
+3. Click the Xomoni icon in the toolbar to open the dashboard.
 
-## شروع کار
+On macOS, allow notifications for your browser in *System Settings → Notifications* so you see the login and 2FA alerts.
 
-1. **اتصال:** در داشبورد «Open X worker» را بزنید. یک پنجره‌ی معمولی x.com باز می‌شود. اگر وارد حساب نیستید، همان‌جا وارد شوید. حساب شما خودکار شناسایی می‌شود.
-2. **آرشیو (پیشنهادی):** در X بروید به `Settings → Your account → Download an archive of your data`. آماده شدنش ۲۴ تا ۷۲ ساعت طول می‌کشد. بعد از دریافت، فایل zip را باز کنید و در صفحه‌ی **Inventory** پوشه‌ی `data` را انتخاب کنید. فقط `account.js`، `tweets.js` و `like.js` خوانده می‌شوند. Xomoni بررسی می‌کند که آرشیو مال همین حساب باشد.
-3. **اسکن (اختیاری):** در صفحه‌ی Inventory می‌توانید پست‌ها، ریپلای‌ها، لایک‌ها یا کل تاریخچه را اسکن کنید. اسکن «Full history» با جستجوی X، دوره‌های شش‌ماهه را تا تاریخ ساخت حساب مرور می‌کند.
-4. **پاک‌سازی:** در صفحه‌ی **Cleanup** این‌ها را انتخاب کنید:
-   - نوع: پست، ریپلای، ریپوست یا لایک
-   - «قدیمی‌تر از»
-   - قوانین نگه‌داری: حداقل لایک، کلمات کلیدی، شناسه‌های محافظت‌شده
-   پیش‌نمایش و زمان تخمینی را ببینید، **پشتیبان JSON** بگیرید، `DELETE` را تایپ کنید و شروع کنید.
-5. **نظارت:** صفحه‌های Overview و Jobs پیشرفت، زمان باقی‌مانده، سهمیه‌های گزارش‌شده توسط X و لاگ زنده را نشان می‌دهند. هر کار را می‌توانید متوقف کنید و بعداً ادامه دهید.
+## Usage
 
-### توصیه‌ها
+1. **Connect.** In the dashboard, click **Open X worker**. A normal x.com window opens. Log in there as usual, including 2FA, and Xomoni detects your account.
+2. **Import your archive (recommended).** In X, go to *Settings → Your account → Download an archive of your data*. When it arrives, open **Inventory** and select the archive's `data` folder. Only `account.js`, `tweets.js` and `like.js` are read, and Xomoni checks that the archive belongs to the connected account.
+3. **Or scan.** **Inventory** can also scan your posts, replies, likes, or your full history from X.
+4. **Clean up.** In **Cleanup**:
+   1. Pick a type, a date and keep rules.
+   2. Review the matches and download a backup.
+   3. Type `DELETE` to start.
+5. **Watch.** **Overview** and **Jobs** show progress, time remaining, X's reported limits and a live log. Pause or resume any time.
 
-- با حالت **Careful** و یک بازه‌ی کوچک شروع کنید، مثلاً «قدیمی‌تر از ۲ سال». نتیجه را در لاگ ببینید و بعد بازه را بزرگ‌تر کنید.
-- این تب داشبورد و پنجره‌ی X Worker باید **باز و minimize‌نشده** بمانند.
-- برای اطمینان بیشتر، زبان نمایش X را روی English بگذارید.
-- اگر Xomoni با پیام «Stopped for safety» متوقف شد (مثلاً خطای 226)، چند ساعت صبر کنید و X را عادی استفاده کنید. بعد با حالت Careful کار را ادامه دهید.
-- گزینه‌ی **Ghost likes** (لایک دوباره و بعد آن‌لایک) ممکن است برای نویسنده‌ی پست اعلان بفرستد. فقط اگر لازم است روشنش کنید.
+**Tips**
 
----
+- Start with the **Careful** preset and a small range, for example older than 2 years. Check the log, then widen the range.
+- Keep the dashboard tab and the X window open and not minimized while a job runs.
+- Set X's display language to English for the most reliable results.
+- If a job stops with error 226, wait a few hours, use X normally, then resume with Careful pacing.
+- **Ghost likes:** X stops showing some very old likes as liked. Removing them means liking and then unliking, which can notify the author. This option is off by default.
 
-## توسعه
+## Development
 
-| دستور | کاربرد |
+| Command | What it does |
 |---|---|
-| `npm run build` | ساخت افزونه در `dist/` |
-| `npm run watch` | ساخت پیوسته هنگام تغییر کد. بعد از هر تغییر، افزونه را در `chrome://extensions` دوباره بارگذاری کنید |
-| `npm run preview:ui` | پیش‌نمایش داشبورد با داده‌ی نمایشی در مرورگر معمولی، بدون اتصال به X |
-| `npm test` | تست‌های واحد (پارس GraphQL، آرشیو، قوانین، زمان) |
-| `npm run typecheck` | بررسی TypeScript |
-
-### ساختار کد
+| `npm run build` | Builds the extension into `dist/` |
+| `npm run watch` | Rebuilds on change. Reload the extension in `chrome://extensions` after each build. |
+| `npm run preview:ui` | Opens the dashboard with demo data in a normal browser tab, without connecting to X |
+| `npm test` | Unit tests: GraphQL parsing, archive import, rules, time, and login/check page detection |
+| `npm run typecheck` | TypeScript checks |
 
 ```
 src/
-  inject/interceptor.ts   MAIN world: فقط «خواندن» پاسخ‌های GraphQL خود X و هدرهای rate-limit
+  inject/interceptor.ts   MAIN world: reads X's own GraphQL responses and rate-limit headers (never sends)
   content/
-    dom.ts                همه‌ی انتخاب‌گرهای DOM X (اگر X رابطش را عوض کند، فقط این فایل)
-    actor.ts              کلیک‌ها: حذف، آن‌لایک، لایک دوباره و آن‌لایک، برداشتن ریپوست، اسکرول
-    net.ts                دریافت مشاهدات، ورود داده به موجودی، تأیید پاسخ سرور
-  background/sw.ts        ذخیره در IndexedDB و باز کردن داشبورد
+    dom.ts                every X selector in one place: update this first if X changes its markup
+    actor.ts              user-equivalent actions: delete, unlike, undo repost, scroll
+    net.ts                matches X's responses to actions; feeds the inventory
+  background/sw.ts        stores observations in IndexedDB; opens the dashboard; handles notification clicks
   engine/
-    runner.ts             اجرای یک کار در هر زمان (Web Lock)، توقف، ادامه، لغو
-    context.ts            سیاست ایمنی بر اساس کد خطا (Circuit breakers)
-    limiter.ts            تأخیر تصادفی، دسته‌ها، سقف‌های چرخان، AIMD، ساعات فعالیت
-    cleanup.ts            Sweep (جستجو یا تایم‌لاین) و Deep clean (آیتم‌به‌آیتم)
-    scan.ts               اسکن پروفایل، ریپلای‌ها، لایک‌ها و کل تاریخچه
-    worker-tab.ts         مدیریت پنجره‌ی x.com
-  shared/                 انواع داده، Dexie، پارسرها، قوانین، تنظیمات پیش‌فرض
-  ui/                     داشبورد React 19 + Tailwind 4
+    runner.ts             one job at a time (Web Lock); pause, resume, cancel; login hand-off loop
+    context.ts            safety policy per X error code; waiting for the person
+    limiter.ts            delays, batches, rolling caps, adaptive back-off, active hours
+    cleanup.ts            sweep (search or timeline) and deep clean (item by item)
+    scan.ts               profile, replies, likes and full-history scans
+    worker-tab.ts         the x.com worker window
+  shared/                 types, Dexie database, parsers, rules, settings, notifications
+  ui/                     React 19 + Tailwind CSS 4 dashboard
 ```
 
-## سلب مسئولیت
+**Stack:** TypeScript, React 19, Tailwind CSS 4, Dexie (IndexedDB), Vite and esbuild, and Vitest.
 
-استفاده از ابزارهای خودکار روی وب‌سایت X طبق [قوانین اتوماسیون X](https://help.x.com/en/rules-and-policies/x-automation) ممکن است به محدود شدن حساب منجر شود. Xomoni برای کم کردن این ریسک طراحی شده، ولی نمی‌تواند آن را حذف کند. مسئولیت استفاده با کاربر است. حذف‌ها برگشت‌پذیر نیستند. قبل از شروع، آرشیو و پشتیبان بگیرید.
+## Project status
+
+Xomoni is an early release (v0.1). The full flow has been tested end to end against a local replica of x.com: deleting, unliking, safety stops, keep rules, and the login and 2FA hand-off. X changes its web app often, so selectors may need updating. If something stops working, [open an issue](https://github.com/pirdehi/xomoni/issues) with the activity log line.
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `npm run typecheck && npm test` before opening a PR. Keep the core rules intact:
+
+- Never forge X's headers.
+- Never solve captchas.
+- Never read passwords or session cookies.
+- Never act on an item you can't verify.
+
+## Disclaimer
+
+Xomoni is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by X Corp. Automating actions on X's website may be against [X's automation rules](https://help.x.com/en/rules-and-policies/x-automation) and can lead to account restrictions. Xomoni is designed to reduce that risk, but it can't remove it. Deletions can't be undone, so download your archive first. Use at your own risk.
+
+## Author
+
+**Omid Pirdehi** · [github.com/pirdehi](https://github.com/pirdehi)
+
+## License
+
+[MIT](LICENSE) © 2026 Omid Pirdehi

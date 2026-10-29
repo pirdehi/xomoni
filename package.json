@@ -3,6 +3,29 @@
   "version": "0.1.0",
   "private": true,
   "description": "Manage and clean up your own X (Twitter) account from a local dashboard — no API keys, rate-limit aware.",
+  "author": "Omid Pirdehi (https://github.com/pirdehi)",
+  "license": "MIT",
+  "homepage": "https://github.com/pirdehi/xomoni#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pirdehi/xomoni.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pirdehi/xomoni/issues"
+  },
+  "keywords": [
+    "x",
+    "twitter",
+    "chrome-extension",
+    "manifest-v3",
+    "tweet-delete",
+    "privacy",
+    "react",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
   "type": "module",
   "scripts": {
     "build": "vite build && node scripts/build-content.mjs",

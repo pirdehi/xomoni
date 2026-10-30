@@ -40,7 +40,11 @@ export function ActivityPage({ account }: PageProps) {
   const exportCsv = async () => {
     const all = await db.logs.where('[accountId+ts]').between([account.id, 0], [account.id, Infinity]).toArray();
     const header = ['time', 'level', 'action', 'outcome', 'post_id', 'job_id', 'message'];
-    const lines = all.map((e) => [new Date(e.ts).toISOString(), e.level, e.action, e.outcome, e.targetId, e.jobId, e.message].map(csvCell).join(','));
+    const lines = all.map((e) =>
+      [new Date(e.ts).toISOString(), e.level, e.action, e.outcome, e.targetId, e.jobId, e.message]
+        .map(csvCell)
+        .join(','),
+    );
     downloadFile(`xomoni-activity-${toDateInput(Date.now())}.csv`, [header.join(','), ...lines].join('\n'), 'text/csv');
   };
 
@@ -68,7 +72,11 @@ export function ActivityPage({ account }: PageProps) {
       </div>
       <Card padded={false}>
         {entries && !entries.length ? (
-          <EmptyState icon={<History size={18} />} title="No activity" body="Actions appear here as soon as a job runs." />
+          <EmptyState
+            icon={<History size={18} />}
+            title="No activity"
+            body="Actions appear here as soon as a job runs."
+          />
         ) : (
           <div className="px-5 py-1">
             <LogList entries={entries ?? []} absolute />

@@ -25,11 +25,19 @@ const fail = (where, message) => problems.push(`${where}: ${message}`);
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const exists = (path) => existsSync(join(ROOT, path));
 const dirs = (path) =>
-  exists(path)
-    ? readdirSync(join(ROOT, path)).filter((name) => statSync(join(ROOT, path, name)).isDirectory())
-    : [];
+  exists(path) ? readdirSync(join(ROOT, path)).filter((name) => statSync(join(ROOT, path, name)).isDirectory()) : [];
 
-const SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', 'coverage', 'playwright-report', 'test-results', '.temp', '.branches']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  '.next',
+  'dist',
+  'coverage',
+  'playwright-report',
+  'test-results',
+  '.temp',
+  '.branches',
+]);
 
 /** All files under `dir` (repo-relative) whose name matches `test`. */
 function walk(dir, test, out = []) {
@@ -85,7 +93,8 @@ if (exists('docs/ARCHITECTURE.md')) {
   const require = createRequire(import.meta.url);
   const cruiser = require(join(ROOT, '.dependency-cruiser.cjs'));
   for (const rule of [...(cruiser.forbidden ?? []), ...(cruiser.required ?? [])]) {
-    if (!architecture.includes(`\`${rule.name}\``)) fail('docs/ARCHITECTURE.md', `does not document rule \`${rule.name}\``);
+    if (!architecture.includes(`\`${rule.name}\``))
+      fail('docs/ARCHITECTURE.md', `does not document rule \`${rule.name}\``);
     if (!rule.comment) fail('.dependency-cruiser.cjs', `rule ${rule.name} has no comment`);
   }
 }
@@ -114,7 +123,9 @@ if (exists('docs/adr')) {
 
 // 5. Relative links in Markdown ───────────────────────────────────────────────────────────
 for (const file of walk('', (name) => name.endsWith('.md'))) {
-  const text = read(file).replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
+  const text = read(file)
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`\n]*`/g, '');
   for (const [, target] of text.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
     if (/^(https?:|mailto:|#)/.test(target)) continue;
     const path = decodeURIComponent(target.split('#')[0]);
@@ -132,14 +143,16 @@ if (exists('apps/web/.env.example')) {
   const documented = new Set([...read('apps/web/.env.example').matchAll(/^([A-Z0-9_]+)=/gm)].map((m) => m[1]));
   for (const file of walk('apps/web/src', (name) => /\.(ts|tsx)$/.test(name))) {
     for (const [, name] of read(file).matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
-      if (!PLATFORM_ENV.has(name) && !documented.has(name)) fail(file, `${name} is not documented in apps/web/.env.example`);
+      if (!PLATFORM_ENV.has(name) && !documented.has(name))
+        fail(file, `${name} is not documented in apps/web/.env.example`);
     }
   }
 }
 
 // 7. Migrations explain themselves ────────────────────────────────────────────────────────
 for (const file of exists('supabase/migrations') ? walk('supabase/migrations', (name) => name.endsWith('.sql')) : []) {
-  if (!read(file).trimStart().startsWith('--')) fail(file, 'must start with a -- comment saying what it changes and why');
+  if (!read(file).trimStart().startsWith('--'))
+    fail(file, 'must start with a -- comment saying what it changes and why');
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

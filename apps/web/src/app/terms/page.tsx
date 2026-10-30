@@ -10,8 +10,8 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of Use" updated="October 30, 2026">
       <p>
-        These terms cover the Xomoni browser extension and the xomoni.com website (together, “Xomoni”). By using
-        Xomoni you agree to them. If you don’t agree, please don’t use it.
+        These terms cover the Xomoni browser extension and the xomoni.com website (together, “Xomoni”). By using Xomoni
+        you agree to them. If you don’t agree, please don’t use it.
       </p>
 
       <h2>What Xomoni is</h2>

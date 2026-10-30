@@ -1,6 +1,17 @@
 import {
-  Activity, BellRing, CircleCheck, Database, ExternalLink, History, LayoutDashboard, ListChecks, LoaderCircle, Pause, Settings as SettingsIcon,
-  Sparkles, TriangleAlert,
+  Activity,
+  BellRing,
+  CircleCheck,
+  Database,
+  ExternalLink,
+  History,
+  LayoutDashboard,
+  ListChecks,
+  LoaderCircle,
+  Pause,
+  Settings as SettingsIcon,
+  Sparkles,
+  TriangleAlert,
 } from 'lucide-react';
 import { type ComponentType, useEffect, useState } from 'react';
 import { runner } from '../engine/runner';
@@ -40,7 +51,6 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
   }, []);
   return [page, (p) => (location.hash = `/${p}`)];
 }
-
 
 /**
  * The dashboard shell: sidebar with worker status, the running-job banner, the current page and
@@ -87,7 +97,17 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
   }
 }
 
-function Sidebar({ page, navigate, account, worker }: { page: PageId; navigate: (p: PageId) => void; account: Account | null; worker: WorkerStatus }) {
+function Sidebar({
+  page,
+  navigate,
+  account,
+  worker,
+}: {
+  page: PageId;
+  navigate: (p: PageId) => void;
+  account: Account | null;
+  worker: WorkerStatus;
+}) {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
       <div className="flex items-center gap-2.5 px-5 py-5">
@@ -167,7 +187,9 @@ function WorkerChip({ worker }: { worker: WorkerStatus }) {
       <button
         type="button"
         title={open ? 'Show the X worker window' : 'Open the X worker window'}
-        onClick={() => (open ? workerTab.focus() : workerTab.open()).catch((e) => toast(String(e?.message ?? e), 'critical'))}
+        onClick={() =>
+          (open ? workerTab.focus() : workerTab.open()).catch((e) => toast(String(e?.message ?? e), 'critical'))
+        }
         className="shrink-0 rounded p-1 text-muted hover:bg-surface hover:text-ink"
       >
         <ExternalLink size={13} />
@@ -224,7 +246,12 @@ function RunnerBanner() {
           <span className="shrink-0 font-medium">{job?.title ?? 'Job running'}</span>
           <span className="truncate text-ink-2">· Keep this tab and the X worker window open (not minimized).</span>
         </div>
-        <Button size="sm" icon={<Pause size={13} />} onClick={() => runner.pause()} disabled={state.status === 'stopping'}>
+        <Button
+          size="sm"
+          icon={<Pause size={13} />}
+          onClick={() => runner.pause()}
+          disabled={state.status === 'stopping'}
+        >
           {state.status === 'stopping' ? 'Stopping…' : 'Pause'}
         </Button>
       </div>
@@ -237,7 +264,10 @@ function Toasts() {
   return (
     <div className="pointer-events-none fixed right-5 bottom-5 z-50 flex w-80 flex-col gap-2">
       {list.map((t) => (
-        <div key={t.id} className="pointer-events-auto flex items-start gap-2.5 rounded-lg border border-line bg-surface px-3.5 py-3 text-sm shadow-lg">
+        <div
+          key={t.id}
+          className="pointer-events-auto flex items-start gap-2.5 rounded-lg border border-line bg-surface px-3.5 py-3 text-sm shadow-lg"
+        >
           {t.tone === 'critical' ? (
             <TriangleAlert size={15} className="mt-0.5 shrink-0 text-critical" />
           ) : (

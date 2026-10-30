@@ -1,5 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CircleCheck, ExternalLink, Heart, LoaderCircle, Lock, MessageSquareReply, Repeat2, ShieldCheck, Sparkles, SquarePen } from 'lucide-react';
+import {
+  CircleCheck,
+  ExternalLink,
+  Heart,
+  LoaderCircle,
+  Lock,
+  MessageSquareReply,
+  Repeat2,
+  ShieldCheck,
+  Sparkles,
+  SquarePen,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { workerTab } from '../../engine/worker-tab';
 import { db } from '../../shared/db';
@@ -19,7 +30,15 @@ import { useKindCounts } from '../queries';
  * window and log in to X there. Otherwise it shows counts, the yearly chart, limits, open jobs and
  * recent activity.
  */
-export function OverviewPage({ account, worker, navigate }: { account: Account | null; worker: WorkerStatus; navigate: (p: PageId) => void }) {
+export function OverviewPage({
+  account,
+  worker,
+  navigate,
+}: {
+  account: Account | null;
+  worker: WorkerStatus;
+  navigate: (p: PageId) => void;
+}) {
   if (!account) return <Onboarding worker={worker} />;
   return <Dashboard account={account} navigate={navigate} />;
 }
@@ -64,7 +83,8 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
           </div>
           {account.postsCount != null && (
             <div className="mt-4 border-t border-line pt-3 text-xs text-ink-2">
-              X shows <span className="font-medium text-ink">{fmtNumber(account.postsCount)}</span> posts on your profile
+              X shows <span className="font-medium text-ink">{fmtNumber(account.postsCount)}</span> posts on your
+              profile
               {account.likesCount != null && (
                 <>
                   {' '}
@@ -76,10 +96,30 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
           )}
         </div>
         <div className="grid grid-cols-2 gap-4 lg:col-span-2">
-          <StatTile label="Posts" icon={<SquarePen size={14} />} value={fmtCompact(counts?.post.present ?? 0)} sub={`${fmtNumber(counts?.post.deleted ?? 0)} removed`} />
-          <StatTile label="Replies" icon={<MessageSquareReply size={14} />} value={fmtCompact(counts?.reply.present ?? 0)} sub={`${fmtNumber(counts?.reply.deleted ?? 0)} removed`} />
-          <StatTile label="Reposts" icon={<Repeat2 size={14} />} value={fmtCompact(counts?.repost.present ?? 0)} sub={`${fmtNumber(counts?.repost.deleted ?? 0)} undone`} />
-          <StatTile label="Likes" icon={<Heart size={14} />} value={fmtCompact(counts?.like.present ?? 0)} sub={`${fmtNumber(counts?.like.deleted ?? 0)} removed`} />
+          <StatTile
+            label="Posts"
+            icon={<SquarePen size={14} />}
+            value={fmtCompact(counts?.post.present ?? 0)}
+            sub={`${fmtNumber(counts?.post.deleted ?? 0)} removed`}
+          />
+          <StatTile
+            label="Replies"
+            icon={<MessageSquareReply size={14} />}
+            value={fmtCompact(counts?.reply.present ?? 0)}
+            sub={`${fmtNumber(counts?.reply.deleted ?? 0)} removed`}
+          />
+          <StatTile
+            label="Reposts"
+            icon={<Repeat2 size={14} />}
+            value={fmtCompact(counts?.repost.present ?? 0)}
+            sub={`${fmtNumber(counts?.repost.deleted ?? 0)} undone`}
+          />
+          <StatTile
+            label="Likes"
+            icon={<Heart size={14} />}
+            value={fmtCompact(counts?.like.present ?? 0)}
+            sub={`${fmtNumber(counts?.like.deleted ?? 0)} removed`}
+          />
         </div>
       </div>
 
@@ -91,13 +131,24 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card title="Jobs in progress" actions={<Button size="sm" variant="ghost" onClick={() => navigate('jobs')}>All jobs</Button>}>
+        <Card
+          title="Jobs in progress"
+          actions={
+            <Button size="sm" variant="ghost" onClick={() => navigate('jobs')}>
+              All jobs
+            </Button>
+          }
+        >
           {!jobs?.length ? (
             <EmptyState
               icon={<Sparkles size={18} />}
               title="No jobs in progress"
               body="Start a cleanup to remove old posts, replies, reposts or likes."
-              action={<Button size="sm" onClick={() => navigate('cleanup')}>New cleanup</Button>}
+              action={
+                <Button size="sm" onClick={() => navigate('cleanup')}>
+                  New cleanup
+                </Button>
+              }
             />
           ) : (
             <div className="space-y-3">
@@ -107,9 +158,20 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
             </div>
           )}
         </Card>
-        <Card title="Recent activity" actions={<Button size="sm" variant="ghost" onClick={() => navigate('activity')}>Full log</Button>}>
+        <Card
+          title="Recent activity"
+          actions={
+            <Button size="sm" variant="ghost" onClick={() => navigate('activity')}>
+              Full log
+            </Button>
+          }
+        >
           {!logs?.length ? (
-            <EmptyState icon={<CircleCheck size={18} />} title="Nothing yet" body="Every action Xomoni takes is recorded here." />
+            <EmptyState
+              icon={<CircleCheck size={18} />}
+              title="Nothing yet"
+              body="Every action Xomoni takes is recorded here."
+            />
           ) : (
             <div className="-my-2.5">
               <LogList entries={logs} />
@@ -122,7 +184,8 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
 }
 
 function Onboarding({ worker }: { worker: WorkerStatus }) {
-  const open = () => (worker.open ? workerTab.focus() : workerTab.open()).catch((e) => toast(String(e?.message ?? e), 'critical'));
+  const open = () =>
+    (worker.open ? workerTab.focus() : workerTab.open()).catch((e) => toast(String(e?.message ?? e), 'critical'));
   const loggedIn = !!worker.info?.loggedIn;
   return (
     <div className="mx-auto max-w-2xl pt-6">
@@ -158,15 +221,33 @@ function Onboarding({ worker }: { worker: WorkerStatus }) {
         </ol>
       </Card>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Assurance icon={<Lock size={15} />} title="Private by design">No servers. Your data stays in this browser.</Assurance>
-        <Assurance icon={<ShieldCheck size={15} />} title="Respects X limits">Human pacing, caps and automatic safety stops.</Assurance>
-        <Assurance icon={<CircleCheck size={15} />} title="Verified actions">Counted only when X confirms them.</Assurance>
+        <Assurance icon={<Lock size={15} />} title="Private by design">
+          No servers. Your data stays in this browser.
+        </Assurance>
+        <Assurance icon={<ShieldCheck size={15} />} title="Respects X limits">
+          Human pacing, caps and automatic safety stops.
+        </Assurance>
+        <Assurance icon={<CircleCheck size={15} />} title="Verified actions">
+          Counted only when X confirms them.
+        </Assurance>
       </div>
     </div>
   );
 }
 
-function Step({ n, done, active, title, children }: { n: number; done: boolean; active?: boolean; title: string; children: ReactNode }) {
+function Step({
+  n,
+  done,
+  active,
+  title,
+  children,
+}: {
+  n: number;
+  done: boolean;
+  active?: boolean;
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <li className="flex gap-4">
       <span

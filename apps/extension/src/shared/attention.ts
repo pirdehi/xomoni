@@ -13,13 +13,17 @@ export type Need = 'login' | 'verify' | 'account';
 export const isLoginPath = (path: string) => path === '/login' || path.startsWith('/i/flow/login');
 
 /** X's check pages: /account/access (unlock), /account/login_challenge, and /i/flow steps other than login. */
-export const isCheckPath = (path: string) => path.startsWith('/account/') || (path.startsWith('/i/flow/') && !isLoginPath(path));
+export const isCheckPath = (path: string) =>
+  path.startsWith('/account/') || (path.startsWith('/i/flow/') && !isLoginPath(path));
 
 /**
  * What the page needs from the person before Xomoni may act, or null when it is signed in to `accountId`
  * with no check showing. Checked in order: login, verify, account.
  */
-export function pageNeed(info: Pick<PageInfo, 'loggedIn' | 'locked' | 'challenge' | 'viewerId'>, accountId: string): Need | null {
+export function pageNeed(
+  info: Pick<PageInfo, 'loggedIn' | 'locked' | 'challenge' | 'viewerId'>,
+  accountId: string,
+): Need | null {
   if (!info.loggedIn) return 'login';
   if (info.locked || info.challenge) return 'verify';
   if (info.viewerId !== accountId) return 'account';

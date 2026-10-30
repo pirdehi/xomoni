@@ -26,8 +26,8 @@ export function DeleteAccountSection() {
         Delete account
       </h2>
       <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-2">
-        Removes your Xomoni account, connected browsers and job history from our servers. Your X account and
-        everything stored in the extension stay as they are.
+        Removes your Xomoni account, connected browsers and job history from our servers. Your X account and everything
+        stored in the extension stay as they are.
       </p>
       <button type="button" onClick={onDelete} disabled={pending} className="btn btn-danger mt-4 py-2">
         <Trash className="size-4" aria-hidden />

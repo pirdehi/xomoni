@@ -70,7 +70,9 @@ export class JobContext {
   /** Loads settings and seeds the limiter. Call before anything else. */
   async init() {
     this.settings = await getSettings();
-    this.limiter = new Limiter(this.settings, this.job.accountId, this.signal, (reason, until) => this.hooks.status(reason, until));
+    this.limiter = new Limiter(this.settings, this.job.accountId, this.signal, (reason, until) =>
+      this.hooks.status(reason, until),
+    );
     await this.limiter.init();
   }
 
@@ -96,7 +98,13 @@ export class JobContext {
   }
 
   /** Adds an activity log entry for this job. */
-  log(level: LogLevel, action: ActionKind | 'system', message: string, targetId: string | null = null, outcome: Outcome | null = null) {
+  log(
+    level: LogLevel,
+    action: ActionKind | 'system',
+    message: string,
+    targetId: string | null = null,
+    outcome: Outcome | null = null,
+  ) {
     return addLog({ accountId: this.job.accountId, jobId: this.job.id, level, action, targetId, outcome, message });
   }
 
@@ -109,7 +117,11 @@ export class JobContext {
     this.handle ||= account?.handle ?? '';
     this.assertPage(info);
     this.handle = info.handle || this.handle;
-    if (!this.handle) throw new Stop('blocked', 'Could not determine your @handle from X. Open your profile once in the worker window.');
+    if (!this.handle)
+      throw new Stop(
+        'blocked',
+        'Could not determine your @handle from X. Open your profile once in the worker window.',
+      );
     return info;
   }
 
@@ -130,7 +142,10 @@ export class JobContext {
     this.repeatNeeds = progress === this.progressAtLastNeed ? this.repeatNeeds + 1 : 1;
     this.progressAtLastNeed = progress;
     if (this.repeatNeeds > MAX_REPEAT_NEEDS) {
-      throw new Stop('blocked', `X keeps asking for the same thing: ${request.message} Check the Xomoni window, then resume.`);
+      throw new Stop(
+        'blocked',
+        `X keeps asking for the same thing: ${request.message} Check the Xomoni window, then resume.`,
+      );
     }
 
     this.job.state = 'waiting';
@@ -218,7 +233,8 @@ export class JobContext {
     const target = item?.id ?? null;
     const detail = result.message ? ` — ${result.message}` : '';
     // Only settled items are excluded from the rest of this job; retries keep them eligible.
-    const markTried = (patch: Partial<Item> = {}) => (item ? db.items.update(item.key, { lastJobId: this.job.id, ...patch }) : Promise.resolve(0));
+    const markTried = (patch: Partial<Item> = {}) =>
+      item ? db.items.update(item.key, { lastJobId: this.job.id, ...patch }) : Promise.resolve(0);
 
     switch (outcome) {
       case 'done':
@@ -240,8 +256,17 @@ export class JobContext {
         return true;
 
       case 'rate_limited': {
-        const until = result.resetAt && result.resetAt > Date.now() ? result.resetAt + randomBetween(10_000, 30_000) : Date.now() + randomBetween(15, 20) * 60_000;
-        await this.log('warn', action, `X rate limit hit; resuming at ${new Date(until).toLocaleTimeString()}`, target, outcome);
+        const until =
+          result.resetAt && result.resetAt > Date.now()
+            ? result.resetAt + randomBetween(10_000, 30_000)
+            : Date.now() + randomBetween(15, 20) * 60_000;
+        await this.log(
+          'warn',
+          action,
+          `X rate limit hit; resuming at ${new Date(until).toLocaleTimeString()}`,
+          target,
+          outcome,
+        );
         await this.limiter.cooldown(until, 'X rate limit — waiting for the window to reset');
         return false;
       }

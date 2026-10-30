@@ -43,7 +43,8 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
   const now = useNow(30_000);
 
   async function onDisconnect(device: Device) {
-    if (!confirm(`Disconnect “${device.name}”? Its job history on this page is removed too. Nothing on X changes.`)) return;
+    if (!confirm(`Disconnect “${device.name}”? Its job history on this page is removed too. Nothing on X changes.`))
+      return;
     const error = await disconnect(device);
     if (error) alert(error);
   }
@@ -97,7 +98,11 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
                       </p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => onDisconnect(device)} className="btn btn-secondary py-1.5 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => onDisconnect(device)}
+                    className="btn btn-secondary py-1.5 text-sm"
+                  >
                     Disconnect
                   </button>
                 </li>
@@ -106,7 +111,6 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
           </ul>
         </section>
       )}
-
     </div>
   );
 }

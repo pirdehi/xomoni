@@ -3,7 +3,8 @@
  * A missing value fails the build with a clear message instead of shipping a site that can't reach Supabase.
  */
 function required(name: string, value: string | undefined): string {
-  if (!value) throw new Error(`Missing ${name}: copy apps/web/.env.example to apps/web/.env.local, or set it in Vercel.`);
+  if (!value)
+    throw new Error(`Missing ${name}: copy apps/web/.env.example to apps/web/.env.local, or set it in Vercel.`);
   return value;
 }
 

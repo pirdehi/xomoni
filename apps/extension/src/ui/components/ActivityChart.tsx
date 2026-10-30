@@ -41,7 +41,10 @@ export function ActivityChart({ accountId }: { accountId: string }) {
   const [mode, setMode] = useState<'activity' | 'likes'>('activity');
   const [view, setView] = useState<'chart' | 'table'>('chart');
   const series = SERIES[mode];
-  const data = useYearHistogram(accountId, series.map((s) => s.kind));
+  const data = useYearHistogram(
+    accountId,
+    series.map((s) => s.kind),
+  );
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   const [hover, setHover] = useState<number | null>(null);
@@ -77,11 +80,19 @@ export function ActivityChart({ accountId }: { accountId: string }) {
   );
 
   return (
-    <Card title="Still on your account, by year" subtitle={mode === 'likes' ? 'Grouped by when the liked post was published' : 'Grouped by publish date'} actions={header}>
+    <Card
+      title="Still on your account, by year"
+      subtitle={mode === 'likes' ? 'Grouped by when the liked post was published' : 'Grouped by publish date'}
+      actions={header}
+    >
       {data === undefined ? (
         <div style={{ height: H + 32 }} />
       ) : !data.length ? (
-        <EmptyState icon={<ChartColumn size={18} />} title="No data yet" body="Import your X archive or run a scan from the Inventory page to see your history here." />
+        <EmptyState
+          icon={<ChartColumn size={18} />}
+          title="No data yet"
+          body="Import your X archive or run a scan from the Inventory page to see your history here."
+        />
       ) : view === 'table' ? (
         <div className="max-h-64 overflow-y-auto">
           <table className="tabular w-full text-sm">
@@ -160,7 +171,14 @@ function Plot({
       <svg width={width} height={H} role="img" aria-label="Posts per year">
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={PAD.left} x2={PAD.left + innerW} y1={y(t)} y2={y(t)} stroke={t === 0 ? 'var(--axis)' : 'var(--grid)'} strokeWidth={1} />
+            <line
+              x1={PAD.left}
+              x2={PAD.left + innerW}
+              y1={y(t)}
+              y2={y(t)}
+              stroke={t === 0 ? 'var(--axis)' : 'var(--grid)'}
+              strokeWidth={1}
+            />
             <text x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="tabular fill-muted text-[11px]">
               {fmtCompact(t)}
             </text>
@@ -169,9 +187,7 @@ function Plot({
         {data.map((d, i) => {
           const cx = PAD.left + band * i + band / 2;
           let acc = 0;
-          const segments = series
-            .map((s) => ({ s, v: d.values[s.kind] ?? 0 }))
-            .filter((x) => x.v > 0);
+          const segments = series.map((s) => ({ s, v: d.values[s.kind] ?? 0 })).filter((x) => x.v > 0);
           return (
             <g key={d.year} opacity={hover == null || hover === i ? 1 : 0.55}>
               {segments.map(({ s, v }, j) => {

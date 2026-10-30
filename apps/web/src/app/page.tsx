@@ -38,7 +38,13 @@ export default function Home() {
   );
 }
 
-function Section({ id, eyebrow, title, intro, children }: {
+function Section({
+  id,
+  eyebrow,
+  title,
+  intro,
+  children,
+}: {
   id?: string;
   eyebrow: string;
   title: string;
@@ -287,7 +293,12 @@ function Anywhere() {
   );
 }
 
-const STAYS = ['Your X password and session cookies', 'Your posts, replies and likes', 'Your X archive', 'The activity log'];
+const STAYS = [
+  'Your X password and session cookies',
+  'Your posts, replies and likes',
+  'Your X archive',
+  'The activity log',
+];
 const SYNCS = [
   'Your Google name, email and picture',
   'The browsers you connect',
@@ -391,8 +402,8 @@ function ClosingCta() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Start with your archive.</h2>
           <p className="mt-2 max-w-xl text-ink-2">
-            Request it from X today (Settings → Your account → Download an archive of your data). It can take a day
-            to arrive, and it is your backup before anything is deleted.
+            Request it from X today (Settings → Your account → Download an archive of your data). It can take a day to
+            arrive, and it is your backup before anything is deleted.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">

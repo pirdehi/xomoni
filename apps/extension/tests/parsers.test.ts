@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { archiveLikeDrafts, archiveTweetDrafts, classifyArchiveFile, parseArchiveAccount, parseYtd } from '../src/shared/archive';
-import { draftsFromTimeline, extractErrors, extractProfile, extractTweets, opName, parseVariables } from '../src/shared/graphql';
+import {
+  archiveLikeDrafts,
+  archiveTweetDrafts,
+  classifyArchiveFile,
+  parseArchiveAccount,
+  parseYtd,
+} from '../src/shared/archive';
+import {
+  draftsFromTimeline,
+  extractErrors,
+  extractProfile,
+  extractTweets,
+  opName,
+  parseVariables,
+} from '../src/shared/graphql';
 import { estimateDuration, matchesFilter, parseIdList } from '../src/shared/filter';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from '../src/shared/time';
 import { sweepUrls } from '../src/engine/cleanup';
@@ -8,10 +21,23 @@ import { isCheckPath, isLoginPath, needMessage, pageNeed } from '../src/shared/a
 import type { CleanupFilter, Item } from '../src/shared/types';
 
 const EPOCH = 1288834974657n;
-const idAt = (ms: number, seq = 0n) => ((BigInt(ms) - EPOCH) << 22n | seq).toString();
+const idAt = (ms: number, seq = 0n) => (((BigInt(ms) - EPOCH) << 22n) | seq).toString();
 const ME = '1000';
 
-function tweet(id: string, opts: { user?: string; handle?: string; created?: string; text?: string; replyTo?: string; replyToUser?: string; rt?: object; quoted?: object; likes?: number } = {}) {
+function tweet(
+  id: string,
+  opts: {
+    user?: string;
+    handle?: string;
+    created?: string;
+    text?: string;
+    replyTo?: string;
+    replyToUser?: string;
+    rt?: object;
+    quoted?: object;
+    likes?: number;
+  } = {},
+) {
   return {
     __typename: 'Tweet',
     rest_id: id,
@@ -62,10 +88,13 @@ describe('time', () => {
 
 describe('graphql parsing', () => {
   it('reads op names and variables', () => {
-    const url = 'https://x.com/i/api/graphql/abc123/UserTweets?variables=%7B%22userId%22%3A%221000%22%7D&features=%7B%7D';
+    const url =
+      'https://x.com/i/api/graphql/abc123/UserTweets?variables=%7B%22userId%22%3A%221000%22%7D&features=%7B%7D';
     expect(opName(url)).toBe('UserTweets');
     expect(parseVariables(url, null)).toEqual({ userId: '1000' });
-    expect(parseVariables('https://x.com/i/api/graphql/q/DeleteTweet', JSON.stringify({ variables: { tweet_id: '9' } }))).toEqual({ tweet_id: '9' });
+    expect(
+      parseVariables('https://x.com/i/api/graphql/q/DeleteTweet', JSON.stringify({ variables: { tweet_id: '9' } })),
+    ).toEqual({ tweet_id: '9' });
   });
 
   it('extracts timeline tweets without descending into quoted or reposted posts', () => {
@@ -82,12 +111,25 @@ describe('graphql parsing', () => {
                     type: 'TimelineAddEntries',
                     entries: [
                       entry('tweet-1', '30', tweet('1', { quoted })),
-                      entry('tweet-2', '20', { __typename: 'TweetWithVisibilityResults', tweet: tweet('2', { replyTo: '1', replyToUser: ME }) }),
+                      entry('tweet-2', '20', {
+                        __typename: 'TweetWithVisibilityResults',
+                        tweet: tweet('2', { replyTo: '1', replyToUser: ME }),
+                      }),
                       entry('tweet-3', '10', tweet('3', { rt: source })),
                       {
                         entryId: 'profile-conversation-1',
                         sortIndex: '5',
-                        content: { items: [{ item: { itemContent: { tweet_results: { result: tweet('4', { user: '5', handle: 'x', replyTo: '77' }) } } } }] },
+                        content: {
+                          items: [
+                            {
+                              item: {
+                                itemContent: {
+                                  tweet_results: { result: tweet('4', { user: '5', handle: 'x', replyTo: '77' }) },
+                                },
+                              },
+                            },
+                          ],
+                        },
                       },
                     ],
                   },
@@ -115,8 +157,16 @@ describe('graphql parsing', () => {
   it('records likes only from the viewer’s own Likes timeline, with checked like times', () => {
     const created = Date.UTC(2020, 0, 1);
     const tweets = [
-      { ...extractTweets({ e: [entry('tweet-a', idAt(Date.UTC(2022, 0, 2)), tweet(idAt(created, 1n), { user: '7' }))] })[0] },
-      { ...extractTweets({ e: [entry('tweet-b', idAt(Date.UTC(2022, 0, 1)), tweet(idAt(created, 2n), { user: '8' }))] })[0] },
+      {
+        ...extractTweets({
+          e: [entry('tweet-a', idAt(Date.UTC(2022, 0, 2)), tweet(idAt(created, 1n), { user: '7' }))],
+        })[0],
+      },
+      {
+        ...extractTweets({
+          e: [entry('tweet-b', idAt(Date.UTC(2022, 0, 1)), tweet(idAt(created, 2n), { user: '8' }))],
+        })[0],
+      },
     ];
     expect(draftsFromTimeline('Likes', tweets, ME, { userId: '999' })).toEqual([]);
     const drafts = draftsFromTimeline('Likes', tweets, ME, { userId: ME });
@@ -134,10 +184,20 @@ describe('graphql parsing', () => {
 
   it('reads profiles and errors', () => {
     const profile = extractProfile({
-      data: { user: { result: { rest_id: ME, core: { screen_name: 'me', name: 'Me', created_at: 'Wed Oct 10 20:19:24 +0000 2018' }, legacy: { statuses_count: 12, favourites_count: 3 } } } },
+      data: {
+        user: {
+          result: {
+            rest_id: ME,
+            core: { screen_name: 'me', name: 'Me', created_at: 'Wed Oct 10 20:19:24 +0000 2018' },
+            legacy: { statuses_count: 12, favourites_count: 3 },
+          },
+        },
+      },
     });
     expect(profile).toMatchObject({ id: ME, handle: 'me', postsCount: 12, likesCount: 3 });
-    expect(extractErrors({ errors: [{ message: 'nope', extensions: { code: 226 } }] })).toEqual([{ code: 226, message: 'nope' }]);
+    expect(extractErrors({ errors: [{ message: 'nope', extensions: { code: 226 } }] })).toEqual([
+      { code: 226, message: 'nope' },
+    ]);
   });
 });
 
@@ -152,11 +212,28 @@ describe('archive', () => {
   });
 
   it('parses tweets, reposts, replies and likes', () => {
-    const tweets = parseYtd(`window.YTD.tweets.part0 = ${JSON.stringify([
-      { tweet: { id_str: '11', created_at: 'Wed Oct 10 20:19:24 +0000 2018', full_text: 'hello', favorite_count: '4' } },
-      { tweet: { id_str: '12', created_at: 'Wed Oct 10 20:19:24 +0000 2018', full_text: 'RT @someone: hi' } },
-      { tweet: { id_str: '13', created_at: 'Wed Oct 10 20:19:24 +0000 2018', full_text: '@a ok', in_reply_to_status_id_str: '5', in_reply_to_user_id_str: '42' } },
-    ])}`);
+    const tweets = parseYtd(
+      `window.YTD.tweets.part0 = ${JSON.stringify([
+        {
+          tweet: {
+            id_str: '11',
+            created_at: 'Wed Oct 10 20:19:24 +0000 2018',
+            full_text: 'hello',
+            favorite_count: '4',
+          },
+        },
+        { tweet: { id_str: '12', created_at: 'Wed Oct 10 20:19:24 +0000 2018', full_text: 'RT @someone: hi' } },
+        {
+          tweet: {
+            id_str: '13',
+            created_at: 'Wed Oct 10 20:19:24 +0000 2018',
+            full_text: '@a ok',
+            in_reply_to_status_id_str: '5',
+            in_reply_to_user_id_str: '42',
+          },
+        },
+      ])}`,
+    );
     const drafts = archiveTweetDrafts(tweets, ME, 'me');
     expect(drafts.map((d) => [d.kind, d.targetId, d.author])).toEqual([
       ['post', '11', 'me'],
@@ -167,18 +244,47 @@ describe('archive', () => {
     expect(drafts[2].selfReply).toBe(false);
 
     const likeId = idAt(Date.UTC(2019, 5, 1));
-    const likes = archiveLikeDrafts(parseYtd(`window.YTD.like.part0 = [{"like":{"tweetId":"${likeId}","fullText":"nice"}}]`));
+    const likes = archiveLikeDrafts(
+      parseYtd(`window.YTD.like.part0 = [{"like":{"tweetId":"${likeId}","fullText":"nice"}}]`),
+    );
     expect(likes[0]).toMatchObject({ kind: 'like', id: likeId, createdAt: Date.UTC(2019, 5, 1) });
 
-    expect(parseArchiveAccount(parseYtd('window.YTD.account.part0 = [{"account":{"accountId":"1000","username":"me"}}]'))).toEqual({ accountId: ME, handle: 'me' });
+    expect(
+      parseArchiveAccount(parseYtd('window.YTD.account.part0 = [{"account":{"accountId":"1000","username":"me"}}]')),
+    ).toEqual({ accountId: ME, handle: 'me' });
   });
 });
 
 describe('cleanup rules', () => {
-  const base: CleanupFilter = { target: 'post', before: Date.UTC(2024, 0, 1), after: null, keepMinLikes: null, keepKeywords: [], keepIds: [], skipSelfReplies: true };
+  const base: CleanupFilter = {
+    target: 'post',
+    before: Date.UTC(2024, 0, 1),
+    after: null,
+    keepMinLikes: null,
+    keepKeywords: [],
+    keepIds: [],
+    skipSelfReplies: true,
+  };
   const item = (patch: Partial<Item>): Item => ({
-    key: 'k', accountId: ME, kind: 'post', id: '1', targetId: '1', createdAt: Date.UTC(2020, 0, 1), likedAt: null, text: 'hello world',
-    author: 'me', inReplyToId: null, selfReply: false, likes: 0, reposts: 0, replies: 0, sources: ['scan'], status: 'present', seenAt: 0, statusAt: 0, lastJobId: null,
+    key: 'k',
+    accountId: ME,
+    kind: 'post',
+    id: '1',
+    targetId: '1',
+    createdAt: Date.UTC(2020, 0, 1),
+    likedAt: null,
+    text: 'hello world',
+    author: 'me',
+    inReplyToId: null,
+    selfReply: false,
+    likes: 0,
+    reposts: 0,
+    replies: 0,
+    sources: ['scan'],
+    status: 'present',
+    seenAt: 0,
+    statusAt: 0,
+    lastJobId: null,
     ...patch,
   });
 
@@ -192,7 +298,9 @@ describe('cleanup rules', () => {
     expect(matchesFilter(base, item({ status: 'deleted' }))).toBe(false);
     expect(matchesFilter(base, item({ kind: 'reply' }))).toBe(false);
     expect(matchesFilter({ ...base, target: 'reply' }, item({ kind: 'reply', selfReply: true }))).toBe(false);
-    expect(matchesFilter({ ...base, target: 'reply', skipSelfReplies: false }, item({ kind: 'reply', selfReply: true }))).toBe(true);
+    expect(
+      matchesFilter({ ...base, target: 'reply', skipSelfReplies: false }, item({ kind: 'reply', selfReply: true })),
+    ).toBe(true);
   });
 
   it('uses the like time for likes when known', () => {
@@ -202,11 +310,22 @@ describe('cleanup rules', () => {
   });
 
   it('parses pasted post links and ids', () => {
-    expect(parseIdList('https://x.com/me/status/1234567890123 and 98765432\nfoo')).toEqual(['1234567890123', '98765432']);
+    expect(parseIdList('https://x.com/me/status/1234567890123 and 98765432\nfoo')).toEqual([
+      '1234567890123',
+      '98765432',
+    ]);
   });
 
   it('estimates duration with batch breaks and daily caps', () => {
-    const rule = { minDelay: 6, maxDelay: 12, batchSize: 30, batchPauseMin: 180, batchPauseMax: 360, hourlyCap: 150, dailyCap: 1000 };
+    const rule = {
+      minDelay: 6,
+      maxDelay: 12,
+      batchSize: 30,
+      batchPauseMin: 180,
+      batchPauseMax: 360,
+      hourlyCap: 150,
+      dailyCap: 1000,
+    };
     expect(estimateDuration(0, rule)).toBe(0);
     expect(estimateDuration(150, rule)).toBeGreaterThanOrEqual(3600 * 1000);
     expect(estimateDuration(2500, rule)).toBeGreaterThan(2 * 86_400_000);

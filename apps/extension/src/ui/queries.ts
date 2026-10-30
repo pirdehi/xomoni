@@ -20,7 +20,16 @@ export function useKindCounts(accountId: string | undefined): KindCounts | undef
   return useLiveQuery(async () => {
     if (!accountId) return undefined;
     const entries = await Promise.all(
-      KINDS.map(async (k) => [k, { present: await countStatus(accountId, k, 'present'), deleted: await countStatus(accountId, k, 'deleted') }] as const),
+      KINDS.map(
+        async (k) =>
+          [
+            k,
+            {
+              present: await countStatus(accountId, k, 'present'),
+              deleted: await countStatus(accountId, k, 'deleted'),
+            },
+          ] as const,
+      ),
     );
     return Object.fromEntries(entries) as KindCounts;
   }, [accountId]);

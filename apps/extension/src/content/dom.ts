@@ -29,17 +29,41 @@ export const SEL = {
 
 /** "Delete" in the post menu, in the languages X ships most. */
 const DELETE_LABELS = new Set([
-  'delete', 'حذف', 'löschen', 'supprimer', 'eliminar', 'elimina', 'excluir', 'apagar', 'sil', 'удалить',
-  'видалити', '削除', '삭제', '删除', '刪除', 'verwijderen', 'usuń', 'hapus', 'हटाएं', 'हटाएँ', 'מחק', 'ลบ', 'xóa',
+  'delete',
+  'حذف',
+  'löschen',
+  'supprimer',
+  'eliminar',
+  'elimina',
+  'excluir',
+  'apagar',
+  'sil',
+  'удалить',
+  'видалити',
+  '削除',
+  '삭제',
+  '删除',
+  '刪除',
+  'verwijderen',
+  'usuń',
+  'hapus',
+  'हटाएं',
+  'हटाएँ',
+  'מחק',
+  'ลบ',
+  'xóa',
 ]);
 
 /** X's destructive red, used as a fallback when the label is in another language. */
 const DANGER_RGB = 'rgb(244, 33, 46)';
 
 /** `querySelector` shorthand: the first match under `root` (the whole document by default), or null. */
-export const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel);
+export const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) =>
+  root.querySelector<T>(sel);
 /** `querySelectorAll` shorthand that returns a real array. */
-export const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => [...root.querySelectorAll<T>(sel)];
+export const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => [
+  ...root.querySelectorAll<T>(sel),
+];
 
 /**
  * Resolves after `ms` milliseconds. It uses the tab's own `setTimeout`, which Chrome throttles in
@@ -99,7 +123,9 @@ export function click(el: Element) {
 export function closeMenus() {
   const mask = $(SEL.mask);
   if (mask) click(mask);
-  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+  document.body.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }),
+  );
 }
 
 /** Resolves with the first truthy result of `probe`, re-checked on DOM changes. */
@@ -121,7 +147,12 @@ export function waitFor<T>(probe: () => T | null | undefined | false, timeoutMs:
       if (v) finish(v);
     };
     const observer = new MutationObserver(check);
-    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-testid', 'href'] });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-testid', 'href'],
+    });
     // Mutation callbacks are not throttled in background tabs; the poll is a safety net.
     const poll = setInterval(check, 500);
     const timer = setTimeout(() => finish(null), timeoutMs);

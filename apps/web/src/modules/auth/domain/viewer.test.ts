@@ -13,7 +13,11 @@ describe('viewerFromClaims', () => {
   });
 
   it('falls back to the email when there is no usable name', () => {
-    const viewer = viewerFromClaims({ sub: 'u2', email: 'bob@example.com', user_metadata: { full_name: '  ', avatar_url: 42 } });
+    const viewer = viewerFromClaims({
+      sub: 'u2',
+      email: 'bob@example.com',
+      user_metadata: { full_name: '  ', avatar_url: 42 },
+    });
     expect(viewer.name).toBe('bob@example.com');
     expect(viewer.avatarUrl).toBeNull();
   });

@@ -192,7 +192,8 @@ module.exports = {
     },
     reporterOptions: {
       archi: {
-        collapsePattern: '^(apps/web/src/modules/[^/]+/[^/]+|apps/web/src/(app|shared)/[^/]+|apps/extension/src/[^/]+|packages/[^/]+)',
+        collapsePattern:
+          '^(apps/web/src/modules/[^/]+/[^/]+|apps/web/src/(app|shared)/[^/]+|apps/extension/src/[^/]+|packages/[^/]+)',
       },
       text: { highlightFocused: true },
     },

@@ -25,7 +25,12 @@ export function classifyArchiveFile(name: string): ArchiveFileKind | null {
 export function parseYtd(text: string): Json[] {
   const start = text.indexOf('=');
   if (start < 0) throw new Error('Not an X archive data file');
-  const parsed = JSON.parse(text.slice(start + 1).trim().replace(/;\s*$/, ''));
+  const parsed = JSON.parse(
+    text
+      .slice(start + 1)
+      .trim()
+      .replace(/;\s*$/, ''),
+  );
   if (!Array.isArray(parsed)) throw new Error('Unexpected archive file format');
   return parsed;
 }

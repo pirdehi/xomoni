@@ -26,7 +26,10 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
     ? JOB_STATE[job.state]
     : run.status === 'attention'
       ? JOB_STATE.waiting
-      : { label: run.status === 'waiting' ? 'Waiting' : run.status === 'stopping' ? 'Stopping' : 'Running', tone: 'accent' as const };
+      : {
+          label: run.status === 'waiting' ? 'Waiting' : run.status === 'stopping' ? 'Stopping' : 'Running',
+          tone: 'accent' as const,
+        };
 
   const { matched, done, skipped, failed, scanned } = job.stats;
   const settled = done + skipped + failed;
@@ -61,7 +64,10 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
       {job.kind === 'cleanup' ? (
         <div className="mt-4">
           <div className="h-2 w-full overflow-hidden rounded-full bg-accent-soft">
-            <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${pct ?? 0}%` }} />
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-500"
+              style={{ width: `${pct ?? 0}%` }}
+            />
           </div>
           <div className="tabular mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-2">
             <span>
@@ -86,16 +92,29 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
       {active && run.message && (
         <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-xs text-ink-2">
           <span className="truncate">{run.message}</span>
-          {run.waitUntil && <span className="tabular shrink-0 font-medium text-ink">{fmtDuration(run.waitUntil - now)}</span>}
+          {run.waitUntil && (
+            <span className="tabular shrink-0 font-medium text-ink">{fmtDuration(run.waitUntil - now)}</span>
+          )}
           {run.status === 'attention' && (
-            <button type="button" className="shrink-0 font-medium text-accent hover:underline" onClick={() => void workerTab.focus()}>
+            <button
+              type="button"
+              className="shrink-0 font-medium text-accent hover:underline"
+              onClick={() => void workerTab.focus()}
+            >
               Open X window
             </button>
           )}
         </div>
       )}
       {!active && job.stateReason && job.state !== 'completed' && (
-        <p className={cx('mt-3 text-xs', job.state === 'blocked' || job.state === 'failed' ? 'text-critical' : 'text-ink-2')}>{job.stateReason}</p>
+        <p
+          className={cx(
+            'mt-3 text-xs',
+            job.state === 'blocked' || job.state === 'failed' ? 'text-critical' : 'text-ink-2',
+          )}
+        >
+          {job.stateReason}
+        </p>
       )}
     </div>
   );
@@ -106,10 +125,21 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
   if (active) {
     return (
       <div className="flex shrink-0 gap-2">
-        <Button size="sm" icon={<Pause size={13} />} onClick={() => runner.pause()} disabled={run.status === 'stopping'}>
+        <Button
+          size="sm"
+          icon={<Pause size={13} />}
+          onClick={() => runner.pause()}
+          disabled={run.status === 'stopping'}
+        >
           Pause
         </Button>
-        <Button size="sm" variant="ghost" icon={<Ban size={13} />} onClick={() => runner.cancel()} disabled={run.status === 'stopping'}>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<Ban size={13} />}
+          onClick={() => runner.cancel()}
+          disabled={run.status === 'stopping'}
+        >
           Cancel
         </Button>
       </div>
@@ -118,17 +148,34 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
   return (
     <div className="flex shrink-0 gap-2">
       {RESUMABLE.has(job.state) && (
-        <Button size="sm" variant="primary" icon={<Play size={13} />} onClick={() => startJob(job.id)} disabled={run.status !== 'idle'}>
+        <Button
+          size="sm"
+          variant="primary"
+          icon={<Play size={13} />}
+          onClick={() => startJob(job.id)}
+          disabled={run.status !== 'idle'}
+        >
           {job.state === 'queued' ? 'Start' : 'Resume'}
         </Button>
       )}
       {!TERMINAL.has(job.state) && job.state !== 'running' && job.state !== 'waiting' && (
-        <Button size="sm" variant="ghost" icon={<Ban size={13} />} onClick={() => db.jobs.update(job.id, { state: 'cancelled', finishedAt: Date.now() })}>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<Ban size={13} />}
+          onClick={() => db.jobs.update(job.id, { state: 'cancelled', finishedAt: Date.now() })}
+        >
           Cancel
         </Button>
       )}
       {TERMINAL.has(job.state) && (
-        <Button size="sm" variant="ghost" icon={<Trash2 size={13} />} onClick={() => db.jobs.delete(job.id)} title="Remove from the list (the activity log is kept)">
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<Trash2 size={13} />}
+          onClick={() => db.jobs.delete(job.id)}
+          title="Remove from the list (the activity log is kept)"
+        >
           Remove
         </Button>
       )}

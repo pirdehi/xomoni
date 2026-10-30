@@ -3,9 +3,28 @@
 // headers); success is only reported once X's response confirms it.
 import { isCheckPath, isLoginPath } from '../shared/attention';
 import { extractErrors } from '../shared/graphql';
-import type { ActionResult, ActorCommand, ContentState, PageInfo, ScrollResult, VisibleTweet } from '../shared/messages';
+import type {
+  ActionResult,
+  ActorCommand,
+  ContentState,
+  PageInfo,
+  ScrollResult,
+  VisibleTweet,
+} from '../shared/messages';
 import {
-  $, $$, SEL, articleInfo, click, closeMenus, findArticle, findDeleteMenuItem, jitter, sleep, viewerHandle, viewerIdFromCookie, waitFor,
+  $,
+  $$,
+  SEL,
+  articleInfo,
+  click,
+  closeMenus,
+  findArticle,
+  findDeleteMenuItem,
+  jitter,
+  sleep,
+  viewerHandle,
+  viewerIdFromCookie,
+  waitFor,
 } from './dom';
 import { type NetEvent, resetAtFrom, waitForNet } from './net';
 
@@ -89,7 +108,10 @@ function visibleTweets(): VisibleTweet[] {
 }
 
 async function scrollMore(): Promise<ScrollResult> {
-  const ids = () => $$(SEL.article).map((a) => articleInfo(a)?.id).filter(Boolean) as string[];
+  const ids = () =>
+    $$(SEL.article)
+      .map((a) => articleInfo(a)?.id)
+      .filter(Boolean) as string[];
   const before = new Set(ids());
   const last = $$(SEL.article).at(-1);
   last?.scrollIntoView({ block: 'end' });
@@ -180,7 +202,10 @@ async function relikeUnlike(id: string): Promise<ActionResult> {
     }
     await sleep(jitter(2000, 4000));
   }
-  return { outcome: 'failed', message: 'Re-liked, but unliking failed — the post is still liked; run the cleanup again' };
+  return {
+    outcome: 'failed',
+    message: 'Re-liked, but unliking failed — the post is still liked; run the cleanup again',
+  };
 }
 
 /**
@@ -244,6 +269,9 @@ function classify(ev: NetEvent | null, op: string): ActionResult {
     // Unknown errors are failures even when a data object came back.
     return { ...base, outcome: 'failed' };
   }
-  if (ev.status >= 400 || ev.status === 0) return { outcome: 'failed', http: ev.status, message: `X answered HTTP ${ev.status}` };
-  return ev.json?.data ? { outcome: 'done', http: ev.status } : { outcome: 'failed', http: ev.status, message: 'Unexpected response' };
+  if (ev.status >= 400 || ev.status === 0)
+    return { outcome: 'failed', http: ev.status, message: `X answered HTTP ${ev.status}` };
+  return ev.json?.data
+    ? { outcome: 'done', http: ev.status }
+    : { outcome: 'failed', http: ev.status, message: 'Unexpected response' };
 }

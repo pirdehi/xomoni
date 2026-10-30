@@ -96,7 +96,17 @@ export function Badge({ tone = 'neutral', icon, children }: { tone?: Tone; icon?
 }
 
 /** A small card with one headline value, its label, an optional icon and an optional line below. */
-export function StatTile({ label, value, sub, icon }: { label: string; value: ReactNode; sub?: ReactNode; icon?: ReactNode }) {
+export function StatTile({
+  label,
+  value,
+  sub,
+  icon,
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  icon?: ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
       <div className="flex items-center justify-between text-xs font-medium text-ink-2">
@@ -114,8 +124,17 @@ export function Meter({ value, max, label }: { value: number; max: number; label
   const ratio = max > 0 ? Math.min(1, value / max) : 0;
   const fill = ratio >= 1 ? 'bg-critical' : ratio >= 0.8 ? 'bg-warn' : 'bg-accent';
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-accent-soft" role="meter" aria-valuenow={value} aria-valuemax={max} aria-label={label}>
-      <div className={cx('h-full rounded-full transition-[width] duration-500', fill)} style={{ width: `${ratio * 100}%` }} />
+    <div
+      className="h-1.5 w-full overflow-hidden rounded-full bg-accent-soft"
+      role="meter"
+      aria-valuenow={value}
+      aria-valuemax={max}
+      aria-label={label}
+    >
+      <div
+        className={cx('h-full rounded-full transition-[width] duration-500', fill)}
+        style={{ width: `${ratio * 100}%` }}
+      />
     </div>
   );
 }
@@ -158,7 +177,12 @@ export function Toggle({
           checked ? 'bg-accent' : 'bg-axis',
         )}
       >
-        <span className={cx('absolute top-0.5 size-4 rounded-full bg-white shadow transition-[left]', checked ? 'left-[18px]' : 'left-0.5')} />
+        <span
+          className={cx(
+            'absolute top-0.5 size-4 rounded-full bg-white shadow transition-[left]',
+            checked ? 'left-[18px]' : 'left-0.5',
+          )}
+        />
       </button>
       <span>
         <span className="block text-sm font-medium text-ink">{label}</span>
@@ -222,7 +246,10 @@ export function Modal({
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
+      onMouseDown={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -231,7 +258,12 @@ export function Modal({
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <h3 className="text-base font-semibold">{title}</h3>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-ink" aria-label="Close">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-ink"
+            aria-label="Close"
+          >
             <X size={16} />
           </button>
         </div>
@@ -243,7 +275,17 @@ export function Modal({
 }
 
 /** Placeholder for a list or chart with nothing to show yet, with an optional call to action. */
-export function EmptyState({ icon, title, body, action }: { icon: ReactNode; title: string; body: ReactNode; action?: ReactNode }) {
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <div className="flex flex-col items-center px-6 py-10 text-center">
       <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-surface-2 text-ink-2">{icon}</div>
@@ -255,8 +297,25 @@ export function EmptyState({ icon, title, body, action }: { icon: ReactNode; tit
 }
 
 /** An inline notice with a colored bar on the left; the color comes from `tone` (default `warn`). */
-export function Callout({ tone = 'warn', icon, title, children }: { tone?: Tone; icon: ReactNode; title?: ReactNode; children: ReactNode }) {
-  const bar = { neutral: 'bg-muted', accent: 'bg-accent', good: 'bg-good', warn: 'bg-warn', serious: 'bg-serious', critical: 'bg-critical' }[tone];
+export function Callout({
+  tone = 'warn',
+  icon,
+  title,
+  children,
+}: {
+  tone?: Tone;
+  icon: ReactNode;
+  title?: ReactNode;
+  children: ReactNode;
+}) {
+  const bar = {
+    neutral: 'bg-muted',
+    accent: 'bg-accent',
+    good: 'bg-good',
+    warn: 'bg-warn',
+    serious: 'bg-serious',
+    critical: 'bg-critical',
+  }[tone];
   return (
     <div className="relative flex gap-3 overflow-hidden rounded-lg border border-line bg-surface-2 py-3 pr-4 pl-5 text-xs text-ink-2">
       <span className={cx('absolute inset-y-0 left-0 w-1', bar)} />
@@ -280,7 +339,15 @@ export function useNow(intervalMs = 1000) {
 }
 
 /** The title row at the top of each page, with an optional description and actions on the right. */
-export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>

@@ -24,7 +24,10 @@ async function focusWorker() {
     const tab = await chrome.tabs.get(workerTab);
     const win = await chrome.windows.get(tab.windowId);
     await chrome.tabs.update(workerTab, { active: true });
-    await chrome.windows.update(tab.windowId, { focused: true, ...(win.state === 'minimized' && { state: 'normal' as const }) });
+    await chrome.windows.update(tab.windowId, {
+      focused: true,
+      ...(win.state === 'minimized' && { state: 'normal' as const }),
+    });
   } catch {
     await openDashboard();
   }

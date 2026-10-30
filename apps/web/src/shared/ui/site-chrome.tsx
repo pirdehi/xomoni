@@ -60,8 +60,11 @@ export function SiteFooter() {
     <footer className="mt-auto border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p>
-          © 2026 <a href="https://github.com/pirdehi" className="hover:text-ink">Omid Pirdehi</a> · MIT license ·
-          Not affiliated with X Corp.
+          © 2026{' '}
+          <a href="https://github.com/pirdehi" className="hover:text-ink">
+            Omid Pirdehi
+          </a>{' '}
+          · MIT license · Not affiliated with X Corp.
         </p>
         <nav className="flex gap-5">
           <Link href="/privacy" className="hover:text-ink">

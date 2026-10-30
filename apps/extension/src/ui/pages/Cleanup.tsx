@@ -1,5 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CalendarClock, Download, Heart, Info, MessageSquareReply, Repeat2, ShieldCheck, SquarePen, Trash2, TriangleAlert } from 'lucide-react';
+import {
+  CalendarClock,
+  Download,
+  Heart,
+  Info,
+  MessageSquareReply,
+  Repeat2,
+  ShieldCheck,
+  SquarePen,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { createCleanupJob } from '../../engine/runner';
 import { getSettings } from '../../shared/db';
@@ -56,7 +67,10 @@ export function CleanupPage({ account, navigate }: PageProps) {
   const [options, setOptions] = useState<CleanupOptions>({ sweep: true, deep: true, ghostLikes: false });
   const [confirming, setConfirming] = useState(false);
 
-  const before = age === 'custom' ? (fromDateInput(customDate) ?? startOfToday()) : startOfToday() - AGES.find((a) => a.value === age)!.days * DAY;
+  const before =
+    age === 'custom'
+      ? (fromDateInput(customDate) ?? startOfToday())
+      : startOfToday() - AGES.find((a) => a.value === age)!.days * DAY;
   const filter: CleanupFilter = useMemo(
     () => ({
       target,
@@ -95,7 +109,10 @@ export function CleanupPage({ account, navigate }: PageProps) {
 
   return (
     <>
-      <PageHeader title="Cleanup" description="Choose what to remove, preview exactly what matches, then let Xomoni work through it at a safe pace." />
+      <PageHeader
+        title="Cleanup"
+        description="Choose what to remove, preview exactly what matches, then let Xomoni work through it at a safe pace."
+      />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Card title="1 · What to clean up">
@@ -123,20 +140,37 @@ export function CleanupPage({ account, navigate }: PageProps) {
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {age === 'custom' ? (
                 <Field label="Remove everything before">
-                  <input type="date" className="field" value={customDate} max={today} onChange={(e) => setCustomDate(e.target.value)} />
+                  <input
+                    type="date"
+                    className="field"
+                    value={customDate}
+                    max={today}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                  />
                 </Field>
               ) : (
                 <div className="flex items-center gap-2 text-sm text-ink-2">
-                  <CalendarClock size={15} className="text-muted" /> Before <span className="font-medium text-ink">{fmtDate(before)}</span>
+                  <CalendarClock size={15} className="text-muted" /> Before{' '}
+                  <span className="font-medium text-ink">{fmtDate(before)}</span>
                 </div>
               )}
             </div>
             <div className="mt-4 space-y-3">
-              <Toggle checked={useAfter} onChange={setUseAfter} label="Only within a date range" description="Leave anything older than a start date untouched." />
+              <Toggle
+                checked={useAfter}
+                onChange={setUseAfter}
+                label="Only within a date range"
+                description="Leave anything older than a start date untouched."
+              />
               {useAfter && (
                 <div className="max-w-xs pl-12">
                   <Field label="Start date (inclusive)">
-                    <input type="date" className="field" value={afterDate} onChange={(e) => setAfterDate(e.target.value)} />
+                    <input
+                      type="date"
+                      className="field"
+                      value={afterDate}
+                      onChange={(e) => setAfterDate(e.target.value)}
+                    />
                   </Field>
                 </div>
               )}
@@ -144,8 +178,8 @@ export function CleanupPage({ account, navigate }: PageProps) {
             {target === 'like' && (
               <div className="mt-4">
                 <Callout tone="accent" icon={<Info size={14} />} title="How like dates work">
-                  X doesn’t record when you liked something. Xomoni uses the like time when it can be derived from your Likes page, otherwise the
-                  liked post’s own date — so a recent like on an old post may also match.
+                  X doesn’t record when you liked something. Xomoni uses the like time when it can be derived from your
+                  Likes page, otherwise the liked post’s own date — so a recent like on an old post may also match.
                 </Callout>
               </div>
             )}
@@ -155,14 +189,32 @@ export function CleanupPage({ account, navigate }: PageProps) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {(target === 'post' || target === 'reply') && (
                 <Field label="Keep if it has at least … likes" hint="Leave empty to ignore">
-                  <input className="field" inputMode="numeric" placeholder="e.g. 50" value={minLikes} onChange={(e) => setMinLikes(e.target.value.replace(/\D/g, ''))} />
+                  <input
+                    className="field"
+                    inputMode="numeric"
+                    placeholder="e.g. 50"
+                    value={minLikes}
+                    onChange={(e) => setMinLikes(e.target.value.replace(/\D/g, ''))}
+                  />
                 </Field>
               )}
               <Field label="Keep if the text contains" hint="Comma or line separated, case-insensitive">
-                <textarea className="field min-h-[38px]" rows={2} placeholder="launch, #mytag" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+                <textarea
+                  className="field min-h-[38px]"
+                  rows={2}
+                  placeholder="launch, #mytag"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                />
               </Field>
               <Field label="Always keep these posts" hint="Paste post links or ids">
-                <textarea className="field min-h-[38px]" rows={2} placeholder="https://x.com/you/status/…" value={ids} onChange={(e) => setIds(e.target.value)} />
+                <textarea
+                  className="field min-h-[38px]"
+                  rows={2}
+                  placeholder="https://x.com/you/status/…"
+                  value={ids}
+                  onChange={(e) => setIds(e.target.value)}
+                />
               </Field>
             </div>
             {target === 'reply' && (
@@ -182,7 +234,13 @@ export function CleanupPage({ account, navigate }: PageProps) {
               <Toggle
                 checked={options.sweep}
                 onChange={(sweep) => setOptions({ ...options, sweep })}
-                label={target === 'post' || target === 'reply' ? 'Sweep X search' : target === 'like' ? 'Sweep your Likes page' : 'Sweep your profile'}
+                label={
+                  target === 'post' || target === 'reply'
+                    ? 'Sweep X search'
+                    : target === 'like'
+                      ? 'Sweep your Likes page'
+                      : 'Sweep your profile'
+                }
                 description={
                   target === 'post' || target === 'reply'
                     ? 'Searches X for your matching posts (reaches far beyond the ~3,200 your profile shows) and removes them in place.'
@@ -205,8 +263,8 @@ export function CleanupPage({ account, navigate }: PageProps) {
                   />
                   {options.ghostLikes && (
                     <Callout tone="warn" icon={<TriangleAlert size={14} />} title="Authors may be notified">
-                      Re-liking can send a like notification to the author before it’s removed, and it uses your daily like budget. Xomoni paces this much
-                      more slowly.
+                      Re-liking can send a like notification to the author before it’s removed, and it uses your daily
+                      like budget. Xomoni paces this much more slowly.
                     </Callout>
                   )}
                 </>
@@ -218,7 +276,9 @@ export function CleanupPage({ account, navigate }: PageProps) {
         <div className="lg:sticky lg:top-6 lg:self-start">
           <Card title="Review">
             <div className="text-xs font-medium text-ink-2">Matching in your inventory</div>
-            <div className="tabular mt-1 text-4xl font-semibold tracking-tight">{candidates ? fmtNumber(candidates.length) : '…'}</div>
+            <div className="tabular mt-1 text-4xl font-semibold tracking-tight">
+              {candidates ? fmtNumber(candidates.length) : '…'}
+            </div>
             <p className="mt-1 text-xs text-ink-2">
               {TARGET_PLURAL[target]} before {fmtDate(before)}
               {options.sweep && ' · the sweep may find more that aren’t in your inventory yet'}
@@ -232,7 +292,9 @@ export function CleanupPage({ account, navigate }: PageProps) {
                     <p className="line-clamp-2 text-ink">{c.text || <span className="text-muted">(no text)</span>}</p>
                   </li>
                 ))}
-                {candidates.length > 4 && <li className="text-xs text-muted">and {fmtNumber(candidates.length - 4)} more</li>}
+                {candidates.length > 4 && (
+                  <li className="text-xs text-muted">and {fmtNumber(candidates.length - 4)} more</li>
+                )}
               </ul>
             )}
 
@@ -248,7 +310,11 @@ export function CleanupPage({ account, navigate }: PageProps) {
                     {rule.minDelay}–{rule.maxDelay}s · max {fmtNumber(rule.dailyCap)}/day
                   </span>
                 </div>
-                {days > 1 && <p className="mt-2 text-muted">Spread over about {days} days by the daily cap. Xomoni waits and continues automatically.</p>}
+                {days > 1 && (
+                  <p className="mt-2 text-muted">
+                    Spread over about {days} days by the daily cap. Xomoni waits and continues automatically.
+                  </p>
+                )}
               </div>
             )}
 
@@ -256,19 +322,35 @@ export function CleanupPage({ account, navigate }: PageProps) {
               <Button className="w-full" icon={<Download size={14} />} onClick={backup} disabled={!candidates?.length}>
                 Download backup (JSON)
               </Button>
-              <Button className="w-full" variant="danger" icon={<Trash2 size={14} />} onClick={() => setConfirming(true)} disabled={!canStart}>
+              <Button
+                className="w-full"
+                variant="danger"
+                icon={<Trash2 size={14} />}
+                onClick={() => setConfirming(true)}
+                disabled={!canStart}
+              >
                 Start cleanup
               </Button>
-              {run.status !== 'idle' && <p className="text-center text-xs text-muted">Another job is running. Pause it first.</p>}
+              {run.status !== 'idle' && (
+                <p className="text-center text-xs text-muted">Another job is running. Pause it first.</p>
+              )}
             </div>
             <p className="mt-4 flex items-start gap-1.5 text-[11px] text-muted">
-              <ShieldCheck size={12} className="mt-px shrink-0" /> Stops automatically if X rate-limits, flags, or locks the account.
+              <ShieldCheck size={12} className="mt-px shrink-0" /> Stops automatically if X rate-limits, flags, or locks
+              the account.
             </p>
           </Card>
         </div>
       </div>
 
-      <ConfirmStart open={confirming} onClose={() => setConfirming(false)} onConfirm={start} title={title} count={candidates?.length ?? 0} sweep={options.sweep} />
+      <ConfirmStart
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={start}
+        title={title}
+        count={candidates?.length ?? 0}
+        sweep={options.sweep}
+      />
     </>
   );
 }
@@ -318,11 +400,18 @@ function ConfirmStart({
     >
       <p className="font-medium text-ink">{title}</p>
       <p className="mt-2">
-        {fmtNumber(count)} known items match{sweep ? ', plus any the sweep finds on X' : ''}. Removed posts and likes cannot be restored by Xomoni or X.
+        {fmtNumber(count)} known items match{sweep ? ', plus any the sweep finds on X' : ''}. Removed posts and likes
+        cannot be restored by Xomoni or X.
       </p>
       <p className="mt-2">Keep this tab and the X worker window open. You can pause at any time and resume later.</p>
       <div className="mt-4">
-        <Field label={<>Type <span className="font-mono font-semibold text-ink">DELETE</span> to confirm</>}>
+        <Field
+          label={
+            <>
+              Type <span className="font-mono font-semibold text-ink">DELETE</span> to confirm
+            </>
+          }
+        >
           <input className="field" value={typed} autoFocus onChange={(e) => setTyped(e.target.value)} />
         </Field>
       </div>

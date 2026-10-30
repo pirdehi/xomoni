@@ -23,5 +23,7 @@ function resolveSiteUrl(): string {
   if (explicit) return explicit.replace(/\/+$/, '');
   const preview = process.env.NEXT_PUBLIC_VERCEL_URL;
   if (preview) return `https://${preview}`;
-  throw new Error('Missing NEXT_PUBLIC_SITE_URL: copy apps/web/.env.example to apps/web/.env.local, or set it in Vercel.');
+  throw new Error(
+    'Missing NEXT_PUBLIC_SITE_URL: copy apps/web/.env.example to apps/web/.env.local, or set it in Vercel.',
+  );
 }

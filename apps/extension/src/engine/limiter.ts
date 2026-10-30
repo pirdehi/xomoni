@@ -39,7 +39,10 @@ export class Limiter {
   /** Seeds the rolling windows from the last 24h of successful actions. */
   async init() {
     const since = Date.now() - DAY;
-    const rows = await db.logs.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray();
+    const rows = await db.logs
+      .where('[accountId+ts]')
+      .between([this.accountId, since], [this.accountId, Infinity])
+      .toArray();
     for (const row of rows) {
       if (row.outcome !== 'done' || row.action === 'system') continue;
       this.stamps(row.action).push(row.ts);
@@ -66,7 +69,12 @@ export class Limiter {
   /** Resolves when it is OK to perform `action`. */
   async before(action: ActionKind) {
     const raw = this.settings.pacing[action];
-    const rule = { ...raw, dailyCap: Math.max(1, raw.dailyCap), hourlyCap: Math.max(1, raw.hourlyCap), batchSize: Math.max(1, raw.batchSize) };
+    const rule = {
+      ...raw,
+      dailyCap: Math.max(1, raw.dailyCap),
+      hourlyCap: Math.max(1, raw.hourlyCap),
+      batchSize: Math.max(1, raw.batchSize),
+    };
     const now = Date.now();
     const stamps = this.stamps(action);
     while (stamps.length && stamps[0] < now - DAY) stamps.shift();
@@ -74,30 +82,49 @@ export class Limiter {
     await this.waitForActiveHours();
 
     if (stamps.length >= rule.dailyCap) {
-      await this.wait(stamps[stamps.length - rule.dailyCap] + DAY + randomBetween(60_000, 300_000), `Daily cap of ${rule.dailyCap} reached`);
+      await this.wait(
+        stamps[stamps.length - rule.dailyCap] + DAY + randomBetween(60_000, 300_000),
+        `Daily cap of ${rule.dailyCap} reached`,
+      );
     }
     const lastHour = stamps.filter((t) => t > Date.now() - HOUR);
     if (lastHour.length >= rule.hourlyCap) {
-      await this.wait(lastHour[lastHour.length - rule.hourlyCap] + HOUR + randomBetween(10_000, 60_000), `Hourly cap of ${rule.hourlyCap} reached`);
+      await this.wait(
+        lastHour[lastHour.length - rule.hourlyCap] + HOUR + randomBetween(10_000, 60_000),
+        `Hourly cap of ${rule.hourlyCap} reached`,
+      );
     }
 
     // Page loads and scrolls page through X's timelines; wait if any of them is exhausted.
     const ops = action === 'read' ? READ_OPS : GOVERNING_OP[action] ? [GOVERNING_OP[action]!] : [];
     for (const op of ops) {
       const obs = await db.limits.get(`${this.accountId}:${op}`);
-      if (obs?.reset && obs.reset > Date.now() && (obs.status === 429 || (obs.remaining != null && obs.remaining <= 1))) {
-        await this.wait(obs.reset + randomBetween(5_000, 20_000), `X rate limit for ${op} — waiting for the window to reset`);
+      if (
+        obs?.reset &&
+        obs.reset > Date.now() &&
+        (obs.status === 429 || (obs.remaining != null && obs.remaining <= 1))
+      ) {
+        await this.wait(
+          obs.reset + randomBetween(5_000, 20_000),
+          `X rate limit for ${op} — waiting for the window to reset`,
+        );
       }
     }
 
     const done = this.sinceBreak.get(action) ?? 0;
     if (done >= rule.batchSize) {
       this.sinceBreak.set(action, 0);
-      await this.wait(Date.now() + randomBetween(rule.batchPauseMin, rule.batchPauseMax) * 1000, 'Taking a short break between batches');
+      await this.wait(
+        Date.now() + randomBetween(rule.batchPauseMin, rule.batchPauseMax) * 1000,
+        'Taking a short break between batches',
+      );
     }
 
     const delay = randomBetween(rule.minDelay, rule.maxDelay) * 1000 * this.penalty;
-    await this.wait(Date.now() + delay, this.penalty > 1.01 ? `Slowed down ×${this.penalty.toFixed(1)} after errors` : 'Pacing');
+    await this.wait(
+      Date.now() + delay,
+      this.penalty > 1.01 ? `Slowed down ×${this.penalty.toFixed(1)} after errors` : 'Pacing',
+    );
   }
 
   /** Records the result of an action; soft failures slow everything down. */

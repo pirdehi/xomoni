@@ -18,8 +18,9 @@ export default function PrivacyPage() {
       <h2>The short version</h2>
       <ul>
         <li>
-          <strong>Your X password, session cookies, posts, replies, likes, archive and activity log never leave your
-          computer.</strong>
+          <strong>
+            Your X password, session cookies, posts, replies, likes, archive and activity log never leave your computer.
+          </strong>
         </li>
         <li>An account is optional. Without one, nothing is sent to us at all.</li>
         <li>If you sign in, we store your Google profile, the browsers you connect and summaries of your jobs.</li>
@@ -30,10 +31,10 @@ export default function PrivacyPage() {
       <h2>What stays on your computer</h2>
       <p>
         The extension works inside your own logged-in X tab. It keeps its inventory of your posts and likes, the
-        activity log, your settings and any archive you import in your browser’s local storage (IndexedDB). It reads
-        the responses X sends to your browser to confirm each action and to respect X’s rate limits. None of this is
-        sent to Xomoni or anyone else. Xomoni never asks for, reads or stores your X password, and it does not read
-        your X session cookies.
+        activity log, your settings and any archive you import in your browser’s local storage (IndexedDB). It reads the
+        responses X sends to your browser to confirm each action and to respect X’s rate limits. None of this is sent to
+        Xomoni or anyone else. Xomoni never asks for, reads or stores your X password, and it does not read your X
+        session cookies.
       </p>
 
       <h2>What we store if you sign in</h2>
@@ -77,15 +78,15 @@ export default function PrivacyPage() {
       </ul>
       <p>
         Xomoni’s use of information received from Google APIs adheres to the Google API Services User Data Policy,
-        including the Limited Use requirements. We do not sell or share your data with anyone else, and we do not use
-        it for advertising.
+        including the Limited Use requirements. We do not sell or share your data with anyone else, and we do not use it
+        for advertising.
       </p>
 
       <h2>Keeping and deleting your data</h2>
       <p>
         We keep account data until you delete it. Disconnecting a browser in the dashboard removes that browser and its
-        job summaries. <strong>Delete my Xomoni account</strong> in the dashboard removes your account, browsers and
-        job summaries immediately; copies may remain in our providers’ backups for a short period before they expire.
+        job summaries. <strong>Delete my Xomoni account</strong> in the dashboard removes your account, browsers and job
+        summaries immediately; copies may remain in our providers’ backups for a short period before they expire.
         Removing the extension deletes the data it stored in your browser.
       </p>
 

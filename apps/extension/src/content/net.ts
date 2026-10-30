@@ -119,7 +119,16 @@ export function handleCapture(raw: {
   if (limit != null || remaining != null || ev.status === 429) {
     send({
       type: 'rate',
-      obs: { key: `${viewerId}:${ev.op}`, accountId: viewerId, op: ev.op, limit, remaining, reset: resetAtFrom(ev.headers), status: ev.status, at: ev.at },
+      obs: {
+        key: `${viewerId}:${ev.op}`,
+        accountId: viewerId,
+        op: ev.op,
+        limit,
+        remaining,
+        reset: resetAtFrom(ev.headers),
+        status: ev.status,
+        at: ev.at,
+      },
     });
   }
 
@@ -127,7 +136,8 @@ export function handleCapture(raw: {
 
   if (TIMELINE_OPS.has(ev.op)) {
     const drafts = draftsFromTimeline(ev.op, extractTweets(json), viewerId, ev.variables);
-    if (drafts.length) send({ type: 'ingest', accountId: viewerId, handle: viewerHandle(), op: ev.op, drafts, observedAt: ev.at });
+    if (drafts.length)
+      send({ type: 'ingest', accountId: viewerId, handle: viewerHandle(), op: ev.op, drafts, observedAt: ev.at });
   } else if (PROFILE_OPS.has(ev.op)) {
     const profile = extractProfile(json);
     if (profile?.id === viewerId) send({ type: 'profile', profile });

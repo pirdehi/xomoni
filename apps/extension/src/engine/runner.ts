@@ -27,7 +27,14 @@ export interface RunnerState {
   busyElsewhere: boolean;
 }
 
-const IDLE: RunnerState = { jobId: null, status: 'idle', message: '', waitUntil: null, need: null, busyElsewhere: false };
+const IDLE: RunnerState = {
+  jobId: null,
+  status: 'idle',
+  message: '',
+  waitUntil: null,
+  need: null,
+  busyElsewhere: false,
+};
 
 type StopRequest = { state: Extract<JobState, 'paused' | 'cancelled'>; reason: string };
 
@@ -113,7 +120,12 @@ class Runner {
         }
         this.set({ status: 'attention', message: request.message, waitUntil: null, need: request.need });
         if (ctx.settings?.notifications !== false) {
-          void notify(ATTENTION_ID, `Xomoni needs you: ${NEED_TITLE[request.need]}`, `${request.message} “${job.title}” continues by itself afterwards.`, true);
+          void notify(
+            ATTENTION_ID,
+            `Xomoni needs you: ${NEED_TITLE[request.need]}`,
+            `${request.message} “${job.title}” continues by itself afterwards.`,
+            true,
+          );
         }
       },
     });
@@ -130,7 +142,8 @@ class Runner {
       stoppedByYou = err instanceof Aborted || controller.signal.aborted;
       if (stoppedByYou) final = this.stopRequest ?? { state: 'paused', reason: 'Stopped.' };
       else if (err instanceof Stop) final = { state: err.state, reason: err.message };
-      else if (err instanceof WorkerGone) final = { state: 'paused', reason: 'The X worker window was closed. Resume to reopen it.' };
+      else if (err instanceof WorkerGone)
+        final = { state: 'paused', reason: 'The X worker window was closed. Resume to reopen it.' };
       else final = { state: 'failed', reason: err instanceof Error ? err.message : String(err) };
     }
     clearNotification(ATTENTION_ID);
@@ -138,17 +151,29 @@ class Runner {
     try {
       job.state = final.state;
       job.stateReason = final.reason;
-      if (final.state === 'completed' || final.state === 'cancelled' || final.state === 'failed') job.finishedAt = Date.now();
+      if (final.state === 'completed' || final.state === 'cancelled' || final.state === 'failed')
+        job.finishedAt = Date.now();
       await ctx.save();
       const { done, skipped, failed } = job.stats;
-      const summary = job.kind === 'scan' ? `${job.stats.scanned.toLocaleString()} posts seen` : `${done} done, ${skipped} skipped, ${failed} failed`;
+      const summary =
+        job.kind === 'scan'
+          ? `${job.stats.scanned.toLocaleString()} posts seen`
+          : `${done} done, ${skipped} skipped, ${failed} failed`;
       await ctx.log(
-        final.state === 'completed' ? 'success' : final.state === 'paused' || final.state === 'cancelled' ? 'info' : 'error',
+        final.state === 'completed'
+          ? 'success'
+          : final.state === 'paused' || final.state === 'cancelled'
+            ? 'info'
+            : 'error',
         'system',
         `${STATE_VERB[final.state]} “${job.title}” — ${summary}${final.reason ? `. ${final.reason}` : ''}`,
       );
       if (!stoppedByYou && ctx.settings?.notifications !== false) {
-        void notify(FINISHED_ID, `Xomoni: ${STATE_VERB[final.state].replace(/:$/, '')} “${job.title}”`, `${summary}.${final.reason ? ` ${final.reason}` : ''}`);
+        void notify(
+          FINISHED_ID,
+          `Xomoni: ${STATE_VERB[final.state].replace(/:$/, '')} “${job.title}”`,
+          `${summary}.${final.reason ? ` ${final.reason}` : ''}`,
+        );
       }
     } finally {
       this.controller = null;
@@ -208,7 +233,12 @@ export async function recoverInterruptedJobs() {
 const emptyStats = () => ({ matched: 0, done: 0, skipped: 0, failed: 0, scanned: 0 });
 
 /** Stores a new queued cleanup job and returns it; it does not start it. */
-export async function createCleanupJob(accountId: string, title: string, filter: CleanupFilter, options: CleanupOptions) {
+export async function createCleanupJob(
+  accountId: string,
+  title: string,
+  filter: CleanupFilter,
+  options: CleanupOptions,
+) {
   const now = Date.now();
   const job: Job = {
     id: crypto.randomUUID(),

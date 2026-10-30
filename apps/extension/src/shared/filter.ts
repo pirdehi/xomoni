@@ -25,7 +25,12 @@ export function matchesFilter(filter: CleanupFilter, item: Item): boolean {
   const t = effectiveTime(item);
   if (!t || t >= filter.before) return false;
   if (filter.after != null && t < filter.after) return false;
-  if (filter.keepMinLikes != null && (item.kind === 'post' || item.kind === 'reply') && item.likes >= filter.keepMinLikes) return false;
+  if (
+    filter.keepMinLikes != null &&
+    (item.kind === 'post' || item.kind === 'reply') &&
+    item.likes >= filter.keepMinLikes
+  )
+    return false;
   if (filter.keepKeywords.length) {
     const text = item.text.toLowerCase();
     if (filter.keepKeywords.some((k) => text.includes(k))) return false;
@@ -45,7 +50,12 @@ export async function findCandidates(accountId: string, filter: CleanupFilter): 
   const lower = filter.target === 'like' ? 0 : (filter.after ?? 0);
   const rows = await db.items
     .where('[accountId+kind+status+createdAt]')
-    .between([accountId, filter.target, 'present', lower], [accountId, filter.target, 'present', filter.before], true, false)
+    .between(
+      [accountId, filter.target, 'present', lower],
+      [accountId, filter.target, 'present', filter.before],
+      true,
+      false,
+    )
     .filter((item) => matchesFilter(filter, item))
     .toArray();
   return rows.sort((a, b) => effectiveTime(b) - effectiveTime(a));

@@ -15,7 +15,10 @@ const results = [];
 for (const [label, script] of steps) {
   console.log(`\n━━ ${label} (npm run ${script})`);
   const started = Date.now();
-  const { status } = spawnSync('npm', ['run', '--silent', script], { stdio: 'inherit', shell: process.platform === 'win32' });
+  const { status } = spawnSync('npm', ['run', '--silent', script], {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
   results.push({ label, ok: status === 0, seconds: ((Date.now() - started) / 1000).toFixed(1) });
   if (status !== 0) break;
 }

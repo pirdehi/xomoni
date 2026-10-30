@@ -1,6 +1,13 @@
 // The "worker" is a normal x.com tab in its own window, signed in with the
 // user's own session. The dashboard drives it one command at a time.
-import type { ActionResult, ActorCommand, ContentState, PageInfo, ScrollResult, VisibleTweet } from '../shared/messages';
+import type {
+  ActionResult,
+  ActorCommand,
+  ContentState,
+  PageInfo,
+  ScrollResult,
+  VisibleTweet,
+} from '../shared/messages';
 import { sleep } from './timers';
 
 type Reply<C extends ActorCommand['cmd']> = C extends 'ping'
@@ -63,7 +70,10 @@ export class WorkerTab {
     const tab = await chrome.tabs.get(id);
     const win = await chrome.windows.get(tab.windowId);
     await chrome.tabs.update(id, { active: true });
-    await chrome.windows.update(tab.windowId, { focused: true, ...(win.state === 'minimized' && { state: 'normal' as const }) });
+    await chrome.windows.update(tab.windowId, {
+      focused: true,
+      ...(win.state === 'minimized' && { state: 'normal' as const }),
+    });
   }
 
   /**
@@ -80,7 +90,8 @@ export class WorkerTab {
       if ((await this.current()) == null) throw new WorkerGone();
       throw new NotReady(String(err instanceof Error ? err.message : err));
     }
-    if (reply && typeof reply === 'object' && 'error' in reply) throw new Error(String((reply as { error: unknown }).error));
+    if (reply && typeof reply === 'object' && 'error' in reply)
+      throw new Error(String((reply as { error: unknown }).error));
     return reply as Reply<C['cmd']>;
   }
 

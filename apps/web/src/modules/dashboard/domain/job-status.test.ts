@@ -39,7 +39,11 @@ describe('upsertNewestFirst', () => {
       { id: 'b', at: '2026-10-31T09:00:00Z' },
     ];
     expect(upsertNewestFirst(list, { id: 'b', at: '2026-10-31T11:00:00Z' }, 'at').map((x) => x.id)).toEqual(['b', 'a']);
-    expect(upsertNewestFirst(list, { id: 'c', at: '2026-10-31T08:00:00Z' }, 'at').map((x) => x.id)).toEqual(['a', 'b', 'c']);
+    expect(upsertNewestFirst(list, { id: 'c', at: '2026-10-31T08:00:00Z' }, 'at').map((x) => x.id)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
   });
 });
 

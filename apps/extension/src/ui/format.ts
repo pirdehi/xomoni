@@ -56,9 +56,19 @@ export function fromDateInput(value: string): number | null {
 }
 
 /** Capitalized plural label per item kind, for tabs and headings. */
-export const KIND_PLURAL: Record<ItemKind, string> = { post: 'Posts', reply: 'Replies', repost: 'Reposts', like: 'Likes' };
+export const KIND_PLURAL: Record<ItemKind, string> = {
+  post: 'Posts',
+  reply: 'Replies',
+  repost: 'Reposts',
+  like: 'Likes',
+};
 /** Lower-case plural per cleanup target, for use inside sentences and job titles. */
-export const TARGET_PLURAL: Record<CleanupTarget, string> = { post: 'posts', reply: 'replies', repost: 'reposts', like: 'likes' };
+export const TARGET_PLURAL: Record<CleanupTarget, string> = {
+  post: 'posts',
+  reply: 'replies',
+  repost: 'reposts',
+  like: 'likes',
+};
 
 /** Badge label and tone per stored job state. `waiting` reads "Needs you"; `blocked` is a safety stop. */
 export const JOB_STATE: Record<JobState, { label: string; tone: Tone }> = {

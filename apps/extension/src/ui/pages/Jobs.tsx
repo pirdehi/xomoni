@@ -14,12 +14,7 @@ const OPEN_STATES = new Set(['queued', 'running', 'waiting', 'paused', 'blocked'
 export function JobsPage({ account, navigate }: PageProps) {
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const jobs = useLiveQuery(
-    () =>
-      db.jobs
-        .where('accountId')
-        .equals(account.id)
-        .reverse()
-        .sortBy('createdAt'),
+    () => db.jobs.where('accountId').equals(account.id).reverse().sortBy('createdAt'),
     [account.id],
   );
   const shown = jobs?.filter((j) => filter === 'all' || OPEN_STATES.has(j.state));
@@ -51,7 +46,11 @@ export function JobsPage({ account, navigate }: PageProps) {
             icon={<ListChecks size={18} />}
             title={filter === 'open' ? 'No open jobs' : 'No jobs yet'}
             body="Create a cleanup, or scan your account from the Inventory page."
-            action={<Button size="sm" onClick={() => navigate('cleanup')}>New cleanup</Button>}
+            action={
+              <Button size="sm" onClick={() => navigate('cleanup')}>
+                New cleanup
+              </Button>
+            }
           />
         </Card>
       ) : (
@@ -74,13 +73,21 @@ function JobWithLog({ job }: { job: Job }) {
   return (
     <div>
       <JobCard job={job} />
-      <button type="button" onClick={() => setOpen(!open)} className="mt-1 ml-5 inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="mt-1 ml-5 inline-flex items-center gap-1 text-xs text-muted hover:text-ink"
+      >
         <ChevronDown size={13} className={cx('transition-transform', open && 'rotate-180')} />
         {open ? 'Hide log' : 'Show log'}
       </button>
       {open && (
         <div className="mt-2 rounded-xl border border-line bg-surface px-5 py-1">
-          {logs?.length ? <LogList entries={logs} absolute /> : <p className="py-3 text-xs text-muted">No entries yet.</p>}
+          {logs?.length ? (
+            <LogList entries={logs} absolute />
+          ) : (
+            <p className="py-3 text-xs text-muted">No entries yet.</p>
+          )}
         </div>
       )}
     </div>

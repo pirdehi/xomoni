@@ -8,7 +8,10 @@ const SITE = 'https://xomoni.test';
 function fakeGateway(overrides: Partial<AuthGateway> = {}): AuthGateway {
   return {
     currentClaims: vi.fn(async () => ({ sub: 'u1', email: 'ada@example.com' })),
-    startOAuth: vi.fn(async (_provider: 'google', redirectTo: string) => ({ ok: true as const, url: `https://accounts.google.test/?r=${encodeURIComponent(redirectTo)}` })),
+    startOAuth: vi.fn(async (_provider: 'google', redirectTo: string) => ({
+      ok: true as const,
+      url: `https://accounts.google.test/?r=${encodeURIComponent(redirectTo)}`,
+    })),
     exchangeCode: vi.fn(async () => ({ ok: true as const })),
     signOut: vi.fn(async () => {}),
     deleteAccount: vi.fn(async () => ({ ok: true as const })),
@@ -55,7 +58,10 @@ describe('completeOAuthSignIn', () => {
   });
 
   it('lands on the sanitized next path', async () => {
-    const result = await completeOAuthSignIn({ auth: fakeGateway() }, { code: 'c', next: 'https://evil.example', error: null });
+    const result = await completeOAuthSignIn(
+      { auth: fakeGateway() },
+      { code: 'c', next: 'https://evil.example', error: null },
+    );
     expect(result).toEqual({ ok: true, next: '/dashboard' });
   });
 });

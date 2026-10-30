@@ -41,8 +41,10 @@ export function useWorkerStatus(intervalMs = 3000): WorkerStatus {
         setStatus({ open, info });
         if (info?.viewerId) {
           const known = await db.accounts.get(info.viewerId);
-          if (!known || (info.handle && known.handle !== info.handle)) await upsertAccount({ id: info.viewerId, handle: info.handle ?? '' });
-          if ((await kvGet<string | null>('activeAccount', null)) !== info.viewerId) await kvSet('activeAccount', info.viewerId);
+          if (!known || (info.handle && known.handle !== info.handle))
+            await upsertAccount({ id: info.viewerId, handle: info.handle ?? '' });
+          if ((await kvGet<string | null>('activeAccount', null)) !== info.viewerId)
+            await kvSet('activeAccount', info.viewerId);
         }
       } catch (err) {
         if (alive && err instanceof WorkerGone) setStatus({ open: false, info: null });

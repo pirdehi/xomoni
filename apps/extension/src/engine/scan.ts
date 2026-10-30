@@ -25,7 +25,10 @@ export function scanUrls(target: ScanTarget, handle: string, createdAt: number |
       const first = new Date(createdAt ?? Date.UTC(2006, 0, 1)).getUTCFullYear();
       const now = new Date();
       for (let year = now.getUTCFullYear(); year >= first; year--) {
-        for (const [since, until] of [[`${year}-07-01`, `${year + 1}-01-01`], [`${year}-01-01`, `${year}-07-01`]]) {
+        for (const [since, until] of [
+          [`${year}-07-01`, `${year + 1}-01-01`],
+          [`${year}-01-01`, `${year}-07-01`],
+        ]) {
           if (Date.parse(since) > now.getTime()) continue;
           const q = `from:${handle} since:${since} until:${until}`;
           urls.push(`https://x.com/search?q=${encodeURIComponent(q)}&src=typed_query&f=live`);

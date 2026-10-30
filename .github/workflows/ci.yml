@@ -53,6 +53,8 @@ jobs:
         run: supabase db start
       - name: Lint the schema
         run: supabase db lint --local --level warning --fail-on warning
+      - name: Row Level Security tests (pgTAP)
+        run: supabase test db
       - name: Generated types match the migrations
         run: |
           supabase gen types typescript --local --schema public > packages/db/src/database.types.ts

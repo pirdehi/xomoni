@@ -141,11 +141,17 @@ async function lookup(accountId: string, kinds: ItemKind[], id: string): Promise
 }
 
 /** Visible posts that match the job's rule. Anything we can't verify is left alone. */
-async function pickTargets(ctx: JobContext, visible: VisibleTweet[], since: number, unresolved: Set<string>): Promise<Item[]> {
+async function pickTargets(
+  ctx: JobContext,
+  visible: VisibleTweet[],
+  since: number,
+  unresolved: Set<string>,
+): Promise<Item[]> {
   const filter = ctx.job.filter!;
   const me = ctx.handle.toLowerCase();
   const live = needsLiveData(filter);
-  const kinds: ItemKind[] = filter.target === 'post' ? ['post', 'reply'] : filter.target === 'reply' ? ['reply', 'post'] : [filter.target];
+  const kinds: ItemKind[] =
+    filter.target === 'post' ? ['post', 'reply'] : filter.target === 'reply' ? ['reply', 'post'] : [filter.target];
 
   const relevant = visible.filter((v) => {
     if (ctx.attempted.has(v.id) || unresolved.has(v.id)) return false;
@@ -240,7 +246,11 @@ async function deepClean(ctx: JobContext) {
     await ctx.log('info', 'system', 'Deep clean: nothing left in the inventory for this rule');
     return;
   }
-  await ctx.log('info', 'system', `Deep clean: visiting ${candidates.length.toLocaleString()} remaining items one by one`);
+  await ctx.log(
+    'info',
+    'system',
+    `Deep clean: visiting ${candidates.length.toLocaleString()} remaining items one by one`,
+  );
 
   for (const candidate of candidates) {
     ctx.checkpoint();
@@ -248,7 +258,10 @@ async function deepClean(ctx: JobContext) {
     if (!item || !matchesFilter(filter, item)) continue;
     if (item.kind === 'repost') {
       if (!item.targetId) {
-        await ctx.leaveAlone(item, 'the archive doesn’t say which post this repost points to — scan your profile to resolve it');
+        await ctx.leaveAlone(
+          item,
+          'the archive doesn’t say which post this repost points to — scan your profile to resolve it',
+        );
         continue;
       }
       if ((await liveRepost(ctx.job.accountId, item.targetId))?.key !== item.key) continue;
@@ -279,7 +292,10 @@ async function visit(ctx: JobContext, item: Item, action: ActionKind) {
     await act(ctx, latest, action);
     return;
   }
-  await ctx.settle(action, item, { outcome: 'failed', message: `The post page did not load after ${MAX_ATTEMPTS} tries` });
+  await ctx.settle(action, item, {
+    outcome: 'failed',
+    message: `The post page did not load after ${MAX_ATTEMPTS} tries`,
+  });
 }
 
 async function waitForFresh(ctx: JobContext, key: string, since: number): Promise<Item | null> {

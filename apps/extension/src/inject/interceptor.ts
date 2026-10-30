@@ -83,7 +83,10 @@
         this.addEventListener('loadend', () => {
           let text = '';
           try {
-            text = this.responseType === '' || this.responseType === 'text' ? this.responseText : JSON.stringify(this.response);
+            text =
+              this.responseType === '' || this.responseType === 'text'
+                ? this.responseText
+                : JSON.stringify(this.response);
           } catch {
             /* unreadable body */
           }

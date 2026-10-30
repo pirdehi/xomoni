@@ -96,7 +96,9 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
  */
 export async function upsertAccount(patch: Partial<Account> & { id: string }) {
   const prev = await db.accounts.get(patch.id);
-  const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined && v !== '')) as Partial<Account>;
+  const clean = Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined && v !== ''),
+  ) as Partial<Account>;
   const next: Account = {
     handle: '',
     name: '',

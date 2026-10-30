@@ -189,7 +189,9 @@ export function draftsFromTimeline(
   if (op === 'Likes') {
     if (String(variables.userId ?? '') !== viewerId) return [];
     // The Likes timeline can briefly keep posts you just unliked; X marks them favorited: false.
-    const drafts = tweets.filter((t) => t.favorited !== false).map((t) => likeDraft(t, estimateLikedAt(t.sortIndex, t.id, t.createdAt)));
+    const drafts = tweets
+      .filter((t) => t.favorited !== false)
+      .map((t) => likeDraft(t, estimateLikedAt(t.sortIndex, t.id, t.createdAt)));
     // Like times must descend down the timeline; otherwise the sortIndex is not a like time.
     for (let i = 1; i < drafts.length; i++) {
       const prev = drafts[i - 1].likedAt;

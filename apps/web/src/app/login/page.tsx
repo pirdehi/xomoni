@@ -38,9 +38,7 @@ export default function LoginPage() {
             .
           </p>
         </div>
-        <p className="mt-6 text-center text-sm text-muted">
-          An account is optional. The extension works without one.
-        </p>
+        <p className="mt-6 text-center text-sm text-muted">An account is optional. The extension works without one.</p>
       </div>
     </main>
   );

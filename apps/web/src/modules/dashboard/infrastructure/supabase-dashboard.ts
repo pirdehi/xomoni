@@ -80,11 +80,15 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
             if (msg.status !== 'ok') console.warn('Live updates unavailable:', msg.message);
             handlers.onStatus(msg.status === 'ok');
           })
-          .on<JobRow>('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs', filter }, ({ new: row }) =>
-            handlers.onJob(toJobSummary(row)),
+          .on<JobRow>(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'jobs', filter },
+            ({ new: row }) => handlers.onJob(toJobSummary(row)),
           )
-          .on<JobRow>('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs', filter }, ({ new: row }) =>
-            handlers.onJob(toJobSummary(row)),
+          .on<JobRow>(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'jobs', filter },
+            ({ new: row }) => handlers.onJob(toJobSummary(row)),
           )
           .on<DeviceRow>(
             'postgres_changes',

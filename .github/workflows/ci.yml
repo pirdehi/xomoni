@@ -56,7 +56,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           # Keep in step with the CLI used to generate packages/db (see CONTRIBUTING.md).
           version: 2.116.0
@@ -90,7 +90,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: 2.116.0
       - name: Start Supabase (Auth, Postgres, Realtime, Mailpit)

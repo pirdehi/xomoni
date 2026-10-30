@@ -18,6 +18,7 @@ Local emails (confirmation, password reset) land in Mailpit at http://127.0.0.1:
 | `npm run build -w @xomoni/web` | Production build |
 | `npm run typecheck -w @xomoni/web` | Generates route types, then runs `tsc` |
 | `npm test -w @xomoni/web` | Unit tests (domain rules and use cases) |
+| `npm run test:e2e -w @xomoni/web` | End-to-end auth tests in Chromium against the local Supabase stack (run `supabase start` first) |
 
 ## Structure
 
@@ -25,13 +26,14 @@ Local emails (confirmation, password reset) land in Mailpit at http://127.0.0.1:
 src/
   app/            routes only: pages, layouts, route handlers (thin)
   modules/
-    auth/         identity: sessions, sign-in, sign-out, account deletion
+    auth/         identity: sign-up and email confirmation, sign-in, password reset, account settings, sessions
     dashboard/    devices and live job status
   shared/
     config/       public site constants and the site URL
     supabase/     Supabase client factories (server, browser, proxy)
     ui/           layout components used by every page
-  proxy.ts        refreshes the session on signed-in routes
+  proxy.ts        refreshes the session on signed-in and auth routes
+e2e/              Playwright tests for every auth flow (real Supabase Auth, emails from Mailpit)
 ```
 
 Each module is split into `domain/`, `application/`, `infrastructure/`, `server/`, `client/` and `ui/` layers; the rules are in [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#4-website-appsweb) and are checked by `npm run arch`.

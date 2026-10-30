@@ -2,5 +2,20 @@
 # Runs the same quality gate as CI before anything reaches GitHub:
 # formatting, lint + code documentation, types, architecture rules, documentation, unit tests.
 # Installed by `npm install` (tooling/install-git-hooks.mjs). See CONTRIBUTING.md.
+
+# git passes one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
+# A push that only deletes refs (local sha all zeros) carries no code, so there is nothing to check.
+zero=0000000000000000000000000000000000000000
+pushes_code=false
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" != "$zero" ] && pushes_code=true
+done
+[ "$pushes_code" = true ] || exit 0
+
+# The checks run on the working tree, so uncommitted changes count too.
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "pre-push: note: you have uncommitted changes; they are checked as well."
+fi
+
 echo "pre-push: npm run verify"
 exec npm run --silent verify

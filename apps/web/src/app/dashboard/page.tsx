@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { requireViewer } from '@/modules/auth/server/session';
-import { DeleteAccountSection } from '@/modules/auth/ui/delete-account';
 import { loadDashboardSnapshot } from '@/modules/dashboard/server/load';
 import { Dashboard } from '@/modules/dashboard/ui/dashboard';
 import { SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
@@ -14,8 +13,8 @@ export default function DashboardPage() {
   return (
     <>
       <SiteHeader>
-        <Link href="/" className="rounded-md px-3 py-2 text-ink-2 hover:text-ink">
-          Home
+        <Link href="/account" className="rounded-md px-3 py-2 text-ink-2 hover:text-ink">
+          Account
         </Link>
       </SiteHeader>
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
@@ -29,14 +28,9 @@ export default function DashboardPage() {
 }
 
 async function DashboardContent() {
-  const viewer = await requireViewer();
+  const viewer = await requireViewer('/dashboard');
   const snapshot = await loadDashboardSnapshot();
-  return (
-    <div className="space-y-10">
-      <Dashboard viewer={viewer} initial={snapshot} />
-      <DeleteAccountSection />
-    </div>
-  );
+  return <Dashboard viewer={viewer} initial={snapshot} />;
 }
 
 function DashboardSkeleton() {

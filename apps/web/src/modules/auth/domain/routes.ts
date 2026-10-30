@@ -2,15 +2,21 @@
 export const ROUTES = {
   home: '/',
   signIn: '/login',
+  signUp: '/signup',
+  forgotPassword: '/forgot-password',
+  resetPassword: '/reset-password',
+  account: '/account',
   dashboard: '/dashboard',
   oauthCallback: '/auth/callback',
+  emailConfirm: '/auth/confirm',
+  signOut: '/auth/signout',
 } as const;
 
 /** Paths that need a signed-in session; the proxy sends signed-out visitors to sign in. */
-const PROTECTED_PREFIXES = [ROUTES.dashboard];
+const PROTECTED_PREFIXES: readonly string[] = [ROUTES.dashboard, ROUTES.account, ROUTES.resetPassword];
 
 /** Paths only for signed-out visitors; the proxy sends signed-in visitors to the dashboard. */
-const GUEST_ONLY_PATHS: readonly string[] = [ROUTES.signIn];
+const GUEST_ONLY_PATHS: readonly string[] = [ROUTES.signIn, ROUTES.signUp, ROUTES.forgotPassword];
 
 /** Whether `path` needs a session. */
 export function requiresSession(path: string): boolean {

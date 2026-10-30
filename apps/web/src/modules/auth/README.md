@@ -1,25 +1,47 @@
 # `modules/auth`: identity and sessions
 
-Everything about who is signed in: reading the session, signing in with Google, signing out, and deleting the Xomoni account. Other modules and routes get the signed-in person only through `server/session.ts` (`currentViewer`, `requireViewer`).
+Everything about who someone is on xomoni.com: creating an account with a confirmed email address, signing in with a password or Google, recovering a forgotten password, changing email or password, signing out and deleting the account. Other modules and routes get the signed-in person only through `server/session.ts` (`currentViewer`, `requireViewer`, `requireAccount`). Decisions: [ADR-0011](../../../../../docs/adr/0011-email-and-password-sign-in.md).
 
 ## Layers
 
 | Layer | Files | Responsibility |
 | --- | --- | --- |
-| `domain/` | `viewer.ts`, `routes.ts`, `auth-error.ts` | The `Viewer` shape, which paths need a session, `safeNextPath` (open-redirect protection), error codes and the messages people see. Pure. |
-| `application/` | `ports.ts`, `use-cases.ts` | The `AuthGateway` port and the use cases (`getViewer`, `startOAuthSignIn`, `completeOAuthSignIn`, `signOut`, `deleteAccount`). |
-| `infrastructure/` | `supabase-auth-gateway.ts` | `AuthGateway` on Supabase Auth; maps Supabase error codes to domain codes. |
-| `server/` | `deps.ts`, `session.ts`, `actions.ts`, `route-handlers.ts`, `proxy.ts` | Composition root per request; the Data Access Layer; Server Actions; `/auth/callback` and `/auth/signout`; session refresh and redirects in the proxy. |
-| `ui/` | `google-button.tsx`, `delete-account.tsx`, `form-alert.tsx` | Sign-in button, account deletion section, inline form messages. |
+| `domain/` | `credentials.ts`, `email-link.ts`, `auth-error.ts`, `routes.ts`, `viewer.ts` | Password policy and form schemas (zod); parsing emailed links; error codes and the messages people see; which paths need a session; `safeNextPath` against open redirects; the `Viewer` and `AccountDetails` shapes. Pure. |
+| `application/` | `ports.ts`, `use-cases.ts` | The `AuthGateway` port and every use case: `signUp`, `signInWithPassword`, `requestPasswordReset`, `resendConfirmation`, `confirmEmailLink`, `setNewPassword`, `changePassword`, `changeEmail`, `startOAuthSignIn`, `completeOAuthSignIn`, `getViewer`, `getAccount`, `signOut`, `deleteAccount`. |
+| `infrastructure/` | `supabase-auth-gateway.ts` | `AuthGateway` on Supabase Auth, for either the browser or the request-bound server client; maps Supabase error codes to domain codes. |
+| `client/` | `auth.ts` | Browser composition root: `browserAuth.*`, the use cases wired to the browser Supabase client. |
+| `server/` | `deps.ts`, `session.ts`, `actions.ts`, `route-handlers.ts`, `proxy.ts` | Server composition root; the Data Access Layer; the delete-account Server Action; `/auth/callback` and `/auth/signout`; session refresh and redirects in the proxy. |
+| `ui/` | `sign-in-form.tsx`, `sign-up-form.tsx`, `forgot-password-form.tsx`, `reset-password-form.tsx`, `confirm-email-link.tsx`, `account-settings.tsx`, `delete-account.tsx`, `google-button.tsx`, `auth-card.tsx`, `fields.tsx`, `captcha.tsx`, `form-alert.tsx`, `navigation.ts` | Forms and pages' content; the password field with a live checklist; the Turnstile hook; navigation after the session changes. |
+
+## Flows
+
+| Flow | Route(s) | What happens |
+| --- | --- | --- |
+| Sign up | `/signup` → email → `/auth/confirm` | Validate, create the account (captcha), email a confirmation link; the link signs the person in and opens `/dashboard`. Same answer if the address already has an account. |
+| Resend confirmation | `/signup` (after submit), `/login` | Offered after sign-up and when sign-in says the email isn't confirmed. |
+| Sign in | `/login` | Email and password (captcha), or Google. `?next=` returns to the page that asked, same-site only. |
+| Forgot password | `/forgot-password` → email → `/auth/confirm` → `/reset-password` | The link signs the person in for recovery; they choose a new password and land on `/account`. |
+| Change password | `/account` | Needs the current password (checked by signing in again) and the captcha. Google-only accounts set one through an emailed link instead. |
+| Change email | `/account` → two emails → `/auth/confirm` | Both the old and the new address must confirm; the page shows the pending change. |
+| Google | `/login`, `/signup` → Google → `/auth/callback` | PKCE flow started in the browser; the callback trades the code for a session. |
+| Sign out | `POST /auth/signout` | Ends the session on this device. POST only, so a link can't sign anyone out. |
+| Delete account | `/account` | Server Action; removes the user, devices and jobs, then signs out. |
 
 ## Security rules
 
-- Sessions are verified with `getClaims()` (signature-checked JWT), never `getSession()`, on the server.
-- Every Server Action re-checks the session; the proxy's redirects are only a convenience.
-- `next` parameters pass through `safeNextPath`, so sign-in round trips can't redirect off-site.
-- People see domain messages (`AUTH_ERROR_MESSAGES`), worded so they never reveal whether an account exists; provider errors go to server logs only.
-- Sign-out is `POST` only.
+- Sessions are verified on the server with `getClaims()` (signature-checked JWT), never `getSession()`; `authDeps()` calls `connection()` so session checks never run during a prerender.
+- Interactive auth runs in the browser so Supabase's per-IP limits and Turnstile apply to the person ([ADR-0011](../../../../../docs/adr/0011-email-and-password-sign-in.md)).
+- No account enumeration: sign-up, reset and resend give the same answer for unknown addresses; sign-in uses one message for "wrong password" and "no such account".
+- Emailed links are checked by `parseEmailLink` (type allow-list, token format) and verified only on click, so link scanners can't use them up.
+- Every `next` passes through `safeNextPath`.
+- People see `AUTH_ERROR_MESSAGES`; provider errors go to logs only.
+- The password policy here and in `supabase/config.toml` must match; `credentials.test.ts` fails if they drift.
+
+## Tests
+
+- Unit (`npm test -w @xomoni/web`): domain rules and every use case against an in-memory gateway, including the failure and enumeration cases.
+- End to end (`npm run test:e2e -w @xomoni/web`, needs `supabase start`): every flow above in Chromium against local Supabase Auth, reading the real emails from Mailpit.
 
 ## Used by
 
-- `app/login`, `app/dashboard`, `app/auth/*` routes and `src/proxy.ts`.
+- Routes: `app/login`, `app/signup`, `app/forgot-password`, `app/reset-password`, `app/account`, `app/auth/*`, `app/dashboard`; and `src/proxy.ts`.

@@ -1,0 +1,57 @@
+<!doctype html>
+<!--
+  Xomoni auth email: magic link.
+  Supabase Auth renders this file as a Go template; see supabase/README.md#email-templates.
+  Action links go to /auth/confirm on the site, which verifies the token hash on the server,
+  so they work on any device, not only the browser that asked for the email.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <title>Your Xomoni sign-in link</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f4f4f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0b0b0b;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Sign in to Xomoni with one click.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f1;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+            <tr>
+              <td style="padding:0 4px 20px;">
+                <a href="{{ .SiteURL }}" style="text-decoration:none;color:#0b0b0b;font-weight:600;font-size:16px;">
+                  <img src="https://xomoni.com/logo.png" width="28" height="28" alt="" style="vertical-align:middle;border-radius:6px;border:0;" />
+                  <span style="vertical-align:middle;padding-left:8px;">Xomoni</span>
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#fcfcfb;border:1px solid #e3e2de;border-radius:16px;padding:32px 28px;">
+                <h1 style="margin:0 0 12px;font-size:20px;line-height:28px;font-weight:600;">Sign in to Xomoni</h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#52514e;">Use this link to sign in as <strong style="color:#0b0b0b;">{{ .Email }}</strong>:</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;">
+                  <tr>
+                    <td style="border-radius:10px;background:#2a78d6;">
+                      <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;">Sign in</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 6px;font-size:13px;line-height:20px;color:#6f6d68;">Or paste this link into your browser:</p>
+                <p style="margin:0 0 16px;font-size:13px;line-height:20px;word-break:break-all;"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard" style="color:#2a78d6;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard</a></p>
+                <p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#52514e;">The link expires in 1 hour and works once.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 4px 0;font-size:12px;line-height:18px;color:#6f6d68;">
+                If you didn't ask for this, you can ignore this email; nothing changes.<br />
+                Xomoni · <a href="{{ .SiteURL }}/privacy" style="color:#6f6d68;">Privacy</a> · Questions:
+                <a href="mailto:privacy@xomoni.com" style="color:#6f6d68;">privacy@xomoni.com</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

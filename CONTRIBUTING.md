@@ -28,7 +28,14 @@ npm install            # also installs the git hooks (.githooks)
 | Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
 | Unit tests | `npm test` | A test fails |
 
-It runs automatically before every `git push` (`.githooks/pre-push`). CI runs it again, plus both production builds and the database checks, and `main` only accepts pull requests with green CI.
+It runs automatically before every `git push` (`.githooks/pre-push`). CI runs it again, plus both production builds, the database checks (Row Level Security tests, types drift) and the end-to-end auth tests, and `main` only accepts pull requests with green CI.
+
+The end-to-end tests need Docker, so they are not part of `verify`. Run them before pushing auth or database changes:
+
+```bash
+supabase start
+npm run test:e2e -w @xomoni/web
+```
 
 ## Making a change
 

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Terms of Use' };
 /** `/terms`: the terms of use. */
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Use" updated="October 30, 2026">
+    <LegalPage title="Terms of Use" updated="October 31, 2026">
       <p>
         These terms cover the Xomoni browser extension and the xomoni.com website (together, “Xomoni”). By using Xomoni
         you agree to them. If you don’t agree, please don’t use it.
@@ -44,9 +44,10 @@ export default function TermsPage() {
 
       <h2>Your Xomoni account</h2>
       <p>
-        An account is optional. You are responsible for the Google account you sign in with. You can delete your Xomoni
-        account at any time from the dashboard. We may suspend accounts that misuse the service, and we may change or
-        discontinue the website; the open-source extension keeps working without it.
+        An account is optional. Keep your password private and use an email address you control; you are responsible for
+        activity under your account. You can delete your Xomoni account at any time from your account page. We may
+        suspend accounts that misuse the service, and we may change or discontinue the website; the open-source
+        extension keeps working without it.
       </p>
 
       <h2>No warranty</h2>

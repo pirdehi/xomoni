@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CircleAlert, Laptop, LogOut, Puzzle, RefreshCw } from 'lucide-react';
 import { INSTALL_URL } from '@/shared/config/site';
@@ -138,6 +139,9 @@ function AccountBar({ viewer, live }: { viewer: DashboardViewer; live: boolean }
           <span className={`size-2 rounded-full ${live ? 'bg-good' : 'bg-muted'}`} aria-hidden />
           {live ? 'Live' : 'Connecting…'}
         </span>
+        <Link href="/account" className="btn btn-secondary py-2">
+          Account
+        </Link>
         <form action="/auth/signout" method="post">
           <button type="submit" className="btn btn-secondary py-2">
             <LogOut className="size-4" aria-hidden />

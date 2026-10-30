@@ -24,13 +24,18 @@ flowchart LR
   x[("x.com<br/>X's own web app")]
   sb[("Supabase<br/>Auth · Postgres · Realtime")]
   google["Google<br/>OAuth"]
+  resend["Resend<br/>account emails"]
+  turnstile["Cloudflare Turnstile<br/>bot check"]
 
   person -- "starts and watches cleanups" --> ext
-  person -- "signs in, follows progress" --> web
+  person -- "signs up and in, follows progress" --> web
   ext -- "clicks X's own buttons in a normal tab" --> x
   ext -. "job status only (planned, Phase 5)" .-> sb
   web -- "auth, reads status, live updates" --> sb
+  web -- "captcha widget on auth forms" --> turnstile
   sb -- "sign-in with Google" --> google
+  sb -- "verifies captcha tokens" --> turnstile
+  sb -- "confirmation, reset and security emails (SMTP)" --> resend
 ```
 
 ### Trust zones
@@ -89,7 +94,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/ui`](../apps/extension/src/ui/README.md) | The dashboard (React). |
 | [`apps/extension/src/dev`](../apps/extension/src/dev/README.md) | UI preview with demo data; never shipped. |
 | [`apps/web`](../apps/web/README.md) | xomoni.com: landing and legal pages, sign-in, the live dashboard. |
-| [`apps/web/src/modules/auth`](../apps/web/src/modules/auth/README.md) | Identity: sessions, sign-in, sign-out, account deletion. |
+| [`apps/web/src/modules/auth`](../apps/web/src/modules/auth/README.md) | Identity: sign-up with email confirmation, sign-in (password or Google), password reset, email and password changes, sessions, account deletion. |
 | [`apps/web/src/modules/dashboard`](../apps/web/src/modules/dashboard/README.md) | Devices and live job status. |
 | [`apps/web/src/shared`](../apps/web/src/shared/README.md) | Site config, Supabase clients, layout components shared by every module. |
 | [`packages/db`](../packages/db/README.md) | The typed contract of the database, generated from the migrations. |
@@ -133,30 +138,35 @@ Other rules for the website:
 - **The Supabase SDK stays behind adapters.** Only `shared/supabase` and `infrastructure/` folders import `@supabase/*` or `@xomoni/db`.
 - **Server code says so.** Files in `server/` import `server-only`, so importing them from a Client Component fails the build. Server Actions (`actions.ts`) start with `'use server'`.
 - **Every action re-checks the session.** The proxy's redirects are a convenience; pages use `requireViewer()` and Server Actions verify the user again.
+- **Interactive auth runs in the browser.** Sign-up, sign-in, reset and the other credential forms call Supabase Auth from the person's browser through `modules/auth/client`, so Supabase's per-IP limits and the captcha apply to the person rather than to our server ([ADR-0011](adr/0011-email-and-password-sign-in.md)). The server reads and verifies the resulting session cookie.
 
-A request, end to end (signing in with Google):
+A flow, end to end (signing up with email). The use case is the same code in the browser and in tests; only the gateway changes.
 
 ```mermaid
 sequenceDiagram
-  participant B as Browser
-  participant UI as auth/ui GoogleButton
-  participant SA as auth/server/actions.ts
-  participant UC as auth/application startOAuthSignIn
+  participant P as Person (browser)
+  participant UI as auth/ui SignUpForm
+  participant C as auth/client browserAuth
+  participant UC as auth/application signUp
   participant GW as auth/infrastructure SupabaseAuthGateway
   participant SB as Supabase Auth
-  B->>UI: click "Continue with Google"
-  UI->>SA: signInWithGoogle(formData)
-  SA->>UC: startOAuthSignIn(deps, 'google', next)
-  UC->>GW: startOAuth(provider, callbackUrl)
-  GW->>SB: signInWithOAuth (PKCE)
-  SB-->>GW: provider URL
-  GW-->>SA: { ok, url }
-  SA-->>B: redirect to Google
-  B->>B: Google → Supabase → /auth/callback?code=…
-  B->>SA: GET /auth/callback (route-handlers.ts)
-  SA->>GW: exchangeCode(code) → session cookie
-  SA-->>B: redirect to safeNextPath(next)
+  participant M as Resend (Mailpit locally)
+  P->>UI: name, email, password (+ Turnstile token)
+  UI->>C: browserAuth.signUp(form)
+  C->>UC: signUp(deps, input)
+  UC->>UC: validate (domain/credentials), normalize email
+  UC->>GW: signUp(email, password, captchaToken, emailRedirectTo)
+  GW->>SB: auth.signUp
+  SB->>M: "Confirm your Xomoni account" → /auth/confirm?token_hash=…
+  UC-->>UI: { ok, email } (same answer if the account already exists)
+  P->>UI: opens the link → /auth/confirm → clicks Confirm
+  UI->>C: browserAuth.confirmEmailLink(query)
+  C->>GW: verifyEmailLink (domain/email-link checks it first)
+  GW->>SB: auth.verifyOtp → session cookie
+  UI-->>P: /dashboard (server reads the session with getClaims)
 ```
+
+The other flows (sign-in, password reset, email change, Google) follow the same path; they are described in the [auth module README](../apps/web/src/modules/auth/README.md) and tested end to end in `apps/web/e2e`.
 
 ## 5. Extension (`apps/extension`)
 
@@ -232,13 +242,13 @@ flowchart LR
   edit["Change"] --> push["git push"]
   push -- ".githooks/pre-push" --> verify["npm run verify<br/>format · lint + code docs · types ·<br/>architecture · docs · unit tests"]
   verify -- pass --> gh["GitHub pull request"]
-  gh --> ci["CI: verify + builds + database checks"]
+  gh --> ci["CI: verify + builds · database · e2e"]
   ci -- "all green" --> main["merge to main<br/>(branch protected)"]
   main --> vercel["Vercel deploys xomoni.com"]
 ```
 
 - **Pre-push hook:** `npm install` points git at [`.githooks`](../.githooks/pre-push), whose `pre-push` runs [`tooling/verify.mjs`](../tooling/verify.mjs). `git push --no-verify` skips it, but CI runs the same checks and `main` only accepts green pull requests.
-- **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): `verify`, both production builds, and the database job (local Supabase, generated-types drift).
+- **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): `verify` and both production builds; `database` (fresh migrations, schema lint, Row Level Security tests, generated-types drift); `e2e` (the auth flows in a real browser against a local Supabase, with emails read from Mailpit).
 - **Branch protection on `main`:** pull request required, CI must pass, linear history, no force pushes.
 
 ## 9. Changing the architecture

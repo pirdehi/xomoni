@@ -65,6 +65,7 @@ export function SignUpForm() {
         >
           {resent ? 'Sent again' : 'Send the link again'}
         </button>
+        {!resent && <CaptchaStatus captcha={captcha} />}
         {failure && <FormAlert message={AUTH_ERROR_MESSAGES[failure.code]} />}
       </div>
     );

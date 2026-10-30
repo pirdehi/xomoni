@@ -119,6 +119,18 @@ test.describe('sign-in', () => {
     await expect(page).toHaveURL('http://localhost:3000/dashboard');
   });
 
+  test('offers a retry when the security check cannot load', async ({ page }) => {
+    // Simulates a network that can't reach Cloudflare: the form must say so instead of waiting forever.
+    await page.route('https://challenges.cloudflare.com/**', (route) => route.abort());
+    await page.goto('/forgot-password');
+    await expect(page.getByText('The security check didn’t finish.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: 'Send reset link' })).toBeDisabled();
+
+    await page.unroute('https://challenges.cloudflare.com/**');
+    await page.getByRole('button', { name: 'try again' }).click();
+    await expect(page.getByRole('button', { name: 'Send reset link' })).toBeEnabled({ timeout: 30_000 });
+  });
+
   test('starts Google sign-in at Google', async ({ page }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: 'Continue with Google' }).click();
@@ -202,6 +214,23 @@ test.describe('account page', () => {
     await signOut(page);
     await signIn(page, email, NEW_PASSWORD);
     await expectDashboard(page);
+  });
+
+  test('runs the captcha on the account page after an in-app navigation', async ({ page }) => {
+    // Regression: arriving at /account by client-side navigation (sign-in with ?next=/account) left the
+    // captcha without a token in production, so "Change password" never enabled.
+    const email = uniqueEmail('nav-captcha');
+    await signUpConfirmed(page, email);
+    await signOut(page);
+    await page.goto('/account');
+    await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email);
+    await passwordInput(page).fill(PASSWORD);
+    await submit(page, 'Sign in');
+    await expect(page).toHaveURL(/\/account$/);
+    await passwordInput(page, 'Current password').fill(PASSWORD);
+    await passwordInput(page, 'New password').fill(NEW_PASSWORD);
+    await submit(page, 'Change password');
+    await expect(page.getByText('Your new password is saved.')).toBeVisible();
   });
 
   test('changes the sign-in email after both addresses confirm', async ({ page }) => {

@@ -14,7 +14,7 @@
 - [ ] Tests cover new behavior, including failure and security cases
 - [ ] New environment variables documented in `apps/web/.env.example` and set in Vercel
 
-## Safety (see [docs/PLAYBOOK.md](../docs/PLAYBOOK.md))
+## Safety (see [docs/PLAYBOOK.md](https://github.com/pirdehi/xomoni/blob/main/docs/PLAYBOOK.md))
 
 - [ ] Pacing, stop rules and item verification are unchanged, or the change is explained above
 - [ ] No new extension permissions, or they are justified above

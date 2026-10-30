@@ -4,7 +4,7 @@ Thanks for helping. Xomoni acts on people's X accounts, so the bar is: safe firs
 
 ## Set up
 
-Requirements: Node.js 20.19+ (CI uses 22), npm, and Docker (or Colima) for the local Supabase stack. The [Supabase CLI](https://supabase.com/docs/guides/cli) is needed for website and database work.
+Requirements: Node.js 20.19+ (CI uses 22), npm, and Docker (or Colima) for the local Supabase stack. The [Supabase CLI](https://supabase.com/docs/guides/cli) is needed for website and database work; CI pins the version in `.github/workflows/ci.yml`, so use the same one when you regenerate `packages/db`.
 
 ```bash
 git clone https://github.com/pirdehi/xomoni.git

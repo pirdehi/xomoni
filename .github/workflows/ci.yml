@@ -46,9 +46,15 @@ jobs:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Keep in step with the CLI used to generate packages/db (see CONTRIBUTING.md).
+          version: 2.116.0
       - name: Apply all migrations to a fresh database
         run: supabase db start
       - name: Lint the schema
@@ -57,6 +63,6 @@ jobs:
         run: supabase test db
       - name: Generated types match the migrations
         run: |
-          supabase gen types typescript --local --schema public > packages/db/src/database.types.ts
+          npm run gen -w @xomoni/db
           git diff --exit-code -- packages/db/src/database.types.ts \
             || (echo "::error::packages/db is out of date: run 'npm run gen -w @xomoni/db' and commit." && exit 1)

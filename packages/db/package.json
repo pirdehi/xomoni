@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "gen": "supabase gen types typescript --local --schema public > src/database.types.ts",
+    "gen": "supabase gen types typescript --local --schema public > src/database.types.ts && prettier --write --log-level warn src/database.types.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

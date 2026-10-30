@@ -5,6 +5,9 @@ package-lock.json
 **/dist/
 **/.next/
 **/next-env.d.ts
+**/test-results/
+**/playwright-report/
+**/blob-report/
 supabase/.temp/
 supabase/.branches/
 # Email templates are hand-tuned HTML for mail clients.

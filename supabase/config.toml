@@ -160,7 +160,7 @@ site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://localhost:3000/auth/confirm"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -179,10 +179,11 @@ enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+# Mirrored by PASSWORD_POLICY in apps/web/src/modules/auth/domain/credentials.ts (a test checks both).
+minimum_password_length = 10
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
-password_requirements = ""
+password_requirements = "letters_digits"
 
 # Configure passkey sign-ins.
 # [auth.passkey]
@@ -196,7 +197,8 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# Local value is high for the end-to-end tests; production is lower (see [remotes.production]).
+email_sent = 100
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -204,56 +206,81 @@ anonymous_users = 30
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
 token_refresh = 150
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
-sign_in_sign_ups = 30
+# Local values are high so the end-to-end suite can run from one IP; production uses the defaults.
+sign_in_sign_ups = 300
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
-token_verifications = 30
+token_verifications = 300
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
 web3 = 30
 
-# Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# Cloudflare Turnstile on sign-up, password sign-in and password reset requests.
+# Locally this is Cloudflare's public always-pass test secret; production uses the real one.
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "1x0000000000000000000000000000000AA"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-# Xomoni signs in with Google only.
-enable_signup = false
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1m0s"
+# Short locally so tests can resend; production waits a minute (see [remotes.production]).
+max_frequency = "5s"
 # Number of characters used in the email OTP.
 otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Locally, emails go to Mailpit (http://127.0.0.1:54324). Production sends through Resend; see
+# [remotes.production.auth.email.smtp] at the end of this file.
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Email templates (supabase/templates). Action links go to /auth/confirm on the website.
+[auth.email.template.confirmation]
+subject = "Confirm your Xomoni account"
+content_path = "./supabase/templates/confirmation.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./supabase/templates/password_changed_notification.html"
+[auth.email.template.recovery]
+subject = "Reset your Xomoni password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new Xomoni email"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.magic_link]
+subject = "Your Xomoni sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.invite]
+subject = "You're invited to Xomoni"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.reauthentication]
+subject = "Your Xomoni verification code"
+content_path = "./supabase/templates/reauthentication.html"
+
+# Security notifications: tell people when their password, email or sign-in methods change.
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your Xomoni password was changed"
+content_path = "./supabase/templates/password_changed_notification.html"
+
+[auth.email.notification.email_changed]
+enabled = true
+subject = "Your Xomoni email was changed"
+content_path = "./supabase/templates/email_changed_notification.html"
+
+[auth.email.notification.identity_linked]
+enabled = true
+subject = "A sign-in method was added to your Xomoni account"
+content_path = "./supabase/templates/identity_linked_notification.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
@@ -435,6 +462,33 @@ project_id = "ueegjwwmuuxlxyibgokx"
 site_url = "https://xomoni.com"
 additional_redirect_urls = [
   "https://xomoni.com/auth/callback",
+  "https://xomoni.com/auth/confirm",
   "https://www.xomoni.com/auth/callback",
-  "http://localhost:3000/auth/callback",
+  "https://www.xomoni.com/auth/confirm",
 ]
+
+[remotes.production.auth.rate_limit]
+# Emails per hour for the whole project; Resend's free plan allows 100 a day.
+email_sent = 30
+sign_in_sign_ups = 30
+token_verifications = 30
+
+[remotes.production.auth.email]
+max_frequency = "1m0s"
+
+[remotes.production.auth.captcha]
+enabled = true
+provider = "turnstile"
+# Turnstile widget "Xomoni sign-in (xomoni.com)" in the personal Cloudflare account.
+secret = "env(TURNSTILE_SECRET_KEY)"
+
+[remotes.production.auth.email.smtp]
+# Resend, personal team, domain xomoni.com (DKIM and SPF on send.xomoni.com in Cloudflare).
+# The password is a Resend API key limited to sending from xomoni.com.
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_SMTP_API_KEY)"
+admin_email = "no-reply@xomoni.com"
+sender_name = "Xomoni"

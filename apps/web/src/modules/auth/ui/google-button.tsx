@@ -1,25 +1,35 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LoaderCircle } from 'lucide-react';
-import { signInWithGoogle, type FormState } from '../server/actions';
+import { browserAuth } from '../client/auth';
+import { AUTH_ERROR_MESSAGES } from '../domain/auth-error';
 import { FormAlert } from './form-alert';
 
-/** "Continue with Google": a form whose server action redirects to Google. */
-export function GoogleButton() {
-  const next = useSearchParams().get('next') ?? '';
-  const [state, action, pending] = useActionState<FormState, FormData>(signInWithGoogle, {});
+/** "Continue with Google": starts the OAuth flow from the browser and keeps `?next=` for the return trip. */
+export function GoogleButton({ label = 'Continue with Google' }: { label?: string }) {
+  const next = useSearchParams().get('next');
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function signIn() {
+    setError(null);
+    startTransition(async () => {
+      const result = await browserAuth.startGoogleSignIn(next);
+      if (result.ok) window.location.assign(result.url);
+      else setError(AUTH_ERROR_MESSAGES[result.code]);
+    });
+  }
 
   return (
-    <form action={action}>
-      <input type="hidden" name="next" value={next} />
-      <button type="submit" disabled={pending} className="btn btn-secondary w-full py-3 text-base">
+    <>
+      <button type="button" onClick={signIn} disabled={pending} className="btn btn-secondary w-full py-3 text-base">
         {pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <GoogleMark />}
-        Continue with Google
+        {label}
       </button>
-      {state.error && <FormAlert message={state.error} />}
-    </form>
+      {error && <FormAlert message={error} />}
+    </>
   );
 }
 

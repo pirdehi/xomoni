@@ -23,6 +23,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -41,9 +42,13 @@ jobs:
     name: database
     runs-on: ubuntu-latest
     env:
-      # config.toml reads these with env(); the local stack never talks to Google.
+      # config.toml reads these with env(); the local stack never talks to Google, Resend or Turnstile.
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+      TURNSTILE_SECRET_KEY: ci-placeholder
+      RESEND_SMTP_API_KEY: ci-placeholder
+      # Pull Supabase images from Docker Hub: AWS ECR Public often answers "Data limit exceeded" to CI runners.
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -66,3 +71,39 @@ jobs:
           npm run gen -w @xomoni/db
           git diff --exit-code -- packages/db/src/database.types.ts \
             || (echo "::error::packages/db is out of date: run 'npm run gen -w @xomoni/db' and commit." && exit 1)
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+      TURNSTILE_SECRET_KEY: ci-placeholder
+      RESEND_SMTP_API_KEY: ci-placeholder
+      # Pull Supabase images from Docker Hub: AWS ECR Public often answers "Data limit exceeded" to CI runners.
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+      - name: Start Supabase (Auth, Postgres, Realtime, Mailpit)
+        run: supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,supavisor,postgres-meta
+      - name: Install Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - name: Auth end-to-end tests (sign-up, confirmation, sign-in, reset, account)
+        working-directory: apps/web
+        run: npx playwright test
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7

@@ -9,7 +9,13 @@ describe('viewerFromClaims', () => {
         email: 'ada@example.com',
         user_metadata: { full_name: ' Ada Lovelace ', avatar_url: 'https://img.example/a.png' },
       }),
-    ).toEqual({ id: 'u1', email: 'ada@example.com', name: 'Ada Lovelace', avatarUrl: 'https://img.example/a.png' });
+    ).toEqual({
+      id: 'u1',
+      email: 'ada@example.com',
+      name: 'Ada Lovelace',
+      avatarUrl: 'https://img.example/a.png',
+      signInMethods: [],
+    });
   });
 
   it('falls back to the email when there is no usable name', () => {
@@ -23,6 +29,19 @@ describe('viewerFromClaims', () => {
   });
 
   it('accepts claims without metadata or email', () => {
-    expect(viewerFromClaims({ sub: 'u3' })).toEqual({ id: 'u3', email: '', name: '', avatarUrl: null });
+    expect(viewerFromClaims({ sub: 'u3' })).toEqual({
+      id: 'u3',
+      email: '',
+      name: '',
+      avatarUrl: null,
+      signInMethods: [],
+    });
+  });
+
+  it('reads the sign-in methods and ignores junk', () => {
+    expect(viewerFromClaims({ sub: 'u4', app_metadata: { providers: ['email', 'google', 7] } }).signInMethods).toEqual([
+      'email',
+      'google',
+    ]);
   });
 });

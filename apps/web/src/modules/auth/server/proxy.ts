@@ -23,7 +23,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return redirect(url);
   };
 
-  if (!signedIn && requiresSession(path)) return to(ROUTES.signIn);
+  if (!signedIn && requiresSession(path)) {
+    const url = request.nextUrl.clone();
+    url.pathname = ROUTES.signIn;
+    url.search = '';
+    url.searchParams.set('next', `${path}${request.nextUrl.search}`);
+    return redirect(url);
+  }
   if (signedIn && isGuestOnly(path)) return to(ROUTES.dashboard);
 
   const res = response();

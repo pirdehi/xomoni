@@ -27,3 +27,14 @@ function resolveSiteUrl(): string {
     'Missing NEXT_PUBLIC_SITE_URL: copy apps/web/.env.example to apps/web/.env.local, or set it in Vercel.',
   );
 }
+
+/**
+ * Cloudflare Turnstile site key for the sign-in, sign-up and password forms. Public by design.
+ * Locally and in CI it is Cloudflare's always-pass test key, matching the test secret in supabase/config.toml.
+ */
+export const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || missing('NEXT_PUBLIC_TURNSTILE_SITE_KEY');
+
+function missing(name: string): never {
+  throw new Error(`Missing ${name}: copy apps/web/.env.example to apps/web/.env.local, or set it in Vercel.`);
+}

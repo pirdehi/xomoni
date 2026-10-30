@@ -142,6 +142,39 @@ body {
     background: color-mix(in oklab, var(--critical) 88%, black);
   }
 
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .field {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    background: var(--page);
+    padding: 0.625rem 0.75rem;
+    color: var(--ink);
+    font-size: 0.9375rem;
+    line-height: 1.375rem;
+    transition:
+      border-color 120ms,
+      box-shadow 120ms;
+  }
+
+  .field::placeholder {
+    color: var(--muted);
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .field[aria-invalid='true'] {
+    border-color: var(--critical);
+  }
+
   .card {
     border: 1px solid var(--line);
     background: var(--surface);

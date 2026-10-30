@@ -47,6 +47,8 @@ jobs:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
       TURNSTILE_SECRET_KEY: ci-placeholder
       RESEND_SMTP_API_KEY: ci-placeholder
+      # Pull Supabase images from Docker Hub: AWS ECR Public often answers "Data limit exceeded" to CI runners.
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -79,6 +81,8 @@ jobs:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
       TURNSTILE_SECRET_KEY: ci-placeholder
       RESEND_SMTP_API_KEY: ci-placeholder
+      # Pull Supabase images from Docker Hub: AWS ECR Public often answers "Data limit exceeded" to CI runners.
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

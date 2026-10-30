@@ -1,0 +1,12 @@
+# Prose stays as written (Persian and English); Prettier would re-flow tables and lists.
+*.md
+# Generated or vendored
+package-lock.json
+packages/db/src/database.types.ts
+**/dist/
+**/.next/
+**/next-env.d.ts
+supabase/.temp/
+supabase/.branches/
+# Email templates are hand-tuned HTML for mail clients.
+supabase/templates/

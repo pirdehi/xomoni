@@ -90,11 +90,11 @@ Xomoni isn't on the Chrome Web Store yet. Build it from source:
 git clone https://github.com/pirdehi/xomoni.git
 cd xomoni
 npm install
-npm run build
+npm run build -w @xomoni/extension
 ```
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and select the `dist` folder.
+2. Click **Load unpacked** and select the `apps/extension/dist` folder.
 3. Click the Xomoni icon in the toolbar to open the dashboard.
 
 On macOS, allow notifications for your browser in *System Settings → Notifications* so you see the login and 2FA alerts.
@@ -120,34 +120,30 @@ On macOS, allow notifications for your browser in *System Settings → Notificat
 
 ## Development
 
+This repository is an npm workspaces monorepo:
+
+```
+apps/extension/   the Chrome extension (MV3): engine, X page scripts, dashboard UI
+apps/web/         xomoni.com (Next.js): landing page, sign-in, live job status
+packages/db/      typed contract of the Supabase database, generated from the migrations
+supabase/         database migrations, auth config and email templates (config as code)
+docs/             architecture, decision records, safety playbook, research
+tooling/          repository checks: documentation gate, verify runner, git hooks
+```
+
+How the parts fit together, the layer rules and the documentation rules are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Every app, package and module has its own README.
+
 | Command | What it does |
 |---|---|
-| `npm run build` | Builds the extension into `dist/` |
-| `npm run watch` | Rebuilds on change. Reload the extension in `chrome://extensions` after each build. |
-| `npm run preview:ui` | Opens the dashboard with demo data in a normal browser tab, without connecting to X |
-| `npm test` | Unit tests: GraphQL parsing, archive import, rules, time, and login/check page detection |
-| `npm run typecheck` | TypeScript checks |
+| `npm run build -w @xomoni/extension` | Builds the extension into `apps/extension/dist/` |
+| `npm run watch -w @xomoni/extension` | Rebuilds on change. Reload the extension in `chrome://extensions` after each build. |
+| `npm run preview:ui -w @xomoni/extension` | Opens the dashboard with demo data in a normal browser tab, without connecting to X |
+| `npm run dev -w @xomoni/web` | Runs xomoni.com locally (see [apps/web/README.md](apps/web/README.md)) |
+| `npm run verify` | Everything CI checks: formatting, lint and code docs, types, architecture rules, documentation, unit tests |
 
-```
-src/
-  inject/interceptor.ts   MAIN world: reads X's own GraphQL responses and rate-limit headers (never sends)
-  content/
-    dom.ts                every X selector in one place: update this first if X changes its markup
-    actor.ts              user-equivalent actions: delete, unlike, undo repost, scroll
-    net.ts                matches X's responses to actions; feeds the inventory
-  background/sw.ts        stores observations in IndexedDB; opens the dashboard; handles notification clicks
-  engine/
-    runner.ts             one job at a time (Web Lock); pause, resume, cancel; login hand-off loop
-    context.ts            safety policy per X error code; waiting for the person
-    limiter.ts            delays, batches, rolling caps, adaptive back-off, active hours
-    cleanup.ts            sweep (search or timeline) and deep clean (item by item)
-    scan.ts               profile, replies, likes and full-history scans
-    worker-tab.ts         the x.com worker window
-  shared/                 types, Dexie database, parsers, rules, settings, notifications
-  ui/                     React 19 + Tailwind CSS 4 dashboard
-```
+`npm run verify` also runs automatically before every `git push`.
 
-**Stack:** TypeScript, React 19, Tailwind CSS 4, Dexie (IndexedDB), Vite and esbuild, and Vitest.
+**Stack:** TypeScript, React 19, Tailwind CSS 4, Dexie (IndexedDB), Vite and esbuild for the extension; Next.js 16, Supabase and Vercel for the website; Vitest, ESLint, Prettier and dependency-cruiser for quality.
 
 ## Project status
 
@@ -155,7 +151,7 @@ Xomoni is an early release (v0.1). The full flow has been tested end to end agai
 
 ## Contributing
 
-Issues and pull requests are welcome. Please run `npm run typecheck && npm test` before opening a PR. Keep the core rules intact:
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first; `npm run verify` must pass. Keep the core rules intact (the full list is in [docs/PLAYBOOK.md](docs/PLAYBOOK.md)):
 
 - Never forge X's headers.
 - Never solve captchas.

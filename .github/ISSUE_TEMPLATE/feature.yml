@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest an improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What do you suggest?
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      description: Xomoni will not add features that evade X's protections (see docs/PLAYBOOK.md §8).
+      options:
+        - label: This doesn't need captcha solving, header forging, proxies, fingerprint spoofing or stored X passwords.
+          required: true

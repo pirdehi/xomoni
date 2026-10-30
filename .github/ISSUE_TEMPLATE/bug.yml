@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in the extension or on xomoni.com doesn't work as described.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. …\n2. …"
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Activity log lines
+      description: Copy the relevant lines from the extension's Activity log. Remove anything you consider private.
+      render: text
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: Xomoni 0.1.0, Chrome 141, macOS 26
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Privacy
+      options:
+        - label: I removed passwords, cookies, tokens and private post content from this report.
+          required: true

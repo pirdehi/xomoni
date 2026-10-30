@@ -326,7 +326,7 @@ max_frequency = "5s"
 # Google sign-in for xomoni.com and the extension. The two values come from
 # the Google Cloud OAuth client and live in supabase/.env (never committed).
 [auth.external.google]
-enabled = false
+enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 redirect_uri = ""

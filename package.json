@@ -1,11 +1,11 @@
 {
-  "name": "xomoni",
+  "name": "xomoni-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "Manage and clean up your own X (Twitter) account from a local dashboard — no API keys, rate-limit aware.",
+  "description": "Xomoni: clean up your own X account from your browser. Monorepo for the extension, the xomoni.com website and shared packages.",
   "author": "Omid Pirdehi (https://github.com/pirdehi)",
   "license": "MIT",
-  "homepage": "https://github.com/pirdehi/xomoni#readme",
+  "homepage": "https://xomoni.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pirdehi/xomoni.git"
@@ -13,45 +13,36 @@
   "bugs": {
     "url": "https://github.com/pirdehi/xomoni/issues"
   },
-  "keywords": [
-    "x",
-    "twitter",
-    "chrome-extension",
-    "manifest-v3",
-    "tweet-delete",
-    "privacy",
-    "react",
-    "typescript"
-  ],
   "engines": {
     "node": ">=20.19"
   },
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build": "vite build && node scripts/build-content.mjs",
-    "watch": "node scripts/watch.mjs",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "icons": "node scripts/make-icons.mjs",
-    "preview:ui": "vite --open /preview.html"
-  },
-  "dependencies": {
-    "dexie": "^4.4.7",
-    "dexie-react-hooks": "^4.4.0",
-    "lucide-react": "^1.64.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint --max-warnings=0 .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "arch": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "docs:check": "node tooling/check-docs.mjs",
+    "verify": "node tooling/verify.mjs",
+    "prepare": "node tooling/install-git-hooks.mjs"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/chrome": "^0.3.7",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^5.2.0",
-    "esbuild": "^0.25.0",
-    "tailwindcss": "^4.3.3",
+    "@eslint/js": "^10.0.1",
+    "@next/eslint-plugin-next": "16.4.3",
+    "dependency-cruiser": "^18.7.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-jsdoc": "^65.4.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
     "typescript": "~5.9.3",
-    "vite": "^7.3.7",
-    "vitest": "^3.2.0"
+    "typescript-eslint": "^8.72.1"
   }
 }

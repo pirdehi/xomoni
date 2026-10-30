@@ -1,3 +1,5 @@
+# The merge gate for main. Branch protection requires every job below to pass.
+# `verify` is the same command the pre-push hook runs locally (tooling/verify.mjs).
 name: CI
 
 on:
@@ -5,36 +7,62 @@ on:
     branches: [main]
   pull_request:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+permissions:
+  contents: read
 
-  website:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     env:
-      # Placeholders: the build only needs the variables to exist; it never calls Supabase.
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      # Placeholders: builds only need the variables to exist; they never call Supabase.
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run build
+      - name: Formatting, lint + code docs, types, architecture, docs, unit tests
+        run: npm run verify
+      - name: Build the extension
+        run: npm run build -w @xomoni/extension
+      - name: Build the website
+        run: npm run build -w @xomoni/web
+
+  database:
+    name: database
+    runs-on: ubuntu-latest
+    env:
+      # config.toml reads these with env(); the local stack never talks to Google.
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          # Keep in step with the CLI used to generate packages/db (see CONTRIBUTING.md).
+          version: 2.116.0
+      - name: Apply all migrations to a fresh database
+        run: supabase db start
+      - name: Lint the schema
+        run: supabase db lint --local --level warning --fail-on warning
+      - name: Row Level Security tests (pgTAP)
+        run: supabase test db
+      - name: Generated types match the migrations
+        run: |
+          npm run gen -w @xomoni/db
+          git diff --exit-code -- packages/db/src/database.types.ts \
+            || (echo "::error::packages/db is out of date: run 'npm run gen -w @xomoni/db' and commit." && exit 1)

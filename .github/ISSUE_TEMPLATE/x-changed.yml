@@ -1,0 +1,25 @@
+name: X changed its web app
+description: A button, page or response on x.com changed and Xomoni no longer recognizes it.
+labels: [x-changed, extension]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What stopped working?
+      placeholder: Delete on replies; "Something went wrong" after each click; …
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Activity log lines
+      render: text
+  - type: input
+    id: language
+    attributes:
+      label: X display language
+      placeholder: English
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else (screenshots without private content are welcome)

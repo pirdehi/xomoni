@@ -75,14 +75,14 @@ Xomoni هنوز در Chrome Web Store نیست. آن را از سورس بساز
 git clone https://github.com/pirdehi/xomoni.git
 cd xomoni
 npm install
-npm run build
+npm run build -w @xomoni/extension
 ```
 
 <div dir="rtl">
 
 ۱. `chrome://extensions` را باز کنید و **Developer mode** را روشن کنید.
 
-۲. **Load unpacked** را بزنید و پوشه‌ی `dist` را انتخاب کنید.
+۲. **Load unpacked** را بزنید و پوشه‌ی `apps/extension/dist` را انتخاب کنید.
 
 ۳. روی آیکون Xomoni در نوار ابزار کلیک کنید تا داشبورد باز شود.
 
@@ -111,13 +111,15 @@ npm run build
 
 | دستور | کاربرد |
 |---|---|
-| `npm run build` | ساخت افزونه در `dist/` |
-| `npm run watch` | ساخت پیوسته هنگام تغییر کد |
-| `npm run preview:ui` | نمایش داشبورد با داده‌ی نمایشی، بدون اتصال به X |
-| `npm test` | تست‌های واحد |
-| `npm run typecheck` | بررسی TypeScript |
+| `npm run build -w @xomoni/extension` | ساخت افزونه در `apps/extension/dist/` |
+| `npm run watch -w @xomoni/extension` | ساخت پیوسته هنگام تغییر کد |
+| `npm run preview:ui -w @xomoni/extension` | نمایش داشبورد با داده‌ی نمایشی، بدون اتصال به X |
+| `npm run dev -w @xomoni/web` | اجرای محلی سایت xomoni.com |
+| `npm run verify` | همه‌ی بررسی‌های CI: قالب‌بندی، lint و مستندات کد، تایپ‌ها، قواعد معماری، مستندات، تست‌ها |
 
-اگر X ظاهر سایتش را عوض کند، معمولاً فقط [src/content/dom.ts](src/content/dom.ts) نیاز به اصلاح دارد.
+مخزن یک monorepo است: `apps/extension` (افزونه)، `apps/web` (سایت)، `packages/db` (قرارداد پایگاه داده)، `supabase` (پیکربندی و migrationها). معماری و قواعد آن در [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) آمده است. پیش از هر `git push`، دستور `npm run verify` خودکار اجرا می‌شود.
+
+اگر X ظاهر سایتش را عوض کند، معمولاً فقط [apps/extension/src/content/dom.ts](apps/extension/src/content/dom.ts) نیاز به اصلاح دارد.
 
 ## وضعیت پروژه
 

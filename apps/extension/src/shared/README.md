@@ -1,0 +1,46 @@
+# `shared/`: data model, parsers and storage
+
+The kernel of the extension: the data model, parsers for X's GraphQL traffic and the X data archive, cleanup filters, pacing settings and the IndexedDB database. It is bundled into the dashboard page, the service worker and the content script in x.com tabs. It must never import another area, and it never acts on X. Files the content script imports (`attention.ts`, `graphql.ts`, `messages.ts` and their imports) must not use IndexedDB or extension-only Chrome APIs, because there they run under x.com's origin.
+
+## Files
+
+| File | Responsibility |
+| --- | --- |
+| `archive.ts` | Parses the official X data archive (`window.YTD…` files) into item drafts and reads the archive's owner. |
+| `attention.ts` | Decides when only the person can continue (login, X check, wrong account) and the text shown for it. |
+| `db.ts` | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log. |
+| `filter.ts` | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration. |
+| `graphql.ts` | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts. |
+| `messages.ts` | Message types between the dashboard, the content script and the service worker. |
+| `notify.ts` | Desktop notifications and their ids. |
+| `settings.ts` | Pacing presets, default settings and action labels. |
+| `time.ts` | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`. |
+| `types.ts` | The data model: items, accounts, jobs, log entries, rate-limit observations, settings. |
+
+## Depends on
+
+- No other area of the extension (rule `ext-shared-is-the-kernel`).
+- npm: `dexie` (IndexedDB wrapper, in `db.ts`).
+- Chrome APIs: `chrome.notifications` and `chrome.runtime.getURL` (in `notify.ts`).
+
+## Used by
+
+- `../engine/` for the data model, the database (`db`, `addLog`, `getSettings`), filters (`findCandidates`, `matchesFilter`, `actionFor`), attention checks, notifications, time helpers and the actor command types.
+- `../background/` for storing observations (`upsertItems`, `upsertAccount`, `kvSet`, `db.limits`), the `RuntimeMessage` type and `ATTENTION_ID`.
+- `../content/` for path checks (`attention.ts`), GraphQL parsing (`graphql.ts`) and message types (`messages.ts`).
+- `../ui/` for the data model, the database, filters, settings, time helpers, archive parsing (`importArchive.ts`) and notifications.
+- `../dev/` for the database and types, to seed demo data in the UI preview.
+- `../../tests/parsers.test.ts` for the parsers in `archive.ts`, `graphql.ts`, `filter.ts`, `time.ts` and `attention.ts`.
+
+## Rules
+
+- `ext-shared-is-the-kernel` (from `.dependency-cruiser.cjs`): files here import only other files in `shared/` and npm packages.
+- `ext-content-is-isolated` and `ext-inject-is-isolated`: page scripts may use `shared/` and nothing else, so anything they need from the rest of the extension has to live here.
+- `no-circular`: imports inside `shared/` go one way, for example `filter.ts` → `db.ts` → `settings.ts` → `types.ts`.
+- Safety items from [`docs/PLAYBOOK.md`](../../../../docs/PLAYBOOK.md) implemented here:
+  - A3, B6: `settings.ts` holds the conservative caps (Careful: 1,000 deletes and 1,000 unlikes a day) and the separate ghost-like cap (40 an hour, 200 a day, 15 to 30 s apart).
+  - D1, D3, D4: `attention.ts` detects a logged-out page, X's check pages and an account switch, so the engine waits for the person instead of acting.
+  - E5: `upsertItems` in `db.ts` marks a deleted item `present` again only if X shows it more than 5 s after the deletion.
+  - E8: `parseArchiveAccount` lets the importer refuse an archive that belongs to another account.
+  - F4: `graphql.ts` finds operations by name and walks responses without depending on their exact shape.
+  - Known gap D2: `isLoginPath` does not recognize X's `/i/jf/` login flow yet.

@@ -37,7 +37,7 @@
 | B2 | Signed `x-client-transaction-id` header | 📰 | ✅ |
 | B3 | Synthetic click detection (`isTrusted`) | 🧠 | ⚠️ |
 | B4 | Analysis of action timing regularity | 🧠 | 🟡 |
-| B5 | Sudden spike in work volume | 🧠 | 🔴 |
+| B5 | Sudden spike in work volume | 🧠 | 🟡 |
 | B6 | Back-to-back like and unlike | 📘 | ✅ |
 | B7 | In-page script detection | 🧠 | ⚠️ |
 | B8 | Automated browser (webdriver, CDP, headless) | 📰 | ✅ |
@@ -75,7 +75,7 @@
 
 ## A. Rate limits and quotas
 
-> **Rule (ADR-0012, 31 October 2026):** for every limit X announces, Xomoni uses at most **one fifth**. This applies to the limits X publishes (`apps/extension/src/shared/x-limits.ts`, with sources) and to the live limits X reports in its headers.
+> **Rule (ADR-0012, 31 October 2026):** for every limit X announces, Xomoni uses at most **one fifth**, under no circumstances more. This applies to the limits X publishes (`apps/extension/src/shared/x-limits.ts`, with sources) and to the live limits X reports in its headers. Every request that reaches X counts, failed ones included. On an account's first active days Xomoni goes even lower (warm-up: 25%, 50%, 75%, then 100% of one fifth).
 
 ### A1. Per-endpoint 15-minute quota · 📘 · ✅
 - **X mechanism:** Each GraphQL operation has its own 15-minute window, for example `DeleteTweet`, `UnfavoriteTweet`, `SearchTimeline` and `TweetDetail`. X reports the quota in the `x-rate-limit-limit / remaining / reset` headers.
@@ -140,19 +140,18 @@
   - Log-normal delay distribution, and with 5% probability a pause of 30 to 90 seconds.
   - The goal is not to statistically imitate a human. The goal is to spread the load across the day and keep the hourly work volume low.
 
-### B5. Sudden spike in work volume · 🧠 · 🔴
+### B5. Sudden spike in work volume · 🧠 · 🟡
 - **Possible mechanism:** An account that usually performs 5 actions a day and suddenly performs 1,000 deletions a day looks abnormal.
-- **Proposed scenario (Warm-up):** The daily cap rises gradually over the first days:
+- **Scenario (warm-up, implemented; ADR-0012):** on an account's first active days Xomoni uses only part of its one-fifth share. Caps shrink and delays grow by the same factor:
 
-  | Day | % of daily cap | Deletions in Careful mode |
-  |---|---|---|
-  | 1 | 15% | 150 |
-  | 2 | 30% | 300 |
-  | 3 | 50% | 500 |
-  | 4 | 75% | 750 |
-  | 5 onward | 100% | 1,000 |
+  | Active day | Share of one fifth | Deletions per 15 min | Per hour | Per day |
+  |---|---|---|---|---|
+  | 1 | 25% | 2 | 10 | 240 |
+  | 2 | 50% | 5 | 20 | 480 |
+  | 3 | 75% | 7 | 30 | 720 |
+  | 4 onward | 100% | 10 | 40 | 960 |
 
-  If there has been no activity for 14 days, the warm-up period starts over. After any 226 or lock, it also starts again from a lower step.
+  If there has been no activity for 14 days, the warm-up starts over. **Still open (#17):** after any 226 or lock, drop back a step.
 
 ### B6. Back-to-back like and unlike · 📘 · ✅
 - **X mechanism:** X's rules prohibit aggressive liking and unliking.

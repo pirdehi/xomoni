@@ -4,7 +4,20 @@
 import { db } from '../shared/db';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Outcome, Settings } from '../shared/types';
-import { ACTION_BUDGETS, BUDGETS, type BudgetId, allowances, liveSlot, nextSlot, share } from '../shared/x-limits';
+import {
+  ACTION_BUDGETS,
+  BUDGETS,
+  type BudgetId,
+  WARMUP_RESET_DAYS,
+  allowances,
+  earlierActiveDays,
+  liveSlot,
+  nextSlot,
+  scaleAllowances,
+  scaleRule,
+  spendsQuota,
+  warmup,
+} from '../shared/x-limits';
 import { randomBetween, sleep } from './timers';
 
 /** Reports a wait the limiter starts: `reason` for the status line, `until` in epoch ms. */
@@ -17,14 +30,16 @@ function budgetsOf(action: ActionKind, readBudget?: BudgetId): readonly BudgetId
 }
 
 /**
- * Paces one run's actions. Each run builds a new limiter, seeded from the last 24 h of successful actions
- * (the activity log) and page loads (the `reads` table), so caps and budgets carry over between runs.
+ * Paces one run's actions. Each run builds a new limiter, seeded from the activity log and the page loads of
+ * the last 24 h (the `reads` table), so caps and budgets carry over between runs. Under the one-fifth rule
+ * (ADR-0012) nothing here can go faster than one fifth of X's limits; the warm-up only goes slower.
  */
 export class Limiter {
   private history = new Map<ActionKind, number[]>();
   private budgetUses = new Map<BudgetId, number[]>();
   private sinceBreak = new Map<ActionKind, number>();
   private penalty = 1;
+  private step = warmup(0);
 
   constructor(
     private settings: Settings,
@@ -33,18 +48,30 @@ export class Limiter {
     private onWait: WaitNotifier,
   ) {}
 
-  /** Seeds the rolling windows from the last 24 h of successful actions and page loads. */
+  /**
+   * Seeds the rolling windows: caps from the last 24 h of successful actions, X budgets from every request
+   * that reached X (failed ones included), and the warm-up step from the days with actions in the last
+   * two weeks.
+   */
   async init() {
-    const since = Date.now() - DAY;
+    const now = Date.now();
+    const since = now - DAY;
     const [logs, reads] = await Promise.all([
-      db.logs.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray(),
+      db.logs
+        .where('[accountId+ts]')
+        .between([this.accountId, now - WARMUP_RESET_DAYS * DAY], [this.accountId, Infinity])
+        .toArray(),
       db.reads.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray(),
     ]);
+    const acted: number[] = [];
     for (const row of logs) {
-      if (row.outcome !== 'done' || row.action === 'system' || row.action === 'read') continue;
-      this.stamps(row.action).push(row.ts);
+      if (!row.outcome || row.action === 'system' || row.action === 'read' || !spendsQuota(row.outcome)) continue;
+      acted.push(row.ts);
+      if (row.ts < since) continue;
+      if (row.outcome === 'done') this.stamps(row.action).push(row.ts);
       for (const id of budgetsOf(row.action)) this.uses(id).push(row.ts);
     }
+    this.step = warmup(earlierActiveDays(acted, now));
     for (const row of reads) {
       this.stamps('read').push(row.ts);
       if (row.budget in BUDGETS) this.uses(row.budget as BudgetId).push(row.ts);
@@ -53,9 +80,20 @@ export class Limiter {
     await db.reads.where('[accountId+ts]').between([this.accountId, -Infinity], [this.accountId, since]).delete();
   }
 
+  /** The account's warm-up step: day 1–4 and the share of the one-fifth allowances it may use. */
+  get warmup() {
+    return this.step;
+  }
+
   /** Current slowdown factor: 1 is normal, up to 6 after errors. */
   get slowdown() {
     return this.penalty;
+  }
+
+  /** Requests that spent budget `id` in the last 24 h, failed ones included. */
+  spent(id: BudgetId) {
+    const since = Date.now() - DAY;
+    return this.uses(id).filter((t) => t > since).length;
   }
 
   /** Successful uses of `action` in the last hour and the last 24 h, including earlier runs. */
@@ -88,7 +126,9 @@ export class Limiter {
    * (`readBudgetFor(url)`), so one fifth of that page's own quota applies.
    */
   async before(action: ActionKind, readBudget?: BudgetId) {
-    const rule = this.settings.pacing[action];
+    // During warm-up the caps shrink and the delays grow; never the other way.
+    const rule = scaleRule(this.settings.pacing[action], this.step.factor);
+    const warm = this.step.factor < 1 ? ` · warm-up day ${this.step.day} of ${this.step.days}` : '';
     const now = Date.now();
     const stamps = this.stamps(action);
     while (stamps.length && stamps[0] < now - DAY) stamps.shift();
@@ -98,31 +138,31 @@ export class Limiter {
     if (stamps.length >= rule.dailyCap) {
       await this.wait(
         stamps[stamps.length - rule.dailyCap] + DAY + randomBetween(60_000, 300_000),
-        `Daily cap of ${rule.dailyCap} reached`,
+        `Daily cap of ${rule.dailyCap} reached${warm}`,
       );
     }
     const lastHour = stamps.filter((t) => t > Date.now() - HOUR);
     if (lastHour.length >= rule.hourlyCap) {
       await this.wait(
         lastHour[lastHour.length - rule.hourlyCap] + HOUR + randomBetween(10_000, 60_000),
-        `Hourly cap of ${rule.hourlyCap} reached`,
+        `Hourly cap of ${rule.hourlyCap} reached${warm}`,
       );
     }
 
     for (const id of budgetsOf(action, readBudget)) {
       // One fifth of every window X publishes for this kind of request.
       const uses = this.uses(id);
-      const slot = nextSlot(uses, allowances(id), Date.now());
+      const allowed = scaleAllowances(allowances(id), this.step.factor);
+      const slot = nextSlot(uses, allowed, Date.now());
       if (slot > Date.now()) {
-        const full = BUDGETS[id].published.find(
-          (p) => uses.filter((t) => t > Date.now() - p.windowMs).length >= share(p.limit),
-        );
+        const i = allowed.findIndex((a) => uses.filter((t) => t > Date.now() - a.windowMs).length >= a.limit);
+        const full = BUDGETS[id].published[i];
         const what = full
-          ? ` (${share(full.limit)} of X’s ${full.limit} per ${full.windowMs >= DAY ? 'day' : '15 min'})`
+          ? ` (${allowed[i].limit} of X’s ${full.limit} per ${full.windowMs >= DAY ? 'day' : '15 min'}${warm})`
           : '';
         await this.wait(
           slot + randomBetween(5_000, 30_000),
-          `${BUDGETS[id].label}: one fifth of X’s limit used${what}`,
+          `${BUDGETS[id].label}: Xomoni’s share of X’s limit used${what}`,
         );
       }
       // One fifth of the live limit X reports for each operation that spends this budget.
@@ -155,14 +195,15 @@ export class Limiter {
   }
 
   /**
-   * Records the result of an action. Soft failures slow everything down; only successful actions on X
-   * (deletes, unlikes, undone reposts) ease the slowdown again, never page loads or scrolls.
+   * Records the result of an action. Every request that reached X spends X's budget, successful or not.
+   * Soft failures slow everything down; only successful actions on X (deletes, unlikes, undone reposts) ease
+   * the slowdown again, never page loads or scrolls.
    */
   after(action: ActionKind, outcome: Outcome, readBudget?: BudgetId) {
+    const now = Date.now();
+    if (spendsQuota(outcome)) for (const id of budgetsOf(action, readBudget)) this.uses(id).push(now);
     if (outcome === 'done') {
-      const now = Date.now();
       this.stamps(action).push(now);
-      for (const id of budgetsOf(action, readBudget)) this.uses(id).push(now);
       this.sinceBreak.set(action, (this.sinceBreak.get(action) ?? 0) + 1);
       if (action === 'read') {
         void db.reads.add({ accountId: this.accountId, budget: readBudget ?? 'userTimeline', ts: now });

@@ -90,3 +90,44 @@ describe('Limiter memory across runs', () => {
     expect(await db.reads.count()).toBe(0);
   });
 });
+
+describe('Limiter: the one-fifth ceiling at run time', () => {
+  it('counts failed requests against X’s budget but not as successes', () => {
+    const l = limiter();
+    l.after('delete', 'failed');
+    l.after('delete', 'already');
+    l.after('delete', 'done');
+    l.after('delete', 'skipped');
+    expect(l.spent('deletePost')).toBe(3);
+    expect(l.usage('delete')).toEqual({ hour: 1, day: 1 });
+  });
+
+  it('makes a ghost-like cleanup spend the unlike budget too', () => {
+    const l = limiter();
+    l.after('relike', 'done');
+    expect(l.spent('like')).toBe(1);
+    expect(l.spent('unlike')).toBe(1);
+  });
+
+  it('starts a new account on warm-up day 1 and reaches day 4 after three active days', async () => {
+    const fresh = limiter();
+    await fresh.init();
+    expect(fresh.warmup).toEqual({ day: 1, days: 4, factor: 0.25 });
+
+    const day = 86_400_000;
+    const log = (ts: number) => ({
+      ts,
+      accountId: ACCOUNT,
+      jobId: 'j',
+      level: 'info',
+      action: 'delete',
+      targetId: String(ts),
+      outcome: 'done',
+      message: '',
+    });
+    await db.logs.bulkAdd([log(Date.now() - day), log(Date.now() - 2 * day), log(Date.now() - 3 * day)] as never);
+    const seasoned = limiter();
+    await seasoned.init();
+    expect(seasoned.warmup.factor).toBe(1);
+  });
+});

@@ -5,7 +5,7 @@
 
 ## Context
 
-X enforces quotas on every kind of request, and an account that runs close to them is more likely to be throttled, challenged (error 226) or restricted. X publishes some limits (in its API documentation and Help Center) and reports others live in the `x-rate-limit-limit / remaining / reset` headers of its own web app. Until now Xomoni's Careful preset used numbers of its own (150 deletes an hour, 1,000 a day), and the limiter only stopped when X's live quota was nearly empty (`remaining ≤ 1`). Roadmap issue #26 asked for a decision on the caps. The maintainer decided: for every limit X itself announces, Xomoni uses one fifth.
+X enforces quotas on every kind of request, and an account that runs close to them is more likely to be throttled, challenged (error 226) or restricted. X publishes some limits (in its API documentation and Help Center) and reports others live in the `x-rate-limit-limit / remaining / reset` headers of its own web app. Until now Xomoni's Careful preset used numbers of its own (150 deletes an hour, 1,000 a day), and the limiter only stopped when X's live quota was nearly empty (`remaining ≤ 1`). Roadmap issue #26 asked for a decision on the caps. The maintainer decided: for every limit X itself announces, Xomoni uses one fifth, never more under any circumstances, and less than that at the start.
 
 ## Decision
 
@@ -25,6 +25,9 @@ X enforces quotas on every kind of request, and an account that runs close to th
   | Original posts, replies (unverified) | 50 / day, 200 / day | not used: Xomoni never posts | X Help Center |
 
   Sources: <https://docs.x.com/x-api/fundamentals/rate-limits>, <https://help.x.com/en/rules-and-policies/x-limits>.
+- **An absolute ceiling.** No preset, custom setting, retry or later feature may go above one fifth. Every path that changes pace only goes slower (warm-up, slowdown after errors, the risk ladder in #17).
+- **Every request counts.** X counts requests, not successes, so every request that reached X spends the budget: failed, already-gone and rate-limited ones included. Only actions Xomoni never sent (`skipped`, `logged_out`) are left out.
+- **Even lower at the start (warm-up).** An account's first active day runs at a quarter of one fifth (1/20 of X's limit), the second at half, the third at three quarters, and from the fourth active day at one fifth. Caps shrink and delays grow by the same factor, so the pace stays even. After 14 days without activity the warm-up starts again. On day one that means at most 2 deletes per 15 minutes (8 an hour, 240 a day).
 - **Live limits.** For every X operation, once one fifth of the window X reports is used (`limit − remaining ≥ limit / 5`, counting the person's own browsing too), Xomoni waits until X resets the window. A 429 always waits for the reset.
 - **Budgets, not actions.** Each action spends X's budgets: a ghost-like cleanup spends both the like and the unlike budget, so it shares the 200-a-day unlike allowance with ordinary unlikes. A page load spends the read budget of that page (search, timeline, likes, post page).
 - **Derived caps.** Per-action hourly and daily ceilings follow from the allowances (deletes: 40 an hour, 960 a day; unlikes: 40 an hour, 200 a day). The single preset, Careful, runs at these ceilings with delays of 80 to 120 seconds, so the pace stays even instead of filling each 15-minute window in a burst. Custom settings are clamped to the ceilings on load and on save; they can be slower, never faster. The Balanced preset is retired; stored settings that used it become Careful.
@@ -34,8 +37,8 @@ X enforces quotas on every kind of request, and an account that runs close to th
 
 - Cleanups are slower: about 36 deletes an hour at most, instead of up to 150. A 10,000-post cleanup takes days, which the dashboard's estimate shows.
 - The numbers have one home. When X changes a published limit, update `X_PUBLISHED_LIMITS` with the new source date; every cap, the Settings table and the tests follow.
-- Tests (`apps/extension/tests/x-limits.test.ts`, `limiter.test.ts`) fail if any preset or derived cap exceeds one fifth, or if the live-limit rule changes.
-- Warm-up over the first days (#19) and the risk ladder (#17) reduce the pace further; they never raise it above one fifth.
+- Tests (`apps/extension/tests/x-limits.test.ts`, `limiter.test.ts`) fail if any preset, custom setting or warm-up step exceeds one fifth of any X limit, if failed requests stop counting, or if the live-limit rule changes.
+- The risk ladder (#17) will lower the pace further after X's checks; like the warm-up, it can never raise it above one fifth.
 
 ## Alternatives considered
 

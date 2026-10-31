@@ -7,7 +7,7 @@
  * Pure: no `chrome.*`, DOM or storage.
  */
 import { DAY, MINUTE } from './time';
-import type { ActionKind, PacingRule } from './types';
+import type { ActionKind, Outcome, PacingRule } from './types';
 
 /** Share of every limit X announces that Xomoni lets itself use. */
 export const SAFETY_SHARE = 1 / 5;
@@ -221,5 +221,69 @@ export function clampRule(action: ActionKind, rule: Partial<PacingRule>): Pacing
     batchPauseMax: Math.max(batchPauseMin, num(rule.batchPauseMax, batchPauseMin)),
     hourlyCap: Math.min(ceiling.hourlyCap, Math.max(1, Math.round(num(rule.hourlyCap, 1)))),
     dailyCap: Math.min(ceiling.dailyCap, Math.max(1, Math.round(num(rule.dailyCap, 1)))),
+  };
+}
+
+/**
+ * Outcomes that mean a request reached X, so they spend X's quota whether or not they succeeded. X counts
+ * every request; counting only successes could take Xomoni past one fifth. Only `skipped` (Xomoni chose not
+ * to act) and `logged_out` (found before acting) are left out; counting a failure that sent nothing only
+ * makes Xomoni slower, never faster.
+ */
+export function spendsQuota(outcome: Outcome): boolean {
+  return outcome !== 'skipped' && outcome !== 'logged_out';
+}
+
+/**
+ * Warm-up: the part of the one-fifth allowances an account may use on its first active days. Day one runs at
+ * a quarter of one fifth (1/20 of X's limit); the fourth active day reaches one fifth, never more.
+ */
+export const WARMUP_STEPS = [0.25, 0.5, 0.75, 1] as const;
+
+/** Days without any action after which the warm-up starts again from day one. */
+export const WARMUP_RESET_DAYS = 14;
+
+const dayKey = (t: number) => new Date(t).toDateString();
+
+/**
+ * How many earlier days (local calendar days before today, within the last {@link WARMUP_RESET_DAYS}) had
+ * at least one action, from the times of the account's past actions.
+ */
+export function earlierActiveDays(actionTimes: readonly number[], now: number): number {
+  const today = dayKey(now);
+  const since = now - WARMUP_RESET_DAYS * DAY;
+  return new Set(
+    actionTimes
+      .filter((t) => t >= since && t < now)
+      .map(dayKey)
+      .filter((d) => d !== today),
+  ).size;
+}
+
+/** The warm-up step for an account: its day (1–4) and the factor applied to the one-fifth allowances. */
+export function warmup(earlierDays: number): { day: number; days: number; factor: number } {
+  const index = Math.min(Math.max(0, earlierDays), WARMUP_STEPS.length - 1);
+  return { day: index + 1, days: WARMUP_STEPS.length, factor: WARMUP_STEPS[index] };
+}
+
+/** Scales allowances by the warm-up factor (rounded down, at least 1). A factor above 1 is treated as 1. */
+export function scaleAllowances(list: readonly Allowance[], factor: number): Allowance[] {
+  const f = Math.min(1, factor);
+  return list.map((a) => ({ ...a, limit: Math.max(1, Math.floor(a.limit * f)) }));
+}
+
+/**
+ * Scales a pacing rule by the warm-up factor: caps shrink with it and delays grow, so the pace stays even
+ * within the smaller allowance. A factor above 1 is treated as 1, so the rule never gets faster.
+ */
+export function scaleRule(rule: PacingRule, factor: number): PacingRule {
+  const f = Math.min(1, factor);
+  if (f === 1) return rule;
+  return {
+    ...rule,
+    minDelay: rule.minDelay / f,
+    maxDelay: rule.maxDelay / f,
+    hourlyCap: Math.max(1, Math.floor(rule.hourlyCap * f)),
+    dailyCap: Math.max(1, Math.floor(rule.dailyCap * f)),
   };
 }

@@ -4,7 +4,15 @@ import { db, getSettings } from '../../shared/db';
 import { ACTION_LABELS } from '../../shared/settings';
 import { DAY, HOUR } from '../../shared/time';
 import type { ActionKind } from '../../shared/types';
-import { liveSlot, share } from '../../shared/x-limits';
+import {
+  WARMUP_RESET_DAYS,
+  earlierActiveDays,
+  liveSlot,
+  scaleRule,
+  share,
+  spendsQuota,
+  warmup,
+} from '../../shared/x-limits';
 import { fmtDuration, fmtNumber } from '../format';
 import { Card, Meter, useNow } from './ui';
 
@@ -31,9 +39,23 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
   const now = useNow(1000);
   const settings = useLiveQuery(getSettings, []);
   const usage = useLiveQuery(async () => {
-    const since = Date.now() - DAY;
-    const rows = await db.logs.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray();
+    const now = Date.now();
+    const since = now - DAY;
+    const rows = await db.logs
+      .where('[accountId+ts]')
+      .between([accountId, now - WARMUP_RESET_DAYS * DAY], [accountId, Infinity])
+      .toArray();
     const out: Record<string, { hour: number; day: number }> = {};
+    // Same warm-up step the limiter uses: days with requests to X in the last two weeks.
+    const acted = rows.filter(
+      (r) => r.outcome && r.action !== 'system' && r.action !== 'read' && spendsQuota(r.outcome),
+    );
+    const step = warmup(
+      earlierActiveDays(
+        acted.map((r) => r.ts),
+        now,
+      ),
+    );
     const reads = await db.reads.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray();
     for (const r of reads) {
       const u = (out.read ??= { hour: 0, day: 0 });
@@ -41,12 +63,12 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       if (r.ts > Date.now() - HOUR) u.hour++;
     }
     for (const r of rows) {
-      if (r.outcome !== 'done' || r.action === 'read') continue;
+      if (r.ts < since || r.outcome !== 'done' || r.action === 'read') continue;
       const u = (out[r.action] ??= { hour: 0, day: 0 });
       u.day++;
       if (r.ts > Date.now() - HOUR) u.hour++;
     }
-    return out;
+    return { counts: out, step };
   }, [accountId]);
   const observed = useLiveQuery(
     () =>
@@ -63,15 +85,20 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       title="Limits & pacing"
       subtitle={
         settings
-          ? `Preset: ${settings.preset[0].toUpperCase()}${settings.preset.slice(1)} · rolling windows`
+          ? `Preset: ${settings.preset[0].toUpperCase()}${settings.preset.slice(1)} · at most ⅕ of X's limits` +
+            (usage && usage.step.factor < 1
+              ? ` · warm-up day ${usage.step.day} of ${usage.step.days} (${usage.step.factor * 100}% of that)`
+              : '')
           : undefined
       }
     >
       <div className="space-y-4">
         {SHOWN.map((action) => {
-          const rule = settings?.pacing[action];
-          const u = usage?.[action] ?? { hour: 0, day: 0 };
-          if (!rule) return null;
+          const stored = settings?.pacing[action];
+          const u = usage?.counts[action] ?? { hour: 0, day: 0 };
+          if (!stored) return null;
+          // The caps in force today: smaller during warm-up, never above one fifth.
+          const rule = scaleRule(stored, usage?.step.factor ?? 1);
           return (
             <div key={action}>
               <div className="mb-1.5 flex items-baseline justify-between text-xs">

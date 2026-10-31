@@ -7,14 +7,21 @@ import {
   BUDGETS,
   READ_CEILING,
   SAFETY_SHARE,
+  WARMUP_RESET_DAYS,
+  WARMUP_STEPS,
   X_PUBLISHED_LIMITS,
   allowances,
   capCeilings,
   clampRule,
+  earlierActiveDays,
   liveSlot,
   nextSlot,
   readBudgetFor,
+  scaleAllowances,
+  scaleRule,
   share,
+  spendsQuota,
+  warmup,
 } from '../src/shared/x-limits';
 
 const NOW = Date.parse('2026-10-31T12:00:00Z');
@@ -201,5 +208,92 @@ describe('normalizeSettings', () => {
 
   it('gives defaults when nothing is stored', () => {
     expect(normalizeSettings(null).pacing).toEqual(PRESETS.careful);
+  });
+});
+
+describe('requests that spend X’s quota', () => {
+  it('counts every request that reached X, successful or not', () => {
+    for (const outcome of [
+      'done',
+      'already',
+      'not_found',
+      'failed',
+      'rate_limited',
+      'daily_limit',
+      'automation_flag',
+      'locked',
+    ] as const) {
+      expect(spendsQuota(outcome)).toBe(true);
+    }
+  });
+
+  it('leaves out actions Xomoni never sent', () => {
+    expect(spendsQuota('skipped')).toBe(false);
+    expect(spendsQuota('logged_out')).toBe(false);
+  });
+});
+
+describe('warm-up: even slower at the start', () => {
+  const day = (n: number) => NOW - n * DAY;
+
+  it('starts at a quarter of one fifth and reaches one fifth on the fourth active day', () => {
+    expect(warmup(0)).toEqual({ day: 1, days: 4, factor: 0.25 });
+    expect(warmup(1).factor).toBe(0.5);
+    expect(warmup(2).factor).toBe(0.75);
+    expect(warmup(3).factor).toBe(1);
+    expect(warmup(40).factor).toBe(1);
+  });
+
+  it('counts earlier days with actions, not today and not before the reset window', () => {
+    expect(earlierActiveDays([NOW - 1000, NOW - 2000], NOW)).toBe(0);
+    expect(earlierActiveDays([day(1), day(1) - 1000, day(3)], NOW)).toBe(2);
+    expect(earlierActiveDays([day(WARMUP_RESET_DAYS + 1)], NOW)).toBe(0);
+  });
+
+  it('shrinks allowances and caps and stretches delays', () => {
+    expect(scaleAllowances(allowances('deletePost'), 0.25)).toEqual([{ limit: 2, windowMs: 15 * MINUTE }]);
+    const rule = scaleRule(PRESETS.careful.delete, 0.25);
+    expect(rule).toMatchObject({ hourlyCap: 10, dailyCap: 240, minDelay: 320, maxDelay: 480 });
+  });
+
+  it('can never make anything faster', () => {
+    expect(scaleAllowances(allowances('deletePost'), 3)).toEqual(allowances('deletePost'));
+    expect(scaleRule(PRESETS.careful.delete, 3)).toEqual(PRESETS.careful.delete);
+  });
+});
+
+describe('the ceiling holds everywhere', () => {
+  it('never exceeds one fifth of any X limit, for any action, on any warm-up day', () => {
+    for (const step of WARMUP_STEPS) {
+      for (const id of Object.keys(BUDGETS) as (keyof typeof BUDGETS)[]) {
+        scaleAllowances(allowances(id), step).forEach((a, i) => {
+          expect(a.limit).toBeLessThanOrEqual(BUDGETS[id].published[i].limit / 5);
+        });
+      }
+      for (const action of Object.keys(PRESETS.careful) as ActionKind[]) {
+        const rule = scaleRule(PRESETS.careful[action], step);
+        expect(rule.hourlyCap).toBeLessThanOrEqual(capCeilings(action).hourlyCap);
+        expect(rule.dailyCap).toBeLessThanOrEqual(capCeilings(action).dailyCap);
+      }
+    }
+  });
+
+  it('keeps even an absurd custom setting at or below one fifth', () => {
+    const settings = normalizeSettings({
+      preset: 'custom',
+      pacing: {
+        delete: {
+          minDelay: 0,
+          maxDelay: 0,
+          batchSize: 9999,
+          batchPauseMin: 0,
+          batchPauseMax: 0,
+          hourlyCap: 1e9,
+          dailyCap: 1e9,
+        },
+      } as never,
+    });
+    expect(settings.pacing.delete.hourlyCap).toBe(40);
+    expect(settings.pacing.delete.dailyCap).toBe(960);
   });
 });

@@ -6,6 +6,11 @@ import type { DashboardReader, DeviceRegistry, LiveFeed } from '../application/p
 
 type Client = SupabaseClient<Database>;
 
+/** The viewer's private Realtime topic; the policy on `realtime.messages` admits only its owner. */
+export function dashboardTopic(viewerId: string): string {
+  return `dashboard:${viewerId}`;
+}
+
 /** Maps a `public.devices` row to the domain model. */
 export function toDevice(row: DeviceRow): Device {
   return { id: row.id, name: row.name, extensionVersion: row.extension_version, lastSeenAt: row.last_seen_at };
@@ -62,7 +67,10 @@ export function createSupabaseDeviceRegistry(supabase: Client): DeviceRegistry {
   };
 }
 
-/** Live changes through Supabase Realtime (Postgres changes, filtered by RLS and by user id). */
+/**
+ * Live changes through Supabase Realtime (Postgres changes, filtered by RLS and by user id), on a private
+ * channel only this viewer may join (`dashboard:<user id>`, #81).
+ */
 export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
   return {
     subscribe(viewerId, handlers) {
@@ -75,7 +83,7 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
         await supabase.realtime.setAuth();
         if (cancelled) return;
         channel = supabase
-          .channel('dashboard')
+          .channel(dashboardTopic(viewerId), { config: { private: true } })
           // "SUBSCRIBED" arrives before Postgres changes flow; this system message means they do.
           .on('system', {}, (msg: { extension?: string; status?: string; message?: string }) => {
             if (msg.extension !== 'postgres_changes') return;

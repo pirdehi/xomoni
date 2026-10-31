@@ -5,7 +5,7 @@ import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from
 import type { ActionResult, PageInfo } from '../shared/messages';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } from '../shared/types';
-import { type BudgetId, readBudgetFor } from '../shared/x-limits';
+import { BUDGETS, type BudgetId, quotaHit, readBudgetFor } from '../shared/x-limits';
 import { Limiter } from './limiter';
 import { Aborted, randomBetween, sleep } from './timers';
 import { NotReady, WorkerGone, workerTab } from './worker-tab';
@@ -261,6 +261,25 @@ export class JobContext {
     }
   }
 
+  /**
+   * Whether X refused the current page for its quota since `since` (epoch ms): a 429, or nothing remaining, on
+   * any request of the page's read budget. Returns it as a `rate_limited` result for `settle`, or null. X's
+   * answer may be stored a moment after the page shows its error, so this looks for up to two seconds.
+   */
+  async pageRateLimit(since: number): Promise<ActionResult | null> {
+    const budget = BUDGETS[this.readBudget];
+    for (let look = 0; look < 4; look++) {
+      for (const op of budget.ops) {
+        const obs = await db.limits.get(`${this.job.accountId}:${op}`);
+        if (quotaHit(obs, since)) {
+          return { outcome: 'rate_limited', resetAt: obs.reset, message: `${budget.label}: X’s rate limit reached` };
+        }
+      }
+      await sleep(500, this.signal);
+    }
+    return null;
+  }
+
   /** Paced scroll in the worker page; it loads more of the current page, so it spends that page's read budget. */
   async scroll() {
     this.checkpoint();
@@ -306,9 +325,10 @@ export class JobContext {
         // Two rate limits within an hour put the account on the Retreat rung: stop instead of waiting.
         const blocked = riskBlock(await this.risk('rate_limited'));
         if (blocked) throw new Stop('blocked', blocked);
+        // X's reset time plus 30–90 s, so the next request never lands right on the edge of X's window.
         const until =
           result.resetAt && result.resetAt > Date.now()
-            ? result.resetAt + randomBetween(10_000, 30_000)
+            ? result.resetAt + randomBetween(30_000, 90_000)
             : Date.now() + randomBetween(15, 20) * 60_000;
         await this.log(
           'warn',

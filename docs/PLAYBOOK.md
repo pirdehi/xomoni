@@ -31,7 +31,7 @@
 | A2 | Error 429 / code 88 | 📘 | ✅ |
 | A3 | Daily action caps (185, 344, likes) | 📘📰 | ✅ |
 | A4 | "Posts read per day" cap | 📰 | 🟡 |
-| A5 | Search and post-page quota | 📰 | 🟡 |
+| A5 | Search and post-page quota | 📰 | ✅ |
 | A6 | Different caps for Premium accounts | 📘📰 | 🟡 |
 | B1 | Error 226 ("automated behavior") | 📰 | ✅ |
 | B2 | Signed `x-client-transaction-id` header | 📰 | ✅ |
@@ -104,12 +104,12 @@
   3. Wait until the 24-hour window clears.
   4. The learned cap is stored for that account.
 
-### A5. Search and post-page quota · 📰 · 🟡
+### A5. Search and post-page quota · 📰 · ✅
 - **X mechanism:** Search and the post page have separate quotas. The search quota is low, on the order of a few dozen requests per 15 minutes.
-- **Current problem:** If the search page loads with an error, `sweep()` abandons the whole search and goes straight to "deep clean". Deep clean opens each post separately and is much more expensive.
-- **Proposed scenario:**
-  - If the error is a 429 on `SearchTimeline`, wait until reset and retry **the same step** up to 3 times.
-  - Fall back to deep clean only if a non-quota error persists.
+- **Scenario (implemented, #16):**
+  - If a sweep page fails and X answered its requests with a 429 (or nothing remaining), Xomoni records the rate limit on the risk ladder, waits for X's reset plus 30–90 seconds, and loads **the same page** again, up to 3 times. After that it pauses the job; it never falls back to the deep clean for a quota error, because the deep clean opens each post separately and is much more expensive.
+  - The risk ladder is stricter still: a second rate limit within an hour stops the job (§7).
+  - A page that fails for another reason is tried again after 1–2 minutes. Only after 3 failed loads does Xomoni continue with the inventory (deep clean).
 
 ### A6. Different Premium caps · 📘📰 · 🟡
 - **Proposed scenario:** Xomoni detects the account type from the profile response (`is_blue_verified`). Defaults always stay conservative. For an unverified account, a lower read cap is suggested. For Premium, Balanced mode is only **allowed**.

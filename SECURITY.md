@@ -50,10 +50,10 @@ A review of what the cloud side exposes today: Supabase (Postgres with Row Level
 | --- | --- | --- |
 | `delete_account()` accepts any valid session; *Type DELETE* is checked only in the page. A stolen session can delete the account and its history at once. | Medium | Fixed: `delete_account()` needs a sign-in within the last 10 minutes ([#80](https://github.com/pirdehi/xomoni/issues/80)). |
 | Every dashboard joins one public Realtime topic. Anyone with the publishable key can broadcast to all open dashboards (ignored by the page today), and anonymous subscribers see an empty event for every job change of every user, which reveals activity timing but no content. | Low | [#81](https://github.com/pirdehi/xomoni/issues/81): a private channel per user. |
-| Nothing limits how many devices or jobs one account writes (300 devices in one request worked). | Low | [#82](https://github.com/pirdehi/xomoni/issues/82): caps per account and per device. |
+| Nothing limits how many devices or jobs one account writes (300 devices in one request worked). | Low | Fixed: at most 10 devices per account, and the newest 1,000 jobs per device ([#82](https://github.com/pirdehi/xomoni/issues/82)). |
 | Sign-out ends only the current session. Accounts that use Google have no password to change, so they can't end a session left elsewhere. | Low | Fixed: *Sign out everywhere* on the account page ([#83](https://github.com/pirdehi/xomoni/issues/83)). |
 
-The Data API has no per-user request rate limit; the caps in #82 and the 1,000-row `max_rows` bound what one account can do with it.
+The Data API has no per-user request rate limit; the caps from #82 (at most 10,000 job rows per account) and the 1,000-row `max_rows` bound what one account can store and read with it.
 
 ## Supported versions
 

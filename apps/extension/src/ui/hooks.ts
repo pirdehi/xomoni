@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { db, kvGet, kvSet, recordRisk, riskEvents, upsertAccount } from '../shared/db';
+import { db, hasConsent, kvGet, kvSet, recordRisk, riskEvents, upsertAccount } from '../shared/db';
 import { type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY } from '../shared/time';
 import { WARMUP_RESET_DAYS, earlierActiveDays, spendsQuota, warmup } from '../shared/x-limits';
@@ -90,12 +90,52 @@ export function useToasts() {
   );
 }
 
+/** A request for informed consent (#24) the consent dialog is showing: the X account, and how to answer. */
+export interface ConsentRequest {
+  accountId: string;
+  answer: (agreed: boolean) => void;
+}
+let consentRequest: ConsentRequest | null = null;
+const consentListeners = new Set<() => void>();
+const showConsent = (request: ConsentRequest | null) => {
+  consentRequest = request;
+  consentListeners.forEach((l) => l());
+};
+
+/** Opens the consent dialog for an X account; resolves true once the person typed their consent. */
+function askConsent(accountId: string): Promise<boolean> {
+  consentRequest?.answer(false);
+  return new Promise((resolve) =>
+    showConsent({
+      accountId,
+      answer: (agreed) => {
+        showConsent(null);
+        resolve(agreed);
+      },
+    }),
+  );
+}
+
+/** The consent request on screen, or null; the app shell renders the consent dialog for it. */
+export function useConsentRequest() {
+  return useSyncExternalStore(
+    (l) => {
+      consentListeners.add(l);
+      return () => consentListeners.delete(l);
+    },
+    () => consentRequest,
+  );
+}
+
 /**
  * Starts or resumes a job without waiting for it: `runner.start` settles only when the job ends.
- * Errors that prevent the start (a job already running, another dashboard tab holding the runner
- * lock) are shown as a toast.
+ * Before an X account's first job, the person must read the risks and type their consent (#24);
+ * closing the dialog starts nothing. Errors that prevent the start (a job already running, another
+ * dashboard tab holding the runner lock) are shown as a toast.
  */
-export function startJob(jobId: string) {
+export async function startJob(jobId: string) {
+  const job = await db.jobs.get(jobId);
+  if (job && !(await hasConsent(job.accountId)) && !(await askConsent(job.accountId))) return;
   runner.start(jobId).catch((err) => toast(err instanceof Error ? err.message : String(err), 'critical'));
 }
 
@@ -119,7 +159,7 @@ export function useRisk(accountId: string | undefined): RiskAssessment | undefin
  */
 export async function resumeAnyway(jobId: string, accountId: string) {
   await recordRisk(accountId, 'override');
-  startJob(jobId);
+  await startJob(jobId);
 }
 
 /** The pace an account runs at now, as the limiter computes it when a run starts. */

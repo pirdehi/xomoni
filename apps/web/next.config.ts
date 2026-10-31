@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   // Workspace packages ship TypeScript source.
-  transpilePackages: ['@xomoni/db'],
+  transpilePackages: ['@xomoni/consent', '@xomoni/db'],
   turbopack: {
     // npm workspaces hoist dependencies to the monorepo root.
     root: path.join(__dirname, '..', '..'),

@@ -13,6 +13,7 @@
     "preview:ui": "vite --open /preview.html"
   },
   "dependencies": {
+    "@xomoni/consent": "*",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "lucide-react": "^1.64.0",

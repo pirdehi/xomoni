@@ -1,15 +1,20 @@
 /**
  * The risk ladder (PLAYBOOK §7, B1, C1, C2): Xomoni backs off one step before X does.
  *
- * Every signal of trouble from X (error 226, an account lock, a refused write, a suspension, rate limits) is
+ * Every signal of trouble from X (error 226, an account lock, a refused write, a suspension, rate limits, an
+ * action X confirmed but did not apply) is
  * stored as a dated event per account. The level, the pace and when a stopped job may resume are all derived
  * from those events here, so they survive restarts and can be tested without a browser. The ladder only ever
  * slows Xomoni down; it never raises the pace above one fifth of X's limits (ADR-0012, ADR-0013).
  */
 import { DAY, HOUR } from './time';
 
-/** A signal from X that the account is under pressure, or the person's typed decision to resume anyway. */
-export type RiskEventKind = 'automation_flag' | 'lock' | 'restricted' | 'suspended' | 'rate_limited' | 'override';
+/**
+ * A signal from X that the account is under pressure, or the person's typed decision to resume anyway.
+ * `silent_block`: a sampled action X confirmed was found not applied on its post page (PLAYBOOK C5).
+ */
+export type RiskEventKind =
+  'automation_flag' | 'lock' | 'restricted' | 'suspended' | 'silent_block' | 'rate_limited' | 'override';
 
 /** One stored risk event. */
 export interface RiskEvent {
@@ -44,13 +49,15 @@ export interface RiskAssessment {
   resumeAt: number | null;
   /** No automatic resume at all: only the person's typed decision (an `override` event) lifts it. */
   fullStop: boolean;
-  /** Warm-up steps to drop: one per 226, lock or refusal in the last two weeks. */
+  /** Warm-up steps to drop: one per 226, lock, refusal or silent block in the last two weeks. */
   warmupDrop: number;
   /** Why the account is at this level, for the person; empty at level 0. */
   reason: string;
 }
 
 const WEEK = 7 * DAY;
+/** Events that drop the warm-up back a step (PLAYBOOK B5). */
+const WARMUP_DROPS = new Set<RiskEventKind>(['automation_flag', 'lock', 'restricted', 'silent_block']);
 const MONTH = 30 * DAY;
 
 /** How long a lock or refusal keeps the pace at a quarter, before it rises to half for the rest of the week. */
@@ -64,7 +71,7 @@ const DEFENSIVE_MS = 48 * HOUR;
  *   7 days.
  * - **Defensive (3):** a second 226 within 7 days (resume locked 24 h), an account lock, or a refused write
  *   (resume locked 12 h). A quarter of the pace for 48 h, then half until the week is over.
- * - **Full stop (4):** a suspension (30 days), a second lock or a third 226 within 7 days. No automatic
+ * - **Full stop (4):** a suspension or a silent block (30 days), a second lock or a third 226 within 7 days. No automatic
  *   resume; an `override` event (the person typed their decision) lifts the stop for earlier events, while the
  *   pace stays at a quarter for 48 h after it.
  */
@@ -114,6 +121,7 @@ export function assessRisk(events: readonly RiskEvent[], now: number): RiskAsses
   // Full stop.
   const recent = sorted.filter(afterOverride);
   const suspended = recent.some((e) => e.kind === 'suspended' && e.at > now - MONTH);
+  const silent = recent.some((e) => e.kind === 'silent_block' && e.at > now - MONTH);
   const locks = of(
     'lock',
     recent.filter((e) => e.at > now - WEEK),
@@ -122,10 +130,11 @@ export function assessRisk(events: readonly RiskEvent[], now: number): RiskAsses
     'automation_flag',
     recent.filter((e) => e.at > now - WEEK),
   ).length;
-  const fullStop = suspended || locks >= 2 || flags >= 3;
+  const fullStop = suspended || silent || locks >= 2 || flags >= 3;
 
   const reasons: string[] = [];
   if (suspended) reasons.push('X suspended this account');
+  else if (silent) reasons.push('X confirmed an action but did not apply it, which points to a silent block');
   else if (locks >= 2) reasons.push('X locked this account twice within 7 days');
   else if (flags >= 3) reasons.push('X flagged the activity as automated (226) three times within 7 days');
   else {
@@ -152,8 +161,7 @@ export function assessRisk(events: readonly RiskEvent[], now: number): RiskAsses
     reducedUntil: reducedUntil > now ? reducedUntil : null,
     resumeAt: resumeAt > now ? resumeAt : null,
     fullStop,
-    warmupDrop: twoWeeks.filter((e) => e.kind === 'automation_flag' || e.kind === 'lock' || e.kind === 'restricted')
-      .length,
+    warmupDrop: twoWeeks.filter((e) => WARMUP_DROPS.has(e.kind)).length,
     reason: reasons.join('; '),
   };
 }

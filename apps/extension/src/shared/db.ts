@@ -2,7 +2,18 @@ import Dexie, { type Table } from 'dexie';
 import { type RiskEvent, type RiskEventKind, isDuplicateRisk } from './risk';
 import { normalizeSettings } from './settings';
 import { DAY } from './time';
-import type { Account, Item, ItemDraft, ItemKind, ItemSource, Job, LogEntry, RateObservation, Settings } from './types';
+import type {
+  Account,
+  Item,
+  ItemDraft,
+  ItemKind,
+  ItemSource,
+  Job,
+  LogEntry,
+  RateObservation,
+  SampleCheck,
+  Settings,
+} from './types';
 
 interface KV {
   key: string;
@@ -30,6 +41,7 @@ class XomoniDB extends Dexie {
   limits!: Table<RateObservation, string>;
   reads!: Table<ReadUse, number>;
   risk!: Table<RiskEvent, number>;
+  checks!: Table<SampleCheck, number>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -44,13 +56,15 @@ class XomoniDB extends Dexie {
     });
     this.version(2).stores({ reads: '++seq, [accountId+ts]' });
     this.version(3).stores({ risk: '++seq, [accountId+at]' });
+    this.version(4).stores({ checks: '++seq, [accountId+dueAt]' });
   }
 }
 
 /**
  * The extension's IndexedDB database (`xomoni`), used by the dashboard and the service worker. Tables:
  * `accounts`, `items` (the inventory), `jobs`, `logs`, `limits` (X rate-limit observations), `reads` (page loads of
- * the last 24 hours), `risk` (the risk ladder's events, see `risk.ts`) and `kv`.
+ * the last 24 hours), `risk` (the risk ladder's events, see `risk.ts`), `checks` (sampled actions to check again,
+ * see `engine/samples.ts`) and `kv`.
  * @remarks Content scripts cannot use it: they run under x.com's origin, so they message the service worker.
  */
 export const db = new XomoniDB();

@@ -6,6 +6,16 @@ const NOW = Date.parse('2026-10-31T12:00:00Z');
 const ev = (kind: RiskEventKind, ago: number): RiskEvent => ({ accountId: 'a', kind, at: NOW - ago });
 
 describe('risk ladder', () => {
+  it('stops in full after a silent block until the person resumes anyway (#22)', () => {
+    const silent = assessRisk([ev('silent_block', HOUR)], NOW);
+    expect(silent).toMatchObject({ level: 4, fullStop: true, warmupDrop: 1 });
+    expect(silent.reason).toMatch(/did not apply it/);
+    expect(assessRisk([ev('silent_block', 2 * HOUR), ev('override', HOUR)], NOW)).toMatchObject({
+      fullStop: false,
+      capFactor: 0.25,
+    });
+  });
+
   it('is Normal with no events', () => {
     expect(assessRisk([], NOW)).toMatchObject({
       level: 0,
@@ -96,7 +106,15 @@ describe('risk ladder', () => {
   });
 
   it('never speeds anything up', () => {
-    const kinds: RiskEventKind[] = ['automation_flag', 'lock', 'restricted', 'suspended', 'rate_limited', 'override'];
+    const kinds: RiskEventKind[] = [
+      'automation_flag',
+      'lock',
+      'restricted',
+      'suspended',
+      'silent_block',
+      'rate_limited',
+      'override',
+    ];
     for (const kind of kinds) {
       for (const ago of [0, HOUR, DAY, 3 * DAY, 10 * DAY]) {
         expect(assessRisk([ev(kind, ago)], NOW).capFactor).toBeLessThanOrEqual(1);

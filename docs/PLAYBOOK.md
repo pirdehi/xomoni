@@ -46,7 +46,7 @@
 | C2 | Account lock (326) and Arkose captcha | 📘📰 | ✅ |
 | C3 | "Limited" or read-only account | 📰 | ✅ |
 | C4 | Suspension (code 64) | 📘 | ✅ |
-| C5 | Silent block (action is confirmed but not carried out) | 🧠 | 🔴 |
+| C5 | Silent block (action is confirmed but not carried out) | 🧠 | ✅ |
 | C6 | Visibility limits and Search ban | 📰 | 🟡 |
 | C7 | Ban on non-API automation in X's rules | 📘 | ⚠️ |
 | D1 | Logout or session expiry | 📘 | ✅ |
@@ -196,14 +196,17 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 ### C4. Suspension (code 64) · 📘 · ✅
 - **Scenario (implemented, #18):** code 64 → outcome `suspended`: stop immediately with a clear message, no waiting for the person (they can't fix it) and no automatic resume. Code 326 (a lock the person can clear) still waits for them.
 
-### C5. Silent block · 🧠 · 🔴
+### C5. Silent block · 🧠 · ✅
 - **Possible mechanism:** X returns a success response but does not actually carry out the action (soft block).
-- **Proposed scenario (sample verification):**
-  1. Out of roughly every 25 deletions, one is picked at random.
-  2. 10 to 30 minutes later, that post's page is opened. We expect to see "not found" (code 144).
-  3. If the post still exists, stop immediately with the message "X is silently not applying deletions".
+- **Scenario (implemented, #22): sample checks.**
+  1. About one in 25 confirmed actions (deletes, undone reposts, unlikes) is picked at random and queued in IndexedDB (`checks` table).
+  2. 10 to 30 minutes later, at the next point where the run loads a new page anyway (before a sweep pass, before a deep-clean visit, or at the end of the job), the post's page is opened:
+     - **Delete:** expect "not found".
+     - **Undo repost:** expect the post shown as not reposted.
+     - **Unlike:** expect the post shown as not liked.
+  3. If X did not apply the action, Xomoni records a `silent_block` risk event: **full stop** (level 4, ADR-0013), with no automatic resume. A page that can't tell (it timed out, or the post isn't shown) drops the check without a verdict.
 
-  The cost is about 4% extra reads.
+  The cost is about 4% extra page loads, each counted against the post-page budget (one fifth, ADR-0012). Checks not yet due when a job ends wait for the next cleanup run.
 
 ### C6. Visibility limits and Search ban · 📰 · 🟡
 - **X mechanism:** X may remove the account's posts from search. In that case a `from:` search comes back empty.

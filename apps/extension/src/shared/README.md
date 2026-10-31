@@ -13,7 +13,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | `graphql.ts`   | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts.                        |
 | `messages.ts`  | Message types between the dashboard, the content script and the service worker.                                             |
 | `notify.ts`    | Desktop notifications and their ids.                                                                                        |
-| `risk.ts` | The risk ladder (ADR-0013): risk events, `assessRisk` (level, pace factor, resume lock, full stop) and duplicate filtering. Pure. |
+| `risk.ts` | The risk ladder (ADR-0013): risk events (silent blocks included), `assessRisk` (level, pace factor, resume lock, full stop) and duplicate filtering. Pure. |
 | `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings) and action labels.                       |
 | `x-limits.ts`  | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule, the quota check for failed pages (`quotaHit`) and the cap ceilings. Pure. |
 | `time.ts`      | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`.                                                 |

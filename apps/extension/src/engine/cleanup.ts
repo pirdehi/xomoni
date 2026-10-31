@@ -12,6 +12,7 @@ import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../
 import { DAY, searchDate } from '../shared/time';
 import type { ActionKind, CleanupFilter, Item, ItemKind } from '../shared/types';
 import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
+import { runDueChecks, sampleAction } from './samples';
 import { randomBetween, sleep } from './timers';
 import { NotReady, workerTab } from './worker-tab';
 
@@ -42,6 +43,8 @@ export async function runCleanup(ctx: JobContext) {
     await ctx.setPhase('deep');
     await deepClean(ctx);
   }
+  // Checks that are not due yet stay queued for the next cleanup run.
+  await runDueChecks(ctx);
   await refreshMatched(ctx);
 }
 
@@ -123,6 +126,8 @@ async function loadSweepPage(ctx: JobContext, url: string): Promise<ContentState
 
 async function sweep(ctx: JobContext, url: string) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
+    // Each pass loads its page anew, so sample checks can use the worker tab in between.
+    await runDueChecks(ctx);
     const passStart = Date.now();
     const content = await loadSweepPage(ctx, url);
     if (!content) return;
@@ -299,7 +304,10 @@ async function act(ctx: JobContext, item: Item, action: ActionKind) {
     const preview = item.text.replace(/\s+/g, ' ').slice(0, 60);
     ctx.status(`${PROGRESS[action]}: “${preview}${item.text.length > 60 ? '…' : ''}”`);
     const result = await workerTab.send(command);
-    if (await ctx.settle(action, item, result)) return;
+    if (await ctx.settle(action, item, result)) {
+      if (result.outcome === 'done') await sampleAction(ctx, action, command.id);
+      return;
+    }
   }
   await ctx.settle(action, item, { outcome: 'failed', message: `Gave up after ${MAX_ATTEMPTS} attempts` });
 }
@@ -339,6 +347,7 @@ async function deepClean(ctx: JobContext) {
       }
       if ((await liveRepost(ctx.job.accountId, item.targetId))?.key !== item.key) continue;
     }
+    await runDueChecks(ctx);
     ctx.attempted.add(item.id);
     await handOffSafe(ctx, [item], () => visit(ctx, item, action));
   }

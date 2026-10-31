@@ -51,7 +51,12 @@ export async function runScan(ctx: JobContext) {
   const startAt = Math.max(0, Number(ctx.job.phase.split('/')[0]) - 1 || 0);
 
   for (let i = startAt; i < urls.length; i++) {
-    await ctx.setPhase(`${i + 1}/${urls.length}`);
+    const phase = `${i + 1}/${urls.length}`;
+    // Loading the page an earlier run reached again: count its posts from where that page started.
+    if (ctx.job.phase === phase && ctx.job.scannedAtPageStart != null)
+      ctx.job.stats.scanned = ctx.job.scannedAtPageStart;
+    else ctx.job.scannedAtPageStart = ctx.job.stats.scanned;
+    await ctx.setPhase(phase);
     const content = await ctx.navigate(urls[i]);
     if (content.kind !== 'tweets') continue;
     ctx.job.stats.scanned += content.count;

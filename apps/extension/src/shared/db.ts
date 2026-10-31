@@ -111,14 +111,14 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
 }
 
 /**
- * Creates or updates an account row and returns it. Fields that are `undefined` or `''` in `patch` keep
- * their stored value; `updatedAt` becomes now.
+ * Creates or updates an account row and returns it. Fields that are `undefined`, `null` or `''` in `patch`
+ * keep their stored value: X sometimes leaves a count or the creation date out of a response, and that must
+ * not erase what is known (a lost `createdAt` would make the history scan start from 2006). `updatedAt`
+ * becomes now.
  */
 export async function upsertAccount(patch: Partial<Account> & { id: string }) {
   const prev = await db.accounts.get(patch.id);
-  const clean = Object.fromEntries(
-    Object.entries(patch).filter(([, v]) => v !== undefined && v !== ''),
-  ) as Partial<Account>;
+  const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v != null && v !== '')) as Partial<Account>;
   const next: Account = {
     handle: '',
     name: '',

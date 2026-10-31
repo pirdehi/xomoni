@@ -69,6 +69,6 @@ export async function signIn(page: Page, email: string, password: string, path =
 /** Signs out from the account page and waits for the home page. */
 export async function signOut(page: Page): Promise<void> {
   await page.goto('/account');
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
 }

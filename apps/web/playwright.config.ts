@@ -24,6 +24,7 @@ process.env.MAILPIT_URL = env.MAILPIT_URL;
 // For seeding devices and jobs (e2e/support/admin.ts): the local stack's fixed development keys.
 process.env.SUPABASE_URL = status.API_URL;
 process.env.SUPABASE_SERVICE_ROLE_KEY = status.SERVICE_ROLE_KEY;
+process.env.SUPABASE_PUBLISHABLE_KEY = status.PUBLISHABLE_KEY;
 
 export default defineConfig({
   testDir: 'e2e',

@@ -16,7 +16,10 @@ const NOTICES: Record<string, string> = {
   'email=confirmed': 'Email confirmed. If you are changing your address, confirm from the other inbox too.',
 };
 
-/** The account page: sign-in email, password, and sign-out. Account deletion is a separate section. */
+/**
+ * The account page: sign-in email, password, sign-out here or everywhere. Account deletion is a separate
+ * section.
+ */
 export function AccountSettings({ account }: { account: AccountDetails }) {
   const params = useSearchParams();
   const notice = Object.entries(NOTICES).find(([key]) => {
@@ -44,6 +47,7 @@ export function AccountSettings({ account }: { account: AccountDetails }) {
       {notice && <FormAlert tone="info" message={notice} />}
       <ChangeEmail account={account} />
       <ChangePassword account={account} />
+      <Sessions />
     </div>
   );
 }
@@ -58,6 +62,22 @@ function Section({ title, description, children }: { title: string; description:
       <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-2">{description}</p>
       <div className="mt-5 max-w-sm">{children}</div>
     </section>
+  );
+}
+
+function Sessions() {
+  return (
+    <Section
+      title="Sessions"
+      description="Signed in on a computer you no longer use? This signs out every browser where your account is open, this one included. The others can't renew their session, and anything still open there stops working within the hour."
+    >
+      <form action={`${ROUTES.signOut}?scope=everywhere`} method="post">
+        <button type="submit" className="btn btn-secondary py-2">
+          <LogOut className="size-4" aria-hidden />
+          Sign out everywhere
+        </button>
+      </form>
+    </Section>
   );
 }
 

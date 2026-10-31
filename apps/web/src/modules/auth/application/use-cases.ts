@@ -175,9 +175,9 @@ export async function changeEmail(deps: AuthDeps, input: FormInput): Promise<Ema
   return result.ok ? { ok: true, email: form.value.email } : result;
 }
 
-/** Signs out on this device. */
-export async function signOut({ auth }: Pick<AuthDeps, 'auth'>): Promise<void> {
-  await auth.signOut();
+/** Signs out on this device, or with `everywhere` on every device (#83). */
+export async function signOut({ auth }: Pick<AuthDeps, 'auth'>, options: { everywhere?: boolean } = {}): Promise<void> {
+  await auth.signOut(options.everywhere ?? false);
 }
 
 /** Deletes the signed-in account, then ends the session. */

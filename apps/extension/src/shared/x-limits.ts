@@ -143,7 +143,8 @@ export function allowances(id: BudgetId): Allowance[] {
 export function readBudgetFor(url: string): BudgetId {
   const path = new URL(url, 'https://x.com').pathname;
   if (path.startsWith('/search')) return 'search';
-  if (/^\/[^/]+\/status\/\d+/.test(path)) return 'postLookup';
+  // `/i/web/status/<id>` is the same post page without its author's handle.
+  if (/^\/(?:i\/web|[^/]+)\/status\/\d+/.test(path)) return 'postLookup';
   if (/^\/[^/]+\/likes\/?$/.test(path)) return 'likedPosts';
   return 'userTimeline';
 }
@@ -182,6 +183,15 @@ export function liveSlot(live: LiveLimit | undefined, now: number): number {
   if (live.status === 429) return live.reset;
   if (live.limit == null || live.remaining == null) return now;
   return live.limit - live.remaining >= share(live.limit) ? live.reset : now;
+}
+
+/**
+ * Whether X's answer, seen at `at` (epoch ms) no earlier than `since`, says its window is used up: a 429, or
+ * nothing remaining. A page that failed to load right after such an answer failed for X's quota, and loading
+ * it again after the reset is the cure (PLAYBOOK A5).
+ */
+export function quotaHit<T extends LiveLimit & { at: number }>(live: T | undefined, since: number): live is T {
+  return !!live && live.at >= since && (live.status === 429 || live.remaining === 0);
 }
 
 /**

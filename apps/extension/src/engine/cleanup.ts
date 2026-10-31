@@ -1,7 +1,8 @@
 // Cleanup strategy:
 //  1. Sweep — open X search (or the profile / likes timeline) scoped to the rule
 //     and act on matching posts in place. One page load covers ~20 posts and
-//     reaches far beyond the ~3,200 posts a profile timeline shows.
+//     reaches far beyond the ~3,200 posts a profile timeline shows. A page X
+//     refuses for its quota is loaded again after X's reset, never skipped.
 //  2. Deep clean — visit whatever still matches in the inventory (typically
 //     archive-only items) one by one.
 // Rule of thumb throughout: if Xomoni can't verify an item, it leaves it alone.
@@ -11,7 +12,7 @@ import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../
 import { DAY, searchDate } from '../shared/time';
 import type { ActionKind, CleanupFilter, Item, ItemKind } from '../shared/types';
 import { type JobContext, NeedsYou, Stop } from './context';
-import { sleep } from './timers';
+import { randomBetween, sleep } from './timers';
 import { workerTab } from './worker-tab';
 
 // Each pass must remove something to continue, so this only guards against loops.
@@ -19,6 +20,10 @@ const MAX_PASSES = 500;
 const MAX_IDLE_SCROLLS = 4;
 const MAX_ATTEMPTS = 4;
 const LOOKUP_ROUNDS = 3;
+/** Loads of the same sweep page after X refused it for its quota, each after X's reset. */
+const MAX_QUOTA_RETRIES = 3;
+/** Loads of a sweep page that fails for another reason before handing over to the inventory. */
+const MAX_PAGE_LOADS = 3;
 
 /**
  * Runs a cleanup job: the sweep, then the deep clean, as the job's options enable. Keeps `stats.matched`
@@ -74,16 +79,55 @@ export function sweepUrls(f: CleanupFilter, handle: string): string[] {
 /** Keep rules that depend on numbers X can change (like counts) need data from this visit. */
 const needsLiveData = (f: CleanupFilter) => f.keepMinLikes != null && (f.target === 'post' || f.target === 'reply');
 
+/**
+ * Loads a sweep page. When X refused it for its quota, waits for X's reset and loads the same page again, up
+ * to `MAX_QUOTA_RETRIES` times, then pauses the job: the deep clean would open every post on its own and
+ * spend far more (PLAYBOOK A5). Returns null, handing over to the inventory, only when the page keeps failing
+ * for another reason.
+ */
+async function loadSweepPage(ctx: JobContext, url: string): Promise<ContentState | null> {
+  let limited = 0;
+  let failed = 0;
+  for (;;) {
+    const since = Date.now();
+    const content = await ctx.navigate(url);
+    if (content.kind === 'tweets' || content.kind === 'empty') return content;
+
+    const rateLimit = await ctx.pageRateLimit(since);
+    if (rateLimit) {
+      if (++limited > MAX_QUOTA_RETRIES) {
+        throw new Stop(
+          'paused',
+          `X kept rate-limiting this page after ${MAX_QUOTA_RETRIES} waits for its reset. Rest the account for a few hours, then resume.`,
+        );
+      }
+      // Records the rate limit for the risk ladder (a second within an hour stops the job), then waits for the reset.
+      await ctx.settle('read', null, rateLimit);
+      continue;
+    }
+
+    if (++failed >= MAX_PAGE_LOADS) {
+      await ctx.log(
+        'warn',
+        'system',
+        `Sweep: the page did not load after ${MAX_PAGE_LOADS} tries (${content.kind}); continuing with the inventory`,
+      );
+      return null;
+    }
+    await ctx.limiter.cooldown(
+      Date.now() + randomBetween(60, 120) * 1000,
+      'The page did not load — trying again in a minute or two',
+    );
+  }
+}
+
 async function sweep(ctx: JobContext, url: string) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const passStart = Date.now();
-    const content = await ctx.navigate(url);
+    const content = await loadSweepPage(ctx, url);
+    if (!content) return;
     if (content.kind === 'empty') {
       await ctx.log('info', 'system', 'Sweep: no more matching posts on X');
-      return;
-    }
-    if (content.kind !== 'tweets') {
-      await ctx.log('warn', 'system', `Sweep: the page did not load (${content.kind}); continuing with the inventory`);
       return;
     }
 
@@ -309,10 +353,8 @@ async function waitForFresh(ctx: JobContext, key: string, since: number): Promis
 
 /** A post page without a post: rate limit (retry), load failure, or really gone. */
 async function pageProblem(ctx: JobContext, content: ContentState, since: number): Promise<ActionResult> {
-  const obs = await db.limits.get(`${ctx.job.accountId}:TweetDetail`);
-  if (obs && obs.at >= since && (obs.status === 429 || obs.remaining === 0)) {
-    return { outcome: 'rate_limited', resetAt: obs.reset, message: 'X rate-limited post pages' };
-  }
+  const rateLimit = await ctx.pageRateLimit(since);
+  if (rateLimit) return rateLimit;
   if (content.kind === 'timeout') return { outcome: 'failed', message: 'The post page did not load' };
   return { outcome: 'not_found', message: 'The post is no longer available' };
 }

@@ -16,6 +16,7 @@ import {
   earlierActiveDays,
   liveSlot,
   nextSlot,
+  quotaHit,
   readBudgetFor,
   scaleAllowances,
   scaleRule,
@@ -136,10 +137,32 @@ describe('liveSlot (one fifth of the live limit X reports)', () => {
   });
 });
 
+describe('quotaHit: did a page fail for X’s quota?', () => {
+  const live = (patch: { status?: number; remaining?: number | null; at?: number }) => ({
+    limit: 50,
+    remaining: patch.remaining ?? null,
+    reset: NOW + 15 * MINUTE,
+    status: patch.status ?? 200,
+    at: patch.at ?? NOW,
+  });
+
+  it('says yes for a 429 or nothing remaining since the page load', () => {
+    expect(quotaHit(live({ status: 429 }), NOW - 1000)).toBe(true);
+    expect(quotaHit(live({ remaining: 0 }), NOW - 1000)).toBe(true);
+  });
+
+  it('says no for an answer from before the page load, one with room left, or none', () => {
+    expect(quotaHit(live({ status: 429, at: NOW - MINUTE }), NOW - 1000)).toBe(false);
+    expect(quotaHit(live({ remaining: 3 }), NOW - 1000)).toBe(false);
+    expect(quotaHit(undefined, NOW - 1000)).toBe(false);
+  });
+});
+
 describe('readBudgetFor', () => {
   it.each([
     ['https://x.com/search?q=from%3Ame&f=live', 'search'],
     ['https://x.com/me/status/1234567890', 'postLookup'],
+    ['https://x.com/i/web/status/1234567890', 'postLookup'],
     ['https://x.com/me/likes', 'likedPosts'],
     ['https://x.com/me', 'userTimeline'],
     ['https://x.com/me/with_replies', 'userTimeline'],

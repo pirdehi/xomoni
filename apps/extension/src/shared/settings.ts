@@ -30,17 +30,21 @@ export const DEFAULT_SETTINGS: Settings = {
   preset: 'careful',
   pacing: PRESETS.careful,
   activeHours: { enabled: false, start: 8, end: 23 },
-  maxConsecutiveFailures: 5,
+  maxConsecutiveFailures: 2,
   notifications: true,
 };
 
 /**
  * Brings stored or edited settings back inside the safety rules: a preset that no longer exists (such as the
- * old Balanced) becomes Careful, and every custom rule is clamped to the one-fifth ceilings with its minimums
- * at most its maximums.
+ * old Balanced) becomes Careful, every custom rule is clamped to the one-fifth ceilings with its minimums at
+ * most its maximums, and the failure limit stays between 1 and 3.
  */
 export function normalizeSettings(stored: Partial<Settings> | null | undefined): Settings {
   const merged = { ...DEFAULT_SETTINGS, ...stored };
+  // Unknown failures in a row before the job pauses: at most 3, so a changed page or a quiet refusal by X
+  // can't be retried again and again (PLAYBOOK C3).
+  const failures = Number(merged.maxConsecutiveFailures);
+  merged.maxConsecutiveFailures = Number.isFinite(failures) ? Math.min(3, Math.max(1, Math.round(failures))) : 2;
   if (merged.preset !== 'custom') return { ...merged, preset: 'careful', pacing: PRESETS.careful };
   const pacing = {} as Record<ActionKind, PacingRule>;
   for (const action of Object.keys(DEFAULT_SETTINGS.pacing) as ActionKind[]) {

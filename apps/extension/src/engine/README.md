@@ -4,16 +4,16 @@ The headless engine that runs cleanup and scan jobs. It runs in the dashboard pa
 
 ## Files
 
-| File | Responsibility |
-| --- | --- |
-| `cleanup.ts` | Cleanup jobs: sweep X search or timelines and act in place, then deep-clean the remaining inventory items one by one. |
-| `context.ts` | `JobContext`: per-run state and the safety policy that turns each outcome into done, skip, wait, retry or stop. |
-| `limiter.ts` | `Limiter`: jittered delays, batch breaks, rolling caps, one fifth of X's published and live limits per budget, counting every request that reached X (ADR-0012), warm-up on an account's first active days, page loads remembered across runs, active hours, adaptive slowdown that only successful actions ease. |
-| `runner.ts` | `runner`: runs one job at a time under a Web Lock, publishes `RunnerState` to the UI, creates and recovers jobs. |
-| `scan.ts` | Scan jobs: loads and scrolls X pages so the content script can record posts; changes nothing on X. |
-| `timer-worker.ts` | Dedicated Web Worker that runs the timers, so pacing is not throttled when the dashboard tab is in the background. |
-| `timers.ts` | `sleep` (abortable, backed by the timer worker), `randomBetween` and the `Aborted` error. |
-| `worker-tab.ts` | `workerTab`: opens, focuses and messages the x.com worker tab; the `WorkerGone` and `NotReady` errors. |
+| File              | Responsibility                                                                                                                                                                                                                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cleanup.ts`      | Cleanup jobs: sweep X search or timelines and act in place, then deep-clean the remaining inventory items one by one.                                                                                                                                                                                             |
+| `context.ts`      | `JobContext`: per-run state and the safety policy that turns each outcome into done, skip, wait, retry or stop.                                                                                                                                                                                                   |
+| `limiter.ts`      | `Limiter`: jittered delays, batch breaks, rolling caps, one fifth of X's published and live limits per budget, counting every request that reached X (ADR-0012), warm-up on an account's first active days, page loads remembered across runs, active hours, adaptive slowdown that only successful actions ease. |
+| `runner.ts`       | `runner`: runs one job at a time under a Web Lock, publishes `RunnerState` to the UI, creates and recovers jobs.                                                                                                                                                                                                  |
+| `scan.ts`         | Scan jobs: loads and scrolls X pages so the content script can record posts; changes nothing on X.                                                                                                                                                                                                                |
+| `timer-worker.ts` | Dedicated Web Worker that runs the timers, so pacing is not throttled when the dashboard tab is in the background.                                                                                                                                                                                                |
+| `timers.ts`       | `sleep` (abortable, backed by the timer worker), `randomBetween` and the `Aborted` error.                                                                                                                                                                                                                         |
+| `worker-tab.ts`   | `workerTab`: opens, focuses and messages the x.com worker tab; the `WorkerGone` and `NotReady` errors.                                                                                                                                                                                                            |
 
 ## Depends on
 

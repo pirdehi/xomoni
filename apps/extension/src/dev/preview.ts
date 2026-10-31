@@ -13,6 +13,7 @@ const page = {
   loggedIn: true,
   locked: false,
   challenge: false,
+  restriction: null,
   lang: 'en',
   hidden: false,
 };

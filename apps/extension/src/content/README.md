@@ -4,12 +4,12 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
 
 ## Files
 
-| File | Responsibility |
-| --- | --- |
-| `content.ts` | Entry point: passes `xomoni-net` window messages to `net.ts` and answers `actor` runtime messages through `actor.ts`. |
-| `actor.ts` | Runs `ActorCommand`s (ping, wait for content, list visible posts, scroll, delete, unlike, re-like then unlike, undo repost) and maps X's response to an `Outcome`. |
-| `net.ts` | Parses interceptor captures, resolves `waitForNet` waiters, and sends `rate`, `ingest` and `profile` messages to the service worker. |
-| `dom.ts` | Every X DOM dependency: selectors, the multilingual Delete label, DOM helpers, `waitFor`, and the signed-in user's id and handle. |
+| File         | Responsibility                                                                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `content.ts` | Entry point: passes `xomoni-net` window messages to `net.ts` and answers `actor` runtime messages through `actor.ts`.                                              |
+| `actor.ts`   | Runs `ActorCommand`s (ping, wait for content, list visible posts, scroll, delete, unlike, re-like then unlike, undo repost) and maps X's response to an `Outcome`. |
+| `net.ts`     | Parses interceptor captures, resolves `waitForNet` waiters, and sends `rate`, `ingest` and `profile` messages to the service worker.                               |
+| `dom.ts`     | Every X DOM dependency: selectors, the multilingual Delete label, DOM helpers, `waitFor`, and the signed-in user's id and handle.                                  |
 
 ## Depends on
 

@@ -206,6 +206,7 @@ export function SettingsPage(_props: PageProps) {
                   className="field tabular w-24"
                   type="number"
                   min={1}
+                  max={3}
                   value={settings.maxConsecutiveFailures}
                   onChange={(e) =>
                     save({ ...settings, maxConsecutiveFailures: Math.max(1, Number(e.target.value) || 1) })

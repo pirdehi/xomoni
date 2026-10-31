@@ -4,19 +4,19 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 
 ## Files
 
-| File | Responsibility |
-| --- | --- |
-| `archive.ts` | Parses the official X data archive (`window.YTD…` files) into item drafts and reads the archive's owner. |
-| `attention.ts` | Decides when only the person can continue (login, X check, wrong account) and the text shown for it. |
-| `db.ts` | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log. |
-| `filter.ts` | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration. |
-| `graphql.ts` | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts. |
-| `messages.ts` | Message types between the dashboard, the content script and the service worker. |
-| `notify.ts` | Desktop notifications and their ids. |
-| `settings.ts` | The Careful preset, default settings, `normalizeSettings` (clamps stored settings) and action labels. |
-| `x-limits.ts` | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule and the cap ceilings. Pure. |
-| `time.ts` | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`. |
-| `types.ts` | The data model: items, accounts, jobs, log entries, rate-limit observations, settings. |
+| File           | Responsibility                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `archive.ts`   | Parses the official X data archive (`window.YTD…` files) into item drafts and reads the archive's owner.                    |
+| `attention.ts` | Decides when only the person can continue (login, including X's `/i/jf/` flow; X check; wrong account), the text shown for it, and `restrictionNotice` for X's suspended or limited notices. |
+| `db.ts`        | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log.              |
+| `filter.ts`    | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration.               |
+| `graphql.ts`   | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts.                        |
+| `messages.ts`  | Message types between the dashboard, the content script and the service worker.                                             |
+| `notify.ts`    | Desktop notifications and their ids.                                                                                        |
+| `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings) and action labels.                       |
+| `x-limits.ts`  | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule and the cap ceilings. Pure. |
+| `time.ts`      | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`.                                                 |
+| `types.ts`     | The data model: items, accounts, jobs, log entries, rate-limit observations, settings.                                      |
 
 ## Depends on
 

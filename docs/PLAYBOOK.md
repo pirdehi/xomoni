@@ -44,13 +44,13 @@
 | B9 | Device and network reputation | 📰 | 🟡 |
 | C1 | Graduated penalty ladder | 📰 | 🟡 |
 | C2 | Account lock (326) and Arkose captcha | 📘📰 | 🟡 |
-| C3 | "Limited" or read-only account | 📰 | 🔴 |
-| C4 | Suspension (code 64) | 📘 | 🔴 |
+| C3 | "Limited" or read-only account | 📰 | ✅ |
+| C4 | Suspension (code 64) | 📘 | ✅ |
 | C5 | Silent block (action is confirmed but not carried out) | 🧠 | 🔴 |
 | C6 | Visibility limits and Search ban | 📰 | 🟡 |
 | C7 | Ban on non-API automation in X's rules | 📘 | ⚠️ |
 | D1 | Logout or session expiry | 📘 | ✅ |
-| D2 | X's new login page (`/i/jf/…`) | 📰 | 🔴 |
+| D2 | X's new login page (`/i/jf/…`) | 📰 | ✅ |
 | D3 | 2FA, email/SMS code, login captcha | 📘 | ✅ |
 | D4 | Account switch in another tab | 🧠 | ✅ |
 | D5 | CSRF token rotation (`ct0`) | 📰 | ✅ |
@@ -187,17 +187,16 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - After the lock is lifted, wait at least **60 to 90 minutes**, and run at 25% of caps for 48 hours.
   - **Second lock within 7 days:** full stop, with no automatic resume.
 
-### C3. "Limited" or read-only account · 📰 · 🔴
+### C3. "Limited" or read-only account · 📰 · ✅
 - **X mechanism:** Posting, reposting and liking are blocked, but browsing works. The reported duration is 12 hours to 7 days, and the exact error code on the web is unknown.
-- **Current problem:** An unknown error counts as "Failed", and Xomoni tries 5 times before it stops. That means 5 more hits on an account X has restricted.
-- **Proposed scenario:**
-  - HTTP 403 on any write action (delete, unlike, etc.) or codes 87, 261 or 220: **stop immediately on the first occurrence.**
-  - Unknown write error: stop after **2** in a row, not 5.
-  - Detect the "temporarily limited" banner on the page, and show X's countdown if there is one.
+- **Scenario (implemented, #18):**
+  - HTTP 403 on any write action (delete, unlike, etc.) or codes 87, 261 or 220 → outcome `restricted`: **the job stops at the first one** and never retries.
+  - X's "temporarily limited" or "restricted" notice on the page (alerts and the top of the main column) stops the job before any action. The match is deliberately broad; a false match only stops the job.
+  - Unknown failures in a row pause the job after **2** (the setting is capped at 3, was 5).
+  - Not done: reading X's countdown from the banner.
 
-### C4. Suspension (code 64) · 📘 · 🔴
-- **Current problem:** Code 64 is treated like a lock, and Xomoni waits one hour for the user.
-- **Proposed scenario:** Stop immediately with a clear message. The user's presence does not solve this problem.
+### C4. Suspension (code 64) · 📘 · ✅
+- **Scenario (implemented, #18):** code 64 → outcome `suspended`: stop immediately with a clear message, no waiting for the person (they can't fix it) and no automatic resume. Code 326 (a lock the person can clear) still waits for them.
 
 ### C5. Silent block · 🧠 · 🔴
 - **Possible mechanism:** X returns a success response but does not actually carry out the action (soft block).
@@ -236,10 +235,9 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - After 10 to 20 seconds, the job continues. A post that was interrupted mid-job goes back into the queue.
   - **Tested:** on a simulated x.com, both at job start and mid-job.
 
-### D2. X's new login page (`/i/jf/onboarding/web`) · 📰 · 🔴
+### D2. X's new login page (`/i/jf/onboarding/web`) · 📰 · ✅
 - **X mechanism:** It is reported that `/i/flow/login` now redirects to `/i/jf/onboarding/web?mode=login`.
-- **Risk:** The current code does not recognize this path as a login page. If the `twid` cookie is set in the middle of login, Xomoni may resume the job too early.
-- **Proposed scenario:** Treat every `/i/jf/` path as a login or account verification page.
+- **Scenario (implemented, #20):** every `/i/jf/` path counts as a login page, so the job waits for the person. It resumes only after the worker has shown the same account, signed in with no X check, for 5 seconds.
 
 ### D3. 2FA, email or SMS code, login captcha · 📘 · ✅
 - **Scenario:**

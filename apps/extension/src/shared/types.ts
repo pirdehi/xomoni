@@ -184,7 +184,8 @@ export type ActionKind = 'delete' | 'unretweet' | 'unlike' | 'relike' | 'read';
  * How X answered one action, classified in content/actor.ts from X's own response. `JobContext.settle`
  * turns it into done, skip, wait, retry or stop.
  * @remarks X error codes: `rate_limited` 429 or 88, `daily_limit` 185/344, `automation_flag` 226, `locked`
- * 326 and 64, `logged_out` 32/89/215/353, `not_found` 34/144, `already` 139/327.
+ * 326, `suspended` 64, `restricted` 87/220/261 or HTTP 403 on a write (or X's "limited" banner),
+ * `logged_out` 32/89/215/353, `not_found` 34/144, `already` 139/327.
  */
 export type Outcome =
   | 'done'
@@ -195,6 +196,8 @@ export type Outcome =
   | 'daily_limit'
   | 'automation_flag'
   | 'locked'
+  | 'suspended'
+  | 'restricted'
   | 'logged_out'
   | 'failed';
 

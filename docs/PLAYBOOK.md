@@ -62,7 +62,7 @@
 | E6 | Original post unavailable (repost or like) | 🧠 | 🟡 |
 | E7 | Edited posts (multiple IDs) | 📘 | ✅ |
 | E8 | Archive retrieval limits | 📘 | ✅ |
-| F1 | DOM changes and A/B tests | 🧠 | 🟡 |
+| F1 | DOM changes and A/B tests | 🧠 | ✅ |
 | F2 | X interface language | 📘 | ✅ |
 | F3 | Intrusive popups (Premium, cookies, notifications) | 📰 | 🟡 |
 | F4 | queryId rotation and response structure changes | 📰 | ✅ |
@@ -291,11 +291,15 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 
 ## F. User interface and browser
 
-### F1. DOM changes and A/B tests · 🧠 · 🟡
-- **Current status:** All selectors live in `dom.ts`, and Xomoni stops after 5 consecutive failures.
-- **Proposed scenario (preflight test, or Canary):**
-  - Before the first action of each job, open the "…" menu on the first of the user's own posts, check that the Delete option exists, and close the menu with Escape. **Nothing is deleted.** For likes, check the unlike button.
-  - If this test fails, the job stops **before any deletion**: "X has changed its page".
+### F1. DOM changes and A/B tests · 🧠 · ✅
+- **Current status:** All selectors live in `dom.ts`, and Xomoni stops after 2 consecutive failures (C4).
+- **Scenario (implemented, #21): a check before acting, or canary.**
+  - Before the first action of each kind in every run, Xomoni checks the post it is about to act on:
+    - **Delete:** open its "…" menu, check that the Delete option exists, and close the menu with Escape.
+    - **Undo repost:** the same with the repost menu and its Undo repost option.
+    - **Likes:** check for the unlike button, or the like button for a ghost like.
+  - **Nothing inside a menu is ever clicked, and nothing is deleted.**
+  - If the button, the option or Escape no longer works, the job stops as Stopped for safety **before the action**: "X changed its page". A post that can't tell (not on the page, or no longer liked) leaves the check to the next one.
 
 ### F2. X interface language · 📘 · ✅
 - **Scenario:** The Delete label is recognized in 23 languages (including Persian), and the red color of the delete option is also checked as a second method. English is still the recommendation.

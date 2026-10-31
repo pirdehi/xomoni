@@ -3,6 +3,7 @@
 import type {
   ActionResult,
   ActorCommand,
+  CanaryResult,
   ContentState,
   PageInfo,
   ScrollResult,
@@ -18,7 +19,9 @@ type Reply<C extends ActorCommand['cmd']> = C extends 'ping'
       ? VisibleTweet[]
       : C extends 'scroll'
         ? ScrollResult
-        : ActionResult;
+        : C extends 'canary'
+          ? CanaryResult
+          : ActionResult;
 
 // Session storage is cleared when the browser restarts, which is also when
 // Chrome starts reusing tab ids — so a stale id never points at another tab.

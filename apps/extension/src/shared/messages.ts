@@ -1,7 +1,10 @@
 import type { ParsedProfile } from './graphql';
-import type { ItemDraft, Outcome, RateObservation } from './types';
+import type { ActionKind, ItemDraft, Outcome, RateObservation } from './types';
 
-/** Commands the dashboard sends to the content script in the worker tab. */
+/**
+ * Commands the dashboard sends to the content script in the worker tab. `canary` checks, on post `id`, that
+ * X's page still has what `action` needs, without acting (PLAYBOOK F1).
+ */
 export type ActorCommand =
   | { cmd: 'ping' }
   | { cmd: 'waitContent'; timeoutMs: number }
@@ -10,7 +13,8 @@ export type ActorCommand =
   | { cmd: 'delete'; id: string }
   | { cmd: 'unlike'; id: string }
   | { cmd: 'relikeUnlike'; id: string }
-  | { cmd: 'unretweet'; id: string };
+  | { cmd: 'unretweet'; id: string }
+  | { cmd: 'canary'; action: Exclude<ActionKind, 'read'>; id: string };
 
 /** State of an x.com page, reported by the content script in reply to `ping`. */
 export interface PageInfo {
@@ -63,6 +67,16 @@ export interface ContentState {
    * 0 means X or the connection failed, not that the posts are gone.
    */
   http: number | null;
+}
+
+/** Result of one `canary` command (PLAYBOOK F1). */
+export interface CanaryResult {
+  /**
+   * `ok`: X's page has what the action needs. `changed`: it does not, so X changed its page and nothing may be
+   * done. `unknown`: this post can't tell (not on the page, or not in the state the check needs).
+   */
+  verdict: 'ok' | 'changed' | 'unknown';
+  message: string;
 }
 
 /** Result of one `scroll` command in the worker page. */

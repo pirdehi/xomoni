@@ -6,7 +6,7 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
 
 | File         | Responsibility                                                                                                                                                     |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `content.ts` | Entry point: passes `xomoni-net` window messages to `net.ts` and answers `actor` runtime messages through `actor.ts`.                                              |
+| `content.ts` | Entry point: hands the interceptor its end of a private `MessageChannel` (`../shared/bridge.ts`), passes the captures that arrive on it and pass `isCapture` to `net.ts`, and answers `actor` runtime messages through `actor.ts`. Window messages are never trusted (#59).                                              |
 | `actor.ts`   | Runs `ActorCommand`s (ping, wait for content, list visible posts, scroll, delete, unlike, re-like then unlike, undo repost, and the `canary` check before acting, which opens and closes a menu without clicking in it) and maps X's response to an `Outcome`. |
 | `net.ts`     | Parses interceptor captures, resolves `waitForNet` waiters, and sends `rate`, `ingest` and `profile` messages to the service worker. Remembers the page's last timeline HTTP status (`lastTimelineStatus`), which `waitContent` reports.                               |
 | `dom.ts`     | Every X DOM dependency: selectors, the multilingual Delete label, DOM helpers, `waitFor`, and the signed-in user's id and handle.                                  |
@@ -14,7 +14,7 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
 ## Depends on
 
 - `../shared/` for message types (`messages.ts`), GraphQL operation sets, variable parsing and tweet, profile and error extraction (`graphql.ts`), and login and check page detection (`attention.ts`).
-- `../inject/` at runtime only, not by import: `interceptor.ts` posts `{ source: 'xomoni-net', … }` messages with `window.postMessage`.
+- `../inject/` at runtime only, not by import: `interceptor.ts` takes the port at `document_start` and sends each capture on it.
 - Chrome APIs: `chrome.runtime.onMessage` for commands in, `chrome.runtime.sendMessage` for observations out.
 
 ## Used by

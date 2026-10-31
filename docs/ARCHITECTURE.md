@@ -69,7 +69,7 @@ flowchart TB
   end
 
   dash <-- "runtime messages" --> cs
-  inj -- "window.postMessage<br/>(X's responses, rate-limit headers)" --> cs
+  inj -- "private MessageChannel<br/>(X's responses, rate-limit headers)" --> cs
   cs -- "observations" --> sw
   sw --> idb
   dash --> idb
@@ -178,7 +178,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | Dashboard page (extension origin) | `ui/` + `engine/` | `chrome.*`, IndexedDB, React |
 | Service worker | `background/` | `chrome.*`, IndexedDB |
 | x.com tab, isolated world | `content/` | DOM of x.com, `chrome.runtime` messaging |
-| x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), `window.postMessage` |
+| x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), a `MessagePort` to the content script |
 
 `shared/` is the kernel every area may use. The other areas don't import each other, with one exception: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today). These are the `ext-*` rules below. The target design moves the pure parts of `shared/` and `engine/` into `packages/core` behind ports (X tab, storage, notifier, clock), as tracked in [issue #11](https://github.com/pirdehi/xomoni/issues/11); the current rules already keep the areas from tangling.
 

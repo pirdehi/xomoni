@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobContext } from '../src/engine/context';
 import { runScan } from '../src/engine/scan';
+import { offerPort } from '../src/shared/bridge';
 import { db, upsertAccount } from '../src/shared/db';
 import type { Job } from '../src/shared/types';
 
@@ -66,49 +67,59 @@ describe('interceptor: request bodies passed inside a Request (#60)', () => {
   const win = { fetch: nativeFetch as typeof fetch, postMessage: vi.fn() };
   const DELETE_URL = 'https://x.com/i/api/graphql/abc/DeleteTweet';
   const BODY = '{"variables":{"tweet_id":"1"}}';
+  // The content script's end of the private channel (#59).
+  const channel = new MessageChannel();
+  const captures: unknown[] = [];
 
   beforeAll(async () => {
+    const doc = new EventTarget();
     vi.stubGlobal('window', win);
+    vi.stubGlobal('document', doc);
     vi.stubGlobal('location', { origin: 'https://x.com' });
     vi.stubGlobal('XMLHttpRequest', class {});
-    // A page script, not a module: load it for its effect on `window`.
+    channel.port1.onmessage = (event) => captures.push(event.data);
+    offerPort(doc, channel.port2);
+    // A page script: load it for its effect on `window`.
     await vi.importActual('../src/inject/interceptor');
   });
 
   afterAll(() => {
+    channel.port1.close();
     vi.unstubAllGlobals();
   });
 
   beforeEach(() => {
-    win.postMessage.mockClear();
+    captures.length = 0;
   });
 
-  const posted = async () => {
-    await vi.waitFor(() => expect(win.postMessage).toHaveBeenCalled());
-    return win.postMessage.mock.calls[0][0];
+  const captured = async () => {
+    await vi.waitFor(() => expect(captures).toHaveLength(1));
+    // Never broadcast to the page, where any script could read it.
+    expect(win.postMessage).not.toHaveBeenCalled();
+    return captures[0];
   };
 
   it('reads the body from init', async () => {
     await win.fetch(DELETE_URL, { method: 'POST', body: BODY });
-    expect(await posted()).toMatchObject({ op: 'DeleteTweet', method: 'POST', reqBody: BODY, status: 200 });
+    expect(await captured()).toMatchObject({ op: 'DeleteTweet', method: 'POST', reqBody: BODY, status: 200 });
   });
 
   it('reads a copy of the body of a Request and leaves the original to X', async () => {
     const request = new Request(DELETE_URL, { method: 'POST', body: BODY });
     await win.fetch(request);
-    expect(await posted()).toMatchObject({ op: 'DeleteTweet', reqBody: BODY });
+    expect(await captured()).toMatchObject({ op: 'DeleteTweet', reqBody: BODY });
     expect(nativeFetch).toHaveBeenLastCalledWith(request, undefined);
   });
 
   it('reports a request that got no answer with status 0', async () => {
     nativeFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     await win.fetch(DELETE_URL, { method: 'POST', body: BODY }).catch(() => {});
-    expect(await posted()).toMatchObject({ op: 'DeleteTweet', status: 0, reqBody: BODY });
+    expect(await captured()).toMatchObject({ op: 'DeleteTweet', status: 0, reqBody: BODY });
   });
 
   it('ignores operations it does not watch', async () => {
     await win.fetch('https://x.com/i/api/graphql/abc/HomeTimeline');
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(win.postMessage).not.toHaveBeenCalled();
+    expect(captures).toEqual([]);
   });
 });

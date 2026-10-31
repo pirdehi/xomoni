@@ -2,6 +2,8 @@
 // It observes the responses of GraphQL requests that X's web app makes itself,
 // so the extension can read results and rate-limit headers. It never sends,
 // alters or replays a request.
+import { type Capture, takePort } from '../shared/bridge';
+
 (() => {
   const w = window as unknown as Record<string, unknown>;
   if (w.__xomoniNet) return;
@@ -22,17 +24,10 @@
   ]);
   const RATE_HEADERS = ['x-rate-limit-limit', 'x-rate-limit-remaining', 'x-rate-limit-reset'];
 
-  interface Capture {
-    op: string;
-    url: string;
-    method: string;
-    status: number;
-    reqBody: string | null;
-    headers: Record<string, string | null>;
-    body: string;
-  }
-
-  const emit = (capture: Capture) => window.postMessage({ source: 'xomoni-net', ...capture }, location.origin);
+  // Captures go only to the content script, through the private channel it hands over at document_start (#59).
+  let port: MessagePort | null = null;
+  takePort(document, (p) => (port = p));
+  const emit = (capture: Capture) => port?.postMessage(capture);
   const watchedOp = (url: string) => {
     const op = url.match(OP)?.[1];
     return op && WATCHED.has(op) ? op : null;

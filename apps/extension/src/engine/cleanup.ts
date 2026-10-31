@@ -11,9 +11,9 @@ import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
 import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../shared/messages';
 import { DAY, searchDate } from '../shared/time';
 import type { ActionKind, CleanupFilter, Item, ItemKind } from '../shared/types';
-import { type JobContext, NeedsYou, Stop } from './context';
+import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
 import { randomBetween, sleep } from './timers';
-import { workerTab } from './worker-tab';
+import { NotReady, workerTab } from './worker-tab';
 
 // Each pass must remove something to continue, so this only guards against loops.
 const MAX_PASSES = 500;
@@ -253,12 +253,17 @@ const PROGRESS: Record<ActionKind, string> = {
   read: 'Loading',
 };
 
-/** Items not yet settled when a login or X check interrupts stay eligible for when the job continues. */
+/**
+ * Items not yet settled when a login, an X check, a dropped connection or an X outage interrupts stay eligible
+ * for when the job's steps run again.
+ */
 async function handOffSafe(ctx: JobContext, unsettled: Item[], run: () => Promise<void>) {
   try {
     await run();
   } catch (err) {
-    if (err instanceof NeedsYou) unsettled.forEach((item) => ctx.attempted.delete(item.id));
+    if (err instanceof NeedsYou || err instanceof Interrupted || err instanceof NotReady) {
+      unsettled.forEach((item) => ctx.attempted.delete(item.id));
+    }
     throw err;
   }
 }

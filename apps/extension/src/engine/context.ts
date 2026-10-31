@@ -16,6 +16,13 @@ const WAIT_FOR_YOU_MS = HOUR;
 const SETTLED_MS = 5000;
 /** The same check this many times with no progress in between means waiting won't help. */
 const MAX_REPEAT_NEEDS = 3;
+/** Connection or X trouble this long with no progress pauses the job. */
+const OUTAGE_LIMIT_MS = 3 * HOUR;
+/** How often to check whether the browser is back online. */
+const ONLINE_CHECK_MS = 10_000;
+
+/** Whether the browser has a network connection. True where `navigator` is missing. */
+const online = () => globalThis.navigator?.onLine !== false;
 
 /** What to do when X limits the account; shown when a job stops for a restriction. */
 const RESTRICTED_ADVICE =
@@ -48,6 +55,38 @@ export function riskBlock(risk: RiskAssessment): string | null {
     return `Risk level ${risk.level} (${RISK_LABELS[risk.level]}): ${risk.reason}. Resume is locked until ${timeOf(risk.resumeAt)}. Use X normally meanwhile.`;
   }
   return null;
+}
+
+/** What interrupted a run: the connection or X's servers. A worker page that stops answering is `NotReady`. */
+export type InterruptionKind = 'offline' | 'outage';
+
+/**
+ * Thrown when the connection drops or X's servers fail. Neither says anything about the posts, so nothing is
+ * counted as failed: the runner waits it out (`JobContext.waitOut`) and runs the job's steps again (PLAYBOOK
+ * F6).
+ */
+export class Interrupted extends Error {
+  constructor(
+    public kind: InterruptionKind,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * What an HTTP status from X means for the run: `offline` when the browser is offline or the request got no
+ * answer (status 0), `outage` for X's server errors (5xx), and null for anything else.
+ */
+export function interruptionOf(http: number | null | undefined, isOnline: boolean): InterruptionKind | null {
+  if (!isOnline || http === 0) return 'offline';
+  if (http != null && http >= 500) return 'outage';
+  return null;
+}
+
+/** Minutes to wait after the `n`th interruption in a row with no progress (from 1): 1, 2, 4, 8, 16, then 30. */
+export function backoffMinutes(n: number): number {
+  return Math.min(30, 2 ** Math.max(0, n - 1));
 }
 
 /** Thrown when only the person can continue: the runner waits for them, then restarts the job's steps. */
@@ -87,6 +126,9 @@ export class JobContext {
   private consecutiveFailures = 0;
   private repeatNeeds = 0;
   private progressAtLastNeed = -1;
+  private outages = 0;
+  private outageSince = 0;
+  private progressAtOutage = -1;
 
   constructor(
     public job: Job,
@@ -109,6 +151,12 @@ export class JobContext {
   /** Records a risk event and returns the ladder's view afterwards. */
   private async risk(kind: RiskEventKind): Promise<RiskAssessment> {
     return assessRisk(await recordRisk(this.job.accountId, kind), Date.now());
+  }
+
+  /** Items settled plus posts looked at: it grows whenever the run gets anywhere. */
+  private progress() {
+    const { done, skipped, failed, scanned } = this.job.stats;
+    return done + skipped + failed + scanned;
   }
 
   /** Throws `Aborted` if the person paused or cancelled. */
@@ -147,6 +195,7 @@ export class JobContext {
   async connect(): Promise<PageInfo> {
     this.status('Connecting to the X worker window…');
     if ((await workerTab.current()) == null) await workerTab.open();
+    await workerTab.keepLoaded();
     const info = await workerTab.waitReady(this.signal);
     const account = await db.accounts.get(this.job.accountId);
     this.handle ||= account?.handle ?? '';
@@ -182,8 +231,7 @@ export class JobContext {
    * worker window. Pauses the job if that takes longer than an hour.
    */
   async waitForYou(request: NeedsYou) {
-    const { stats } = this.job;
-    const progress = stats.done + stats.skipped + stats.failed + stats.scanned;
+    const progress = this.progress();
     this.repeatNeeds = progress === this.progressAtLastNeed ? this.repeatNeeds + 1 : 1;
     this.progressAtLastNeed = progress;
     if (this.repeatNeeds > MAX_REPEAT_NEEDS) {
@@ -227,6 +275,52 @@ export class JobContext {
     }
   }
 
+  /**
+   * Waits out an interruption without counting a failure (PLAYBOOK F5, F6). Offline, it checks every 10 s
+   * until the browser is back online. A worker tab Chrome unloaded is reloaded by `connect` right away, the
+   * first time. Otherwise it waits 1, 2, 4 … up to 30 minutes, doubling while nothing moves. Pauses the job
+   * after three hours without progress.
+   */
+  async waitOut(err: Interrupted | NotReady) {
+    const progress = this.progress();
+    if (progress !== this.progressAtOutage) {
+      this.progressAtOutage = progress;
+      this.outages = 0;
+      this.outageSince = Date.now();
+    }
+    this.outages++;
+    const giveUpIfTooLong = () => {
+      if (Date.now() - this.outageSince >= OUTAGE_LIMIT_MS) {
+        throw new Stop(
+          'paused',
+          `${err.message}, and nothing worked for three hours. Resume when X and your connection work again.`,
+        );
+      }
+    };
+    giveUpIfTooLong();
+    await this.log('warn', 'system', `${err.message}. Waiting; nothing is counted as failed`);
+
+    if (!online()) {
+      while (!online()) {
+        giveUpIfTooLong();
+        await this.limiter.cooldown(Date.now() + ONLINE_CHECK_MS, 'Waiting for the internet connection');
+      }
+      await this.limiter.cooldown(Date.now() + randomBetween(20, 40) * 1000, 'Back online — continuing shortly');
+      return;
+    }
+    if (this.outages === 1 && (await workerTab.discarded())) {
+      await this.log('info', 'system', 'Chrome unloaded the X tab to save memory; reloading it');
+      return;
+    }
+    const minutes = backoffMinutes(this.outages);
+    const what =
+      err instanceof Interrupted && err.kind === 'outage' ? 'X is having trouble' : 'The X page stopped answering';
+    await this.limiter.cooldown(
+      Date.now() + minutes * 60_000 * randomBetween(1, 1.2),
+      `${what} — trying again in about ${minutes} min`,
+    );
+  }
+
   /** Re-checks lock / login / account right before an action. */
   async verifyPage() {
     const info = await workerTab.ping();
@@ -242,6 +336,8 @@ export class JobContext {
   /** Paced navigation, counted against the page-load caps and the read budget of the page (one fifth of X's quota). */
   async navigate(url: string) {
     this.checkpoint();
+    // Offline, a page load would only show Chrome's error page.
+    if (!online()) throw new Interrupted('offline', 'The internet connection dropped');
     this.readBudget = readBudgetFor(url);
     await this.limiter.before('read', this.readBudget);
     this.status(`Opening ${url.replace('https://x.com', '')}`);
@@ -250,8 +346,14 @@ export class JobContext {
     this.assertPage(info);
     try {
       const content = await workerTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
-      // No posts can mean X moved the page to its login or a check.
-      if (content.kind !== 'tweets') await this.verifyPage();
+      if (content.kind !== 'tweets') {
+        // No posts can mean X moved the page to its login or a check…
+        await this.verifyPage();
+        // …or that X or the connection failed, which says nothing about the posts.
+        const kind = interruptionOf(content.http, online());
+        if (kind === 'outage') throw new Interrupted(kind, `X answered HTTP ${content.http} for this page`);
+        if (kind) throw new Interrupted(kind, 'The page got no answer from X; the connection may have dropped');
+      }
       return content;
     } catch (err) {
       if (!(err instanceof NotReady)) throw err;
@@ -383,6 +485,15 @@ export class JobContext {
         throw new NeedsYou('login', needMessage('login', this.handle), true);
 
       default: {
+        // A dropped connection or an X server error says nothing about the post (PLAYBOOK F6).
+        const kind = interruptionOf(result.http, online());
+        if (kind) {
+          const message =
+            kind === 'outage' ? `X answered HTTP ${result.http}` : 'X did not answer; the connection may have dropped';
+          // Logged with its outcome so later runs count the request against X's quota; the post is not failed.
+          await this.log('warn', action, `${message} — not counted as failed`, target, outcome);
+          throw new Interrupted(kind, message);
+        }
         this.consecutiveFailures++;
         this.job.stats.failed++;
         await markTried();

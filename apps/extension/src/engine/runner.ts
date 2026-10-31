@@ -5,10 +5,10 @@ import { db, recordRisk } from '../shared/db';
 import { ATTENTION_ID, FINISHED_ID, clearNotification, notify } from '../shared/notify';
 import type { CleanupFilter, CleanupOptions, Job, JobState, ScanTarget } from '../shared/types';
 import { runCleanup } from './cleanup';
-import { JobContext, NeedsYou, Stop } from './context';
+import { Interrupted, JobContext, NeedsYou, Stop } from './context';
 import { runScan } from './scan';
 import { Aborted } from './timers';
-import { WorkerGone } from './worker-tab';
+import { NotReady, PageError, WorkerGone } from './worker-tab';
 
 const LOCK = 'xomoni-runner';
 
@@ -146,6 +146,11 @@ class Runner {
         if (err.risk) await recordRisk(job.accountId, err.risk).catch(() => {});
       } else if (err instanceof WorkerGone)
         final = { state: 'paused', reason: 'The X worker window was closed. Resume to reopen it.' };
+      else if (err instanceof PageError)
+        final = {
+          state: 'paused',
+          reason: `The X page reported a problem: ${err.message}. Check the X window, then resume.`,
+        };
       else final = { state: 'failed', reason: err instanceof Error ? err.message : String(err) };
     }
     clearNotification(ATTENTION_ID);
@@ -187,7 +192,8 @@ class Runner {
 
 /**
  * Connects and runs the job's steps. When X needs the person (login, 2FA, a
- * check), waits for them and runs the steps again: jobs are resumable, and
+ * check), waits for them; when the connection, X or the worker page fails,
+ * waits that out. Then runs the steps again: jobs are resumable, and
  * everything already handled is skipped.
  */
 async function runSteps(ctx: JobContext) {
@@ -198,8 +204,10 @@ async function runSteps(ctx: JobContext) {
       else await runCleanup(ctx);
       return;
     } catch (err) {
-      if (!(err instanceof NeedsYou) || ctx.signal.aborted) throw err;
-      await ctx.waitForYou(err);
+      if (ctx.signal.aborted) throw err;
+      if (err instanceof NeedsYou) await ctx.waitForYou(err);
+      else if (err instanceof Interrupted || err instanceof NotReady) await ctx.waitOut(err);
+      else throw err;
     }
   }
 }

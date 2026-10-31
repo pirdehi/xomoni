@@ -66,8 +66,8 @@
 | F2 | X interface language | 📘 | ✅ |
 | F3 | Intrusive popups (Premium, cookies, notifications) | 📰 | 🟡 |
 | F4 | queryId rotation and response structure changes | 📰 | ✅ |
-| F5 | Background tab slowdown or discard | 📘 | 🟡 |
-| F6 | Internet outage, system sleep, X outage | 🧠 | 🟡 |
+| F5 | Background tab slowdown or discard | 📘 | ✅ |
+| F6 | Internet outage, system sleep, X outage | 🧠 | ✅ |
 | F7 | System clock skew | 🧠 | 🔴 |
 | F8 | Concurrent runs and parallel use of X | 🧠 | ✅ |
 
@@ -309,18 +309,19 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 ### F4. queryId rotation and response structure changes · 📰 · ✅
 - **Scenario:** Operations are identified by **name**, and the response parser does not depend on the exact structure.
 
-### F5. Background tab slowdown or discard · 📘 · 🟡
+### F5. Background tab slowdown or discard · 📘 · ✅
 - **Current status:** Timers live in a Web Worker, so Chrome does not slow them down. If the X window is hidden, a warning is shown.
-- **Gap:** Chrome's Memory Saver mode may discard the X tab. As a result, the job becomes Paused.
-- **Proposed scenario:**
-  - `chrome.tabs.update(workerTab, { autoDiscardable: false })`.
-  - If the tab is discarded anyway, reload it and resume automatically.
+- **Scenario (implemented, #23):**
+  - Every run calls `chrome.tabs.update(workerTab, { autoDiscardable: false })`, so Memory Saver leaves the X tab alone.
+  - If Chrome unloads the tab anyway, Xomoni reloads it at once and continues, without counting a failure.
+  - A worker page that stops answering, or takes more than 45 seconds to load, is waited out like an X outage (F6) instead of failing the job (#60).
 
-### F6. Internet outage, system sleep, X outage · 🧠 · 🟡
-- **Current problem:** These errors count toward the "5 consecutive failures", and the posts are recorded as Failed.
-- **Proposed scenario:**
-  - **`navigator.onLine === false`:** "Waiting for internet" status without recording a failure, then resume automatically.
-  - **HTTP 5xx:** wait with exponential backoff (1, 2, 4, up to a maximum of 30 minutes), without counting the post as Failed.
+### F6. Internet outage, system sleep, X outage · 🧠 · ✅
+- **Scenario (implemented, #23):** none of these says anything about the posts, so nothing is counted as failed and the post stays eligible.
+  - **Offline (`navigator.onLine === false`):** no page is loaded; the status shows "Waiting for the internet connection", checked every 10 seconds. Back online, Xomoni waits 20–40 seconds and continues by itself.
+  - **HTTP 5xx, or a request with no answer:** for a write or for the page's own timeline request, wait with exponential backoff (1, 2, 4, 8, 16, then 30 minutes), then run the job's steps again; everything already handled is skipped. The request still counts against X's quota (ADR-0012).
+  - X's error page after such an answer never marks a post as gone.
+  - After three hours with no progress, the job pauses.
 
 ### F7. System clock skew · 🧠 · 🔴
 - **Risk:** The `x-rate-limit-reset` time is in X's server time. If the system clock is a few minutes ahead or behind, the wait time is computed wrong.

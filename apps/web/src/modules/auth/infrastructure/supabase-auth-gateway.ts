@@ -41,6 +41,14 @@ export function toAuthFailure(error: Pick<AuthError, 'code' | 'message' | 'statu
 const done = ({ error }: { error: AuthError | null }): AuthResult => (error ? toAuthFailure(error) : { ok: true });
 
 /**
+ * Maps a failed `delete_account()` call. The function asks for a recent sign-in with the hint
+ * `reauthentication_needed` (#80); anything else is unexpected.
+ */
+export function toDeleteAccountFailure(error: { hint?: string | null; message: string }): AuthFailure {
+  return authFailure(error.hint === 'reauthentication_needed' ? 'reauthentication_needed' : 'unknown', error.message);
+}
+
+/**
  * Implements {@link AuthGateway} with Supabase Auth. Works with the browser client (interactive sign-in,
  * so Supabase's per-IP limits and the captcha apply to the person) and with the request-bound server
  * client (session reads, OAuth callback, sign-out, account deletion).
@@ -113,7 +121,7 @@ export function createSupabaseAuthGateway(supabase: SupabaseClient<Database>): A
 
     async deleteAccount() {
       const { error } = await supabase.rpc('delete_account');
-      return error ? authFailure('unknown', error.message) : { ok: true };
+      return error ? toDeleteAccountFailure(error) : { ok: true };
     },
   };
 }

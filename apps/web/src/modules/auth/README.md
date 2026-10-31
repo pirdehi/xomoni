@@ -25,7 +25,7 @@ Everything about who someone is on xomoni.com: creating an account with a confir
 | Change email | `/account` → two emails → `/auth/confirm` | Both the old and the new address must confirm; the page shows the pending change. |
 | Google | `/login`, `/signup` → Google → `/auth/callback` | PKCE flow started in the browser; the callback trades the code for a session. |
 | Sign out | `POST /auth/signout` | Ends the session on this device. POST only, so a link can't sign anyone out. |
-| Delete account | `/account` | Server Action; removes the user, devices and jobs, then signs out. |
+| Delete account | `/account` | Server Action; removes the user, devices and jobs, then signs out. The database refuses unless the person signed in within the last 10 minutes; the page then offers *Sign in again*, which signs out and returns to `/account` after sign-in (#80). |
 
 ## Security rules
 

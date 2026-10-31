@@ -28,7 +28,13 @@ select throws_ok('select public.delete_account()', '42501', null, 'anon cannot c
 
 -- ── Signed in as Ada ─────────────────────────────────────────────────────────────────────────
 set local role authenticated;
-set local request.jwt.claims = '{"sub": "00000000-0000-4000-a000-00000000000a", "role": "authenticated"}';
+-- Signed in just now (delete_account() needs a sign-in within 10 minutes; see delete_account.test.sql).
+do $$ begin
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', '00000000-0000-4000-a000-00000000000a', 'role', 'authenticated',
+    'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint))
+  )::text, true);
+end $$;
 
 select results_eq('select name from public.devices', array['Ada laptop'], 'Ada sees only her device');
 select results_eq('select title from public.jobs', array['Ada scan'], 'Ada sees only her job');

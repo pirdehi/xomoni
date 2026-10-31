@@ -29,6 +29,7 @@ The site is mostly static (landing, legal and risks pages, the auth pages' shell
 
 - Injected markup can't load scripts from other origins, send data anywhere but Supabase, post forms off-site, or frame the site. Injected *inline* script would still run; React's escaping and the ESLint rule are the defense there.
 - Adding a third-party service (analytics, a font host, another captcha) means changing the policy and its unit test; the e2e guard catches a forgotten change.
+- Scanners mark the policy down for `'unsafe-inline'`: Mozilla Observatory gives xomoni.com B+ (80/100) on 2026-10-31, passing 11 of 12 tests, with that −20 as the only deduction. Nonces are the way to A+ if the site ever renders mostly on demand.
 - Vercel's preview toolbar is blocked on preview deployments. We don't use it.
 - The policy depends on `NEXT_PUBLIC_SUPABASE_URL`; the build fails without it, as it already did.
 

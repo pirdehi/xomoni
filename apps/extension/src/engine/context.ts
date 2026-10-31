@@ -1,6 +1,7 @@
 // Shared state and safety policy for one job run.
 import { type Need, needMessage, pageNeed } from '../shared/attention';
-import { addLog, db, getSettings, recordRisk } from '../shared/db';
+import { addLog, db, getSettings, recordRisk, riskEvents } from '../shared/db';
+import { type JobHealth, type SampleTally, healthReport } from '../shared/health';
 import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from '../shared/risk';
 import type { ActionResult, PageInfo } from '../shared/messages';
 import { DAY, HOUR } from '../shared/time';
@@ -123,6 +124,10 @@ export class JobContext {
   attempted = new Set<string>();
   /** Actions whose check before acting passed in this run (PLAYBOOK F1); each run checks again. */
   preflighted = new Set<ActionKind>();
+  /** What this run's sample checks found (PLAYBOOK C5), for the health report. */
+  samples: Omit<SampleTally, 'pending'> = { applied: 0, notApplied: 0, unclear: 0 };
+  /** When this run started (epoch ms): the health report counts X's signals from here. */
+  private readonly runStart = Date.now();
   /** Read budget of the page the worker tab shows; scrolls spend it too. */
   private readBudget: BudgetId = 'userTimeline';
   private consecutiveFailures = 0;
@@ -148,6 +153,27 @@ export class JobContext {
     // The risk ladder: a full stop or a resume lock ends the run before it touches X (PLAYBOOK §7).
     const blocked = riskBlock(this.limiter.risk);
     if (blocked) throw new Stop('blocked', blocked);
+  }
+
+  /**
+   * The account health report for this run (#25): X's signals since the run started, the sample checks, the
+   * notice X's page shows now (if the worker tab still answers) and the risk level afterwards.
+   */
+  async health(): Promise<JobHealth> {
+    const { accountId } = this.job;
+    const [events, pending, info] = await Promise.all([
+      riskEvents(accountId),
+      db.checks.where('[accountId+dueAt]').between([accountId, -Infinity], [accountId, Infinity]).count(),
+      workerTab.ping().catch(() => null),
+    ]);
+    const now = Date.now();
+    return healthReport({
+      risk: assessRisk(events, now),
+      events: events.filter((e) => e.at >= this.runStart),
+      checks: { ...this.samples, pending },
+      notice: info?.restriction ?? (info?.locked ? 'X is asking you to unlock the account' : null),
+      now,
+    });
   }
 
   /** Records a risk event and returns the ladder's view afterwards. */

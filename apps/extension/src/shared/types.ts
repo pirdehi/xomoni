@@ -1,3 +1,5 @@
+import type { JobHealth } from './health';
+
 /** Kind of an inventory item. `post`, `reply` and `repost` are the account's own; `like` is a post it liked. */
 export type ItemKind = 'post' | 'reply' | 'repost' | 'like';
 /**
@@ -168,6 +170,8 @@ export interface Job {
    * pause or an interruption) counts from here, so its posts are not counted twice.
    */
   scannedAtPageStart?: number;
+  /** The account health report from the end of the last run (#25); missing before the first run ends. */
+  health?: JobHealth;
   /** Why the job is in its state, shown to the person; empty while it runs normally. */
   stateReason: string;
   stats: JobStats;

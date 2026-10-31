@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Ban, Clock, Play, Pause, ScanSearch, ShieldAlert, Sparkles, Trash2 } from 'lucide-react';
+import { Ban, Clock, Play, Pause, ScanSearch, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { runner } from '../../engine/runner';
 import { workerTab } from '../../engine/worker-tab';
 import { db, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration } from '../../shared/filter';
+import type { JobHealth } from '../../shared/health';
 import type { Job } from '../../shared/types';
 import { JOB_STATE, fmtAgo, fmtDuration, fmtNumber } from '../format';
 import { resumeAnyway, startJob, usePace, useRisk, useRunner } from '../hooks';
@@ -18,7 +19,8 @@ const TERMINAL = new Set(['completed', 'cancelled']);
 /**
  * One job with its state, progress, time estimate and controls. While the runner in this tab is
  * executing the job, its live status replaces the stored state. While the risk ladder holds the account back
- * (a resume lock or a full stop), Resume waits and only a typed "Resume anyway" goes ahead.
+ * (a resume lock or a full stop), Resume waits and only a typed "Resume anyway" goes ahead. After a run, it
+ * shows the account health report from the end of that run.
  */
 export function JobCard({ job, compact = false }: { job: Job; compact?: boolean }) {
   const run = useRunner();
@@ -124,6 +126,36 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
           {job.stateReason}
         </p>
       )}
+      {!active && job.health && <HealthNote health={job.health} />}
+    </div>
+  );
+}
+
+/** The account health report from the end of the job's last run (#25): quiet when healthy, colored otherwise. */
+function HealthNote({ health }: { health: JobHealth }) {
+  const healthy = health.level === 0 && !health.notice && Object.keys(health.signals).length === 0;
+  const serious = health.level >= 3 || !!health.notice;
+  return (
+    <div
+      role="status"
+      className={cx(
+        'mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs',
+        healthy
+          ? 'border-line bg-surface-2'
+          : serious
+            ? 'border-critical/40 bg-critical/10'
+            : 'border-warn/40 bg-warn/10',
+      )}
+    >
+      {healthy ? (
+        <ShieldCheck size={14} className="mt-px shrink-0 text-good" aria-hidden />
+      ) : (
+        <ShieldAlert size={14} className={cx('mt-px shrink-0', serious ? 'text-critical' : 'text-warn')} aria-hidden />
+      )}
+      <p className="text-ink-2">
+        <span className="font-medium text-ink">Account health: </span>
+        {health.summary}
+      </p>
     </div>
   );
 }

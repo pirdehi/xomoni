@@ -36,6 +36,7 @@ function fakeContext(page: ContentState['kind'] = 'tweets', visible: VisibleTwee
     checkpoint: vi.fn(),
     status: vi.fn(),
     log: vi.fn(async (_level: string, _action: string, _message: string) => 0),
+    samples: { applied: 0, notApplied: 0, unclear: 0 },
   };
 }
 const asContext = (ctx: ReturnType<typeof fakeContext>) => ctx as unknown as JobContext;
@@ -90,6 +91,8 @@ describe('runDueChecks: catching a silent block (#22, PLAYBOOK C5)', () => {
     expect(ctx.navigate).toHaveBeenCalledWith('https://x.com/i/web/status/1');
     expect(await db.checks.count()).toBe(0);
     expect(await db.risk.count()).toBe(0);
+    // Tallied for the health report.
+    expect(ctx.samples).toEqual({ applied: 1, notApplied: 0, unclear: 0 });
   });
 
   it('stops everything when a deleted post is still there', async () => {

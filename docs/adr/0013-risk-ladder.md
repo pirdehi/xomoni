@@ -28,7 +28,7 @@ X escalates gradually: rate limits, then error 226 ("looks automated"), then tem
 
 - Warnings from X now cost days of reduced pace, by design.
 - A person can still choose to continue, but only deliberately and at a quarter of the pace.
-- Silent blocks (#22) are on the ladder: a sampled action that X confirmed but did not apply records a `silent_block` event, a full stop (PLAYBOOK C5). The health report (#25) will read the same events.
+- Silent blocks (#22) are on the ladder: a sampled action that X confirmed but did not apply records a `silent_block` event, a full stop (PLAYBOOK C5). The health report after every run (#25) reads the same events: the signals since the run started and the level at its end.
 
 ## Amendments
 

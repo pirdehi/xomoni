@@ -16,7 +16,7 @@ The React dashboard (`dashboard.html`), which runs as an extension page in a nor
 | `theme.ts`                     | System, light or dark theme, stored in `localStorage` and applied as `data-theme` on `<html>`.                                                                          |
 | `styles.css`                   | Tailwind CSS entry: light and dark color tokens, base page styles, and the `.field` and `.tabular` classes.                                                             |
 | `components/ui.tsx`            | Shared building blocks: `Card`, `Button`, `Badge`, `StatTile`, `Meter`, `Field`, `Toggle`, `Segmented`, `Modal`, `EmptyState`, `Callout`, `PageHeader`, `useNow`, `cx`. |
-| `components/JobCard.tsx`       | One job with live progress, time estimate and start, resume, pause, cancel and remove controls.                                                                         |
+| `components/JobCard.tsx`       | One job with live progress, time estimate, start, resume, pause, cancel and remove controls, the risk ladder's hold on Resume, and the account health report after a run.                                                                         |
 | `components/LogList.tsx`       | Activity log rows, each with a link to the post on X when there is one.                                                                                                 |
 | `components/LimitsPanel.tsx`   | Usage against Xomoni's own caps, and the 15-minute quotas X reported.                                                                                                   |
 | `components/ActivityChart.tsx` | Stacked per-year chart, or table, of the items still on the account.                                                                                                    |
@@ -51,4 +51,5 @@ The React dashboard (`dashboard.html`), which runs as an extension page in a nor
   - E8: `importArchive.ts` refuses an archive without `account.js` or one that belongs to another account.
   - F5: the worker status chip warns when the X worker window is hidden, and the running-job banner asks to keep it open.
   - F8: `startJob` shows the runner's refusal as a toast when another dashboard tab holds the run lock.
-  - B1 (partial): `JobCard` offers Resume on a job stopped for safety right away; the proposed cool-down is not built yet.
+  - B1, C1, C2 (ADR-0013): `JobCard` holds Resume back during a resume lock (with a countdown) or a full stop; "Resume anyway" needs typing RESUME. `LimitsPanel` shows the risk level, why, and how long the slower pace lasts.
+  - #25: `JobCard` shows the account health report from the end of the job's last run.

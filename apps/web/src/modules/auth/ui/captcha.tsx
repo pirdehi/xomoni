@@ -13,6 +13,8 @@ export interface Captcha {
   widget: ReactNode;
   /** The current token, or `null` while the check is running, after it expired, or after it failed. */
   token: string | null;
+  /** Cloudflare wants the person to tick its box; the check waits for them, so it is not stuck. */
+  interactive: boolean;
   /** The check failed (for example Cloudflare could not be reached) or is taking unusually long. */
   stuck: boolean;
   /** Discards the used token and starts a new check. Tokens are single-use, so call it after every submit. */
@@ -30,19 +32,22 @@ export function useCaptcha(action: string): Captcha {
   const [token, setToken] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [slow, setSlow] = useState(false);
+  const [interactive, setInteractive] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
-  // While there is no token, flag a check that takes unusually long so the person can retry it.
+  // While there is no token, flag a check that takes unusually long so the person can retry it. A check that
+  // waits for the person's click is not slow.
   useEffect(() => {
-    if (token) return;
+    if (token || interactive) return;
     const timer = setTimeout(() => setSlow(true), SLOW_CHECK_MS);
     return () => clearTimeout(timer);
-  }, [token, attempt]);
+  }, [token, interactive, attempt]);
 
   const reset = useCallback(() => {
     setToken(null);
     setFailed(false);
     setSlow(false);
+    setInteractive(false);
     setAttempt((n) => n + 1);
     ref.current?.reset();
   }, []);
@@ -64,8 +69,14 @@ export function useCaptcha(action: string): Captcha {
       onSuccess={(value) => {
         setFailed(false);
         setSlow(false);
+        setInteractive(false);
         setToken(value);
       }}
+      onBeforeInteractive={() => {
+        setSlow(false);
+        setInteractive(true);
+      }}
+      onAfterInteractive={() => setInteractive(false)}
       onExpire={() => setToken(null)}
       onError={() => {
         setToken(null);
@@ -73,10 +84,13 @@ export function useCaptcha(action: string): Captcha {
       }}
     />
   );
-  return { widget, token, stuck: !token && (failed || slow), reset, retry };
+  return { widget, token, interactive: !token && interactive, stuck: !token && (failed || slow), reset, retry };
 }
 
-/** Explains why the submit button waits, and offers a retry when the check fails or stalls. */
+/**
+ * Explains why the submit button waits: the check is running, Cloudflare wants a click, or the check failed or
+ * stalled (with a retry).
+ */
 export function CaptchaStatus({ captcha }: { captcha: Captcha }) {
   if (captcha.token) return null;
   if (captcha.stuck) {
@@ -92,7 +106,7 @@ export function CaptchaStatus({ captcha }: { captcha: Captcha }) {
   }
   return (
     <p className="mt-2 text-center text-xs text-muted" role="status">
-      Running a quick security check…
+      {captcha.interactive ? 'Tick the box above to continue.' : 'Running a quick security check…'}
     </p>
   );
 }

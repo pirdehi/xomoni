@@ -17,6 +17,23 @@ import {
 
 const NO_MATCH = 'That email and password don’t match an account.';
 
+/** Turnstile's API, faked: every widget asks for a click and stays without a token. */
+const INTERACTIVE_TURNSTILE = `
+  window.turnstile = {
+    render(el, options) {
+      setTimeout(() => options['before-interactive-callback']?.(), 0);
+      return 'interactive-widget';
+    },
+    reset() {},
+    remove() {},
+    execute() {},
+    getResponse() {},
+    isExpired() { return false; },
+  };
+  const onload = new URL(document.currentScript.src).searchParams.get('onload');
+  if (onload) window[onload]();
+`;
+
 /** The form's error message (Next.js also renders a route announcer with role="alert"). */
 const formAlert = (page: Page) => page.getByRole('main').getByRole('alert');
 
@@ -130,6 +147,22 @@ test.describe('sign-in', () => {
     await page.unroute('https://challenges.cloudflare.com/**');
     await page.getByRole('button', { name: 'try again' }).click();
     await expect(page.getByRole('button', { name: 'Send reset link' })).toBeEnabled({ timeout: 30_000 });
+  });
+
+  test('asks for a click when Cloudflare wants one, instead of blaming the connection', async ({ page }) => {
+    // A stand-in for Turnstile that asks the person to tick its box and never produces a token on its own.
+    await page.clock.install();
+    await page.route('https://challenges.cloudflare.com/turnstile/v0/api.js**', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: INTERACTIVE_TURNSTILE }),
+    );
+    await page.goto('/login');
+    await expect(page.getByText('Tick the box above to continue.')).toBeVisible();
+
+    // Well past the 20 s after which a silent check counts as stalled.
+    await page.clock.fastForward(60_000);
+    await expect(page.getByText('Tick the box above to continue.')).toBeVisible();
+    await expect(page.getByText('The security check didn’t finish.')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeDisabled();
   });
 
   test('starts Google sign-in at Google', async ({ page }) => {

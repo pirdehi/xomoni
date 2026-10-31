@@ -52,7 +52,7 @@ function fakeContext(loads: Load[], deep = false) {
     attempted: new Set<string>(),
     navigate: vi.fn(async (_url: string) => {
       current = queue.shift() ?? { kind: 'empty' };
-      return { kind: current.kind, count: 0 };
+      return { kind: current.kind, count: 0, http: null };
     }),
     pageRateLimit: vi.fn(async () => (current.limited ? LIMIT : null)),
     settle: vi.fn(async () => false),

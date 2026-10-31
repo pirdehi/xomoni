@@ -27,7 +27,7 @@ import {
   viewerIdFromCookie,
   waitFor,
 } from './dom';
-import { type NetEvent, resetAtFrom, waitForNet } from './net';
+import { type NetEvent, lastTimelineStatus, resetAtFrom, waitForNet } from './net';
 
 const bootId = Math.random().toString(36).slice(2);
 
@@ -97,7 +97,7 @@ async function waitContent(timeoutMs: number): Promise<ContentState> {
     return null;
   }, timeoutMs);
   if (kind === 'tweets') await sleep(400); // let the rest of the first page render
-  return { kind: kind ?? 'timeout', count: $$(SEL.article).length };
+  return { kind: kind ?? 'timeout', count: $$(SEL.article).length, http: lastTimelineStatus() };
 }
 
 function visibleTweets(): VisibleTweet[] {

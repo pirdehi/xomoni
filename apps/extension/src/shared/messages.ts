@@ -58,6 +58,11 @@ export interface ContentState {
   kind: 'tweets' | 'empty' | 'error' | 'timeout';
   /** Post articles on the page. */
   count: number;
+  /**
+   * HTTP status of the page's last timeline request: 0 when it got no answer, null when none was seen. A 5xx or
+   * 0 means X or the connection failed, not that the posts are gone.
+   */
+  http: number | null;
 }
 
 /** Result of one `scroll` command in the worker page. */

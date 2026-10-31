@@ -37,6 +37,18 @@ interface Waiter {
 
 const waiters = new Set<Waiter>();
 
+/** HTTP status of the last timeline request X's page made; 0 when it got no answer, null before the first. */
+let timelineStatus: number | null = null;
+
+/**
+ * HTTP status of the last timeline request on this page (search, profile, likes or post page): 0 when it got
+ * no answer, null before the first. Each navigation loads a new page, so it describes the current one. Lets
+ * the engine tell an X outage or a dropped connection from a page that really has no posts (PLAYBOOK F6).
+ */
+export function lastTimelineStatus(): number | null {
+  return timelineStatus;
+}
+
 /**
  * Sends a message to the service worker without waiting for an answer. Errors are swallowed:
  * after the extension is reloaded, this orphaned content script can no longer reach it.
@@ -107,6 +119,7 @@ export function handleCapture(raw: {
     at: Date.now(),
   };
 
+  if (TIMELINE_OPS.has(ev.op)) timelineStatus = ev.status;
   if (MUTATION_OPS.has(ev.op)) {
     for (const w of [...waiters]) if (w.ops.includes(ev.op) && w.match(ev.variables)) w.resolve(ev);
   }

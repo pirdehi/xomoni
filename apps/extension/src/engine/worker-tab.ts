@@ -60,7 +60,25 @@ export class WorkerTab {
     if (tabId == null) throw new Error('Could not open the X worker window');
     this.tabId = tabId;
     await chrome.storage.session.set({ [TAB_KEY]: tabId });
+    await this.keepLoaded();
     return tabId;
+  }
+
+  /**
+   * Asks Chrome not to unload the worker tab to save memory (Memory Saver), which would cut a run short
+   * (PLAYBOOK F5). Chrome may still do it under memory pressure; `waitReady` then reloads the tab.
+   */
+  async keepLoaded() {
+    const id = await this.current();
+    if (id != null) await chrome.tabs.update(id, { autoDiscardable: false }).catch(() => {});
+  }
+
+  /** Whether Chrome unloaded the worker tab to save memory. It answers nothing until it is reloaded. */
+  async discarded(): Promise<boolean> {
+    const id = await this.current();
+    if (id == null) return false;
+    const tab = await chrome.tabs.get(id).catch(() => null);
+    return tab?.discarded === true;
   }
 
   /** Brings the worker window to the front and restores it if minimized. */
@@ -78,7 +96,7 @@ export class WorkerTab {
 
   /**
    * Sends one command to the content script and returns its typed reply. Throws `WorkerGone` if the tab is
-   * closed, `NotReady` if no content script answered, and `Error` if the command itself reported an error.
+   * closed, `NotReady` if no content script answered, and `PageError` if the command itself reported an error.
    */
   async send<C extends ActorCommand>(command: C): Promise<Reply<C['cmd']>> {
     const id = await this.current();
@@ -91,7 +109,7 @@ export class WorkerTab {
       throw new NotReady(String(err instanceof Error ? err.message : err));
     }
     if (reply && typeof reply === 'object' && 'error' in reply)
-      throw new Error(String((reply as { error: unknown }).error));
+      throw new PageError(String((reply as { error: unknown }).error));
     return reply as Reply<C['cmd']>;
   }
 
@@ -105,7 +123,11 @@ export class WorkerTab {
     }
   }
 
-  /** Waits until the content script answers (optionally from a fresh page load). */
+  /**
+   * Waits until the content script answers (optionally from a fresh page load). Reloads the tab once: at once
+   * if Chrome unloaded it to save memory, after 10 s if it still has no content script. Throws `NotReady` when
+   * nothing answers within `timeoutMs`.
+   */
   async waitReady(signal: AbortSignal, notBootId?: string, timeoutMs = 45_000): Promise<PageInfo> {
     const started = Date.now();
     let reloaded = false;
@@ -113,14 +135,14 @@ export class WorkerTab {
       const info = await this.ping();
       if (info && info.bootId !== notBootId) return info;
       // A tab opened before the extension was (re)loaded has no content script yet.
-      if (!info && !reloaded && Date.now() - started > 10_000) {
+      if (!info && !reloaded && (Date.now() - started > 10_000 || (await this.discarded()))) {
         reloaded = true;
         const id = await this.current();
         if (id != null) await chrome.tabs.reload(id);
       }
       await sleep(500, signal);
     }
-    throw new Error('The X worker tab did not finish loading');
+    throw new NotReady('The X worker tab did not finish loading');
   }
 
   /** Full navigation; X re-renders from scratch, which keeps state predictable. */
@@ -143,8 +165,14 @@ export class WorkerGone extends Error {
   }
 }
 
-/** No content script answered in the worker tab, usually because the page is loading or reloading. */
+/**
+ * No content script answered in the worker tab, usually because the page is loading, reloading or was
+ * unloaded by Chrome. The runner waits and runs the job's steps again (`JobContext.waitOut`).
+ */
 export class NotReady extends Error {}
+
+/** The content script in the worker tab reported an error running a command. The runner pauses the job. */
+export class PageError extends Error {}
 
 /** The worker handle shared by the engine and the dashboard UI. */
 export const workerTab = new WorkerTab();

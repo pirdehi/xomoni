@@ -8,6 +8,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `archive.ts`   | Parses the official X data archive (`window.YTD…` files) into item drafts and reads the archive's owner.                    |
 | `attention.ts` | Decides when only the person can continue (login, including X's `/i/jf/` flow; X check; wrong account), the text shown for it, and `restrictionNotice` for X's suspended or limited notices. |
+| `bridge.ts` | The private channel between the page-world interceptor and the content script (#59): the port handover at `document_start` and `isCapture`. Pure DOM, no `chrome.*`. |
 | `coverage.ts` | What Xomoni can see of an account (PLAYBOOK E2): the profile timeline's ~3,200-post reach and the estimate of posts X has that the inventory doesn't. Pure. |
 | `db.ts`        | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log, consent, the archive-imported marker.              |
 | `filter.ts`    | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration.               |

@@ -1,6 +1,7 @@
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, DeviceRow, JobRow } from '@xomoni/db';
 import type { Device, JobSummary } from '../domain/model';
+import { toRiskLevel } from '../domain/risk';
 import type { DashboardReader, DeviceRegistry, LiveFeed } from '../application/ports';
 
 type Client = SupabaseClient<Database>;
@@ -26,6 +27,7 @@ export function toJobSummary(row: JobRow): JobSummary {
     skipped: row.skipped,
     failed: row.failed,
     scanned: row.scanned,
+    riskLevel: toRiskLevel(row.risk_level),
     updatedAt: row.updated_at,
   };
 }

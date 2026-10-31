@@ -13,6 +13,9 @@ export interface Device {
 /** Job states, mirroring the extension's job lifecycle. */
 export type JobState = 'queued' | 'running' | 'waiting' | 'paused' | 'blocked' | 'completed' | 'cancelled' | 'failed';
 
+/** A level of the extension's risk ladder (ADR-0013), from 0 (Normal) to 4 (Full stop). */
+export type RiskLevel = 0 | 1 | 2 | 3 | 4;
+
 /** The status summary of one extension job. Counters and state only; post content never leaves the extension. */
 export interface JobSummary {
   /** Row id. */
@@ -41,6 +44,8 @@ export interface JobSummary {
   failed: number;
   /** Items a scan has counted. */
   scanned: number;
+  /** The X account's risk level when the job last reported, or null if the extension didn't report one. */
+  riskLevel: RiskLevel | null;
   /** Last change (ISO 8601). */
   updatedAt: string;
 }

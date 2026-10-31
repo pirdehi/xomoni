@@ -42,6 +42,7 @@ export type Database = {
           local_id: string;
           matched: number;
           phase: string;
+          risk_level: number | null;
           scanned: number;
           skipped: number;
           started_at: string | null;
@@ -63,6 +64,7 @@ export type Database = {
           local_id: string;
           matched?: number;
           phase?: string;
+          risk_level?: number | null;
           scanned?: number;
           skipped?: number;
           started_at?: string | null;
@@ -84,6 +86,7 @@ export type Database = {
           local_id?: string;
           matched?: number;
           phase?: string;
+          risk_level?: number | null;
           scanned?: number;
           skipped?: number;
           started_at?: string | null;

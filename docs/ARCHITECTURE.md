@@ -139,6 +139,7 @@ Other rules for the website:
 - **The Supabase SDK stays behind adapters.** Only `shared/supabase` and `infrastructure/` folders import `@supabase/*` or `@xomoni/db`.
 - **Server code says so.** Files in `server/` import `server-only`, so importing them from a Client Component fails the build. Server Actions (`actions.ts`) start with `'use server'`.
 - **Every action re-checks the session.** The proxy's redirects are a convenience; pages use `requireViewer()` and Server Actions verify the user again.
+- **Security headers on every response.** A static Content-Security-Policy (scripts only from the site and Turnstile, connections only to the site and its Supabase project, no framing), HSTS, `nosniff`, a strict referrer policy and a `Permissions-Policy` that turns off unused features. The site never renders raw HTML, and every end-to-end test fails on a policy violation ([ADR-0014](adr/0014-security-headers-and-a-static-csp.md)).
 - **Interactive auth runs in the browser.** Sign-up, sign-in, reset and the other credential forms call Supabase Auth from the person's browser through `modules/auth/client`, so Supabase's per-IP limits and the captcha apply to the person rather than to our server ([ADR-0011](adr/0011-email-and-password-sign-in.md)). The server reads and verifies the resulting session cookie.
 
 A flow, end to end (signing up with email). The use case is the same code in the browser and in tests; only the gateway changes.

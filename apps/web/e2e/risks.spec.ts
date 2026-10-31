@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/test';
 
 test.describe('risks page (#24)', () => {
   test('shows the informed-consent text, with X’s rule and what Xomoni never does', async ({ page }) => {

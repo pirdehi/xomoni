@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { emailsTo, waitForEmail } from './support/mailpit';
+import { expect, test } from './support/test';
 import {
   NEW_PASSWORD,
   PASSWORD,

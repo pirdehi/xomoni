@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { PASSWORD_POLICY, passwordIssues, signUpSchema, validate } from './credentials';
 
 describe('passwordIssues', () => {
@@ -52,5 +53,11 @@ describe('policy matches supabase/config.toml', () => {
 
   it('requires letters and digits', () => {
     expect(auth).toMatch(/^password_requirements = "letters_digits"$/m);
+  });
+});
+
+describe('zod under the site CSP (ADR-0014)', () => {
+  it('runs without eval, so the browser never reports a blocked `new Function` probe', () => {
+    expect(z.config().jitless).toBe(true);
   });
 });

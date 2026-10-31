@@ -44,7 +44,18 @@ export default defineConfig(
     files: ['apps/web/**/*.{ts,tsx}'],
     plugins: { '@next/next': nextPlugin },
     settings: { next: { rootDir: 'apps/web/' } },
-    rules: { ...nextPlugin.configs.recommended.rules, ...nextPlugin.configs['core-web-vitals'].rules },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
+      // The CSP allows inline scripts (ADR-0014), so the site must never render raw HTML.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message: 'The website never renders raw HTML: its CSP allows inline scripts (ADR-0014).',
+        },
+      ],
+    },
   },
   {
     files: ['apps/extension/**/*.{ts,tsx}'],

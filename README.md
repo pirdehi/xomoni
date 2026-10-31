@@ -80,6 +80,32 @@ If Xomoni cannot verify an item, it leaves the item alone.
 
 The full research behind these choices (in Persian) is in [docs/RESEARCH.md](docs/RESEARCH.md). It covers X's limits, anti-automation signals, a comparison of approaches, and sources.
 
+## Before you start: the risks
+
+The extension shows this text once for each X account and asks you to type `I UNDERSTAND` before the first job. It is also at [xomoni.com/risks](https://xomoni.com/risks).
+
+<!-- consent:start -->
+Xomoni deletes posts, replies, reposts and likes on your X account by clicking X’s own buttons in a normal browser tab. Read this once for each X account, before its first job.
+
+**X’s rules forbid this kind of automation.** X prohibits non-API automation, such as scripting the X website. X can limit, lock or suspend an account that breaks its rules. [Read X’s automation rules](https://help.x.com/en/rules-and-policies/x-automation).
+
+**The risk can’t be removed.** Xomoni keeps the risk low: it never uses more than one fifth of any limit X announces, starts slower than that, and stops at X’s first warning. It can’t make the risk zero. Only X decides what happens to your account.
+
+**Deletions are permanent.** A deleted post, an undone repost or a removed like can’t be brought back, by Xomoni or by X.
+
+**Download your archive first.** Before you delete anything, request your X archive (on X: Settings, Your account, Download an archive of your data). It is your only copy, and Xomoni can read it to find your oldest posts.
+
+**What Xomoni never does.**
+
+- Ask for, store or read your X password or cookies.
+- Send your posts, likes or anything else from X to any server.
+- Forge requests, solve captchas, use proxies or hide that it is automation.
+- Use more than one fifth of any limit X announces.
+- Start, resume or approve deletions from the website.
+
+If you go ahead, you do so for this X account, knowing these risks.
+<!-- consent:end -->
+
 ## Install
 
 Xomoni isn't on the Chrome Web Store yet. Build it from source:

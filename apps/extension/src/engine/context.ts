@@ -1,6 +1,6 @@
 // Shared state and safety policy for one job run.
 import { type Need, needMessage, pageNeed } from '../shared/attention';
-import { addLog, db, getSettings, recordRisk, riskEvents } from '../shared/db';
+import { addLog, db, getSettings, hasConsent, recordRisk, riskEvents } from '../shared/db';
 import { type JobHealth, type SampleTally, healthReport } from '../shared/health';
 import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from '../shared/risk';
 import type { ActionResult, PageInfo } from '../shared/messages';
@@ -143,8 +143,18 @@ export class JobContext {
     private hooks: RunnerHooks,
   ) {}
 
-  /** Loads settings and seeds the limiter. Call before anything else. */
+  /**
+   * Loads settings and seeds the limiter. Call before anything else. Refuses to run (blocked) without the
+   * person's informed consent for the account, or while the risk ladder holds it back.
+   */
   async init() {
+    // Nothing acts on X before the person read the risks for this account (#24, PLAYBOOK C7).
+    if (!(await hasConsent(this.job.accountId))) {
+      throw new Stop(
+        'blocked',
+        'Read the risks for this X account first: press Start or Resume in the dashboard, then type I UNDERSTAND.',
+      );
+    }
     this.settings = await getSettings();
     this.limiter = new Limiter(this.settings, this.job.accountId, this.signal, (reason, until) =>
       this.hooks.status(reason, until),

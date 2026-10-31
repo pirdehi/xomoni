@@ -218,7 +218,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 ### C7. Ban on non-API automation in X's rules · 📘 · ⚠️
 - **Rule:** "Non-API automation, such as scripting the X website" is prohibited and may lead to suspension.
 - **Management:**
-  - A clear warning in the README and when a job starts.
+  - **Informed consent (implemented, #24):** before an X account's first job, the extension shows X's rule with a link, the risk that can't be removed, that deletions are permanent, to download the archive first, and what Xomoni never does. Going ahead needs typing `I UNDERSTAND`, stored per X account with the text's version; a new version asks again. The engine refuses to run without it. The same text, from `packages/consent`, is on xomoni.com/risks and in the README.
   - Conservative defaults.
   - No concealment of any kind.
   - Stop at the first serious sign.

@@ -19,6 +19,7 @@ import { workerTab } from '../engine/worker-tab';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, cx } from './components/ui';
+import { ConsentDialog } from './components/ConsentDialog';
 import { type WorkerStatus, toast, useActiveAccount, useRunner, useToasts, useWorkerStatus } from './hooks';
 import { ActivityPage } from './pages/Activity';
 import { CleanupPage } from './pages/Cleanup';
@@ -76,6 +77,7 @@ export function App() {
         </div>
       </main>
       <Toasts />
+      <ConsentDialog />
     </div>
   );
 }

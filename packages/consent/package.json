@@ -1,0 +1,19 @@
+{
+  "name": "@xomoni/consent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The informed-consent text shown before an X account's first job, shared by the extension, xomoni.com and the README.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}

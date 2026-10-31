@@ -98,6 +98,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/web/src/modules/dashboard`](../apps/web/src/modules/dashboard/README.md) | Devices and live job status. |
 | [`apps/web/src/shared`](../apps/web/src/shared/README.md) | Site config, Supabase clients, layout components shared by every module. |
 | [`packages/db`](../packages/db/README.md) | The typed contract of the database, generated from the migrations. |
+| [`packages/consent`](../packages/consent/README.md) | The informed-consent text shown before an X account's first job: one source for the extension, `/risks` and the README. |
 | [`supabase`](../supabase/README.md) | Migrations, auth settings and email templates, as code ([ADR-0010](adr/0010-configuration-as-code.md)). |
 
 `tooling/` holds repository checks (the documentation gate, the `verify` runner, git hook setup) and `docs/` holds this document, the ADRs, the playbook and research.

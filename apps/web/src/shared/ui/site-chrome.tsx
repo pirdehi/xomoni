@@ -67,6 +67,9 @@ export function SiteFooter() {
           · MIT license · Not affiliated with X Corp.
         </p>
         <nav className="flex gap-5">
+          <Link href="/risks" className="hover:text-ink">
+            Risks
+          </Link>
           <Link href="/privacy" className="hover:text-ink">
             Privacy
           </Link>

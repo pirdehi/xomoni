@@ -2,8 +2,10 @@ import Dexie, { type Table } from 'dexie';
 import { type RiskEvent, type RiskEventKind, isDuplicateRisk } from './risk';
 import { normalizeSettings } from './settings';
 import { DAY } from './time';
+import { CONSENT_VERSION } from '@xomoni/consent';
 import type {
   Account,
+  Consent,
   Item,
   ItemDraft,
   ItemKind,
@@ -42,6 +44,7 @@ class XomoniDB extends Dexie {
   reads!: Table<ReadUse, number>;
   risk!: Table<RiskEvent, number>;
   checks!: Table<SampleCheck, number>;
+  consents!: Table<Consent, string>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -57,6 +60,7 @@ class XomoniDB extends Dexie {
     this.version(2).stores({ reads: '++seq, [accountId+ts]' });
     this.version(3).stores({ risk: '++seq, [accountId+at]' });
     this.version(4).stores({ checks: '++seq, [accountId+dueAt]' });
+    this.version(5).stores({ consents: 'accountId' });
   }
 }
 
@@ -64,7 +68,7 @@ class XomoniDB extends Dexie {
  * The extension's IndexedDB database (`xomoni`), used by the dashboard and the service worker. Tables:
  * `accounts`, `items` (the inventory), `jobs`, `logs`, `limits` (X rate-limit observations), `reads` (page loads of
  * the last 24 hours), `risk` (the risk ladder's events, see `risk.ts`), `checks` (sampled actions to check again,
- * see `engine/samples.ts`) and `kv`.
+ * see `engine/samples.ts`), `consents` (informed consent per X account) and `kv`.
  * @remarks Content scripts cannot use it: they run under x.com's origin, so they message the service worker.
  */
 export const db = new XomoniDB();
@@ -197,4 +201,15 @@ export async function recordRisk(accountId: string, kind: RiskEventKind): Promis
   const event: RiskEvent = { accountId, kind, at: now };
   await db.risk.add(event);
   return [...events, event];
+}
+
+/** Whether the person gave informed consent for this X account to the current version of the text (#24). */
+export async function hasConsent(accountId: string): Promise<boolean> {
+  const consent = await db.consents.get(accountId);
+  return !!consent && consent.version >= CONSENT_VERSION;
+}
+
+/** Records the person's informed consent for this X account, for the current version of the text. */
+export async function recordConsent(accountId: string) {
+  await db.consents.put({ accountId, version: CONSENT_VERSION, at: Date.now() });
 }

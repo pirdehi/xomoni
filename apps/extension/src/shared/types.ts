@@ -251,6 +251,18 @@ export interface SampleCheck {
   dueAt: number;
 }
 
+/**
+ * The person's informed consent for one X account (#24), stored in the `consents` table. It counts only while
+ * `version` matches the current `CONSENT_VERSION` of `@xomoni/consent`.
+ */
+export interface Consent {
+  accountId: string;
+  /** The version of the consent text the person agreed to. */
+  version: number;
+  /** When they typed the confirmation (epoch ms). */
+  at: number;
+}
+
 /** Rate-limit headers X returned for one of its own GraphQL operations. */
 export interface RateObservation {
   /** `${accountId}:${op}` */

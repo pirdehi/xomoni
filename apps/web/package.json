@@ -14,6 +14,7 @@
     "@marsidev/react-turnstile": "^1.6.3",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
+    "@xomoni/consent": "*",
     "@xomoni/db": "*",
     "lucide-react": "^1.64.0",
     "next": "16.4.3",
@@ -32,7 +33,7 @@
     "typescript": "~5.9.3",
     "vitest": "^3.2.0"
   },
-  "description": "xomoni.com \u2014 website and remote dashboard for the Xomoni extension",
+  "description": "xomoni.com — website and remote dashboard for the Xomoni extension",
   "license": "MIT",
   "author": "Omid Pirdehi (https://github.com/pirdehi)"
 }

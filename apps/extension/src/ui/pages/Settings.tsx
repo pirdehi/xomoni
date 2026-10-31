@@ -3,8 +3,10 @@ import { Download, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { db, getSettings, kvSet } from '../../shared/db';
 import { FINISHED_ID, notify } from '../../shared/notify';
-import { ACTION_LABELS, PRESETS } from '../../shared/settings';
+import { ACTION_LABELS, PRESETS, normalizeSettings } from '../../shared/settings';
+import { DAY } from '../../shared/time';
 import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/types';
+import { X_PUBLISHED_LIMITS, capCeilings, share } from '../../shared/x-limits';
 import type { PageProps } from '../navigation';
 import { Button, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
 import { downloadFile, toDateInput } from '../format';
@@ -22,7 +24,8 @@ const COLUMNS: { key: keyof PacingRule; label: string; unit?: string }[] = [
   { key: 'dailyCap', label: 'Per day' },
 ];
 
-const save = (s: Settings) => kvSet('settings', s);
+// Every save goes through the safety rules: custom values are clamped to one fifth of X's limits.
+const save = (s: Settings) => kvSet('settings', normalizeSettings(s));
 
 /**
  * Pacing presets and per-action rules, active hours, notifications, the failure limit, theme, and
@@ -37,7 +40,7 @@ export function SettingsPage(_props: PageProps) {
   if (!settings) return null;
 
   const setPreset = (preset: PresetName) =>
-    save({ ...settings, preset, pacing: preset === 'custom' ? settings.pacing : PRESETS[preset] });
+    save({ ...settings, preset, pacing: preset === 'custom' ? settings.pacing : PRESETS.careful });
   const setRule = (action: ActionKind, key: keyof PacingRule, value: number) =>
     save({
       ...settings,
@@ -75,19 +78,18 @@ export function SettingsPage(_props: PageProps) {
     <>
       <PageHeader
         title="Settings"
-        description="Pacing, safety and your local data. Changes apply to the next action."
+        description="Pacing, safety and your local data. A running job keeps its settings until it is paused and resumed."
       />
       <div className="space-y-4">
         <Card
           title="Pacing"
-          subtitle="How fast Xomoni works. Careful is recommended — X does not publish limits for deleting or unliking."
+          subtitle="Xomoni uses at most one fifth of every limit X publishes, and of the live limits X reports. Custom values can be slower, never faster."
           actions={
             <Segmented
               value={settings.preset}
               onChange={setPreset}
               options={[
-                { value: 'careful', label: 'Careful' },
-                { value: 'balanced', label: 'Balanced' },
+                { value: 'careful', label: 'Careful (⅕ of X)' },
                 { value: 'custom', label: 'Custom' },
               ]}
             />
@@ -118,6 +120,7 @@ export function SettingsPage(_props: PageProps) {
                             className="field tabular py-1 pr-5 text-xs"
                             type="number"
                             min={c.unit ? 0 : 1}
+                            max={c.key === 'hourlyCap' || c.key === 'dailyCap' ? capCeilings(action)[c.key] : undefined}
                             step={c.unit ? 0.5 : 1}
                             value={settings.pacing[action][c.key]}
                             onChange={(e) =>
@@ -139,8 +142,9 @@ export function SettingsPage(_props: PageProps) {
           </div>
           <p className="mt-3 text-xs text-muted">
             Delays are randomized between min and max. After each batch Xomoni takes a longer break. Caps use rolling
-            1-hour and 24-hour windows.
+            1-hour and 24-hour windows and can't be set above one fifth of X's limits.
           </p>
+          <XLimitsTable />
         </Card>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -276,5 +280,52 @@ export function SettingsPage(_props: PageProps) {
         This removes Xomoni’s inventory, jobs, activity log and settings from this browser. Nothing on X is changed.
       </Modal>
     </>
+  );
+}
+
+/** X's published limits next to the share Xomoni allows itself, with links to where X publishes them. */
+function XLimitsTable() {
+  return (
+    <details className="mt-4 rounded-lg border border-line px-3 py-2">
+      <summary className="cursor-pointer text-xs font-medium text-ink">X's published limits and Xomoni's share</summary>
+      <div className="overflow-x-auto">
+        <table className="mt-2 w-full text-xs">
+          <thead>
+            <tr className="text-left text-muted">
+              <th className="pb-1 font-medium">Limit</th>
+              <th className="pb-1 pl-3 font-medium">X allows</th>
+              <th className="pb-1 pl-3 font-medium">Xomoni uses at most</th>
+              <th className="pb-1 pl-3 font-medium">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(X_PUBLISHED_LIMITS).map(([id, l]) => {
+              const per = l.windowMs >= DAY ? 'day' : '15 min';
+              return (
+                <tr key={id} className="tabular border-t border-line">
+                  <td className="py-1 pr-3 text-ink">{l.label}</td>
+                  <td className="py-1 pl-3 text-ink-2">
+                    {l.limit} per {per}
+                  </td>
+                  <td className="py-1 pl-3 font-medium text-ink">
+                    {'neverUsed' in l && l.neverUsed ? 'none: Xomoni never posts' : `${share(l.limit)} per ${per}`}
+                  </td>
+                  <td className="py-1 pl-3">
+                    <a className="text-accent underline" href={l.source} target="_blank" rel="noreferrer">
+                      {new URL(l.source).hostname}
+                    </a>{' '}
+                    <span className="text-muted">({l.checked})</span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        Posting limits are listed for completeness. While a job runs, Xomoni also stops at one fifth of the live limit X
+        reports for each request and waits for X's window to reset.
+      </p>
+    </details>
   );
 }

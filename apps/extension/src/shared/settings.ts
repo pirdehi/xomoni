@@ -1,104 +1,27 @@
 import type { ActionKind, PacingRule, PresetName, Settings } from './types';
+import { capCeilings, clampRule } from './x-limits';
+
+const ceil = capCeilings;
 
 /**
- * Pacing presets per action. Defaults are deliberately conservative. X does not publish limits for deletes
- * or unlikes on the web; the public API allows 50 deletes / 15 min, and likes have historically been capped
- * around 1,000 / day. See docs/RESEARCH.md.
+ * Pacing presets per action. Careful runs at the one-fifth ceiling of every limit X publishes (ADR-0012,
+ * `x-limits.ts`): for deletes that is 10 per 15 minutes, so its delays average about 100 s, which keeps the
+ * pace even instead of bursting into the window. Custom settings may be slower, never faster.
  */
 export const PRESETS: Record<Exclude<PresetName, 'custom'>, Record<ActionKind, PacingRule>> = {
   careful: {
-    delete: {
-      minDelay: 6,
-      maxDelay: 12,
-      batchSize: 30,
-      batchPauseMin: 180,
-      batchPauseMax: 360,
-      hourlyCap: 150,
-      dailyCap: 1000,
-    },
+    delete: { minDelay: 80, maxDelay: 120, batchSize: 25, batchPauseMin: 300, batchPauseMax: 600, ...ceil('delete') },
     unretweet: {
-      minDelay: 6,
-      maxDelay: 12,
-      batchSize: 30,
-      batchPauseMin: 180,
-      batchPauseMax: 360,
-      hourlyCap: 150,
-      dailyCap: 1000,
-    },
-    unlike: {
-      minDelay: 5,
-      maxDelay: 10,
-      batchSize: 40,
-      batchPauseMin: 180,
-      batchPauseMax: 360,
-      hourlyCap: 180,
-      dailyCap: 1000,
-    },
-    relike: {
-      minDelay: 15,
-      maxDelay: 30,
-      batchSize: 20,
+      minDelay: 80,
+      maxDelay: 120,
+      batchSize: 25,
       batchPauseMin: 300,
       batchPauseMax: 600,
-      hourlyCap: 40,
-      dailyCap: 200,
+      ...ceil('unretweet'),
     },
-    read: {
-      minDelay: 2,
-      maxDelay: 4,
-      batchSize: 60,
-      batchPauseMin: 60,
-      batchPauseMax: 120,
-      hourlyCap: 400,
-      dailyCap: 4000,
-    },
-  },
-  balanced: {
-    delete: {
-      minDelay: 3,
-      maxDelay: 6,
-      batchSize: 60,
-      batchPauseMin: 120,
-      batchPauseMax: 240,
-      hourlyCap: 400,
-      dailyCap: 3000,
-    },
-    unretweet: {
-      minDelay: 3,
-      maxDelay: 6,
-      batchSize: 60,
-      batchPauseMin: 120,
-      batchPauseMax: 240,
-      hourlyCap: 400,
-      dailyCap: 3000,
-    },
-    unlike: {
-      minDelay: 3,
-      maxDelay: 6,
-      batchSize: 60,
-      batchPauseMin: 120,
-      batchPauseMax: 240,
-      hourlyCap: 400,
-      dailyCap: 2500,
-    },
-    relike: {
-      minDelay: 10,
-      maxDelay: 20,
-      batchSize: 30,
-      batchPauseMin: 300,
-      batchPauseMax: 600,
-      hourlyCap: 60,
-      dailyCap: 400,
-    },
-    read: {
-      minDelay: 1.5,
-      maxDelay: 3,
-      batchSize: 100,
-      batchPauseMin: 45,
-      batchPauseMax: 90,
-      hourlyCap: 800,
-      dailyCap: 8000,
-    },
+    unlike: { minDelay: 80, maxDelay: 120, batchSize: 25, batchPauseMin: 300, batchPauseMax: 600, ...ceil('unlike') },
+    relike: { minDelay: 90, maxDelay: 150, batchSize: 10, batchPauseMin: 600, batchPauseMax: 900, ...ceil('relike') },
+    read: { minDelay: 3, maxDelay: 6, batchSize: 40, batchPauseMin: 60, batchPauseMax: 120, ...ceil('read') },
   },
 };
 
@@ -110,6 +33,21 @@ export const DEFAULT_SETTINGS: Settings = {
   maxConsecutiveFailures: 5,
   notifications: true,
 };
+
+/**
+ * Brings stored or edited settings back inside the safety rules: a preset that no longer exists (such as the
+ * old Balanced) becomes Careful, and every custom rule is clamped to the one-fifth ceilings with its minimums
+ * at most its maximums.
+ */
+export function normalizeSettings(stored: Partial<Settings> | null | undefined): Settings {
+  const merged = { ...DEFAULT_SETTINGS, ...stored };
+  if (merged.preset !== 'custom') return { ...merged, preset: 'careful', pacing: PRESETS.careful };
+  const pacing = {} as Record<ActionKind, PacingRule>;
+  for (const action of Object.keys(DEFAULT_SETTINGS.pacing) as ActionKind[]) {
+    pacing[action] = clampRule(action, { ...DEFAULT_SETTINGS.pacing[action], ...stored?.pacing?.[action] });
+  }
+  return { ...merged, pacing };
+}
 
 /** Dashboard labels for each action kind. */
 export const ACTION_LABELS: Record<ActionKind, string> = {

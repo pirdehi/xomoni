@@ -44,3 +44,6 @@ export function searchDate(ms: number): string {
 export const DAY = 86_400_000;
 /** One hour in ms. */
 export const HOUR = 3_600_000;
+
+/** One minute in ms. */
+export const MINUTE = 60_000;

@@ -4,7 +4,7 @@
 
 > Companion to [RESEARCH.md](RESEARCH.md). This document categorizes every way X may limit automated work. For each item, it states exactly how Xomoni detects it and how it responds.
 >
-> Date: 30 October 2026 · Code version: v0.1
+> Date: 30 October 2026 (one-fifth rule added 31 October 2026) · Code version: v0.1
 
 ## Reading guide
 
@@ -75,10 +75,12 @@
 
 ## A. Rate limits and quotas
 
+> **Rule (ADR-0012, 31 October 2026):** for every limit X announces, Xomoni uses at most **one fifth**. This applies to the limits X publishes (`apps/extension/src/shared/x-limits.ts`, with sources) and to the live limits X reports in its headers.
+
 ### A1. Per-endpoint 15-minute quota · 📘 · ✅
 - **X mechanism:** Each GraphQL operation has its own 15-minute window, for example `DeleteTweet`, `UnfavoriteTweet`, `SearchTimeline` and `TweetDetail`. X reports the quota in the `x-rate-limit-limit / remaining / reset` headers.
 - **Detection:** `interceptor.ts` reads these headers from the responses of **X's own web app**, in all x.com tabs. The result is stored in the `limits` table.
-- **Scenario:** Before each action, `Limiter.before()` checks the quota of that operation. If `remaining ≤ 1`, it waits until `reset` plus a random 5 to 20 seconds. For page reads, the quotas of all read operations are checked.
+- **Scenario:** Before each action, `Limiter.before()` checks the quota of that operation. Once one fifth of X's window is used (`limit − remaining ≥ limit / 5`), it waits until `reset` plus a random 5 to 20 seconds. A page load checks the quota of that page's own operation (search, timeline, likes or post page).
 
 ### A2. Error 429 / code 88 · 📘 · ✅
 - **Scenario:**
@@ -90,7 +92,7 @@
 - **X mechanism:** Codes 185 and 344 mean the daily cap is reached. For likes, a historical cap of about 1,000 per day has been reported. Since May 2026, unverified accounts are capped at 50 posts and 200 replies per day.
 - **Scenario:**
   - On error, wait about 24 hours plus 5 to 30 minutes.
-  - Xomoni's own rolling caps (in Careful mode: 1,000 deletions and 1,000 unlikes per day) usually take effect before X's cap is reached.
+  - Xomoni's caps are one fifth of X's published limits: 10 deletions, undone reposts or unlikes per 15 minutes; 200 unlikes per day (shared with ghost-like cleanup); 960 deletions per day at most.
   - Xomoni never creates posts or replies. The only possible "creation" is the temporary like in the Ghost likes option, which has a separate cap of 200 per day.
 
 ### A4. "Posts read per day" cap · 📰 · 🟡

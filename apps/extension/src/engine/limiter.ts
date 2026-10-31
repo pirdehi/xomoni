@@ -1,31 +1,28 @@
-// Paces actions like a person would and keeps them inside every known limit:
-// jittered delays, batch breaks, rolling hourly/daily caps, X's own rate-limit
-// headers, optional active hours, and an adaptive slowdown after soft errors.
+// Paces actions and keeps them inside every known limit, at one fifth of every limit X announces
+// (ADR-0012): jittered delays, batch breaks, rolling hourly/daily caps, X's published limits and the live
+// limits in its rate-limit headers, optional active hours, and an adaptive slowdown after soft errors.
 import { db } from '../shared/db';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Outcome, Settings } from '../shared/types';
+import { ACTION_BUDGETS, BUDGETS, type BudgetId, allowances, liveSlot, nextSlot, share } from '../shared/x-limits';
 import { randomBetween, sleep } from './timers';
-
-/** The X operation whose rate-limit headers govern each action. */
-const GOVERNING_OP: Partial<Record<ActionKind, string>> = {
-  delete: 'DeleteTweet',
-  unretweet: 'DeleteRetweet',
-  unlike: 'UnfavoriteTweet',
-  relike: 'FavoriteTweet',
-};
-
-const READ_OPS = ['SearchTimeline', 'UserTweets', 'UserTweetsAndReplies', 'Likes', 'TweetDetail'];
 
 /** Reports a wait the limiter starts: `reason` for the status line, `until` in epoch ms. */
 export type WaitNotifier = (reason: string, until: number) => void;
 
+/** The budgets an action spends; reads spend the budget of the page being loaded. */
+function budgetsOf(action: ActionKind, readBudget?: BudgetId): readonly BudgetId[] {
+  if (action === 'read') return readBudget ? [readBudget] : [];
+  return ACTION_BUDGETS[action];
+}
+
 /**
- * Paces one run's actions. Each run builds a new limiter, seeded from the last 24 h of the activity log.
- * @remarks Only logged actions are seeded. Page loads and scrolls (`read`) are never logged, so their caps
- * count this run only.
+ * Paces one run's actions. Each run builds a new limiter, seeded from the last 24 h of successful actions
+ * (the activity log) and page loads (the `reads` table), so caps and budgets carry over between runs.
  */
 export class Limiter {
   private history = new Map<ActionKind, number[]>();
+  private budgetUses = new Map<BudgetId, number[]>();
   private sinceBreak = new Map<ActionKind, number>();
   private penalty = 1;
 
@@ -36,17 +33,24 @@ export class Limiter {
     private onWait: WaitNotifier,
   ) {}
 
-  /** Seeds the rolling windows from the last 24h of successful actions. */
+  /** Seeds the rolling windows from the last 24 h of successful actions and page loads. */
   async init() {
     const since = Date.now() - DAY;
-    const rows = await db.logs
-      .where('[accountId+ts]')
-      .between([this.accountId, since], [this.accountId, Infinity])
-      .toArray();
-    for (const row of rows) {
-      if (row.outcome !== 'done' || row.action === 'system') continue;
+    const [logs, reads] = await Promise.all([
+      db.logs.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray(),
+      db.reads.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray(),
+    ]);
+    for (const row of logs) {
+      if (row.outcome !== 'done' || row.action === 'system' || row.action === 'read') continue;
       this.stamps(row.action).push(row.ts);
+      for (const id of budgetsOf(row.action)) this.uses(id).push(row.ts);
     }
+    for (const row of reads) {
+      this.stamps('read').push(row.ts);
+      if (row.budget in BUDGETS) this.uses(row.budget as BudgetId).push(row.ts);
+    }
+    // Page loads older than a day no longer count anywhere.
+    await db.reads.where('[accountId+ts]').between([this.accountId, -Infinity], [this.accountId, since]).delete();
   }
 
   /** Current slowdown factor: 1 is normal, up to 6 after errors. */
@@ -54,9 +58,22 @@ export class Limiter {
     return this.penalty;
   }
 
+  /** Successful uses of `action` in the last hour and the last 24 h, including earlier runs. */
+  usage(action: ActionKind) {
+    const now = Date.now();
+    const stamps = this.stamps(action);
+    return { hour: stamps.filter((t) => t > now - HOUR).length, day: stamps.filter((t) => t > now - DAY).length };
+  }
+
   private stamps(action: ActionKind) {
     let list = this.history.get(action);
     if (!list) this.history.set(action, (list = []));
+    return list;
+  }
+
+  private uses(id: BudgetId) {
+    let list = this.budgetUses.get(id);
+    if (!list) this.budgetUses.set(id, (list = []));
     return list;
   }
 
@@ -66,15 +83,12 @@ export class Limiter {
     await sleep(until - Date.now(), this.signal);
   }
 
-  /** Resolves when it is OK to perform `action`. */
-  async before(action: ActionKind) {
-    const raw = this.settings.pacing[action];
-    const rule = {
-      ...raw,
-      dailyCap: Math.max(1, raw.dailyCap),
-      hourlyCap: Math.max(1, raw.hourlyCap),
-      batchSize: Math.max(1, raw.batchSize),
-    };
+  /**
+   * Resolves when it is OK to perform `action`. For a page load or scroll, pass the read budget of the page
+   * (`readBudgetFor(url)`), so one fifth of that page's own quota applies.
+   */
+  async before(action: ActionKind, readBudget?: BudgetId) {
+    const rule = this.settings.pacing[action];
     const now = Date.now();
     const stamps = this.stamps(action);
     while (stamps.length && stamps[0] < now - DAY) stamps.shift();
@@ -95,19 +109,32 @@ export class Limiter {
       );
     }
 
-    // Page loads and scrolls page through X's timelines; wait if any of them is exhausted.
-    const ops = action === 'read' ? READ_OPS : GOVERNING_OP[action] ? [GOVERNING_OP[action]!] : [];
-    for (const op of ops) {
-      const obs = await db.limits.get(`${this.accountId}:${op}`);
-      if (
-        obs?.reset &&
-        obs.reset > Date.now() &&
-        (obs.status === 429 || (obs.remaining != null && obs.remaining <= 1))
-      ) {
-        await this.wait(
-          obs.reset + randomBetween(5_000, 20_000),
-          `X rate limit for ${op} — waiting for the window to reset`,
+    for (const id of budgetsOf(action, readBudget)) {
+      // One fifth of every window X publishes for this kind of request.
+      const uses = this.uses(id);
+      const slot = nextSlot(uses, allowances(id), Date.now());
+      if (slot > Date.now()) {
+        const full = BUDGETS[id].published.find(
+          (p) => uses.filter((t) => t > Date.now() - p.windowMs).length >= share(p.limit),
         );
+        const what = full
+          ? ` (${share(full.limit)} of X’s ${full.limit} per ${full.windowMs >= DAY ? 'day' : '15 min'})`
+          : '';
+        await this.wait(
+          slot + randomBetween(5_000, 30_000),
+          `${BUDGETS[id].label}: one fifth of X’s limit used${what}`,
+        );
+      }
+      // One fifth of the live limit X reports for each operation that spends this budget.
+      for (const op of BUDGETS[id].ops) {
+        const live = await db.limits.get(`${this.accountId}:${op}`);
+        const until = liveSlot(live, Date.now());
+        if (until > Date.now()) {
+          await this.wait(
+            until + randomBetween(5_000, 20_000),
+            `${BUDGETS[id].label}: one fifth of X’s live limit used — waiting for X’s window to reset`,
+          );
+        }
       }
     }
 
@@ -127,12 +154,21 @@ export class Limiter {
     );
   }
 
-  /** Records the result of an action; soft failures slow everything down. */
-  after(action: ActionKind, outcome: Outcome) {
+  /**
+   * Records the result of an action. Soft failures slow everything down; only successful actions on X
+   * (deletes, unlikes, undone reposts) ease the slowdown again, never page loads or scrolls.
+   */
+  after(action: ActionKind, outcome: Outcome, readBudget?: BudgetId) {
     if (outcome === 'done') {
-      this.stamps(action).push(Date.now());
+      const now = Date.now();
+      this.stamps(action).push(now);
+      for (const id of budgetsOf(action, readBudget)) this.uses(id).push(now);
       this.sinceBreak.set(action, (this.sinceBreak.get(action) ?? 0) + 1);
-      this.penalty = Math.max(1, this.penalty * 0.95);
+      if (action === 'read') {
+        void db.reads.add({ accountId: this.accountId, budget: readBudget ?? 'userTimeline', ts: now });
+      } else {
+        this.penalty = Math.max(1, this.penalty * 0.95);
+      }
     } else if (outcome === 'rate_limited' || outcome === 'failed') {
       this.penalty = Math.min(6, this.penalty * 1.6);
     }
@@ -143,16 +179,9 @@ export class Limiter {
     await this.wait(until, reason);
   }
 
-  /** After X checks the account, start again at a slower pace; it recovers with each success. */
+  /** After X checks the account, start again at a slower pace; it recovers with each successful action. */
   easeIn() {
     this.penalty = Math.max(this.penalty, 2);
-  }
-
-  /** Successful actions of this kind in the last hour and the last 24 h. */
-  usage(action: ActionKind) {
-    const now = Date.now();
-    const stamps = this.stamps(action);
-    return { hour: stamps.filter((t) => t > now - HOUR).length, day: stamps.filter((t) => t > now - DAY).length };
   }
 
   private async waitForActiveHours() {

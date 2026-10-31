@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { createCleanupJob } from '../../engine/runner';
-import { getSettings } from '../../shared/db';
+import { archiveImported, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration, findCandidates, normalizeKeywords, parseIdList } from '../../shared/filter';
 import { DAY } from '../../shared/time';
 import type { CleanupFilter, CleanupOptions, CleanupTarget } from '../../shared/types';
@@ -46,7 +46,9 @@ const startOfToday = () => new Date(new Date().setHours(0, 0, 0, 0)).getTime();
 /**
  * Builds a cleanup filter (what, older than when, what to keep, how to find it), previews the
  * matching inventory items with a time estimate from the current pacing, and offers a JSON backup.
- * The job is created and started only after the user types DELETE in the confirmation dialog.
+ * Without an imported archive it warns that old posts can be missed (PLAYBOOK E2) and starts only once the
+ * person acknowledges it. The job is created and started only after the user types DELETE in the
+ * confirmation dialog.
  */
 export function CleanupPage({ account, navigate }: PageProps) {
   const counts = useKindCounts(account.id);
@@ -66,6 +68,8 @@ export function CleanupPage({ account, navigate }: PageProps) {
   const [skipSelfReplies, setSkipSelfReplies] = useState(true);
   const [options, setOptions] = useState<CleanupOptions>({ sweep: true, deep: true, ghostLikes: false });
   const [confirming, setConfirming] = useState(false);
+  const hasArchive = useLiveQuery(() => archiveImported(account.id), [account.id]);
+  const [missAcknowledged, setMissAcknowledged] = useState(false);
 
   const before =
     age === 'custom'
@@ -92,7 +96,13 @@ export function CleanupPage({ account, navigate }: PageProps) {
   const days = rule && candidates ? Math.ceil(candidates.length / rule.dailyCap) : 0;
   const meta = TARGETS.find((t) => t.value === target)!;
   const title = `${meta.verb} ${TARGET_PLURAL[target]} older than ${fmtDate(before)}`;
-  const canStart = run.status === 'idle' && (options.sweep || options.deep) && (!!candidates?.length || options.sweep);
+  // Reposts gain little from the archive: it doesn't say which post a repost points to.
+  const needsArchive = hasArchive === false && target !== 'repost';
+  const canStart =
+    run.status === 'idle' &&
+    (options.sweep || options.deep) &&
+    (!!candidates?.length || options.sweep) &&
+    (!needsArchive || missAcknowledged);
 
   const backup = () => {
     if (!candidates?.length) return;
@@ -113,6 +123,31 @@ export function CleanupPage({ account, navigate }: PageProps) {
         title="Cleanup"
         description="Choose what to remove, preview exactly what matches, then let Xomoni work through it at a safe pace."
       />
+      {needsArchive && (
+        <div className="mb-4">
+          <Callout
+            tone="critical"
+            icon={<TriangleAlert size={14} />}
+            title="No archive imported: old posts can be missed"
+          >
+            <p>
+              X search doesn’t show posts older than about a week that have no likes, and your profile shows only your
+              newest ~3,200 posts. Without your X archive, this cleanup can miss many old posts, replies and likes, and
+              report fewer than you have. Download your archive from X and import it first.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <Button size="sm" variant="primary" onClick={() => navigate('inventory')}>
+                Import your archive
+              </Button>
+              <Toggle
+                checked={missAcknowledged}
+                onChange={setMissAcknowledged}
+                label="Continue without it: I understand old posts may be missed"
+              />
+            </div>
+          </Callout>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Card title="1 · What to clean up">
@@ -243,7 +278,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
                 }
                 description={
                   target === 'post' || target === 'reply'
-                    ? 'Searches X for your matching posts (reaches far beyond the ~3,200 your profile shows) and removes them in place.'
+                    ? 'Searches X for your matching posts (reaches far beyond the ~3,200 your profile shows) and removes them in place. If you have fewer than ~3,200 posts, your profile is swept first, since search leaves out old posts without likes.'
                     : 'Scrolls the page and removes matching items in place — the fewest page loads per item.'
                 }
               />

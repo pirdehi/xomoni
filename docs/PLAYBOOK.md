@@ -47,7 +47,7 @@
 | C3 | "Limited" or read-only account | 📰 | ✅ |
 | C4 | Suspension (code 64) | 📘 | ✅ |
 | C5 | Silent block (action is confirmed but not carried out) | 🧠 | ✅ |
-| C6 | Visibility limits and Search ban | 📰 | 🟡 |
+| C6 | Visibility limits and Search ban | 📰 | ✅ |
 | C7 | Ban on non-API automation in X's rules | 📘 | ⚠️ |
 | D1 | Logout or session expiry | 📘 | ✅ |
 | D2 | X's new login page (`/i/jf/…`) | 📰 | ✅ |
@@ -55,7 +55,7 @@
 | D4 | Account switch in another tab | 🧠 | ✅ |
 | D5 | CSRF token rotation (`ct0`) | 📰 | ✅ |
 | E1 | Cap of about 3,200 posts on the profile | 📰 | ✅ |
-| E2 | **Search does not show old posts with no likes** | 📰 | 🔴 |
+| E2 | **Search does not show old posts with no likes** | 📰 | ✅ |
 | E3 | Incomplete or delayed search index | 📘 | ✅ |
 | E4 | Likes timeline depth and "ghost" likes | 📰 | ✅ |
 | E5 | Temporary display of deleted content | 🧠 | ✅ |
@@ -208,12 +208,12 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 
   The cost is about 4% extra page loads, each counted against the post-page budget (one fifth, ADR-0012). Checks not yet due when a job ends wait for the next cleanup run.
 
-### C6. Visibility limits and Search ban · 📰 · 🟡
+### C6. Visibility limits and Search ban · 📰 · ✅
 - **X mechanism:** X may remove the account's posts from search. In that case a `from:` search comes back empty.
 - **Risk:** Xomoni thinks "no posts are left", while the posts still exist.
-- **Proposed scenario:**
-  - If search is empty but the inventory (archive or profile) still has matching posts, show a "search finds nothing" warning.
-  - The automatic method switches to deep clean and the profile timeline (the same solution as E2).
+- **Scenario (implemented, #15):**
+  - If the first search page is empty but the inventory (archive or profile) still has matching posts, the job notes "X search showed none of the N matching posts in your inventory" and finishes **with a warning**, never as a plain Completed.
+  - The deep clean visits those posts one by one (the note says to turn it on if it is off); small accounts are swept on the profile timeline first (E2).
 
 ### C7. Ban on non-API automation in X's rules · 📘 · ⚠️
 - **Rule:** "Non-API automation, such as scripting the X website" is prohibited and may lead to suspension.
@@ -258,15 +258,15 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 ### E1. Cap of about 3,200 posts on the profile · 📰 · ✅
 - **Scenario:** Search and the archive are used for older posts.
 
-### E2. Search does not show old posts with no likes · 📰 · 🔴 · **Most important item**
+### E2. Search does not show old posts with no likes · 📰 · ✅ · **Most important item**
 - **X mechanism:** An independent report from August 2026 (with tests) says that posts **older than 7 days** with **zero likes** no longer appear in search results. The Help Center also says that posts older than one week may not appear in search because of indexing limits.
 - **Risk:** Finding old posts in Xomoni relies mainly on search. A large share of old posts and replies have zero likes, and **search does not find them at all**. The "Full history" scan, which relies on search, also stays incomplete.
-- **Proposed scenario (three sources, in order):**
-  1. **Archive, the primary source:** The archive is complete. On the Cleanup page, if no archive has been imported, a serious warning is shown.
-  2. **Profile timeline:** The profile (`/handle` and `/handle/with_replies`) shows all posts regardless of likes, up to about 3,200 posts. If the account has fewer than 3,200 posts, Xomoni uses this path first.
+- **Scenario (implemented, #15; sources in order):**
+  1. **Archive, the primary source:** The archive is complete. On the Cleanup page, if no archive has been imported for the account, a serious warning links to the import, and the job starts only after the person acknowledges that old posts may be missed.
+  2. **Profile timeline:** The profile (`/handle` and `/handle/with_replies`) shows all posts regardless of likes, up to about 3,200 posts. If X's count says the account has fewer than 3,200 posts, the sweep reads this timeline first, in one pass.
   3. **Search:** for older posts that have likes.
   4. **Deep clean:** anything that is in the archive and has not been found yet is opened and deleted one by one.
-  5. **Final report:** "X has about N more posts that Xomoni cannot see. Get your archive." This number comes from comparing `postsCount` with the inventory.
+  5. **Final report:** if X's count (`postsCount`, minus what Xomoni removed since X counted) exceeds the inventory by more than 20 posts and 2%, the job finishes with a warning: "X shows about N more posts, replies and reposts than Xomoni knows about … import your archive".
 
 ### E3. Incomplete or delayed search index · 📘 · ✅
 - **Scenario:** Deep clean with the archive fills this gap.

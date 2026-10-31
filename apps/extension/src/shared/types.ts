@@ -83,6 +83,8 @@ export interface Account {
   following: number | null;
   /** When the X account was created (epoch ms); the history scan starts from this year. */
   createdAt: number | null;
+  /** When X's profile counters were last seen (epoch ms); missing before. `postsCount` is from then. */
+  profileAt?: number;
   updatedAt: number;
 }
 

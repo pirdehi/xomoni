@@ -338,6 +338,16 @@ describe('cleanup rules', () => {
     expect(new URL(url).searchParams.get('f')).toBe('live');
     expect(sweepUrls({ ...base, target: 'like' }, 'me')).toEqual(['https://x.com/me/likes']);
   });
+
+  it('sweeps the profile before search when it holds every post (#15, PLAYBOOK E2)', () => {
+    const [profile, search] = sweepUrls({ ...base, target: 'post' }, 'me', 1200);
+    expect(profile).toBe('https://x.com/me');
+    expect(search).toContain('https://x.com/search?');
+    expect(sweepUrls({ ...base, target: 'reply' }, 'me', 3199)[0]).toBe('https://x.com/me/with_replies');
+    // Too many posts for the profile to reach the old ones, or X's count unknown: search only.
+    expect(sweepUrls({ ...base, target: 'post' }, 'me', 3200)).toHaveLength(1);
+    expect(sweepUrls({ ...base, target: 'post' }, 'me')).toHaveLength(1);
+  });
 });
 
 describe('attention', () => {

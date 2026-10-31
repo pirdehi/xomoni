@@ -28,8 +28,12 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
   const active = run.jobId === job.id && run.status !== 'idle';
   const settings = useLiveQuery(getSettings, []);
   const pace = usePace(job.accountId);
+  // A finished job with a note (such as posts Xomoni couldn't see) is not reported as all clear.
+  const finishedWithNote = job.state === 'completed' && !!job.stateReason;
   const state = !active
-    ? JOB_STATE[job.state]
+    ? finishedWithNote
+      ? { label: 'Finished with a warning', tone: 'warn' as const }
+      : JOB_STATE[job.state]
     : run.status === 'attention'
       ? JOB_STATE.waiting
       : {
@@ -116,7 +120,7 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
           )}
         </div>
       )}
-      {!active && job.stateReason && job.state !== 'completed' && (
+      {!active && job.stateReason && (
         <p
           className={cx(
             'mt-3 text-xs',

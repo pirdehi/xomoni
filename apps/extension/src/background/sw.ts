@@ -62,7 +62,7 @@ async function handle(message: RuntimeMessage) {
     }
     case 'profile': {
       const { profile } = message;
-      await upsertAccount({ ...profile });
+      await upsertAccount({ ...profile, profileAt: Date.now() });
       break;
     }
     case 'rate':

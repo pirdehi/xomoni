@@ -5,7 +5,7 @@ import {
   parseArchiveAccount,
   parseYtd,
 } from '../shared/archive';
-import { addLog, upsertItems } from '../shared/db';
+import { addLog, markArchiveImported, upsertItems } from '../shared/db';
 import type { Account, ItemDraft } from '../shared/types';
 
 const CHUNK = 2000;
@@ -64,6 +64,7 @@ export async function importArchive(
     if (kind === 'tweets') result.tweets += drafts.length;
     else result.likes += drafts.length;
   }
+  await markArchiveImported(account.id);
   await addLog({
     accountId: account.id,
     jobId: null,

@@ -1,16 +1,21 @@
 // Cleanup strategy:
 //  1. Sweep — open X search (or the profile / likes timeline) scoped to the rule
 //     and act on matching posts in place. One page load covers ~20 posts and
-//     reaches far beyond the ~3,200 posts a profile timeline shows. A page X
+//     reaches far beyond the ~3,200 posts a profile timeline shows. Search leaves
+//     out old posts without likes, so an account small enough for its profile
+//     timeline to hold every post is swept there first (PLAYBOOK E2). A page X
 //     refuses for its quota is loaded again after X's reset, never skipped.
 //  2. Deep clean — visit whatever still matches in the inventory (typically
 //     archive-only items) one by one.
+//  3. Report what X has that Xomoni can't see (PLAYBOOK E2, C6).
 // Rule of thumb throughout: if Xomoni can't verify an item, it leaves it alone.
+import { PROFILE_TIMELINE_LIMIT, unseenPosts, worthWarning } from '../shared/coverage';
 import { db, itemKey } from '../shared/db';
 import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
 import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../shared/messages';
 import { DAY, searchDate } from '../shared/time';
-import type { ActionKind, CleanupFilter, Item, ItemKind } from '../shared/types';
+import type { Account, ActionKind, CleanupFilter, Item, ItemKind } from '../shared/types';
+import { readBudgetFor } from '../shared/x-limits';
 import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
 import { runDueChecks, sampleAction } from './samples';
 import { randomBetween, sleep } from './timers';
@@ -34,10 +39,15 @@ export async function runCleanup(ctx: JobContext) {
   const { filter, options } = ctx.job;
   if (!filter || !options) throw new Stop('failed', 'This job has no cleanup rules.');
   await refreshMatched(ctx);
+  const account = await db.accounts.get(ctx.job.accountId);
 
   if (options.sweep) {
     await ctx.setPhase('sweep');
-    for (const url of sweepUrls(filter, ctx.handle)) await sweep(ctx, url);
+    for (const url of sweepUrls(filter, ctx.handle, account?.postsCount ?? null)) {
+      // A profile timeline is read to its end in one pass; search results start over after each pass.
+      const repeat = !(filter.target === 'post' || filter.target === 'reply') || readBudgetFor(url) === 'search';
+      await sweep(ctx, url, repeat);
+    }
   }
   if (options.deep) {
     await ctx.setPhase('deep');
@@ -46,6 +56,40 @@ export async function runCleanup(ctx: JobContext) {
   // Checks that are not due yet stay queued for the next cleanup run.
   await runDueChecks(ctx);
   await refreshMatched(ctx);
+  if (filter.target !== 'like') await noteUnseen(ctx);
+}
+
+/** Warns when X has noticeably more posts, replies and reposts than the inventory (PLAYBOOK E2). */
+async function noteUnseen(ctx: JobContext) {
+  const account = await db.accounts.get(ctx.job.accountId);
+  if (!account) return;
+  const unseen = unseenPosts({
+    postsCount: account.postsCount,
+    profileSeen: account.profileAt != null,
+    ...(await inventoryTotals(account)),
+  });
+  if (worthWarning(unseen, account.postsCount)) {
+    await ctx.note(
+      `X shows about ${unseen.toLocaleString()} more posts, replies and reposts than Xomoni knows about. Search can’t find old posts without likes; import your archive to reach them.`,
+    );
+  }
+}
+
+/** Posts, replies and reposts still present in the inventory, and those removed after X's count was seen. */
+async function inventoryTotals(account: Account) {
+  let present = 0;
+  let removedSinceProfile = 0;
+  for (const kind of ['post', 'reply', 'repost'] as const) {
+    const range = (status: Item['status']) =>
+      db.items
+        .where('[accountId+kind+status+createdAt]')
+        .between([account.id, kind, status, -Infinity], [account.id, kind, status, Infinity]);
+    present += await range('present').count();
+    removedSinceProfile += await range('deleted')
+      .filter((item) => item.statusAt > (account.profileAt ?? Infinity))
+      .count();
+  }
+  return { present, removedSinceProfile };
 }
 
 /** matched = everything settled so far + what the inventory still says matches. */
@@ -62,16 +106,25 @@ function searchUrl(query: string) {
 
 /**
  * The pages a sweep loads. Posts and replies use X search, with `until`/`since` widened by a day because
- * search dates are whole UTC days; reposts use the profile timeline and likes the Likes timeline.
+ * search dates are whole UTC days. Search leaves out old posts without likes, so when X's count (`postsCount`)
+ * fits in the ~3,200 posts a profile timeline shows, that timeline comes first (PLAYBOOK E2). Reposts use the
+ * profile timeline and likes the Likes timeline.
  */
-export function sweepUrls(f: CleanupFilter, handle: string): string[] {
+export function sweepUrls(f: CleanupFilter, handle: string, postsCount: number | null = null): string[] {
   // Search dates are whole UTC days; widen by a day and filter precisely here.
   const range = `until:${searchDate(f.before + DAY)}${f.after != null ? ` since:${searchDate(f.after - DAY)}` : ''}`;
+  const wholeProfile = postsCount != null && postsCount < PROFILE_TIMELINE_LIMIT;
   switch (f.target) {
     case 'post':
-      return [searchUrl(`from:${handle} ${range} -filter:replies`)];
+      return [
+        ...(wholeProfile ? [`https://x.com/${handle}`] : []),
+        searchUrl(`from:${handle} ${range} -filter:replies`),
+      ];
     case 'reply':
-      return [searchUrl(`from:${handle} ${range} filter:replies`)];
+      return [
+        ...(wholeProfile ? [`https://x.com/${handle}/with_replies`] : []),
+        searchUrl(`from:${handle} ${range} filter:replies`),
+      ];
     case 'repost':
       return [`https://x.com/${handle}`];
     case 'like':
@@ -124,7 +177,11 @@ async function loadSweepPage(ctx: JobContext, url: string): Promise<ContentState
   }
 }
 
-async function sweep(ctx: JobContext, url: string) {
+/**
+ * Sweeps one page: acts on matching posts in view, scrolls until X shows nothing new, and with `repeat`
+ * reloads while a pass removed something, since removed posts make room for older ones.
+ */
+async function sweep(ctx: JobContext, url: string, repeat = true) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     // Each pass loads its page anew, so sample checks can use the worker tab in between.
     await runDueChecks(ctx);
@@ -132,6 +189,7 @@ async function sweep(ctx: JobContext, url: string) {
     const content = await loadSweepPage(ctx, url);
     if (!content) return;
     if (content.kind === 'empty') {
+      if (pass === 0 && readBudgetFor(url) === 'search') await noteSearchGap(ctx);
       await ctx.log('info', 'system', 'Sweep: no more matching posts on X');
       return;
     }
@@ -164,8 +222,19 @@ async function sweep(ctx: JobContext, url: string) {
     await refreshMatched(ctx);
     // Nothing actionable on this pass means the results are exhausted; otherwise
     // reload, since removed posts make room for older ones.
-    if (!acted) return;
+    if (!acted || !repeat) return;
   }
+}
+
+/** Search showed nothing although the inventory still has matching posts (PLAYBOOK C6, E2). */
+async function noteSearchGap(ctx: JobContext) {
+  const left = (await findCandidates(ctx.job.accountId, ctx.job.filter!)).length;
+  if (!left) return;
+  await ctx.note(
+    `X search showed none of the ${left.toLocaleString()} matching posts in your inventory: X may be hiding this account from search, or the posts are too old for search to show.${
+      ctx.job.options?.deep ? ' The deep clean visits them one by one.' : ' Turn on the deep clean to reach them.'
+    }`,
+  );
 }
 
 /** Only one repost of a post can be live; older rows for the same post are stale. */

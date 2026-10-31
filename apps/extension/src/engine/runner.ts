@@ -137,7 +137,8 @@ class Runner {
       await ctx.init();
       await ctx.log('info', 'system', `Started “${job.title}”`);
       await runSteps(ctx);
-      final = { state: 'completed', reason: '' };
+      // Completed, but with what the person should know, such as posts Xomoni couldn't see.
+      final = { state: 'completed', reason: ctx.notes.join(' ') };
     } catch (err) {
       stoppedByYou = err instanceof Aborted || controller.signal.aborted;
       if (stoppedByYou) final = this.stopRequest ?? { state: 'paused', reason: 'Stopped.' };

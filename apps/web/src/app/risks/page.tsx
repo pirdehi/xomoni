@@ -14,7 +14,7 @@ export const metadata: Metadata = {
  */
 export default function RisksPage() {
   return (
-    <LegalPage title={CONSENT_TITLE} updated="October 31, 2026">
+    <LegalPage title={CONSENT_TITLE} updated="November 1, 2026">
       <p>{CONSENT_INTRO}</p>
       {CONSENT_SECTIONS.map(({ title, text, points, link }) => (
         <section key={title}>

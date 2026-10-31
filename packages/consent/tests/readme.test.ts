@@ -15,9 +15,17 @@ describe('consent text', () => {
     expect(block![1].trim()).toBe(consentMarkdown());
   });
 
-  it('covers X’s rule, the remaining risk, permanence, the archive and what Xomoni never does', () => {
+  it('covers X’s rule, the remaining risk, the research disclaimer, permanence, the archive and what Xomoni never does', () => {
     const text = consentMarkdown();
-    for (const words of ['non-API automation', 'can’t make the risk zero', 'permanent', 'archive', 'never does']) {
+    for (const words of [
+      'non-API automation',
+      'can’t make the risk zero',
+      'no guarantee',
+      'at your own risk',
+      'permanent',
+      'archive',
+      'never does',
+    ]) {
       expect(text).toContain(words);
     }
     expect(CONSENT_SECTIONS.find((s) => s.link)?.link?.href).toBe(

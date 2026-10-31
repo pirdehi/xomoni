@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { LegalPage } from '@/shared/ui/legal-page';
 import { CONTACT_EMAIL, GITHUB_URL } from '@/shared/config/site';
 
@@ -7,7 +8,7 @@ export const metadata: Metadata = { title: 'Privacy Policy' };
 /** `/privacy`: the privacy policy. */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 31, 2026">
+    <LegalPage title="Privacy Policy" updated="November 1, 2026">
       <p>
         Xomoni is a free, open-source tool made by Omid Pirdehi. It has two parts: a browser extension that cleans up
         your own X account on your computer, and this website, where you can follow that work from any device. This
@@ -29,7 +30,31 @@ export default function PrivacyPage() {
         </li>
         <li>No ads, no selling of data, no tracking or analytics cookies.</li>
         <li>You can delete your account and everything we hold at any time from your account page.</li>
+        <li>
+          Xomoni is a research project with no guarantee. You use it at your own risk, and what happens to your X
+          account is your responsibility.
+        </li>
       </ul>
+
+      <h2>A research project, used at your own risk</h2>
+      <p>
+        Xomoni is an open-source research project. It explores ways for a person to clean up their own X account through
+        X’s website while staying well within the limits X announces. By using it, you accept that:
+      </p>
+      <ul>
+        <li>
+          It comes with no guarantee. Nothing promises that X won’t limit, lock or suspend your account, or that every
+          feature works.
+        </li>
+        <li>
+          You decide what to run and when. The consequences for your X account, including anything X does to it, are
+          your responsibility, not the author’s.
+        </li>
+        <li>Deletions on X are permanent, and Xomoni can’t bring anything back.</li>
+      </ul>
+      <p>
+        The <Link href="/terms">Terms of Use</Link> and the <Link href="/risks">risks page</Link> set this out in full.
+      </p>
 
       <h2>What stays on your computer</h2>
       <p>

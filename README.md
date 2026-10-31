@@ -91,6 +91,8 @@ Xomoni deletes posts, replies, reposts and likes on your X account by clicking X
 
 **The risk can’t be removed.** Xomoni keeps the risk low: it never uses more than one fifth of any limit X announces, starts slower than that, and stops at X’s first warning. It can’t make the risk zero. Only X decides what happens to your account.
 
+**A research project, at your own risk.** Xomoni is open-source research into ways to clean up your own X account through X’s website. It comes with no guarantee that X won’t limit, lock or suspend your account. You use it at your own risk, and the consequences for your X account are yours.
+
 **Deletions are permanent.** A deleted post, an undone repost or a removed like can’t be brought back, by Xomoni or by X.
 
 **Download your archive first.** Before you delete anything, request your X archive (on X: Settings, Your account, Download an archive of your data). It is your only copy, and Xomoni can read it to find your oldest posts.
@@ -103,7 +105,7 @@ Xomoni deletes posts, replies, reposts and likes on your X account by clicking X
 - Use more than one fifth of any limit X announces.
 - Start, resume or approve deletions from the website.
 
-If you go ahead, you do so for this X account, knowing these risks.
+If you go ahead, you do so for this X account, knowing these risks and accepting them as your own.
 <!-- consent:end -->
 
 ## Install
@@ -186,7 +188,7 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) fi
 
 ## Disclaimer
 
-Xomoni is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by X Corp. Automating actions on X's website may be against [X's automation rules](https://help.x.com/en/rules-and-policies/x-automation) and can lead to account restrictions. Xomoni is designed to reduce that risk, but it can't remove it. Deletions can't be undone, so download your archive first. Use at your own risk.
+Xomoni is an independent open-source research project. It is not affiliated with, endorsed by, or sponsored by X Corp. Automating actions on X's website may be against [X's automation rules](https://help.x.com/en/rules-and-policies/x-automation) and can lead to account restrictions. Xomoni is designed to reduce that risk, but it can't remove it, and it comes with no guarantee. Deletions can't be undone, so download your archive first. You use Xomoni at your own risk, and the consequences for your X account are your responsibility.
 
 ## Author
 

@@ -4,8 +4,8 @@
 
 ## Files
 
-| File | Responsibility |
-| --- | --- |
+| File         | Responsibility                                                                                                                                                       |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `preview.ts` | Stubs `chrome.runtime`, `tabs`, `windows`, `notifications` and `storage.session`; seeds demo data unless the demo account already exists; then imports `../ui/main`. |
 
 ## Depends on

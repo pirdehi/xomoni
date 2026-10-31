@@ -92,6 +92,8 @@ export const OUTCOME_LABEL: Record<Outcome, string> = {
   daily_limit: 'Daily limit',
   automation_flag: 'Flagged (226)',
   locked: 'Account locked',
+  suspended: 'Account suspended',
+  restricted: 'Refused by X',
   logged_out: 'Logged out',
   failed: 'Failed',
 };

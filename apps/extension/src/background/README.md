@@ -4,8 +4,8 @@ The extension's MV3 service worker (`sw.js`). It stores what content scripts obs
 
 ## Files
 
-| File | Responsibility |
-| --- | --- |
+| File    | Responsibility                                                                                                        |
+| ------- | --------------------------------------------------------------------------------------------------------------------- |
 | `sw.ts` | Stores `ingest`, `profile` and `rate` messages from content scripts; opens the dashboard; routes notification clicks. |
 
 ## Depends on

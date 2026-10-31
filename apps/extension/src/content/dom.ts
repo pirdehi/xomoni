@@ -169,6 +169,16 @@ export function viewerIdFromCookie(): string | null {
   return decodeURIComponent(twid.slice(5)).match(/u=(\d+)/)?.[1] ?? null;
 }
 
+/**
+ * Text where X puts account notices: alerts and the top of the main column (where the "temporarily limited"
+ * banner appears). Capped so a long timeline is not scanned; posts further down can't trigger a match.
+ */
+export function noticeText(): string {
+  const alerts = $$('[role="alert"]').map((el) => (el as HTMLElement).innerText);
+  const column = $<HTMLElement>('[data-testid="primaryColumn"]')?.innerText.slice(0, 1500) ?? '';
+  return [...alerts, column].join('\n');
+}
+
 /** The signed-in user's handle, read from the sidebar Profile link; null until X has rendered that link. */
 export function viewerHandle(): string | null {
   return $<HTMLAnchorElement>(SEL.profileLink)?.getAttribute('href')?.replace(/^\//, '') || null;

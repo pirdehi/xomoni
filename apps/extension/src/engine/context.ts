@@ -16,6 +16,10 @@ const SETTLED_MS = 5000;
 /** The same check this many times with no progress in between means waiting won't help. */
 const MAX_REPEAT_NEEDS = 3;
 
+/** What to do when X limits the account; shown when a job stops for a restriction. */
+const RESTRICTED_ADVICE =
+  'The account may be limited or read-only. Xomoni stopped at the first refusal and won’t retry. Use X normally, wait until X lifts the limit, then resume with the Careful preset.';
+
 /** Thrown to end a run; `state` is what the job becomes. */
 export class Stop extends Error {
   constructor(
@@ -128,8 +132,14 @@ export class JobContext {
     return info;
   }
 
-  /** Login, X checks and account switches all need the person, not a retry. */
+  /**
+   * Login, X checks and account switches all need the person, not a retry. A suspension or limitation
+   * notice on the page stops the job: waiting can't fix it (PLAYBOOK C3, C4).
+   */
   assertPage(info: PageInfo) {
+    if (info.restriction) {
+      throw new Stop('blocked', `X shows a restriction on this account: “${info.restriction}”. ${RESTRICTED_ADVICE}`);
+    }
     // X's session cookie is shared by every x.com tab, so switching accounts anywhere switches the worker too.
     const need = pageNeed(info, this.job.accountId);
     if (need) throw new NeedsYou(need, needMessage(need, this.handle));
@@ -288,6 +298,17 @@ export class JobContext {
           'blocked',
           'X flagged the activity as automated (error 226). Stop for several hours, use X normally, then resume with the Careful preset.',
         );
+
+      case 'suspended':
+        await this.log('error', action, `Account suspended${detail}`, target, outcome);
+        throw new Stop(
+          'blocked',
+          'X suspended this account (code 64). Waiting can’t fix this, so Xomoni stopped and won’t continue on its own. Check X for details.',
+        );
+
+      case 'restricted':
+        await this.log('error', action, `X refused the action${detail}`, target, outcome);
+        throw new Stop('blocked', `X refused the action${detail}. ${RESTRICTED_ADVICE}`);
 
       case 'locked':
         await this.log('error', action, `Account locked${detail}`, target, outcome);

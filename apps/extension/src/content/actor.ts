@@ -1,7 +1,7 @@
 // Performs one user-equivalent action at a time on the x.com page: the same
 // clicks a person would make. X's own code sends the request (with all of its
 // headers); success is only reported once X's response confirms it.
-import { isCheckPath, isLoginPath } from '../shared/attention';
+import { isCheckPath, isLoginPath, restrictionNotice } from '../shared/attention';
 import { extractErrors } from '../shared/graphql';
 import type {
   ActionResult,
@@ -21,6 +21,7 @@ import {
   findArticle,
   findDeleteMenuItem,
   jitter,
+  noticeText,
   sleep,
   viewerHandle,
   viewerIdFromCookie,
@@ -69,6 +70,7 @@ function pageInfo(): PageInfo {
     loggedIn: !!viewerId && !isLoginPath(path),
     locked: path.startsWith('/account/access'),
     challenge: isCheckPath(path),
+    restriction: restrictionNotice(noticeText()),
     lang: document.documentElement.lang || '',
     hidden: document.hidden,
   };
@@ -77,6 +79,7 @@ function pageInfo(): PageInfo {
 async function guarded(action: () => Promise<ActionResult>): Promise<ActionResult> {
   const info = pageInfo();
   if (info.locked) return { outcome: 'locked', message: 'X is asking you to unlock the account' };
+  if (info.restriction) return { outcome: 'restricted', message: `X shows: ${info.restriction}` };
   if (!info.loggedIn) return { outcome: 'logged_out', message: 'Not logged in to X in the worker window' };
   try {
     return await action();
@@ -237,7 +240,7 @@ async function unretweet(id: string): Promise<ActionResult> {
 }
 
 /** Maps X's response to an outcome. Error codes per X's public error catalogue. */
-function classify(ev: NetEvent | null, op: string): ActionResult {
+export function classify(ev: NetEvent | null, op: string): ActionResult {
   if (!ev) return { outcome: 'failed', message: `X did not answer ${op} within 15s` };
   const resetAt = resetAtFrom(ev.headers);
   if (ev.status === 429) return { outcome: 'rate_limited', http: 429, resetAt, message: 'Rate limit reached' };
@@ -252,8 +255,14 @@ function classify(ev: NetEvent | null, op: string): ActionResult {
       case 226:
         return { ...base, outcome: 'automation_flag' };
       case 64:
+        return { ...base, outcome: 'suspended' };
       case 326:
         return { ...base, outcome: 'locked' };
+      // Not permitted, write actions refused, credentials not allowed: X is limiting this account.
+      case 87:
+      case 220:
+      case 261:
+        return { ...base, outcome: 'restricted' };
       case 32:
       case 89:
       case 215:
@@ -267,8 +276,10 @@ function classify(ev: NetEvent | null, op: string): ActionResult {
         return { ...base, outcome: 'already' };
     }
     // Unknown errors are failures even when a data object came back.
-    return { ...base, outcome: 'failed' };
+    return { ...base, outcome: ev.status === 403 ? 'restricted' : 'failed' };
   }
+  // A write refused with 403 and no known code: treat it as a restriction, never as a retryable failure.
+  if (ev.status === 403) return { outcome: 'restricted', http: 403, message: 'X refused the action (HTTP 403)' };
   if (ev.status >= 400 || ev.status === 0)
     return { outcome: 'failed', http: ev.status, message: `X answered HTTP ${ev.status}` };
   return ev.json?.data

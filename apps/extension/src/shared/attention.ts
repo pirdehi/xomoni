@@ -9,8 +9,12 @@ import type { PageInfo } from './messages';
  */
 export type Need = 'login' | 'verify' | 'account';
 
-/** Whether a path is X's login page. The newer `/i/jf/` login flow is not recognized yet (PLAYBOOK D2). */
-export const isLoginPath = (path: string) => path === '/login' || path.startsWith('/i/flow/login');
+/**
+ * Whether a path is one of X's login pages: `/login`, the `/i/flow/login` flow, or any page of the newer
+ * `/i/jf/` onboarding flow (PLAYBOOK D2), which X uses for login and verification.
+ */
+export const isLoginPath = (path: string) =>
+  path === '/login' || path.startsWith('/i/flow/login') || path.startsWith('/i/jf/');
 
 /** X's check pages: /account/access (unlock), /account/login_challenge, and /i/flow steps other than login. */
 export const isCheckPath = (path: string) =>
@@ -41,6 +45,32 @@ export function needMessage(need: Need, handle: string): string {
     case 'account':
       return `The Xomoni window is signed in to another X account. Switch back to ${who}.`;
   }
+}
+
+/**
+ * Phrases X shows when it has suspended or limited an account (PLAYBOOK C3, C4), lowercase. Matching is
+ * deliberately broad: a false match only stops the job, which is the safe direction.
+ */
+const RESTRICTION_PHRASES = [
+  'your account is suspended',
+  'account has been suspended',
+  'account is temporarily limited',
+  'features are temporarily limited',
+  'temporarily restricted',
+  'your account is restricted',
+  'read-only mode',
+];
+
+/**
+ * The line of page text that says X suspended or limited the account, or null. Waiting for the person can't
+ * fix these, so the job stops instead of retrying.
+ */
+export function restrictionNotice(text: string): string | null {
+  for (const line of text.split(/\n+/)) {
+    const lower = line.toLowerCase();
+    if (RESTRICTION_PHRASES.some((p) => lower.includes(p))) return line.trim().slice(0, 200);
+  }
+  return null;
 }
 
 /** Short title per need, used in notification titles. */

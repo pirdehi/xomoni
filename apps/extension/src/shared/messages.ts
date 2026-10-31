@@ -28,6 +28,8 @@ export interface PageInfo {
   locked: boolean;
   /** X is showing one of its own check pages (unlock, login challenge, …). */
   challenge: boolean;
+  /** X's notice that the account is suspended or limited, if the page shows one; see `restrictionNotice`. */
+  restriction: string | null;
   /** The page's `lang` attribute, which is X's interface language. */
   lang: string;
   /** `document.hidden` in that tab; the dashboard warns when the worker window is hidden. */

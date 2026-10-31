@@ -4,6 +4,7 @@ import { addLog, db, getSettings } from '../shared/db';
 import type { ActionResult, PageInfo } from '../shared/messages';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } from '../shared/types';
+import { type BudgetId, readBudgetFor } from '../shared/x-limits';
 import { Limiter } from './limiter';
 import { Aborted, randomBetween, sleep } from './timers';
 import { NotReady, WorkerGone, workerTab } from './worker-tab';
@@ -57,6 +58,8 @@ export class JobContext {
   handle = '';
   /** Ids already handled in this run (acted on, kept, or skipped). */
   attempted = new Set<string>();
+  /** Read budget of the page the worker tab shows; scrolls spend it too. */
+  private readBudget: BudgetId = 'userTimeline';
   private consecutiveFailures = 0;
   private repeatNeeds = 0;
   private progressAtLastNeed = -1;
@@ -193,13 +196,14 @@ export class JobContext {
     await this.log('info', 'system', `Left alone: ${message}`, item.id, 'skipped');
   }
 
-  /** Paced navigation, counted against the page-load budget. */
+  /** Paced navigation, counted against the page-load caps and the read budget of the page (one fifth of X's quota). */
   async navigate(url: string) {
     this.checkpoint();
-    await this.limiter.before('read');
+    this.readBudget = readBudgetFor(url);
+    await this.limiter.before('read', this.readBudget);
     this.status(`Opening ${url.replace('https://x.com', '')}`);
     const info = await workerTab.navigate(url, this.signal);
-    this.limiter.after('read', 'done');
+    this.limiter.after('read', 'done', this.readBudget);
     this.assertPage(info);
     try {
       const content = await workerTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
@@ -214,12 +218,12 @@ export class JobContext {
     }
   }
 
-  /** Paced scroll in the worker page, counted against the page-load (`read`) budget. */
+  /** Paced scroll in the worker page; it loads more of the current page, so it spends that page's read budget. */
   async scroll() {
     this.checkpoint();
-    await this.limiter.before('read');
+    await this.limiter.before('read', this.readBudget);
     const result = await workerTab.send({ cmd: 'scroll' });
-    this.limiter.after('read', 'done');
+    this.limiter.after('read', 'done', this.readBudget);
     return result;
   }
 

@@ -258,7 +258,7 @@ export interface PacingRule {
 }
 
 /** A pacing preset from `PRESETS`; `custom` means the person edited the numbers. */
-export type PresetName = 'careful' | 'balanced' | 'custom';
+export type PresetName = 'careful' | 'custom';
 
 /** The person's settings, stored under the `settings` key of the `kv` table. Read them with `getSettings`. */
 export interface Settings {

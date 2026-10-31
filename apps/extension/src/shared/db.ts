@@ -1,10 +1,23 @@
 import Dexie, { type Table } from 'dexie';
-import { DEFAULT_SETTINGS } from './settings';
+import { normalizeSettings } from './settings';
 import type { Account, Item, ItemDraft, ItemKind, ItemSource, Job, LogEntry, RateObservation, Settings } from './types';
 
 interface KV {
   key: string;
   value: unknown;
+}
+
+/**
+ * One page load or scroll in the worker tab, kept for 24 hours so read budgets and the page-load caps
+ * survive pauses and restarts. `budget` is a `BudgetId` from `x-limits.ts`.
+ */
+export interface ReadUse {
+  /** Auto-increment key. */
+  seq?: number;
+  accountId: string;
+  budget: string;
+  /** Epoch ms. */
+  ts: number;
 }
 
 class XomoniDB extends Dexie {
@@ -13,6 +26,7 @@ class XomoniDB extends Dexie {
   jobs!: Table<Job, string>;
   logs!: Table<LogEntry, number>;
   limits!: Table<RateObservation, string>;
+  reads!: Table<ReadUse, number>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -25,12 +39,14 @@ class XomoniDB extends Dexie {
       limits: 'key, accountId',
       kv: 'key',
     });
+    this.version(2).stores({ reads: '++seq, [accountId+ts]' });
   }
 }
 
 /**
  * The extension's IndexedDB database (`xomoni`), used by the dashboard and the service worker. Tables:
- * `accounts`, `items` (the inventory), `jobs`, `logs`, `limits` (X rate-limit observations) and `kv`.
+ * `accounts`, `items` (the inventory), `jobs`, `logs`, `limits` (X rate-limit observations), `reads` (page loads of
+ * the last 24 hours) and `kv`.
  * @remarks Content scripts cannot use it: they run under x.com's origin, so they message the service worker.
  */
 export const db = new XomoniDB();
@@ -129,12 +145,11 @@ export async function kvSet(key: string, value: unknown) {
 }
 
 /**
- * The stored settings merged over `DEFAULT_SETTINGS`, so fields added later get defaults. `pacing` merges
- * per action: a stored rule replaces that action's default rule as a whole.
+ * The stored settings over `DEFAULT_SETTINGS`, normalized by `normalizeSettings`: presets always use the
+ * current numbers, and custom pacing is clamped to the one-fifth ceilings (ADR-0012).
  */
 export async function getSettings(): Promise<Settings> {
-  const stored = await kvGet<Partial<Settings> | null>('settings', null);
-  return { ...DEFAULT_SETTINGS, ...stored, pacing: { ...DEFAULT_SETTINGS.pacing, ...stored?.pacing } };
+  return normalizeSettings(await kvGet<Partial<Settings> | null>('settings', null));
 }
 
 /**

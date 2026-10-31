@@ -13,7 +13,8 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | `graphql.ts` | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts. |
 | `messages.ts` | Message types between the dashboard, the content script and the service worker. |
 | `notify.ts` | Desktop notifications and their ids. |
-| `settings.ts` | Pacing presets, default settings and action labels. |
+| `settings.ts` | The Careful preset, default settings, `normalizeSettings` (clamps stored settings) and action labels. |
+| `x-limits.ts` | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule and the cap ceilings. Pure. |
 | `time.ts` | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`. |
 | `types.ts` | The data model: items, accounts, jobs, log entries, rate-limit observations, settings. |
 
@@ -38,7 +39,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 - `ext-content-is-isolated` and `ext-inject-is-isolated`: page scripts may use `shared/` and nothing else, so anything they need from the rest of the extension has to live here.
 - `no-circular`: imports inside `shared/` go one way, for example `filter.ts` → `db.ts` → `settings.ts` → `types.ts`.
 - Safety items from [`docs/PLAYBOOK.md`](../../../../docs/PLAYBOOK.md) implemented here:
-  - A3, B6: `settings.ts` holds the conservative caps (Careful: 1,000 deletes and 1,000 unlikes a day) and the separate ghost-like cap (40 an hour, 200 a day, 15 to 30 s apart).
+  - A1–A3 (ADR-0012): `x-limits.ts` holds X's published limits and derives every cap as one fifth of them (deletes: 10 per 15 min; unlikes: 200 a day, shared with ghost-like cleanup); `settings.ts` builds Careful from those ceilings.
   - D1, D3, D4: `attention.ts` detects a logged-out page, X's check pages and an account switch, so the engine waits for the person instead of acting.
   - E5: `upsertItems` in `db.ts` marks a deleted item `present` again only if X shows it more than 5 s after the deletion.
   - E8: `parseArchiveAccount` lets the importer refuse an archive that belongs to another account.

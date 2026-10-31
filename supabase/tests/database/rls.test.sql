@@ -81,7 +81,8 @@ select is(
   'Ada''s devices were removed with her account'
 );
 select results_eq(
-  $$ select d.name || '/' || j.state from public.devices d join public.jobs j on j.device_id = d.id $$,
+  $$ select d.name || '/' || j.state from public.devices d join public.jobs j on j.device_id = d.id
+     where d.user_id = '00000000-0000-4000-a000-00000000000b' $$,
   array['Bob laptop/running'],
   'Bob''s device and job are untouched'
 );

@@ -20,6 +20,7 @@ describe('row mappers', () => {
       skipped: 1,
       failed: 0,
       scanned: 0,
+      risk_level: 2,
       started_at: null,
       finished_at: null,
       created_at: '2026-10-31T10:00:00Z',
@@ -39,8 +40,12 @@ describe('row mappers', () => {
       skipped: 1,
       failed: 0,
       scanned: 0,
+      riskLevel: 2,
       updatedAt: '2026-10-31T11:00:00Z',
     });
+    // Not reported yet, or a level this website doesn't know: no level rather than a guess.
+    expect(toJobSummary({ ...row, risk_level: null }).riskLevel).toBeNull();
+    expect(toJobSummary({ ...row, risk_level: 7 }).riskLevel).toBeNull();
   });
 
   it('maps a device row', () => {

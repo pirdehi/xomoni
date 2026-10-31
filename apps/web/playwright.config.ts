@@ -3,8 +3,9 @@ import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * End-to-end tests for the auth flows against the local Supabase stack (`supabase start`):
- * real Supabase Auth, real emails captured by Mailpit, Cloudflare's always-pass Turnstile key.
+ * End-to-end tests against the local Supabase stack (`supabase start`): real Supabase Auth, real emails
+ * captured by Mailpit, Cloudflare's always-pass Turnstile key, and devices and jobs seeded as the extension
+ * would report them.
  * The site must run on http://localhost:3000 because that is the local `site_url` in emails.
  */
 const repoRoot = path.join(__dirname, '..', '..');
@@ -20,6 +21,9 @@ const env = {
   MAILPIT_URL: (status.MAILPIT_URL ?? status.INBUCKET_URL) as string,
 };
 process.env.MAILPIT_URL = env.MAILPIT_URL;
+// For seeding devices and jobs (e2e/support/admin.ts): the local stack's fixed development keys.
+process.env.SUPABASE_URL = status.API_URL;
+process.env.SUPABASE_SERVICE_ROLE_KEY = status.SERVICE_ROLE_KEY;
 
 export default defineConfig({
   testDir: 'e2e',

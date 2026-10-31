@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
-import { CircleAlert, Laptop, LogOut, Puzzle, RefreshCw } from 'lucide-react';
+import { CircleAlert, Laptop, LogOut, Puzzle, RefreshCw, ShieldAlert } from 'lucide-react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { isOnline, jobProgress, jobStateView, relativeTime, type Tone } from '../domain/job-status';
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
+import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import { useLiveDashboard } from './use-live-dashboard';
 
 /** Who is signed in, as the dashboard header shows them. */
@@ -38,7 +39,10 @@ const BAR_CLASS: Record<Tone, string> = {
   good: 'bg-good',
 };
 
-/** The signed-in dashboard: account bar, live jobs and connected browsers. */
+/**
+ * The signed-in dashboard: account bar, jobs that need the person, each X account's risk level, live jobs and
+ * connected browsers. It shows; it never starts, resumes or changes a job (ADR-0006).
+ */
 export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initial: DashboardSnapshot }) {
   const { devices, jobs, live, disconnect } = useLiveDashboard(viewer.id, initial);
   const now = useNow(30_000);
@@ -51,10 +55,15 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
   }
 
   const deviceName = new Map(devices.map((d) => [d.id, d.name]));
+  const needsYou = jobsNeedingYou(jobs);
+  const risks = accountRisks(jobs);
 
   return (
     <div className="space-y-10">
       <AccountBar viewer={viewer} live={live} />
+
+      {needsYou.length > 0 && <NeedsYou jobs={needsYou} deviceName={deviceName} />}
+      {risks.length > 0 && <AccountRisks risks={risks} deviceName={deviceName} now={now} />}
 
       {devices.length === 0 ? (
         <ConnectBrowser email={viewer.email} />
@@ -196,6 +205,91 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
       </span>
       <span className="leading-relaxed text-ink-2">{children}</span>
     </li>
+  );
+}
+
+/** Jobs waiting for something only the person can do; first on the page. */
+function NeedsYou({ jobs, deviceName }: { jobs: JobSummary[]; deviceName: Map<string, string> }) {
+  return (
+    <section aria-labelledby="needs-you-title" className="card border-serious/50 p-5 sm:p-6">
+      <h2 id="needs-you-title" className="flex items-center gap-2 text-lg font-semibold">
+        <CircleAlert className="size-5 text-serious" aria-hidden />
+        Needs you
+      </h2>
+      <p className="mt-1 text-sm leading-relaxed text-ink-2">
+        Finish these steps in the Xomoni window on that computer; the job goes on by itself afterwards. This page can’t
+        continue a job for you.
+      </p>
+      <ul className="mt-4 divide-y divide-line">
+        {jobs.map((job) => {
+          const device = deviceName.get(job.deviceId);
+          return (
+            <li key={job.id} className="py-3 first:pt-0 last:pb-0">
+              <p className="font-medium">{job.title}</p>
+              <p className="text-sm text-muted">
+                @{job.xHandle}
+                {device && ` · ${device}`}
+              </p>
+              {job.stateReason && <p className="mt-1 text-sm text-ink">{job.stateReason}</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Each X account's risk level on each browser, worst first, with what the level means. */
+function AccountRisks({
+  risks,
+  deviceName,
+  now,
+}: {
+  risks: AccountRisk[];
+  deviceName: Map<string, string>;
+  now: number;
+}) {
+  return (
+    <section aria-labelledby="accounts-title">
+      <h2 id="accounts-title" className="text-lg font-semibold">
+        X accounts
+      </h2>
+      <p className="mt-1 text-sm text-ink-2">
+        How hard X has pushed back lately, as each browser’s extension reported it. Xomoni slows down on its own as the
+        level rises.
+      </p>
+      <ul className="card mt-4 divide-y divide-line">
+        {risks.map((risk) => {
+          const level = RISK_LEVEL[risk.level];
+          const device = deviceName.get(risk.deviceId);
+          return (
+            <li
+              key={`${risk.deviceId}-${risk.xHandle}`}
+              className="flex flex-wrap items-start justify-between gap-3 p-4"
+            >
+              <div className="flex min-w-0 gap-3">
+                <ShieldAlert
+                  className={`mt-0.5 size-5 shrink-0 ${risk.level >= 3 ? 'text-critical' : 'text-muted'}`}
+                  aria-hidden
+                />
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    @{risk.xHandle}
+                    <span className="text-sm font-normal text-muted">
+                      {device && ` · ${device}`} · reported {relativeTime(risk.reportedAt, now)}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-sm text-ink-2">{level.meaning}</p>
+                </div>
+              </div>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${TONE_CLASS[level.tone]}`}>
+                Risk level {risk.level}: {level.label}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

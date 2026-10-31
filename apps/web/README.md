@@ -33,8 +33,9 @@ src/
     supabase/     Supabase client factories (server, browser, proxy)
     ui/           layout components used by every page
   proxy.ts        refreshes the session on signed-in and auth routes
-e2e/              Playwright tests for every auth flow (real Supabase Auth, emails from Mailpit) and the security
-                  headers; every test fails on a Content-Security-Policy violation
+e2e/              Playwright tests for every auth flow (real Supabase Auth, emails from Mailpit), the dashboard
+                  (devices and jobs seeded as the extension reports them) and the security headers; every test
+                  fails on a Content-Security-Policy violation
 ```
 
 Each module is split into `domain/`, `application/`, `infrastructure/`, `server/`, `client/` and `ui/` layers; the rules are in [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#4-website-appsweb) and are checked by `npm run arch`.

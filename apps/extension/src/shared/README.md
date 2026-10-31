@@ -12,6 +12,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | `filter.ts`    | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration.               |
 | `graphql.ts`   | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts.                        |
 | `messages.ts`  | Message types between the dashboard, the content script and the service worker.                                             |
+| `health.ts` | The account health report after a run (#25): X's signals, sample checks, X's notice, the risk level and a suggested rest, as one summary. Pure. |
 | `notify.ts`    | Desktop notifications and their ids.                                                                                        |
 | `risk.ts` | The risk ladder (ADR-0013): risk events (silent blocks included), `assessRisk` (level, pace factor, resume lock, full stop) and duplicate filtering. Pure. |
 | `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings) and action labels.                       |

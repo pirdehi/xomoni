@@ -1,6 +1,8 @@
 // UI preview with demo data: `npm run preview:ui`, then open /preview.html.
 // Stubs the few chrome.* APIs the dashboard uses; it never talks to X.
 import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
+import { healthReport } from '../shared/health';
+import { assessRisk } from '../shared/risk';
 import type { ItemDraft, ItemKind, Job } from '../shared/types';
 
 const ME = '1000';
@@ -96,6 +98,7 @@ async function seed() {
   await db.items.where('key').anyOf(old).modify({ status: 'deleted' });
 
   const now = Date.now();
+  const limited = [{ accountId: ME, kind: 'rate_limited' as const, at: now - 20 * 60_000 }];
   const job: Job = {
     id: 'demo-job',
     accountId: ME,
@@ -120,6 +123,13 @@ async function seed() {
     startedAt: now - 3 * 3_600_000,
     finishedAt: null,
     updatedAt: now,
+    health: healthReport({
+      risk: assessRisk(limited, now),
+      events: limited,
+      checks: { applied: 4, notApplied: 0, unclear: 0, pending: 1 },
+      notice: null,
+      now,
+    }),
   };
   await db.jobs.put(job);
   const msgs: [string, 'success' | 'info' | 'warn', string][] = [

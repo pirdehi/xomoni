@@ -154,6 +154,8 @@ class Runner {
       else final = { state: 'failed', reason: err instanceof Error ? err.message : String(err) };
     }
     clearNotification(ATTENTION_ID);
+    // After the runner recorded the stop's risk event, so the report includes it.
+    job.health = await ctx.health().catch(() => job.health);
 
     try {
       job.state = final.state;
@@ -175,11 +177,18 @@ class Runner {
         'system',
         `${STATE_VERB[final.state]} “${job.title}” — ${summary}${final.reason ? `. ${final.reason}` : ''}`,
       );
+      if (job.health) {
+        await ctx.log(
+          job.health.level > 0 || job.health.notice ? 'warn' : 'info',
+          'system',
+          `Account health: ${job.health.summary}`,
+        );
+      }
       if (!stoppedByYou && ctx.settings?.notifications !== false) {
         void notify(
           FINISHED_ID,
           `Xomoni: ${STATE_VERB[final.state].replace(/:$/, '')} “${job.title}”`,
-          `${summary}.${final.reason ? ` ${final.reason}` : ''}`,
+          `${summary}. ${final.reason || job.health?.summary || ''}`.trim(),
         );
       }
     } finally {

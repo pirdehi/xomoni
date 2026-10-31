@@ -70,6 +70,9 @@ export async function runDueChecks(ctx: JobContext) {
     const result = await applied(ctx, check);
     await db.checks.delete(check.seq!);
     const minutes = Math.round((Date.now() - check.at) / MINUTE);
+    if (result === null) ctx.samples.unclear++;
+    else if (result) ctx.samples.applied++;
+    else ctx.samples.notApplied++;
     if (result === null) {
       await ctx.log(
         'info',

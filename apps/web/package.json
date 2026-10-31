@@ -31,7 +31,7 @@
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
     "typescript": "~5.9.3",
-    "vitest": "^3.2.0"
+    "vitest": "^5.0.5"
   },
   "description": "xomoni.com — website and remote dashboard for the Xomoni extension",
   "license": "MIT",

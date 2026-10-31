@@ -1,5 +1,7 @@
 import Dexie, { type Table } from 'dexie';
+import { type RiskEvent, type RiskEventKind, isDuplicateRisk } from './risk';
 import { normalizeSettings } from './settings';
+import { DAY } from './time';
 import type { Account, Item, ItemDraft, ItemKind, ItemSource, Job, LogEntry, RateObservation, Settings } from './types';
 
 interface KV {
@@ -27,6 +29,7 @@ class XomoniDB extends Dexie {
   logs!: Table<LogEntry, number>;
   limits!: Table<RateObservation, string>;
   reads!: Table<ReadUse, number>;
+  risk!: Table<RiskEvent, number>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -40,13 +43,14 @@ class XomoniDB extends Dexie {
       kv: 'key',
     });
     this.version(2).stores({ reads: '++seq, [accountId+ts]' });
+    this.version(3).stores({ risk: '++seq, [accountId+at]' });
   }
 }
 
 /**
  * The extension's IndexedDB database (`xomoni`), used by the dashboard and the service worker. Tables:
  * `accounts`, `items` (the inventory), `jobs`, `logs`, `limits` (X rate-limit observations), `reads` (page loads of
- * the last 24 hours) and `kv`.
+ * the last 24 hours), `risk` (the risk ladder's events, see `risk.ts`) and `kv`.
  * @remarks Content scripts cannot use it: they run under x.com's origin, so they message the service worker.
  */
 export const db = new XomoniDB();
@@ -158,4 +162,25 @@ export async function getSettings(): Promise<Settings> {
  */
 export function addLog(entry: Omit<LogEntry, 'ts' | 'seq'>) {
   return db.logs.add({ ...entry, ts: Date.now() });
+}
+
+/** The account's risk events of the last 30 days (the longest window the risk ladder looks at). */
+export function riskEvents(accountId: string) {
+  return db.risk
+    .where('[accountId+at]')
+    .between([accountId, Date.now() - 30 * DAY], [accountId, Infinity])
+    .toArray();
+}
+
+/**
+ * Records a risk event for the account, unless the same signal was recorded in the last 10 minutes.
+ * Returns the account's events afterwards, ready for `assessRisk`.
+ */
+export async function recordRisk(accountId: string, kind: RiskEventKind): Promise<RiskEvent[]> {
+  const events = await riskEvents(accountId);
+  const now = Date.now();
+  if (isDuplicateRisk(events, kind, now)) return events;
+  const event: RiskEvent = { accountId, kind, at: now };
+  await db.risk.add(event);
+  return [...events, event];
 }

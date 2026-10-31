@@ -260,9 +260,13 @@ export function earlierActiveDays(actionTimes: readonly number[], now: number): 
   ).size;
 }
 
-/** The warm-up step for an account: its day (1–4) and the factor applied to the one-fifth allowances. */
-export function warmup(earlierDays: number): { day: number; days: number; factor: number } {
-  const index = Math.min(Math.max(0, earlierDays), WARMUP_STEPS.length - 1);
+/**
+ * The warm-up step for an account: its day (1–4) and the factor applied to the one-fifth allowances. `drop`
+ * moves it back that many steps (one per 226, lock or refusal in the last two weeks).
+ */
+export function warmup(earlierDays: number, drop = 0): { day: number; days: number; factor: number } {
+  // `drop` steps back down after X's warnings (the risk ladder), whatever step the account had reached.
+  const index = Math.max(0, Math.min(Math.max(0, earlierDays), WARMUP_STEPS.length - 1) - Math.max(0, drop));
   return { day: index + 1, days: WARMUP_STEPS.length, factor: WARMUP_STEPS[index] };
 }
 

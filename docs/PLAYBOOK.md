@@ -33,7 +33,7 @@
 | A4 | "Posts read per day" cap | 📰 | 🟡 |
 | A5 | Search and post-page quota | 📰 | 🟡 |
 | A6 | Different caps for Premium accounts | 📘📰 | 🟡 |
-| B1 | Error 226 ("automated behavior") | 📰 | 🟡 |
+| B1 | Error 226 ("automated behavior") | 📰 | ✅ |
 | B2 | Signed `x-client-transaction-id` header | 📰 | ✅ |
 | B3 | Synthetic click detection (`isTrusted`) | 🧠 | ⚠️ |
 | B4 | Analysis of action timing regularity | 🧠 | 🟡 |
@@ -42,8 +42,8 @@
 | B7 | In-page script detection | 🧠 | ⚠️ |
 | B8 | Automated browser (webdriver, CDP, headless) | 📰 | ✅ |
 | B9 | Device and network reputation | 📰 | 🟡 |
-| C1 | Graduated penalty ladder | 📰 | 🟡 |
-| C2 | Account lock (326) and Arkose captcha | 📘📰 | 🟡 |
+| C1 | Graduated penalty ladder | 📰 | ✅ |
+| C2 | Account lock (326) and Arkose captcha | 📘📰 | ✅ |
 | C3 | "Limited" or read-only account | 📰 | ✅ |
 | C4 | Suspension (code 64) | 📘 | ✅ |
 | C5 | Silent block (action is confirmed but not carried out) | 🧠 | 🔴 |
@@ -118,12 +118,12 @@
 
 ## B. Automation detection
 
-### B1. Error 226 ("This request looks like it might be automated") · 📰 · 🟡
-- **Current status:** The job stops immediately (Stopped for safety). But the user can press Resume **right away**.
-- **Proposed scenario (tiered):**
-  - **First 226:** stop, and lock Resume for **6 hours** with a countdown. "Resume anyway" is possible only by typing a confirmation. Caps are halved for 7 days.
-  - **Second 226 within 7 days:** **24-hour** lock, and caps cut to one quarter.
-  - **Third 226:** full stop, with a recommendation to rest for one week.
+### B1. Error 226 ("This request looks like it might be automated") · 📰 · ✅
+- **Scenario (implemented, #17):**
+  - **First 226:** stop, and lock Resume for **6 hours** with a countdown. "Resume anyway" only by typing a confirmation. Half pace for 7 days.
+  - **Second 226 within 7 days:** **24-hour** lock, and a quarter of the pace.
+  - **Third 226:** full stop, no automatic resume.
+  - Each 226 also drops the warm-up back one step.
 
 ### B2. `x-client-transaction-id` header · 📰 · ✅
 - **Scenario:** Xomoni builds no requests. X's own web app sends the request with the correct header. This is exactly why the "click" approach was chosen.
@@ -176,15 +176,13 @@
 
 ## C. Enforcement and penalties
 
-### C1. Graduated penalty ladder · 📰 · 🟡
-X usually gets stricter step by step: a warning, then 226, then a temporary restriction, then a lock, and finally suspension. Xomoni must also have **its own risk ladder** (section 7) so it always backs off one step earlier.
+### C1. Graduated penalty ladder · 📰 · ✅
+X usually gets stricter step by step: a warning, then 226, then a temporary restriction, then a lock, and finally suspension. Xomoni has **its own risk ladder** (section 7, ADR-0013) so it always backs off one step earlier.
 
-### C2. Account lock (326, `/account/access`) and Arkose captcha · 📘📰 · 🟡
-- **Current status:**
-  - Xomoni waits for the user and sends a notification. The user solves the captcha themselves (✅).
-  - After that, Xomoni waits **3 to 6 minutes** and sets the slowdown factor to 2. This is not enough.
-- **Proposed scenario:**
-  - After the lock is lifted, wait at least **60 to 90 minutes**, and run at 25% of caps for 48 hours.
+### C2. Account lock (326, `/account/access`) and Arkose captcha · 📘📰 · ✅
+- **Scenario (implemented, #17):**
+  - Xomoni waits for the person and sends a notification; the person solves X's check themselves.
+  - After the check, Xomoni rests **60 to 90 minutes**, then runs at a quarter of its pace for 48 hours and at half until the week is over.
   - **Second lock within 7 days:** full stop, with no automatic resume.
 
 ### C3. "Limited" or read-only account · 📰 · ✅
@@ -335,7 +333,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 
 ---
 
-## 7. Xomoni risk ladder (proposed)
+## 7. Xomoni risk ladder (implemented, ADR-0013)
 
 | Level | What triggers it | Response | Return to level 0 |
 |---|---|---|---|
@@ -345,7 +343,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 | **3 Defensive** | Lock or restriction (326, 403 on writes), or second 226 | Wait for the user, then wait 60 to 90 minutes, and 25% of caps for 48 hours | Step by step over 7 days |
 | **4 Full stop** | Suspension (64), second lock within 7 days, third 226, or silent block | Stop with no automatic resume, with an explanation | Only by the user's informed decision |
 
-The risk level is stored per account, shown on the dashboard, and kept between jobs.
+The ladder is built from dated events per account (`apps/extension/src/shared/risk.ts`), shown on the dashboard with the reason and the time resume opens, and kept between jobs. Level 1 needs one rate limit in the last hour; failures in a row are handled by the failure limit (C3). "Resume anyway" past a lock or full stop needs a typed confirmation and keeps the pace at a quarter for 48 hours. Every level only slows Xomoni down (ADR-0012).
 
 ---
 

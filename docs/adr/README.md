@@ -16,3 +16,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0010](0010-configuration-as-code.md) | Configuration as code | Accepted |
 | [0011](0011-email-and-password-sign-in.md) | Email and password sign-in, alongside Google | Accepted |
 | [0012](0012-one-fifth-of-every-x-limit.md) | Use at most one fifth of every limit X announces | Accepted |
+| [0013](0013-risk-ladder.md) | A risk ladder that backs off one step before X does | Accepted |

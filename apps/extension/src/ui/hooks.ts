@@ -1,6 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { db, kvGet, kvSet, upsertAccount } from '../shared/db';
+import { db, kvGet, kvSet, recordRisk, riskEvents, upsertAccount } from '../shared/db';
+import { type RiskAssessment, assessRisk } from '../shared/risk';
+import { DAY } from '../shared/time';
+import { WARMUP_RESET_DAYS, earlierActiveDays, spendsQuota, warmup } from '../shared/x-limits';
 import type { PageInfo } from '../shared/messages';
 import type { Account } from '../shared/types';
 import { runner } from '../engine/runner';
@@ -94,4 +97,67 @@ export function useToasts() {
  */
 export function startJob(jobId: string) {
   runner.start(jobId).catch((err) => toast(err instanceof Error ? err.message : String(err), 'critical'));
+}
+
+/**
+ * The risk ladder for an account, live: re-evaluated when its risk events change and every 30 seconds, so
+ * resume locks open on time. Undefined while loading.
+ */
+export function useRisk(accountId: string | undefined): RiskAssessment | undefined {
+  const events = useLiveQuery(() => (accountId ? riskEvents(accountId) : []), [accountId]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return events ? assessRisk(events, now) : undefined;
+}
+
+/**
+ * Resumes a job the risk ladder is holding back, after the person typed their confirmation: records an
+ * `override` event (the pace stays at a quarter for 48 hours), then starts the job.
+ */
+export async function resumeAnyway(jobId: string, accountId: string) {
+  await recordRisk(accountId, 'override');
+  startJob(jobId);
+}
+
+/** The pace an account runs at now, as the limiter computes it when a run starts. */
+export interface Pace {
+  /** Warm-up step, already dropped back for recent warnings. */
+  step: ReturnType<typeof warmup>;
+  /** The risk ladder. */
+  risk: RiskAssessment;
+  /** Share of Xomoni's one-fifth allowances in force: warm-up times the risk ladder, at most 1. */
+  factor: number;
+}
+
+/**
+ * The account's current pace (warm-up and risk ladder), live from the activity log and risk events.
+ * Same rules as `Limiter.init`, so the dashboard's caps and time estimates match what a run will do.
+ */
+export function usePace(accountId: string | undefined): Pace | undefined {
+  return useLiveQuery(async () => {
+    if (!accountId) return undefined;
+    const now = Date.now();
+    const [logs, events] = await Promise.all([
+      db.logs
+        .where('[accountId+ts]')
+        .between([accountId, now - WARMUP_RESET_DAYS * DAY], [accountId, Infinity])
+        .toArray(),
+      riskEvents(accountId),
+    ]);
+    const acted = logs.filter(
+      (r) => r.outcome && r.action !== 'system' && r.action !== 'read' && spendsQuota(r.outcome),
+    );
+    const risk = assessRisk(events, now);
+    const step = warmup(
+      earlierActiveDays(
+        acted.map((r) => r.ts),
+        now,
+      ),
+      risk.warmupDrop,
+    );
+    return { step, risk, factor: Math.min(1, step.factor * risk.capFactor) };
+  }, [accountId]);
 }

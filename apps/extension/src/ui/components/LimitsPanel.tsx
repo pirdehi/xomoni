@@ -1,20 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Gauge } from 'lucide-react';
 import { db, getSettings } from '../../shared/db';
+import { RISK_LABELS } from '../../shared/risk';
 import { ACTION_LABELS } from '../../shared/settings';
 import { DAY, HOUR } from '../../shared/time';
 import type { ActionKind } from '../../shared/types';
-import {
-  WARMUP_RESET_DAYS,
-  earlierActiveDays,
-  liveSlot,
-  scaleRule,
-  share,
-  spendsQuota,
-  warmup,
-} from '../../shared/x-limits';
+import { liveSlot, scaleRule, share } from '../../shared/x-limits';
 import { fmtDuration, fmtNumber } from '../format';
-import { Card, Meter, useNow } from './ui';
+import { usePace } from '../hooks';
+import { Card, Meter, cx, useNow } from './ui';
 
 const SHOWN: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
 const OP_LABEL: Record<string, string> = {
@@ -38,38 +32,28 @@ const OP_LABEL: Record<string, string> = {
 export function LimitsPanel({ accountId }: { accountId: string }) {
   const now = useNow(1000);
   const settings = useLiveQuery(getSettings, []);
-  const usage = useLiveQuery(async () => {
-    const now = Date.now();
-    const since = now - DAY;
-    const rows = await db.logs
-      .where('[accountId+ts]')
-      .between([accountId, now - WARMUP_RESET_DAYS * DAY], [accountId, Infinity])
-      .toArray();
+  const pace = usePace(accountId);
+  const counts = useLiveQuery(async () => {
+    const since = Date.now() - DAY;
+    const [rows, reads] = await Promise.all([
+      db.logs.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray(),
+      db.reads.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray(),
+    ]);
     const out: Record<string, { hour: number; day: number }> = {};
-    // Same warm-up step the limiter uses: days with requests to X in the last two weeks.
-    const acted = rows.filter(
-      (r) => r.outcome && r.action !== 'system' && r.action !== 'read' && spendsQuota(r.outcome),
-    );
-    const step = warmup(
-      earlierActiveDays(
-        acted.map((r) => r.ts),
-        now,
-      ),
-    );
-    const reads = await db.reads.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray();
     for (const r of reads) {
       const u = (out.read ??= { hour: 0, day: 0 });
       u.day++;
       if (r.ts > Date.now() - HOUR) u.hour++;
     }
     for (const r of rows) {
-      if (r.ts < since || r.outcome !== 'done' || r.action === 'read') continue;
+      if (r.outcome !== 'done' || r.action === 'read') continue;
       const u = (out[r.action] ??= { hour: 0, day: 0 });
       u.day++;
       if (r.ts > Date.now() - HOUR) u.hour++;
     }
-    return { counts: out, step };
+    return out;
   }, [accountId]);
+  const usage = pace && counts ? { ...pace, counts } : undefined;
   const observed = useLiveQuery(
     () =>
       db.limits
@@ -86,19 +70,42 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       subtitle={
         settings
           ? `Preset: ${settings.preset[0].toUpperCase()}${settings.preset.slice(1)} · at most ⅕ of X's limits` +
-            (usage && usage.step.factor < 1
-              ? ` · warm-up day ${usage.step.day} of ${usage.step.days} (${usage.step.factor * 100}% of that)`
-              : '')
+            (usage && usage.step.factor < 1 ? ` · warm-up day ${usage.step.day} of ${usage.step.days}` : '') +
+            (usage && usage.factor < 1 ? ` · running at ${Math.round(usage.factor * 100)}% of that` : '')
           : undefined
       }
     >
+      {usage && usage.risk.level > 0 && (
+        <div
+          role="status"
+          className={cx(
+            'mb-4 rounded-lg border px-3 py-2 text-xs',
+            usage.risk.level >= 3 ? 'border-critical/40 bg-critical/10' : 'border-warn/40 bg-warn/10',
+          )}
+        >
+          <div className="font-medium text-ink">
+            Risk level {usage.risk.level}: {RISK_LABELS[usage.risk.level]}
+          </div>
+          <div className="mt-0.5 text-ink-2">
+            {usage.risk.reason}.
+            {usage.risk.fullStop
+              ? ' Xomoni won’t resume on its own.'
+              : usage.risk.resumeAt
+                ? ` Resume opens in ${fmtDuration(usage.risk.resumeAt - now)}.`
+                : ''}
+            {usage.risk.reducedUntil && !usage.risk.fullStop
+              ? ` Slower pace for ${fmtDuration(usage.risk.reducedUntil - now)} more.`
+              : ''}
+          </div>
+        </div>
+      )}
       <div className="space-y-4">
         {SHOWN.map((action) => {
           const stored = settings?.pacing[action];
           const u = usage?.counts[action] ?? { hour: 0, day: 0 };
           if (!stored) return null;
-          // The caps in force today: smaller during warm-up, never above one fifth.
-          const rule = scaleRule(stored, usage?.step.factor ?? 1);
+          // The caps in force now: smaller during warm-up and on the risk ladder, never above one fifth.
+          const rule = scaleRule(stored, usage?.factor ?? 1);
           return (
             <div key={action}>
               <div className="mb-1.5 flex items-baseline justify-between text-xs">

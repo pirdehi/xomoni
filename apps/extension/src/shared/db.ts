@@ -213,3 +213,25 @@ export async function hasConsent(accountId: string): Promise<boolean> {
 export async function recordConsent(accountId: string) {
   await db.consents.put({ accountId, version: CONSENT_VERSION, at: Date.now() });
 }
+
+const archiveKey = (accountId: string) => `archive:${accountId}`;
+
+/** Remembers that an X archive was imported for this account, for the Cleanup page's warning (PLAYBOOK E2). */
+export async function markArchiveImported(accountId: string) {
+  await kvSet(archiveKey(accountId), Date.now());
+}
+
+/**
+ * Whether an X archive was ever imported for this account. Imports from before the marker existed are found
+ * by looking for an item that came from an archive, once.
+ */
+export async function archiveImported(accountId: string): Promise<boolean> {
+  if (await kvGet<number | null>(archiveKey(accountId), null)) return true;
+  const fromArchive = await db.items
+    .where('accountId')
+    .equals(accountId)
+    .filter((item) => item.sources.includes('archive'))
+    .first();
+  if (fromArchive) await markArchiveImported(accountId);
+  return !!fromArchive;
+}

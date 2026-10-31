@@ -126,6 +126,8 @@ export class JobContext {
   preflighted = new Set<ActionKind>();
   /** What this run's sample checks found (PLAYBOOK C5), for the health report. */
   samples: Omit<SampleTally, 'pending'> = { applied: 0, notApplied: 0, unclear: 0 };
+  /** Warnings for the person when the job finishes, such as posts Xomoni can't see (PLAYBOOK E2, C6). */
+  notes: string[] = [];
   /** When this run started (epoch ms): the health report counts X's signals from here. */
   private readonly runStart = Date.now();
   /** Read budget of the page the worker tab shows; scrolls spend it too. */
@@ -195,6 +197,12 @@ export class JobContext {
   private progress() {
     const { done, skipped, failed, scanned } = this.job.stats;
     return done + skipped + failed + scanned;
+  }
+
+  /** Logs a warning and keeps it for the job's final state, so a finished job doesn't read as all clear. */
+  async note(message: string) {
+    this.notes.push(message);
+    await this.log('warn', 'system', message);
   }
 
   /** Throws `Aborted` if the person paused or cancelled. */

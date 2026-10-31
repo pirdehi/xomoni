@@ -29,11 +29,12 @@ src/
     auth/         identity: sign-up and email confirmation, sign-in, password reset, account settings, sessions
     dashboard/    devices and live job status
   shared/
-    config/       public site constants and the site URL
+    config/       public site constants, the site URL and the security headers
     supabase/     Supabase client factories (server, browser, proxy)
     ui/           layout components used by every page
   proxy.ts        refreshes the session on signed-in and auth routes
-e2e/              Playwright tests for every auth flow (real Supabase Auth, emails from Mailpit)
+e2e/              Playwright tests for every auth flow (real Supabase Auth, emails from Mailpit) and the security
+                  headers; every test fails on a Content-Security-Policy violation
 ```
 
 Each module is split into `domain/`, `application/`, `infrastructure/`, `server/`, `client/` and `ui/` layers; the rules are in [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#4-website-appsweb) and are checked by `npm run arch`.

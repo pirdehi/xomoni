@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// Before any schema is built: zod otherwise probes `new Function`, which the site's CSP blocks and reports
+// as a violation (ADR-0014). Interpreted parsing is fast enough for a few form fields.
+z.config({ jitless: true });
+
 /**
  * Password rules. They mirror `minimum_password_length` and `password_requirements = "letters_digits"`
  * in `supabase/config.toml`, so people see the same rule here that Supabase enforces; a unit test

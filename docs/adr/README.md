@@ -17,3 +17,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0011](0011-email-and-password-sign-in.md) | Email and password sign-in, alongside Google | Accepted |
 | [0012](0012-one-fifth-of-every-x-limit.md) | Use at most one fifth of every limit X announces | Accepted |
 | [0013](0013-risk-ladder.md) | A risk ladder that backs off one step before X does | Accepted |
+| [0014](0014-security-headers-and-a-static-csp.md) | Security headers and a static Content-Security-Policy | Accepted |

@@ -5,7 +5,7 @@
  */
 
 /** Version of the text. Raise it when the substance changes: every X account is then asked again. */
-export const CONSENT_VERSION = 1;
+export const CONSENT_VERSION = 2;
 
 /** What the person types to give consent, exactly. */
 export const CONSENT_PHRASE = 'I UNDERSTAND';
@@ -40,6 +40,10 @@ export const CONSENT_SECTIONS: readonly ConsentSection[] = [
     text: 'Xomoni keeps the risk low: it never uses more than one fifth of any limit X announces, starts slower than that, and stops at X’s first warning. It can’t make the risk zero. Only X decides what happens to your account.',
   },
   {
+    title: 'A research project, at your own risk',
+    text: 'Xomoni is open-source research into ways to clean up your own X account through X’s website. It comes with no guarantee that X won’t limit, lock or suspend your account. You use it at your own risk, and the consequences for your X account are yours.',
+  },
+  {
     title: 'Deletions are permanent',
     text: 'A deleted post, an undone repost or a removed like can’t be brought back, by Xomoni or by X.',
   },
@@ -60,7 +64,8 @@ export const CONSENT_SECTIONS: readonly ConsentSection[] = [
 ];
 
 /** The closing sentence: what giving consent means. */
-export const CONSENT_DECISION = 'If you go ahead, you do so for this X account, knowing these risks.';
+export const CONSENT_DECISION =
+  'If you go ahead, you do so for this X account, knowing these risks and accepting them as your own.';
 
 /** The consent text as Markdown, for the README (between its `consent` markers). */
 export function consentMarkdown(): string {

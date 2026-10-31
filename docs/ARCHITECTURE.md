@@ -30,7 +30,7 @@ flowchart LR
   person -- "starts and watches cleanups" --> ext
   person -- "signs up and in, follows progress" --> web
   ext -- "clicks X's own buttons in a normal tab" --> x
-  ext -. "job status only (planned, Phase 6)" .-> sb
+  ext -. "job status only (planned, Phase 5)" .-> sb
   web -- "auth, reads status, live updates" --> sb
   web -- "captcha widget on auth forms" --> turnstile
   sb -- "sign-in with Google" --> google

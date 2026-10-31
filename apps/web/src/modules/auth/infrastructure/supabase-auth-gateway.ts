@@ -115,8 +115,8 @@ export function createSupabaseAuthGateway(supabase: SupabaseClient<Database>): A
       return done(await supabase.auth.updateUser({ email }, { emailRedirectTo }));
     },
 
-    async signOut() {
-      await supabase.auth.signOut({ scope: 'local' });
+    async signOut(everywhere = false) {
+      await supabase.auth.signOut({ scope: everywhere ? 'global' : 'local' });
     },
 
     async deleteAccount() {

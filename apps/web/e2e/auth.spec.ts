@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { emailsTo, waitForEmail } from './support/mailpit';
+import { canRenew, refreshTokenOf } from './support/session';
 import { expect, test } from './support/test';
 import {
   NEW_PASSWORD,
@@ -305,6 +306,36 @@ test.describe('account page', () => {
       maxRedirects: 0,
     });
     expect(offSite.headers()['location']).toBe('http://localhost:3000/');
+  });
+
+  test('signs out everywhere: other browsers can no longer renew their session (#83)', async ({ page, browser }) => {
+    const email = uniqueEmail('everywhere');
+    await signUpConfirmed(page, email);
+    const elsewhere = await browser.newContext();
+    const otherPage = await elsewhere.newPage();
+    await signIn(otherPage, email, PASSWORD);
+    await expectDashboard(otherPage);
+    const otherSession = await refreshTokenOf(elsewhere);
+
+    await page.goto('/account');
+    await page.getByRole('button', { name: 'Sign out everywhere' }).click();
+    await expect(page).toHaveURL('http://localhost:3000/');
+    expect(await canRenew(otherSession)).toBe(false);
+    await elsewhere.close();
+  });
+
+  test('a normal sign-out leaves the other browsers signed in', async ({ page, browser }) => {
+    const email = uniqueEmail('here-only');
+    await signUpConfirmed(page, email);
+    const elsewhere = await browser.newContext();
+    const otherPage = await elsewhere.newPage();
+    await signIn(otherPage, email, PASSWORD);
+    await expectDashboard(otherPage);
+    const otherSession = await refreshTokenOf(elsewhere);
+
+    await signOut(page);
+    expect(await canRenew(otherSession)).toBe(true);
+    await elsewhere.close();
   });
 
   test('deletes the account and its sign-in', async ({ page }) => {

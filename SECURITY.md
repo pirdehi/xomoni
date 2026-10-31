@@ -39,7 +39,7 @@ A review of what the cloud side exposes today: Supabase (Postgres with Row Level
 | Row Level Security | 26 pgTAP tests in CI: a user can't read, change, delete or attach to another user's rows, or hand a job to someone else. |
 | Realtime data | Row Level Security applies: a user who subscribes with another user's id as the filter receives nothing; without a filter, only their own rows. |
 | Auth | Confirmed email before sign-in; email changes confirmed on both addresses; password change needs the current password; Turnstile on sign-up, sign-in and reset; production limits of 30 sign-ins per 5 minutes per IP and 30 emails per hour; 1-hour access tokens with refresh-token rotation. |
-| Sessions | Signing out revokes that session's refresh token. Changing the password revokes every other session's refresh token; their access tokens expire within the hour. |
+| Sessions | Signing out revokes that session's refresh token; *Sign out everywhere* revokes every session's. Changing the password revokes every other session's refresh token; their access tokens expire within the hour. |
 | Keys | The browser and the website use only the publishable key. No service-role or secret key in `apps/web`. |
 | Website | Security headers and a static CSP on every response, no raw HTML ([ADR-0014](docs/adr/0014-security-headers-and-a-static-csp.md)). The session cookies aren't `HttpOnly` (the browser client reads them, by `@supabase/ssr`'s design); the CSP is what keeps other scripts from reading them. |
 | CORS | Vercel answers pages with `Access-Control-Allow-Origin: *`. Browsers never send cookies on such reads, so signed-in pages can't be read cross-site. |
@@ -48,10 +48,10 @@ A review of what the cloud side exposes today: Supabase (Postgres with Row Level
 
 | Finding | Severity | Follow-up |
 | --- | --- | --- |
-| `delete_account()` accepts any valid session; *Type DELETE* is checked only in the page. A stolen session can delete the account and its history at once. | Medium | [#80](https://github.com/pirdehi/xomoni/issues/80): require a sign-in within the last 10 minutes. |
+| `delete_account()` accepts any valid session; *Type DELETE* is checked only in the page. A stolen session can delete the account and its history at once. | Medium | Fixed: `delete_account()` needs a sign-in within the last 10 minutes ([#80](https://github.com/pirdehi/xomoni/issues/80)). |
 | Every dashboard joins one public Realtime topic. Anyone with the publishable key can broadcast to all open dashboards (ignored by the page today), and anonymous subscribers see an empty event for every job change of every user, which reveals activity timing but no content. | Low | [#81](https://github.com/pirdehi/xomoni/issues/81): a private channel per user. |
 | Nothing limits how many devices or jobs one account writes (300 devices in one request worked). | Low | [#82](https://github.com/pirdehi/xomoni/issues/82): caps per account and per device. |
-| Sign-out ends only the current session. Accounts that use Google have no password to change, so they can't end a session left elsewhere. | Low | [#83](https://github.com/pirdehi/xomoni/issues/83): *Sign out everywhere*. |
+| Sign-out ends only the current session. Accounts that use Google have no password to change, so they can't end a session left elsewhere. | Low | Fixed: *Sign out everywhere* on the account page ([#83](https://github.com/pirdehi/xomoni/issues/83)). |
 
 The Data API has no per-user request rate limit; the caps in #82 and the 1,000-row `max_rows` bound what one account can do with it.
 

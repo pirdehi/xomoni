@@ -22,11 +22,12 @@ export async function handleOAuthCallback(request: NextRequest): Promise<NextRes
 }
 
 /**
- * `POST /auth/signout`: ends the session and returns home, or to a same-site `?next=` path. POST only, so links
- * can't sign people out.
+ * `POST /auth/signout`: ends the session and returns home, or to a same-site `?next=` path. With
+ * `?scope=everywhere` it ends every session of the account (#83). POST only, so links can't sign people out.
  */
 export async function handleSignOut(request: NextRequest): Promise<NextResponse> {
-  await signOut(await authDeps());
+  const everywhere = request.nextUrl.searchParams.get('scope') === 'everywhere';
+  await signOut(await authDeps(), { everywhere });
   // `?next=` lets "Sign in again" end on the sign-in page; only same-site paths are followed.
   const next = safeNextPath(request.nextUrl.searchParams.get('next'), ROUTES.home);
   return NextResponse.redirect(new URL(next, request.url), 303);

@@ -301,3 +301,17 @@ describe('deleteAccount', () => {
     expect(d.auth.signOut).not.toHaveBeenCalled();
   });
 });
+
+describe('signOut (#83)', () => {
+  it('ends only this session by default', async () => {
+    const d = deps();
+    await useCases.signOut(d);
+    expect(d.auth.signOut).toHaveBeenCalledWith(false);
+  });
+
+  it('ends every session when asked to', async () => {
+    const d = deps();
+    await useCases.signOut(d, { everywhere: true });
+    expect(d.auth.signOut).toHaveBeenCalledWith(true);
+  });
+});

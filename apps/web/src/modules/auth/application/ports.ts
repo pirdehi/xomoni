@@ -40,8 +40,11 @@ export interface AuthGateway {
   updatePassword(password: string): Promise<AuthResult>;
   /** Starts an email change; both the old and the new address get a confirmation link. */
   changeEmail(input: { email: string; emailRedirectTo: string }): Promise<AuthResult>;
-  /** Ends the session on this device. */
-  signOut(): Promise<void>;
+  /**
+   * Ends the session on this device, or with `everywhere` every session of the account, this one included:
+   * the others can no longer renew theirs, and their current access expires within the hour.
+   */
+  signOut(everywhere?: boolean): Promise<void>;
   /** Deletes the signed-in account; devices and job summaries cascade in the database. */
   deleteAccount(): Promise<AuthResult>;
 }

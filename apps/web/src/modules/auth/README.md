@@ -11,7 +11,7 @@ Everything about who someone is on xomoni.com: creating an account with a confir
 | `infrastructure/` | `supabase-auth-gateway.ts` | `AuthGateway` on Supabase Auth, for either the browser or the request-bound server client; maps Supabase error codes to domain codes. |
 | `client/` | `auth.ts` | Browser composition root: `browserAuth.*`, the use cases wired to the browser Supabase client. |
 | `server/` | `deps.ts`, `session.ts`, `actions.ts`, `route-handlers.ts`, `proxy.ts` | Server composition root; the Data Access Layer; the delete-account Server Action; `/auth/callback` and `/auth/signout`; session refresh and redirects in the proxy. |
-| `ui/` | `sign-in-form.tsx`, `sign-up-form.tsx`, `forgot-password-form.tsx`, `reset-password-form.tsx`, `confirm-email-link.tsx`, `account-settings.tsx`, `delete-account.tsx`, `google-button.tsx`, `auth-card.tsx`, `fields.tsx`, `captcha.tsx`, `form-alert.tsx`, `navigation.ts` | Forms and pages' content; the password field with a live checklist; the Turnstile hook; navigation after the session changes. |
+| `ui/` | `sign-in-form.tsx`, `sign-up-form.tsx`, `forgot-password-form.tsx`, `reset-password-form.tsx`, `confirm-email-link.tsx`, `account-settings.tsx`, `delete-account.tsx`, `google-button.tsx`, `auth-card.tsx`, `fields.tsx`, `captcha.tsx`, `form-alert.tsx`, `navigation.ts` | Forms and pages' content; the password field with a live checklist; the Turnstile hook (it tells the person to tick the box when Cloudflare asks, and offers a retry when the check fails or stalls); navigation after the session changes. |
 
 ## Flows
 

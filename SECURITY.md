@@ -27,6 +27,34 @@ Out of scope: X's own platform, rate limits or enforcement decisions; social eng
 - The website cannot start deletions ([ADR-0006](docs/adr/0006-website-is-view-only.md)).
 - Every database table has Row Level Security; the browser uses only the publishable key.
 
+## Cloud security review (2026-10-31)
+
+A review of what the cloud side exposes today: Supabase (Postgres with Row Level Security, the Data API, Realtime, Auth) and the website ([#42](https://github.com/pirdehi/xomoni/issues/42)). Each check ran against the local stack with real requests; production settings were read from `supabase/config.toml` and the live headers. How the extension stores its session is reviewed when it learns to sign in ([#38](https://github.com/pirdehi/xomoni/issues/38)).
+
+### Holds
+
+| Area | What was checked |
+| --- | --- |
+| Anonymous access | No table access (HTTP 401); `delete_account()` refused; the Data API's OpenAPI root lists no paths; GraphQL (`pg_graphql`) is not enabled, locally or in production. |
+| Row Level Security | 26 pgTAP tests in CI: a user can't read, change, delete or attach to another user's rows, or hand a job to someone else. |
+| Realtime data | Row Level Security applies: a user who subscribes with another user's id as the filter receives nothing; without a filter, only their own rows. |
+| Auth | Confirmed email before sign-in; email changes confirmed on both addresses; password change needs the current password; Turnstile on sign-up, sign-in and reset; production limits of 30 sign-ins per 5 minutes per IP and 30 emails per hour; 1-hour access tokens with refresh-token rotation. |
+| Sessions | Signing out revokes that session's refresh token. Changing the password revokes every other session's refresh token; their access tokens expire within the hour. |
+| Keys | The browser and the website use only the publishable key. No service-role or secret key in `apps/web`. |
+| Website | Security headers and a static CSP on every response, no raw HTML ([ADR-0014](docs/adr/0014-security-headers-and-a-static-csp.md)). The session cookies aren't `HttpOnly` (the browser client reads them, by `@supabase/ssr`'s design); the CSP is what keeps other scripts from reading them. |
+| CORS | Vercel answers pages with `Access-Control-Allow-Origin: *`. Browsers never send cookies on such reads, so signed-in pages can't be read cross-site. |
+
+### Findings
+
+| Finding | Severity | Follow-up |
+| --- | --- | --- |
+| `delete_account()` accepts any valid session; *Type DELETE* is checked only in the page. A stolen session can delete the account and its history at once. | Medium | [#80](https://github.com/pirdehi/xomoni/issues/80): require a sign-in within the last 10 minutes. |
+| Every dashboard joins one public Realtime topic. Anyone with the publishable key can broadcast to all open dashboards (ignored by the page today), and anonymous subscribers see an empty event for every job change of every user, which reveals activity timing but no content. | Low | [#81](https://github.com/pirdehi/xomoni/issues/81): a private channel per user. |
+| Nothing limits how many devices or jobs one account writes (300 devices in one request worked). | Low | [#82](https://github.com/pirdehi/xomoni/issues/82): caps per account and per device. |
+| Sign-out ends only the current session. Accounts that use Google have no password to change, so they can't end a session left elsewhere. | Low | [#83](https://github.com/pirdehi/xomoni/issues/83): *Sign out everywhere*. |
+
+The Data API has no per-user request rate limit; the caps in #82 and the 1,000-row `max_rows` bound what one account can do with it.
+
 ## Supported versions
 
 Only the latest release and the `main` branch receive fixes.

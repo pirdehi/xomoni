@@ -40,23 +40,38 @@
 
   const nativeFetch = window.fetch;
   window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+    let op: string | null = null;
+    let url = '';
+    let reqBody: Promise<string | null> = Promise.resolve(null);
+    try {
+      url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      op = watchedOp(url);
+      if (op && typeof init?.body === 'string') reqBody = Promise.resolve(init.body);
+      // The body may come inside a Request instead; read a copy before fetch uses the original.
+      else if (op && init?.body == null && input instanceof Request)
+        reqBody = input
+          .clone()
+          .text()
+          .catch(() => null);
+    } catch {
+      /* never interfere with the page */
+    }
     const pending = nativeFetch.call(window, input, init);
     try {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-      const op = watchedOp(url);
       if (op) {
+        const watched = op;
         const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
-        const reqBody = typeof init?.body === 'string' ? init.body : null;
         pending.then(
           (res) => {
             const headers = Object.fromEntries(RATE_HEADERS.map((h) => [h, res.headers.get(h)]));
-            res
-              .clone()
-              .text()
-              .then((body) => emit({ op, url, method, status: res.status, reqBody, headers, body }))
+            Promise.all([reqBody, res.clone().text()])
+              .then(([req, body]) =>
+                emit({ op: watched, url, method, status: res.status, reqBody: req, headers, body }),
+              )
               .catch(() => {});
           },
-          () => emit({ op, url, method, status: 0, reqBody, headers: {}, body: '' }),
+          () =>
+            reqBody.then((req) => emit({ op: watched, url, method, status: 0, reqBody: req, headers: {}, body: '' })),
         );
       }
     } catch {

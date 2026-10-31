@@ -6,7 +6,7 @@
 
 | File             | Responsibility                                                                                                                                                                               |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interceptor.ts` | Wraps `fetch` and `XMLHttpRequest`; for the 10 watched operations, posts the URL, method, request body, status, `x-rate-limit-*` headers and response body as a `xomoni-net` window message. |
+| `interceptor.ts` | Wraps `fetch` and `XMLHttpRequest`; for the 10 watched operations, posts the URL, method, request body (from `init`, or a copy of a `Request` object's), status, `x-rate-limit-*` headers and response body as a `xomoni-net` window message. |
 
 ## Depends on
 

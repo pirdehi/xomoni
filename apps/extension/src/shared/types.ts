@@ -163,6 +163,11 @@ export interface Job {
   state: JobState;
   /** Resume marker: `sweep` or `deep` for cleanups, `<page>/<pages>` for scans; empty before the first run. */
   phase: string;
+  /**
+   * Scans only: `stats.scanned` when the page in `phase` started. A run that loads that page again (after a
+   * pause or an interruption) counts from here, so its posts are not counted twice.
+   */
+  scannedAtPageStart?: number;
   /** Why the job is in its state, shown to the person; empty while it runs normally. */
   stateReason: string;
   stats: JobStats;

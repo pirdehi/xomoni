@@ -121,6 +121,8 @@ export class JobContext {
   handle = '';
   /** Ids already handled in this run (acted on, kept, or skipped). */
   attempted = new Set<string>();
+  /** Actions whose check before acting passed in this run (PLAYBOOK F1); each run checks again. */
+  preflighted = new Set<ActionKind>();
   /** Read budget of the page the worker tab shows; scrolls spend it too. */
   private readBudget: BudgetId = 'userTimeline';
   private consecutiveFailures = 0;

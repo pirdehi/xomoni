@@ -268,13 +268,37 @@ async function handOffSafe(ctx: JobContext, unsettled: Item[], run: () => Promis
   }
 }
 
+/**
+ * Before the first action of each kind in a run, checks on the post about to be acted on that X's page still
+ * has what the action needs, without acting (PLAYBOOK F1). If X changed its page, the job stops before the
+ * action. A post that can't tell leaves the check to the next one.
+ */
+async function preflight(ctx: JobContext, action: ActionKind, command: ActionCommand) {
+  if (action === 'read' || ctx.preflighted.has(action)) return;
+  ctx.status('Checking X’s page before acting…');
+  const result = await workerTab.send({ cmd: 'canary', action, id: command.id });
+  if (result.verdict === 'changed') {
+    await ctx.log('error', 'system', `Check before acting: ${result.message}`);
+    throw new Stop(
+      'blocked',
+      `X changed its page: ${result.message}. Xomoni stopped before acting. Check for a Xomoni update, then resume.`,
+    );
+  }
+  if (result.verdict === 'ok') {
+    ctx.preflighted.add(action);
+    await ctx.log('info', 'system', `Checked X’s page before acting: ${result.message}`);
+  }
+}
+
 async function act(ctx: JobContext, item: Item, action: ActionKind) {
+  const command = commandFor(action, item);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     await ctx.limiter.before(action);
     await ctx.verifyPage();
+    await preflight(ctx, action, command);
     const preview = item.text.replace(/\s+/g, ' ').slice(0, 60);
     ctx.status(`${PROGRESS[action]}: “${preview}${item.text.length > 60 ? '…' : ''}”`);
-    const result = await workerTab.send(commandFor(action, item));
+    const result = await workerTab.send(command);
     if (await ctx.settle(action, item, result)) return;
   }
   await ctx.settle(action, item, { outcome: 'failed', message: `Gave up after ${MAX_ATTEMPTS} attempts` });

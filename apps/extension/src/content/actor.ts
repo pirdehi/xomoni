@@ -6,6 +6,7 @@ import { extractErrors } from '../shared/graphql';
 import type {
   ActionResult,
   ActorCommand,
+  CanaryResult,
   ContentState,
   PageInfo,
   ScrollResult,
@@ -55,6 +56,8 @@ export async function runCommand(command: ActorCommand): Promise<unknown> {
       return guarded(() => relikeUnlike(command.id));
     case 'unretweet':
       return guarded(() => unretweet(command.id));
+    case 'canary':
+      return canary(command.action, command.id);
   }
 }
 
@@ -237,6 +240,68 @@ async function unretweet(id: string): Promise<ActionResult> {
   await sleep(jitter(150, 400));
   click(confirm);
   return classify(await response, 'DeleteRetweet');
+}
+
+const verdict = (v: CanaryResult['verdict'], message: string): CanaryResult => ({ verdict: v, message });
+
+/**
+ * Checks, on post `id`, that X's page still has what `action` needs, without acting (PLAYBOOK F1). Delete:
+ * the "…" menu opens with a Delete option and closes again with Escape. Undo repost: the repost menu likewise,
+ * with its Undo repost option. Unlike: the unlike button (or, for a ghost like, the like button). Nothing
+ * inside a menu is ever clicked.
+ */
+async function canary(action: CanaryAction, id: string): Promise<CanaryResult> {
+  const article = id ? findArticle(id) : null;
+  if (!article) return verdict('unknown', 'the post is not on the page');
+  await focus(article);
+  switch (action) {
+    case 'delete':
+      return menuCheck(
+        $(SEL.caret, article),
+        () => $$(SEL.menu).length === 1 && findDeleteMenuItem(),
+        'the post menu (…)',
+        'a Delete option',
+      );
+    case 'unretweet':
+      if (!$(SEL.unretweet, article)) {
+        return $(SEL.retweet, article)
+          ? verdict('unknown', 'X shows this post as not reposted')
+          : verdict('changed', 'the repost button is missing from the post');
+      }
+      return menuCheck(
+        $(SEL.unretweet, article),
+        () => $(SEL.unretweetConfirm),
+        'the repost menu',
+        'an Undo repost option',
+      );
+    case 'unlike':
+    case 'relike':
+      if ($(SEL.unlike, article)) return verdict('ok', 'the unlike button is where Xomoni expects it');
+      if (!$(SEL.like, article)) return verdict('changed', 'the like button is missing from the post');
+      return action === 'relike'
+        ? verdict('ok', 'the like button is where Xomoni expects it')
+        : verdict('unknown', 'X shows this post as not liked');
+  }
+}
+
+type CanaryAction = Extract<ActorCommand, { cmd: 'canary' }>['action'];
+
+/** Opens the menu behind `button`, looks for the option `probe` finds, and closes the menu again. */
+async function menuCheck(
+  button: HTMLElement | null,
+  probe: () => Element | false | null,
+  menu: string,
+  option: string,
+): Promise<CanaryResult> {
+  if (!button) return verdict('changed', `the button that opens ${menu} is missing`);
+  if (!(await noMenuOpen())) return verdict('changed', 'a menu on the X page does not close');
+  click(button);
+  const found = await waitFor(probe, 4000);
+  await sleep(jitter(200, 500));
+  const closed = await noMenuOpen();
+  if (!found) return verdict('changed', `${menu} opened without ${option}`);
+  if (!closed) return verdict('changed', 'Escape no longer closes X’s menu');
+  return verdict('ok', `${option} is where Xomoni expects it`);
 }
 
 /** Maps X's response to an outcome. Error codes per X's public error catalogue. */

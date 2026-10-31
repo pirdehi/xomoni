@@ -2,12 +2,20 @@
 
 import { useState, useTransition } from 'react';
 import { Trash } from 'lucide-react';
+import { ROUTES } from '../domain/routes';
 import { deleteAccount } from '../server/actions';
 
-/** The "Delete account" section: asks the person to type DELETE, then removes the Xomoni account. */
+/** Signs out, then opens the sign-in page, which returns to the account page afterwards. */
+const SIGN_IN_AGAIN = `${ROUTES.signOut}?next=${encodeURIComponent(`${ROUTES.signIn}?next=${ROUTES.account}`)}`;
+
+/**
+ * The "Delete account" section: asks the person to type DELETE, then removes the Xomoni account. If the last
+ * sign-in is older than 10 minutes, the database refuses (#80) and the section offers to sign in again.
+ */
 export function DeleteAccountSection() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [reauthenticate, setReauthenticate] = useState(false);
 
   function onDelete() {
     const typed = prompt(
@@ -17,6 +25,7 @@ export function DeleteAccountSection() {
     startTransition(async () => {
       const result = await deleteAccount();
       if (result?.error) setError(result.error);
+      setReauthenticate(!!result?.reauthenticate);
     });
   }
 
@@ -37,6 +46,13 @@ export function DeleteAccountSection() {
         <p role="alert" className="mt-3 text-sm text-critical">
           {error}
         </p>
+      )}
+      {reauthenticate && (
+        <form action={SIGN_IN_AGAIN} method="post" className="mt-3">
+          <button type="submit" className="btn btn-secondary py-2">
+            Sign in again
+          </button>
+        </form>
       )}
     </section>
   );

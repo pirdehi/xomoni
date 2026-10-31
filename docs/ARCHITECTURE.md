@@ -185,7 +185,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 
 ## 6. Data
 
-- **Schema:** [`supabase/migrations`](../supabase/migrations). Two tables, `devices` and `jobs`, both owned by `auth.users` with `on delete cascade`, plus `delete_account()`. `jobs.risk_level` carries the X account's risk-ladder level (0–4) as a number only, never X's reason or notice text.
+- **Schema:** [`supabase/migrations`](../supabase/migrations). Two tables, `devices` and `jobs`, both owned by `auth.users` with `on delete cascade`, plus `delete_account()`, which needs a sign-in within the last 10 minutes (read from the JWT's `amr` claim), so a stolen session can't delete the account. `jobs.risk_level` carries the X account's risk-ladder level (0–4) as a number only, never X's reason or notice text.
 - **Row Level Security** on every table: a user reads and writes only their own rows; a job must belong to one of the user's devices. `anon` has no access.
 - **Types:** [`packages/db`](../packages/db/README.md) holds the generated `Database` type. CI regenerates it from the migrations and fails on drift.
 - **What is never stored:** post text, likes, the inventory, X credentials, X cookies.

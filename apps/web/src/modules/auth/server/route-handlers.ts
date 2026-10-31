@@ -2,7 +2,7 @@ import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { completeOAuthSignIn, signOut } from '../application/use-cases';
 import { AUTH_ERROR_MESSAGES } from '../domain/auth-error';
-import { ROUTES } from '../domain/routes';
+import { ROUTES, safeNextPath } from '../domain/routes';
 import { authDeps } from './deps';
 
 /** `GET /auth/callback`: the identity provider returns here with a one-time code. */
@@ -21,8 +21,13 @@ export async function handleOAuthCallback(request: NextRequest): Promise<NextRes
   return NextResponse.redirect(target);
 }
 
-/** `POST /auth/signout`: ends the session and returns home. POST only, so links can't sign people out. */
+/**
+ * `POST /auth/signout`: ends the session and returns home, or to a same-site `?next=` path. POST only, so links
+ * can't sign people out.
+ */
 export async function handleSignOut(request: NextRequest): Promise<NextResponse> {
   await signOut(await authDeps());
-  return NextResponse.redirect(new URL(ROUTES.home, request.url), 303);
+  // `?next=` lets "Sign in again" end on the sign-in page; only same-site paths are followed.
+  const next = safeNextPath(request.nextUrl.searchParams.get('next'), ROUTES.home);
+  return NextResponse.redirect(new URL(next, request.url), 303);
 }

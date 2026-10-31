@@ -1,6 +1,7 @@
 // Shared state and safety policy for one job run.
 import { type Need, needMessage, pageNeed } from '../shared/attention';
-import { addLog, db, getSettings } from '../shared/db';
+import { addLog, db, getSettings, recordRisk } from '../shared/db';
+import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from '../shared/risk';
 import type { ActionResult, PageInfo } from '../shared/messages';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } from '../shared/types';
@@ -25,9 +26,28 @@ export class Stop extends Error {
   constructor(
     public state: Extract<JobState, 'paused' | 'blocked' | 'failed' | 'cancelled'>,
     message: string,
+    /** A risk-ladder event the runner records for this stop (see `risk.ts`), when it hasn't been already. */
+    public risk?: RiskEventKind,
   ) {
     super(message);
   }
+}
+
+const timeOf = (ms: number) =>
+  new Date(ms).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+
+/**
+ * Why a job may not run now under the risk ladder, or null when it may. Full stops never end on their own;
+ * resume locks end at `resumeAt`.
+ */
+export function riskBlock(risk: RiskAssessment): string | null {
+  if (risk.fullStop) {
+    return `Risk level 4 (Full stop): ${risk.reason}. Xomoni won’t resume on its own. Rest the account, and resume only if you decide to, by typing your confirmation.`;
+  }
+  if (risk.resumeAt) {
+    return `Risk level ${risk.level} (${RISK_LABELS[risk.level]}): ${risk.reason}. Resume is locked until ${timeOf(risk.resumeAt)}. Use X normally meanwhile.`;
+  }
+  return null;
 }
 
 /** Thrown when only the person can continue: the runner waits for them, then restarts the job's steps. */
@@ -81,6 +101,14 @@ export class JobContext {
       this.hooks.status(reason, until),
     );
     await this.limiter.init();
+    // The risk ladder: a full stop or a resume lock ends the run before it touches X (PLAYBOOK §7).
+    const blocked = riskBlock(this.limiter.risk);
+    if (blocked) throw new Stop('blocked', blocked);
+  }
+
+  /** Records a risk event and returns the ladder's view afterwards. */
+  private async risk(kind: RiskEventKind): Promise<RiskAssessment> {
+    return assessRisk(await recordRisk(this.job.accountId, kind), Date.now());
   }
 
   /** Throws `Aborted` if the person paused or cancelled. */
@@ -138,7 +166,11 @@ export class JobContext {
    */
   assertPage(info: PageInfo) {
     if (info.restriction) {
-      throw new Stop('blocked', `X shows a restriction on this account: “${info.restriction}”. ${RESTRICTED_ADVICE}`);
+      throw new Stop(
+        'blocked',
+        `X shows a restriction on this account: “${info.restriction}”. ${RESTRICTED_ADVICE}`,
+        /suspend/i.test(info.restriction) ? 'suspended' : 'restricted',
+      );
     }
     // X's session cookie is shared by every x.com tab, so switching accounts anywhere switches the worker too.
     const need = pageNeed(info, this.job.accountId);
@@ -187,8 +219,9 @@ export class JobContext {
     await this.log('success', 'system', 'X is ready again — continuing');
     this.hooks.attention(null);
     if (request.need === 'verify') {
+      // After an X check or a lock, rest 60–90 minutes before acting again (PLAYBOOK C2).
       this.limiter.easeIn();
-      await this.limiter.cooldown(Date.now() + randomBetween(3, 6) * 60_000, 'Easing back in after X’s check');
+      await this.limiter.cooldown(Date.now() + randomBetween(60, 90) * 60_000, 'Resting after X’s check (60–90 min)');
     } else {
       await this.limiter.cooldown(Date.now() + randomBetween(10, 20) * 1000, 'Continuing shortly');
     }
@@ -270,6 +303,9 @@ export class JobContext {
         return true;
 
       case 'rate_limited': {
+        // Two rate limits within an hour put the account on the Retreat rung: stop instead of waiting.
+        const blocked = riskBlock(await this.risk('rate_limited'));
+        if (blocked) throw new Stop('blocked', blocked);
         const until =
           result.resetAt && result.resetAt > Date.now()
             ? result.resetAt + randomBetween(10_000, 30_000)
@@ -292,15 +328,19 @@ export class JobContext {
         return false;
       }
 
-      case 'automation_flag':
+      case 'automation_flag': {
         await this.log('error', action, `X flagged this activity as automated${detail}`, target, outcome);
+        const risk = await this.risk('automation_flag');
         throw new Stop(
           'blocked',
-          'X flagged the activity as automated (error 226). Stop for several hours, use X normally, then resume with the Careful preset.',
+          riskBlock(risk) ??
+            'X flagged the activity as automated (error 226). Stop for several hours, use X normally, then resume.',
         );
+      }
 
       case 'suspended':
         await this.log('error', action, `Account suspended${detail}`, target, outcome);
+        await this.risk('suspended');
         throw new Stop(
           'blocked',
           'X suspended this account (code 64). Waiting can’t fix this, so Xomoni stopped and won’t continue on its own. Check X for details.',
@@ -308,11 +348,15 @@ export class JobContext {
 
       case 'restricted':
         await this.log('error', action, `X refused the action${detail}`, target, outcome);
+        await this.risk('restricted');
         throw new Stop('blocked', `X refused the action${detail}. ${RESTRICTED_ADVICE}`);
 
-      case 'locked':
+      case 'locked': {
         await this.log('error', action, `Account locked${detail}`, target, outcome);
+        const blocked = riskBlock(await this.risk('lock'));
+        if (blocked) throw new Stop('blocked', blocked);
         throw new NeedsYou('verify', needMessage('verify', this.handle), true);
+      }
 
       case 'logged_out':
         await this.log('error', action, `Logged out${detail}`, target, outcome);

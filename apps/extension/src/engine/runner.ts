@@ -1,7 +1,7 @@
 // Runs one job at a time from the dashboard page. A Web Lock makes sure only
 // one open dashboard tab drives the worker.
 import { NEED_TITLE, type Need } from '../shared/attention';
-import { db } from '../shared/db';
+import { db, recordRisk } from '../shared/db';
 import { ATTENTION_ID, FINISHED_ID, clearNotification, notify } from '../shared/notify';
 import type { CleanupFilter, CleanupOptions, Job, JobState, ScanTarget } from '../shared/types';
 import { runCleanup } from './cleanup';
@@ -141,8 +141,10 @@ class Runner {
     } catch (err) {
       stoppedByYou = err instanceof Aborted || controller.signal.aborted;
       if (stoppedByYou) final = this.stopRequest ?? { state: 'paused', reason: 'Stopped.' };
-      else if (err instanceof Stop) final = { state: err.state, reason: err.message };
-      else if (err instanceof WorkerGone)
+      else if (err instanceof Stop) {
+        final = { state: err.state, reason: err.message };
+        if (err.risk) await recordRisk(job.accountId, err.risk).catch(() => {});
+      } else if (err instanceof WorkerGone)
         final = { state: 'paused', reason: 'The X worker window was closed. Resume to reopen it.' };
       else final = { state: 'failed', reason: err instanceof Error ? err.message : String(err) };
     }

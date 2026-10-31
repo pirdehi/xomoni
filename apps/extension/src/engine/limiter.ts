@@ -1,7 +1,8 @@
 // Paces actions and keeps them inside every known limit, at one fifth of every limit X announces
 // (ADR-0012): jittered delays, batch breaks, rolling hourly/daily caps, X's published limits and the live
 // limits in its rate-limit headers, optional active hours, and an adaptive slowdown after soft errors.
-import { db } from '../shared/db';
+import { db, riskEvents } from '../shared/db';
+import { RISK_LABELS, type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Outcome, Settings } from '../shared/types';
 import {
@@ -40,6 +41,9 @@ export class Limiter {
   private sinceBreak = new Map<ActionKind, number>();
   private penalty = 1;
   private step = warmup(0);
+  private riskState: RiskAssessment = assessRisk([], 0);
+  /** Warm-up factor times the risk ladder's factor: at most 1, so never faster than one fifth. */
+  private factor = this.step.factor;
 
   constructor(
     private settings: Settings,
@@ -56,12 +60,13 @@ export class Limiter {
   async init() {
     const now = Date.now();
     const since = now - DAY;
-    const [logs, reads] = await Promise.all([
+    const [logs, reads, risk] = await Promise.all([
       db.logs
         .where('[accountId+ts]')
         .between([this.accountId, now - WARMUP_RESET_DAYS * DAY], [this.accountId, Infinity])
         .toArray(),
       db.reads.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray(),
+      riskEvents(this.accountId),
     ]);
     const acted: number[] = [];
     for (const row of logs) {
@@ -71,7 +76,10 @@ export class Limiter {
       if (row.outcome === 'done') this.stamps(row.action).push(row.ts);
       for (const id of budgetsOf(row.action)) this.uses(id).push(row.ts);
     }
-    this.step = warmup(earlierActiveDays(acted, now));
+    // Every 226, lock or refusal of the last two weeks drops the warm-up back a step (PLAYBOOK B5).
+    this.riskState = assessRisk(risk, now);
+    this.step = warmup(earlierActiveDays(acted, now), this.riskState.warmupDrop);
+    this.factor = Math.min(1, this.step.factor * this.riskState.capFactor);
     for (const row of reads) {
       this.stamps('read').push(row.ts);
       if (row.budget in BUDGETS) this.uses(row.budget as BudgetId).push(row.ts);
@@ -83,6 +91,16 @@ export class Limiter {
   /** The account's warm-up step: day 1–4 and the share of the one-fifth allowances it may use. */
   get warmup() {
     return this.step;
+  }
+
+  /** The risk ladder's view of the account when this run started (`init`). */
+  get risk() {
+    return this.riskState;
+  }
+
+  /** The share of the one-fifth allowances this run may use: warm-up times the risk ladder, at most 1. */
+  get paceFactor() {
+    return this.factor;
   }
 
   /** Current slowdown factor: 1 is normal, up to 6 after errors. */
@@ -127,8 +145,12 @@ export class Limiter {
    */
   async before(action: ActionKind, readBudget?: BudgetId) {
     // During warm-up the caps shrink and the delays grow; never the other way.
-    const rule = scaleRule(this.settings.pacing[action], this.step.factor);
-    const warm = this.step.factor < 1 ? ` · warm-up day ${this.step.day} of ${this.step.days}` : '';
+    const rule = scaleRule(this.settings.pacing[action], this.factor);
+    const notes = [
+      this.step.factor < 1 ? `warm-up day ${this.step.day} of ${this.step.days}` : '',
+      this.riskState.capFactor < 1 ? `risk level ${this.riskState.level} (${RISK_LABELS[this.riskState.level]})` : '',
+    ].filter(Boolean);
+    const warm = notes.length ? ` · ${notes.join(' · ')}` : '';
     const now = Date.now();
     const stamps = this.stamps(action);
     while (stamps.length && stamps[0] < now - DAY) stamps.shift();
@@ -152,7 +174,7 @@ export class Limiter {
     for (const id of budgetsOf(action, readBudget)) {
       // One fifth of every window X publishes for this kind of request.
       const uses = this.uses(id);
-      const allowed = scaleAllowances(allowances(id), this.step.factor);
+      const allowed = scaleAllowances(allowances(id), this.factor);
       const slot = nextSlot(uses, allowed, Date.now());
       if (slot > Date.now()) {
         const i = allowed.findIndex((a) => uses.filter((t) => t > Date.now() - a.windowMs).length >= a.limit);

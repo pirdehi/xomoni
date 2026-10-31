@@ -131,3 +131,40 @@ describe('Limiter: the one-fifth ceiling at run time', () => {
     expect(seasoned.warmup.factor).toBe(1);
   });
 });
+
+describe('Limiter and the risk ladder (#17)', () => {
+  const day = 86_400_000;
+  const doneLog = (ts: number) => ({
+    ts,
+    accountId: ACCOUNT,
+    jobId: 'j',
+    level: 'info',
+    action: 'delete',
+    targetId: String(ts),
+    outcome: 'done',
+    message: '',
+  });
+
+  beforeEach(async () => {
+    await db.risk.clear();
+  });
+
+  it('slows a seasoned account to a quarter after a lock and drops the warm-up a step', async () => {
+    const now = Date.now();
+    await db.logs.bulkAdd([doneLog(now - day), doneLog(now - 2 * day), doneLog(now - 3 * day)] as never);
+    await db.risk.add({ accountId: ACCOUNT, kind: 'lock', at: now - 60_000 });
+    const l = limiter();
+    await l.init();
+    expect(l.risk.level).toBe(3);
+    expect(l.warmup.day).toBe(3);
+    expect(l.paceFactor).toBeCloseTo(0.75 * 0.25);
+  });
+
+  it('runs at full one fifth with no warnings on a seasoned account', async () => {
+    const now = Date.now();
+    await db.logs.bulkAdd([doneLog(now - day), doneLog(now - 2 * day), doneLog(now - 3 * day)] as never);
+    const l = limiter();
+    await l.init();
+    expect(l.paceFactor).toBe(1);
+  });
+});

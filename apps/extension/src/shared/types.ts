@@ -229,6 +229,24 @@ export interface LogEntry {
   message: string;
 }
 
+/**
+ * A confirmed action to check again on its post page later (PLAYBOOK C5), stored in the `checks` table until
+ * a cleanup run gets to it.
+ */
+export interface SampleCheck {
+  /** Auto-increment key. */
+  seq?: number;
+  accountId: string;
+  jobId: string;
+  action: Exclude<ActionKind, 'read'>;
+  /** The post whose page shows the result: the deleted or unliked post, or the original of an undone repost. */
+  postId: string;
+  /** When X confirmed the action (epoch ms). */
+  at: number;
+  /** Not checked before this (epoch ms): 10–30 minutes after the action. */
+  dueAt: number;
+}
+
 /** Rate-limit headers X returned for one of its own GraphQL operations. */
 export interface RateObservation {
   /** `${accountId}:${op}` */

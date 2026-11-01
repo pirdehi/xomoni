@@ -66,10 +66,8 @@ export function securityHeaders(settings: SecurityHeaderSettings): Header[] {
     { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-    {
-      key: 'Permissions-Policy',
-      value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()',
-    },
+    // Only features browsers still know: an unknown one, like the retired `browsing-topics`, logs an error on every page.
+    { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()' },
     { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   ];
 }

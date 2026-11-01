@@ -67,7 +67,7 @@ describe('security headers (#8)', () => {
     expect(headers.get('X-Frame-Options')).toBe('DENY');
     expect(headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
-    expect(headers.get('Permissions-Policy')).toMatch(/camera=\(\), microphone=\(\), geolocation=\(\)/);
+    expect(headers.get('Permissions-Policy')).toBe('camera=(), microphone=(), geolocation=(), payment=(), usb=()');
     expect(headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin');
   });
 });

@@ -20,7 +20,7 @@ The site is mostly static (landing, legal and risks pages, the auth pages' shell
    - `Content-Security-Policy`: `default-src 'self'`; scripts from the site and Turnstile only (`'unsafe-inline'` allowed, `'unsafe-eval'` only in `next dev`); `connect-src` limited to the site and the deployment's own Supabase project over HTTPS and WebSockets (Realtime); Turnstile as the only frame; images from the site, `data:`/`blob:` and Google profile pictures; `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`; `upgrade-insecure-requests` except when the site runs over plain HTTP (local runs and CI).
    - `Strict-Transport-Security: max-age=63072000; includeSubDomains` (no `preload` until we decide to join the preload list).
    - `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Cross-Origin-Opener-Policy: same-origin`.
-   - `Permissions-Policy` turning off camera, microphone, location, payment, USB and Topics.
+   - `Permissions-Policy` turning off camera, microphone, location, payment and USB. It lists only features browsers still know: `browsing-topics` was removed on 2026-11-01, because current Chrome no longer recognizes it and logged an error on every page.
 2. We use the static policy, not nonces, and keep the pages static.
 3. To make up for `'unsafe-inline'`, the website never renders raw HTML: ESLint forbids `dangerouslySetInnerHTML` in `apps/web`.
 4. Every end-to-end test fails if the browser blocks anything on the site under the policy (`apps/web/e2e/support/test.ts`), so a change that needs a new origin must add it to the policy on purpose.

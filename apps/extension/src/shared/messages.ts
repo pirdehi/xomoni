@@ -97,6 +97,8 @@ export interface ScrollResult {
   total: number;
   /** The page is scrolled to the bottom. */
   atEnd: boolean;
+  /** Post time of the lowest post on the page (epoch ms), or null; a range scan stops once it is too old. */
+  lastTime?: number | null;
 }
 
 /**

@@ -37,6 +37,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Reaches past the ~3,200 profile limit:** sweeps X search (`from:you until:date`) in pages and imports your official X archive.
 - **Login and 2FA hand-off:** when X needs you (login, 2FA, captcha, email code, account unlock, wrong account), the job pauses, sends you a desktop notification, waits while you complete it in the X window, then **continues by itself**. Xomoni never asks for or stores your password.
 - **Resumable jobs:** pause, close the browser, and resume later without losing progress.
+- **Archive a date range:** pick the dates, let Xomoni read them from X (read-only, at the same careful pace), and download your posts, replies and reposts from that range as a page you can open in any browser, or as JSON. It is saved on your computer only. Your official X archive stays the complete copy, with media.
 - **Dashboard:** removal stats, a year-by-year chart, live limits and pacing, a jobs list, a searchable inventory, and an exportable activity log. Light and dark themes.
 - **Private by design:** no server and no telemetry. Everything stays in IndexedDB in your browser profile.
 

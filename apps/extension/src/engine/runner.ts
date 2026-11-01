@@ -3,7 +3,7 @@
 import { NEED_TITLE, type Need } from '../shared/attention';
 import { db, recordRisk } from '../shared/db';
 import { ATTENTION_ID, FINISHED_ID, clearNotification, notify } from '../shared/notify';
-import type { CleanupFilter, CleanupOptions, Job, JobState, ScanTarget } from '../shared/types';
+import type { CleanupFilter, CleanupOptions, DateRange, Job, JobState, ScanTarget } from '../shared/types';
 import { runCleanup } from './cleanup';
 import { Interrupted, JobContext, NeedsYou, Stop } from './context';
 import { runScan } from './scan';
@@ -281,8 +281,8 @@ export async function createCleanupJob(
   return job;
 }
 
-/** Stores a new queued scan job and returns it; it does not start it. */
-export async function createScanJob(accountId: string, title: string, scan: ScanTarget) {
+/** Stores a new queued scan job and returns it; it does not start it. A `range` scan needs its `range`. */
+export async function createScanJob(accountId: string, title: string, scan: ScanTarget, range?: DateRange) {
   const now = Date.now();
   const job: Job = {
     id: crypto.randomUUID(),
@@ -292,6 +292,7 @@ export async function createScanJob(accountId: string, title: string, scan: Scan
     filter: null,
     options: null,
     scan,
+    ...(range ? { range } : {}),
     state: 'queued',
     phase: '',
     stateReason: '',

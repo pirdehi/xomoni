@@ -1,5 +1,6 @@
 import {
   Activity,
+  Archive,
   BellRing,
   CircleCheck,
   Database,
@@ -22,6 +23,7 @@ import { Button, cx } from './components/ui';
 import { ConsentDialog } from './components/ConsentDialog';
 import { type WorkerStatus, toast, useActiveAccount, useRunner, useToasts, useWorkerStatus } from './hooks';
 import { ActivityPage } from './pages/Activity';
+import { ArchivePage } from './pages/Archive';
 import { CleanupPage } from './pages/Cleanup';
 import { InventoryPage } from './pages/Inventory';
 import { JobsPage } from './pages/Jobs';
@@ -33,6 +35,7 @@ import type { PageId, PageProps } from './navigation';
 const NAV: { id: PageId; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'cleanup', label: 'Cleanup', icon: Sparkles },
+  { id: 'archive', label: 'Archive', icon: Archive },
   { id: 'inventory', label: 'Inventory', icon: Database },
   { id: 'jobs', label: 'Jobs', icon: ListChecks },
   { id: 'activity', label: 'Activity log', icon: History },
@@ -86,6 +89,8 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
   switch (page) {
     case 'cleanup':
       return <CleanupPage {...props} />;
+    case 'archive':
+      return <ArchivePage {...props} />;
     case 'inventory':
       return <InventoryPage {...props} />;
     case 'jobs':

@@ -290,6 +290,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 
 ### E8. Archive retrieval limits · 📘 · ✅
 - **Scenario:** The archive takes 24 to 72 hours to be ready. The guide recommends that you get the **archive first**. Xomoni also checks that the archive belongs to this same account.
+- **Meanwhile (Archive page):** Xomoni can build its own archive of a date range from what X shows (a read-only `range` scan) and from an imported archive, and the person downloads it as HTML or JSON. It can miss what X search and the profile don't show (E1, E2), so it never replaces X's archive for a full cleanup. Its Request button only opens X's page; the person confirms there with their password.
 
 ---
 

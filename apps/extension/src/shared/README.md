@@ -8,6 +8,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `archive.ts`   | Parses the official X data archive (`window.YTD…` files) into item drafts and reads the archive's owner.                    |
 | `attention.ts` | Decides when only the person can continue (login, including X's `/i/jf/` flow; X check; wrong account; a pop-up Xomoni couldn't close), the text shown for it, and `restrictionNotice` for X's suspended or limited notices. |
+| `backup.ts` | The archive a person downloads for a date range (Archive page): `archiveItems` picks the posts, replies and reposts in the range, `archiveHtml` writes a self-contained page with every post escaped and no scripts, `archiveJson` the same as data. Pure. |
 | `bridge.ts` | The private channel between the page-world interceptor and the content script (#59): the port handover at `document_start` and `isCapture`. Pure DOM, no `chrome.*`. |
 | `coverage.ts` | What Xomoni can see of an account (PLAYBOOK E2): the profile timeline's ~3,200-post reach and the estimate of posts X has that the inventory doesn't. Pure. |
 | `db.ts`        | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log, consent, the archive-imported marker.              |
@@ -37,6 +38,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 - `../ui/` for the data model, the database, filters, settings, time helpers, archive parsing (`importArchive.ts`) and notifications.
 - `../dev/` for the database and types, to seed demo data in the UI preview.
 - `../../tests/sessions.test.ts` for `pacing.ts` and the default settings.
+- `../../tests/archive-range.test.ts` for `backup.ts`.
 - `../../tests/parsers.test.ts` for the parsers in `archive.ts`, `graphql.ts`, `filter.ts`, `time.ts` and `attention.ts`.
 
 ## Rules

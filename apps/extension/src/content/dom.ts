@@ -25,6 +25,13 @@ export const SEL = {
   profileLink: 'a[data-testid="AppTabBar_Profile_Link"]',
   /** The overlay behind an open menu or sheet; clicking it closes them. */
   mask: '[data-testid="mask"]',
+  /**
+   * A pop-up over the page: X renders its modals and sheets in `#layers`; a modal elsewhere says so with
+   * `aria-modal`. Menus (`role="menu"`) are not included.
+   */
+  dialog: '#layers [role="dialog"], #layers [role="alertdialog"], [aria-modal="true"]',
+  /** A pop-up's own close button: the "×" in the header of X's modals, or a button labeled Close. */
+  dialogClose: '[data-testid="app-bar-close"], [aria-label="Close"]',
 } as const;
 
 /** "Delete" in the post menu, in the languages X ships most. */
@@ -170,13 +177,26 @@ export function viewerIdFromCookie(): string | null {
 }
 
 /**
- * Text where X puts account notices: alerts and the top of the main column (where the "temporarily limited"
- * banner appears). Capped so a long timeline is not scanned; posts further down can't trigger a match.
+ * Text where X puts account notices: alerts, pop-ups and the top of the main column (where the "temporarily
+ * limited" banner appears). Capped so a long timeline is not scanned; posts further down can't trigger a match.
  */
 export function noticeText(): string {
   const alerts = $$('[role="alert"]').map((el) => (el as HTMLElement).innerText);
+  const dialogs = $$(SEL.dialog).map((el) => (el.innerText ?? '').slice(0, 1500));
   const column = $<HTMLElement>('[data-testid="primaryColumn"]')?.innerText.slice(0, 1500) ?? '';
-  return [...alerts, column].join('\n');
+  return [...alerts, ...dialogs, column].join('\n');
+}
+
+/** The first pop-up covering X's page (PLAYBOOK F3), or null. Between actions Xomoni has none open itself. */
+export function openDialog(): HTMLElement | null {
+  return $(SEL.dialog);
+}
+
+/** A short description of a pop-up for the activity log: its label, or its first line of text. */
+export function describeDialog(dialog: HTMLElement): string {
+  const label = dialog.getAttribute('aria-label');
+  const firstLine = (dialog.innerText ?? dialog.textContent ?? '').trim().split(/\n+/)[0] ?? '';
+  return (label || firstLine || 'a pop-up').slice(0, 80);
 }
 
 /** The signed-in user's handle, read from the sidebar Profile link; null until X has rendered that link. */

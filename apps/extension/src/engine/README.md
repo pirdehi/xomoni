@@ -42,6 +42,7 @@ The headless engine that runs cleanup and scan jobs. It runs in the dashboard pa
   - B4 (#30): `Limiter.before()` rests 10 to 30 min after each 25 to 50 min work session (seeded from the activity log, so a new run can't skip it; any quiet gap or wait of 10 min counts), delays come from `pacingDelay`, batches get breaks, and active hours are on by default (8:00–23:00).
   - C2 (partial): after a lock, the job waits for the person, then cools down 3 to 6 min with slowdown ×2.
   - D1, D3, D4: `NeedsYou` and `waitForYou` wait without acting until the page has looked right for 5 s; `verifyPage()` re-checks login and account before each action.
+  - F3 (#29): on connecting, after each page load and in `verifyPage()`, `clearAndAssert` has the content script close a pop-up over the page, unless the page needs the person or shows a restriction. A pop-up that stays is a `NeedsYou('obstruction')`.
   - E1, E3: the sweep uses X search to reach past the ~3,200 posts a profile shows; the deep clean visits what search missed.
   - E4: ghost likes (`relike`) only in the deep clean, and only when the option is on.
   - E5: `not_found` marks the item `gone` and does not count as a failure.

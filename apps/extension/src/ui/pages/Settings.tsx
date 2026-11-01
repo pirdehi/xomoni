@@ -141,8 +141,9 @@ export function SettingsPage(_props: PageProps) {
             </table>
           </div>
           <p className="mt-3 text-xs text-muted">
-            Delays are randomized between min and max. After each batch Xomoni takes a longer break. Caps use rolling
-            1-hour and 24-hour windows and can't be set above one fifth of X's limits.
+            Delays vary around the middle of min–max, with an occasional longer pause. After each batch Xomoni takes a
+            longer break, and after every 25–50 minutes of work it rests 10–30 minutes. Caps use rolling 1-hour and
+            24-hour windows and can't be set above one fifth of X's limits.
           </p>
           <XLimitsTable />
         </Card>
@@ -154,7 +155,7 @@ export function SettingsPage(_props: PageProps) {
                 checked={settings.activeHours.enabled}
                 onChange={(enabled) => save({ ...settings, activeHours: { ...settings.activeHours, enabled } })}
                 label="Only work during active hours"
-                description="Pauses outside these hours, like a person would."
+                description="Pauses outside these hours, so work is spread over the day and never runs all night."
               />
               {settings.activeHours.enabled && (
                 <div className="grid grid-cols-2 gap-3 pl-12">

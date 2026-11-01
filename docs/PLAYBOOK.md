@@ -36,7 +36,7 @@
 | B1 | Error 226 ("automated behavior") | 📰 | ✅ |
 | B2 | Signed `x-client-transaction-id` header | 📰 | ✅ |
 | B3 | Synthetic click detection (`isTrusted`) | 🧠 | ⚠️ |
-| B4 | Analysis of action timing regularity | 🧠 | 🟡 |
+| B4 | Analysis of action timing regularity | 🧠 | ✅ |
 | B5 | Sudden spike in work volume | 🧠 | 🟡 |
 | B6 | Back-to-back like and unlike | 📘 | ✅ |
 | B7 | In-page script detection | 🧠 | ⚠️ |
@@ -133,12 +133,13 @@
 - **Why we do not fake it:** The only way to create a "trusted" event from inside an extension is the `chrome.debugger` API. It shows the "debugging" warning bar, and it is exactly the concealment behavior rejected in section 8.
 - **Risk management:** Low volume, human-like spacing between actions, and a stop at the first 226. If X measures this signal, its first sign is a 226 or a lock, and Xomoni stops right there.
 
-### B4. Timing regularity analysis · 🧠 · 🟡
-- **Current status:** Uniform random delay, rest between batches, and optional active hours.
-- **Proposed scenario (work in separate sessions):**
-  - Each work session lasts 25 to 50 minutes, followed by 10 to 30 minutes of rest.
-  - Log-normal delay distribution, and with 5% probability a pause of 30 to 90 seconds.
-  - The goal is not to statistically imitate a human. The goal is to spread the load across the day and keep the hourly work volume low.
+### B4. Timing regularity analysis · 🧠 · ✅
+- **Scenario (implemented, #30; `shared/pacing.ts`, `engine/limiter.ts`):**
+  - **Work sessions:** each session lasts 25 to 50 minutes, followed by a 10 to 30 minute rest. Any quiet gap of 10 minutes or more counts as the rest, and so does any wait of that length (a rate-limit reset, active hours). The session is seeded from the latest requests in the activity log, so starting a new run doesn't skip a rest.
+  - **Delays:** log-normal around the middle of each rule's range, kept inside it, plus a 30 to 90 second pause about one time in twenty. Never below the minimum, and on average longer than the uniform delay it replaced.
+  - **Active hours:** on by default, 8:00 to 23:00 local time; the person can change or turn them off.
+  - Rest between batches, as before.
+  - The goal is not to statistically imitate a human. The goal is to spread the load across the day and keep the hourly work volume low. Everything here only slows Xomoni down (ADR-0012).
 
 ### B5. Sudden spike in work volume · 🧠 · 🟡
 - **Possible mechanism:** An account that usually performs 5 actions a day and suddenly performs 1,000 deletions a day looks abnormal.
@@ -390,7 +391,7 @@ The ladder is built from dated events per account (`apps/extension/src/shared/ri
 |---|---|---|
 | 1 | Adaptive learning of the daily read cap | A4 |
 | 2 | Close intrusive popups | F3 |
-| 3 | Work in separate sessions, and log-normal delay | B4 |
+| 3 | ~~Work in separate sessions, and log-normal delay~~ (done, #30) | B4 |
 | 4 | Compute clock offset from the `date` header | F7 |
 | 5 | Record unavailable posts as Skipped | E6 |
 | 6 | Separate defaults for Premium | A6 |

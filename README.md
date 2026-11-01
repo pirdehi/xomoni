@@ -69,14 +69,14 @@ If Xomoni cannot verify an item, it leaves the item alone.
 
 | Mechanism | What Xomoni does |
 |---|---|
-| Pacing | Random delays between actions, longer breaks between batches, and rolling caps. X publishes 50 deletes per 15 minutes, so Xomoni does at most 10 (80–120 s apart, at most 40 an hour); unlikes are also capped at 200 a day, one fifth of X's 1,000. Custom settings can be slower, never faster. A new account starts lower still (warm-up: a quarter of that pace on day one, full one fifth from the fourth active day). |
+| Pacing | Varied delays between actions, longer breaks between batches, a 10–30 minute rest after every 25–50 minutes of work, and rolling caps. X publishes 50 deletes per 15 minutes, so Xomoni does at most 10 (80–120 s apart, at most 40 an hour); unlikes are also capped at 200 a day, one fifth of X's 1,000. Custom settings can be slower, never faster. A new account starts lower still (warm-up: a quarter of that pace on day one, full one fifth from the fourth active day). |
 | X's rate-limit headers | Reads `x-rate-limit-limit / remaining / reset` from X's own responses and waits for the reset once one fifth of the window is used. |
 | HTTP 429 / code 88 | Waits until the window resets, then slows down (adaptive back-off). |
 | Code 185 / 344 (daily limit) | Waits about 24 hours. |
 | Code 226 ("looks automated") | **Stops the job.** You resume it after using X normally for a while. |
 | Logout, 2FA, captcha, lock (326) | **Waits for you**, with a desktop notification. After an X check it eases back in at a slower pace. |
 | 5 failures in a row | Pauses. X may have changed its page. |
-| Active hours (optional) | Works only during the hours you choose. |
+| Active hours | On by default, 8:00–23:00 local time, so work never runs all night. You can change the hours or turn them off. |
 
 The full research behind these choices (in Persian) is in [docs/RESEARCH.md](docs/RESEARCH.md). It covers X's limits, anti-automation signals, a comparison of approaches, and sources.
 

@@ -131,10 +131,12 @@ async function scrollMore(): Promise<ScrollResult> {
   await waitFor(() => ids().some((id) => !before.has(id)), 6000);
   const now = ids();
   const scroller = document.scrollingElement ?? document.documentElement;
+  const lowest = $$(SEL.article).at(-1);
   return {
     added: now.filter((id) => !before.has(id)).length,
     total: now.length,
     atEnd: scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 8,
+    lastTime: lowest ? (articleInfo(lowest)?.time ?? null) : null,
   };
 }
 

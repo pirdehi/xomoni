@@ -30,7 +30,7 @@ src/
     context.ts            safety policy per X error code; waiting for the person
     limiter.ts            delays, batches, work sessions, rolling caps, adaptive back-off, active hours
     cleanup.ts            sweep (search or timeline) and deep clean (item by item)
-    scan.ts               profile, replies, likes and full-history scans
+    scan.ts               profile, replies, likes, full-history and date-range scans
     worker-tab.ts         the x.com worker window
   shared/                 types, Dexie database, parsers, rules, settings, notifications
   ui/                     React 19 + Tailwind CSS 4 dashboard

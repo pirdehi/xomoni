@@ -125,10 +125,17 @@ export interface CleanupOptions {
 }
 
 /**
- * What a scan job reads: the profile timeline, the replies tab, the Likes timeline, or (`history`) X search
- * in half-year windows to reach posts older than the ~3,200 the profile shows.
+ * What a scan job reads: the profile timeline, the replies tab, the Likes timeline, (`history`) X search
+ * in half-year windows to reach posts older than the ~3,200 the profile shows, or (`range`) the posts, replies
+ * and reposts of one date range (`Job.range`), for an archive of that range.
  */
-export type ScanTarget = 'posts' | 'replies' | 'likes' | 'history';
+export type ScanTarget = 'posts' | 'replies' | 'likes' | 'history' | 'range';
+
+/** A span of time in epoch ms: `after` inclusive, `before` exclusive, as in `CleanupFilter`. */
+export interface DateRange {
+  after: number;
+  before: number;
+}
 
 /** A `cleanup` job changes the account; a `scan` job only reads X to fill the inventory. */
 export type JobKind = 'cleanup' | 'scan';
@@ -164,6 +171,8 @@ export interface Job {
   options: CleanupOptions | null;
   /** Scan jobs only; null for cleanups. */
   scan: ScanTarget | null;
+  /** `range` scans only: the dates to read. */
+  range?: DateRange;
   state: JobState;
   /** Resume marker: `sweep` or `deep` for cleanups, `<page>/<pages>` for scans; empty before the first run. */
   phase: string;

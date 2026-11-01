@@ -6,7 +6,7 @@
 
 | File             | Responsibility                                                                                                                                                                               |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interceptor.ts` | Wraps `fetch` and `XMLHttpRequest`; for the 10 watched operations, posts the URL, method, request body (from `init`, or a copy of a `Request` object's), status, `x-rate-limit-*` headers and response body over the private channel. |
+| `interceptor.ts` | Wraps `fetch` and `XMLHttpRequest`; for the 10 watched operations, posts the URL, method, request body (from `init`, or a copy of a `Request` object's), status, `x-rate-limit-*` and `date` headers and response body over the private channel. |
 
 ## Depends on
 
@@ -23,6 +23,7 @@
 - `ext-inject-is-isolated` (from `.dependency-cruiser.cjs`): files here may import only `inject/` and `shared/`. Anything imported from `shared/` would also run inside X's page.
 - Safety items from [`docs/PLAYBOOK.md`](../../../../docs/PLAYBOOK.md) implemented here:
   - A1: reads `x-rate-limit-limit`, `x-rate-limit-remaining` and `x-rate-limit-reset` from the responses to X's own requests.
+  - F7 (#31): also reads `date`, X's clock, so reset times can be corrected for a system clock that runs ahead.
   - B2: builds no requests; X's web app sends them with its own headers.
   - B7 (accepted risk): the `fetch` and `XMLHttpRequest` wrappers are visible to X and are not disguised. They only read: `fetch` bodies are read from a clone of the response.
   - F4: operations are identified by name from the URL path, so a rotated `queryId` does not matter.

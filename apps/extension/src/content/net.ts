@@ -18,7 +18,7 @@ export interface NetEvent {
   op: string;
   /** HTTP status; 0 when the request failed before any response arrived. */
   status: number;
-  /** Only the `x-rate-limit-*` headers; a value is null when X did not send that header. */
+  /** Only the `x-rate-limit-*` headers and `date`; a value is null when X did not send that header. */
   headers: Record<string, string | null>;
   /** The request's GraphQL variables, from the JSON body or the URL query. */
   variables: Record<string, unknown>;
@@ -84,10 +84,24 @@ function rateNumber(v: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Converts X's `x-rate-limit-reset` header (epoch seconds) to epoch milliseconds; null when it is missing or not a number. */
-export function resetAtFrom(headers: Record<string, string | null>): number | null {
+/**
+ * When X's rate-limit window resets, on this computer's clock (epoch ms), from `x-rate-limit-reset` (epoch
+ * seconds on X's clock); null when the header is missing or not a number. If the response's `date` header shows
+ * this clock running ahead of X's, the reset moves later by the same amount, so Xomoni never acts before X's
+ * real reset (PLAYBOOK F7, #31). A clock running behind is left alone: waiting a little longer is safe.
+ * @param headers The response headers the interceptor captured.
+ * @param receivedAt When the response arrived, on this computer's clock.
+ */
+export function resetAtFrom(headers: Record<string, string | null>, receivedAt = Date.now()): number | null {
   const reset = rateNumber(headers['x-rate-limit-reset']);
-  return reset == null ? null : reset * 1000;
+  if (reset == null) return null;
+  return reset * 1000 + Math.max(0, clockAhead(headers.date, receivedAt));
+}
+
+/** How far this computer's clock runs ahead of X's (ms, negative when behind), from a `date` header; 0 without one. */
+export function clockAhead(date: string | null | undefined, receivedAt: number): number {
+  const xNow = date ? Date.parse(date) : NaN;
+  return Number.isFinite(xNow) ? receivedAt - xNow : 0;
 }
 
 /**
@@ -138,7 +152,7 @@ export function handleCapture(raw: {
         op: ev.op,
         limit,
         remaining,
-        reset: resetAtFrom(ev.headers),
+        reset: resetAtFrom(ev.headers, ev.at),
         status: ev.status,
         at: ev.at,
       },

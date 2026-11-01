@@ -22,7 +22,8 @@ import { type Capture, takePort } from '../shared/bridge';
     'FavoriteTweet',
     'UnfavoriteTweet',
   ]);
-  const RATE_HEADERS = ['x-rate-limit-limit', 'x-rate-limit-remaining', 'x-rate-limit-reset'];
+  // X's rate-limit headers, and `date`: X's own clock, to correct the reset time for a skewed system clock (#31).
+  const CAPTURED_HEADERS = ['x-rate-limit-limit', 'x-rate-limit-remaining', 'x-rate-limit-reset', 'date'];
 
   // Captures go only to the content script, through the private channel it hands over at document_start (#59).
   let port: MessagePort | null = null;
@@ -58,7 +59,7 @@ import { type Capture, takePort } from '../shared/bridge';
         const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
         pending.then(
           (res) => {
-            const headers = Object.fromEntries(RATE_HEADERS.map((h) => [h, res.headers.get(h)]));
+            const headers = Object.fromEntries(CAPTURED_HEADERS.map((h) => [h, res.headers.get(h)]));
             Promise.all([reqBody, res.clone().text()])
               .then(([req, body]) =>
                 emit({ op: watched, url, method, status: res.status, reqBody: req, headers, body }),
@@ -101,7 +102,7 @@ import { type Capture, takePort } from '../shared/bridge';
             /* unreadable body */
           }
           const headers: Record<string, string | null> = {};
-          for (const h of RATE_HEADERS) headers[h] = this.getResponseHeader(h);
+          for (const h of CAPTURED_HEADERS) headers[h] = this.getResponseHeader(h);
           emit({ op, url: meta.url, method: meta.method, status: this.status, reqBody, headers, body: text });
         });
       }

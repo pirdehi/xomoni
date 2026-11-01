@@ -68,7 +68,7 @@
 | F4 | queryId rotation and response structure changes | 📰 | ✅ |
 | F5 | Background tab slowdown or discard | 📘 | ✅ |
 | F6 | Internet outage, system sleep, X outage | 🧠 | ✅ |
-| F7 | System clock skew | 🧠 | 🔴 |
+| F7 | System clock skew | 🧠 | ✅ |
 | F8 | Concurrent runs and parallel use of X | 🧠 | ✅ |
 
 ---
@@ -332,9 +332,9 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - X's error page after such an answer never marks a post as gone.
   - After three hours with no progress, the job pauses.
 
-### F7. System clock skew · 🧠 · 🔴
-- **Risk:** The `x-rate-limit-reset` time is in X's server time. If the system clock is a few minutes ahead or behind, the wait time is computed wrong.
-- **Proposed scenario:** Compute the clock offset from the `date` header of X's response, and apply it to all reset times.
+### F7. System clock skew · 🧠 · ✅
+- **Risk:** The `x-rate-limit-reset` time is in X's server time. If the system clock is a few minutes ahead, Xomoni would think X's window had reset and act before X's real reset; if it is behind, it only waits longer.
+- **Scenario (implemented, #31):** the interceptor also passes on each response's `date` header (X's clock). `resetAtFrom` in `content/net.ts` moves every reset later by as much as this computer's clock runs ahead of X's, for the live limits it stores and for the reset of a rate-limited action alike. A clock running behind is left alone, because waiting a little longer is safe. Without a usable `date` header the reset is used as X sent it.
 
 ### F8. Concurrent runs and parallel use of X · 🧠 · ✅
 - **Scenario:**
@@ -393,7 +393,7 @@ The ladder is built from dated events per account (`apps/extension/src/shared/ri
 | 1 | Adaptive learning of the daily read cap | A4 |
 | 2 | ~~Close intrusive popups~~ (done, #29) | F3 |
 | 3 | ~~Work in separate sessions, and log-normal delay~~ (done, #30) | B4 |
-| 4 | Compute clock offset from the `date` header | F7 |
+| 4 | ~~Compute clock offset from the `date` header~~ (done, #31) | F7 |
 | 5 | Record unavailable posts as Skipped | E6 |
 | 6 | Separate defaults for Premium | A6 |
 

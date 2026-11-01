@@ -34,4 +34,5 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
   - D3, D4, D5: write commands are refused while logged out or locked; `ping` reports the signed-in user's id from `twid` so the engine can detect an account switch; nothing is typed on login pages and no cookie is written.
   - A1, F8: `net.ts` reports X's `x-rate-limit-*` headers from every x.com tab, so the user's own browsing is counted too.
   - F3 (#29): `pageInfo` reports a pop-up over the page (`obstructed`); `clearPage` presses Escape, then the pop-up's own Close button, and clicks nothing else. It refuses on X's login and check pages. `noticeText` also reads pop-ups, so a restriction shown in one stops the job.
+  - F7 (#31): `resetAtFrom` in `net.ts` moves each reset later by as much as this computer's clock runs ahead of X's `date` header, so Xomoni never acts before X's real reset.
   - F1, F2: all selectors live in `dom.ts`; Delete is found by its label (23 spellings), then by X's red danger color. The `canary` command in `actor.ts` checks a post's menu or buttons before the first action of each kind, without acting.

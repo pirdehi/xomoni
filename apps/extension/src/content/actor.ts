@@ -335,7 +335,7 @@ async function menuCheck(
 /** Maps X's response to an outcome. Error codes per X's public error catalogue. */
 export function classify(ev: NetEvent | null, op: string): ActionResult {
   if (!ev) return { outcome: 'failed', message: `X did not answer ${op} within 15s` };
-  const resetAt = resetAtFrom(ev.headers);
+  const resetAt = resetAtFrom(ev.headers, ev.at);
   if (ev.status === 429) return { outcome: 'rate_limited', http: 429, resetAt, message: 'Rate limit reached' };
   for (const { code, message } of extractErrors(ev.json)) {
     const base = { http: ev.status, code, message: message || `Error ${code}`, resetAt };

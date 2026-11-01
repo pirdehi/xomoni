@@ -21,7 +21,7 @@ export interface Capture {
   status: number;
   /** The request body when it was a string, else null. */
   reqBody: string | null;
-  /** Only the `x-rate-limit-*` headers. */
+  /** Only the `x-rate-limit-*` headers and `date` (X's clock, for the skew correction). */
   headers: Record<string, string | null>;
   body: string;
 }

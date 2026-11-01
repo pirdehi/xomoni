@@ -117,6 +117,15 @@ describe('interceptor: request bodies passed inside a Request (#60)', () => {
     expect(await captured()).toMatchObject({ op: 'DeleteTweet', status: 0, reqBody: BODY });
   });
 
+  it('passes on X’s rate-limit headers and its date header, for the clock check (#31)', async () => {
+    const date = 'Sun, 01 Nov 2026 12:00:00 GMT';
+    nativeFetch.mockResolvedValueOnce(
+      new Response('{"data":{}}', { status: 200, headers: { date, 'x-rate-limit-reset': '1793534400' } }),
+    );
+    await win.fetch(DELETE_URL, { method: 'POST', body: BODY });
+    expect(await captured()).toMatchObject({ headers: { date, 'x-rate-limit-reset': '1793534400' } });
+  });
+
   it('ignores operations it does not watch', async () => {
     await win.fetch('https://x.com/i/api/graphql/abc/HomeTimeline');
     await new Promise((resolve) => setTimeout(resolve, 20));

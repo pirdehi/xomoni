@@ -28,7 +28,7 @@ src/
   engine/
     runner.ts             one job at a time (Web Lock); pause, resume, cancel; login hand-off loop
     context.ts            safety policy per X error code; waiting for the person
-    limiter.ts            delays, batches, rolling caps, adaptive back-off, active hours
+    limiter.ts            delays, batches, work sessions, rolling caps, adaptive back-off, active hours
     cleanup.ts            sweep (search or timeline) and deep clean (item by item)
     scan.ts               profile, replies, likes and full-history scans
     worker-tab.ts         the x.com worker window

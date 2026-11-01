@@ -1,7 +1,8 @@
 // Paces actions and keeps them inside every known limit, at one fifth of every limit X announces
-// (ADR-0012): jittered delays, batch breaks, rolling hourly/daily caps, X's published limits and the live
-// limits in its rate-limit headers, optional active hours, and an adaptive slowdown after soft errors.
+// (ADR-0012): varied delays, batch breaks, work sessions with rests, rolling hourly/daily caps, X's published
+// limits and the live limits in its rate-limit headers, active hours, and an adaptive slowdown after soft errors.
 import { db, riskEvents } from '../shared/db';
+import { SESSION, pacingDelay, sessionStart } from '../shared/pacing';
 import { RISK_LABELS, type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Outcome, Settings } from '../shared/types';
@@ -44,6 +45,11 @@ export class Limiter {
   private riskState: RiskAssessment = assessRisk([], 0);
   /** Warm-up factor times the risk ladder's factor: at most 1, so never faster than one fifth. */
   private factor = this.step.factor;
+  /** The current work session (PLAYBOOK B4): when it started and how long it may run before a rest. */
+  private sessionStartedAt = Date.now();
+  private sessionLength = randomBetween(SESSION.minMs, SESSION.maxMs);
+  /** The last request that reached X, from this run or the history `init` reads; 0 if none is known. */
+  private lastRequestAt = 0;
 
   constructor(
     private settings: Settings,
@@ -54,8 +60,8 @@ export class Limiter {
 
   /**
    * Seeds the rolling windows: caps from the last 24 h of successful actions, X budgets from every request
-   * that reached X (failed ones included), and the warm-up step from the days with actions in the last
-   * two weeks.
+   * that reached X (failed ones included), the warm-up step from the days with actions in the last
+   * two weeks, and the current work session from the latest requests, so a new run can't skip a rest.
    */
   async init() {
     const now = Date.now();
@@ -69,10 +75,12 @@ export class Limiter {
       riskEvents(this.accountId),
     ]);
     const acted: number[] = [];
+    const requests: number[] = [];
     for (const row of logs) {
       if (!row.outcome || row.action === 'system' || row.action === 'read' || !spendsQuota(row.outcome)) continue;
       acted.push(row.ts);
       if (row.ts < since) continue;
+      requests.push(row.ts);
       if (row.outcome === 'done') this.stamps(row.action).push(row.ts);
       for (const id of budgetsOf(row.action)) this.uses(id).push(row.ts);
     }
@@ -82,8 +90,11 @@ export class Limiter {
     this.factor = Math.min(1, this.step.factor * this.riskState.capFactor);
     for (const row of reads) {
       this.stamps('read').push(row.ts);
+      requests.push(row.ts);
       if (row.budget in BUDGETS) this.uses(row.budget as BudgetId).push(row.ts);
     }
+    this.lastRequestAt = requests.reduce((last, t) => (t <= now && t > last ? t : last), 0);
+    this.startSession(sessionStart(requests, now));
     // Page loads older than a day no longer count anywhere.
     await db.reads.where('[accountId+ts]').between([this.accountId, -Infinity], [this.accountId, since]).delete();
   }
@@ -134,9 +145,30 @@ export class Limiter {
   }
 
   private async wait(until: number, reason: string) {
-    if (until <= Date.now()) return;
+    const from = Date.now();
+    if (until <= from) return;
     this.onWait(reason, until);
-    await sleep(until - Date.now(), this.signal);
+    await sleep(until - from, this.signal);
+    // A wait this long is a rest: the next action starts a new work session.
+    if (until - from >= SESSION.breakMinMs) this.startSession();
+  }
+
+  /** Starts a work session at `at` with a new random length; a rest also ends the current batch. */
+  private startSession(at = Date.now()) {
+    this.sessionStartedAt = at;
+    this.sessionLength = randomBetween(SESSION.minMs, SESSION.maxMs);
+    this.sinceBreak.clear();
+  }
+
+  /**
+   * Rests 10–30 minutes once the current work session has run its length (PLAYBOOK B4, #30). A quiet gap of
+   * 10 minutes or more since the last request already was that rest.
+   */
+  private async restBetweenSessions() {
+    const now = Date.now();
+    if (this.lastRequestAt && now - this.lastRequestAt >= SESSION.breakMinMs) return this.startSession(now);
+    if (now - this.sessionStartedAt < this.sessionLength) return;
+    await this.wait(now + randomBetween(SESSION.breakMinMs, SESSION.breakMaxMs), 'Resting between work sessions');
   }
 
   /**
@@ -156,6 +188,7 @@ export class Limiter {
     while (stamps.length && stamps[0] < now - DAY) stamps.shift();
 
     await this.waitForActiveHours();
+    await this.restBetweenSessions();
 
     if (stamps.length >= rule.dailyCap) {
       await this.wait(
@@ -209,7 +242,7 @@ export class Limiter {
       );
     }
 
-    const delay = randomBetween(rule.minDelay, rule.maxDelay) * 1000 * this.penalty;
+    const delay = pacingDelay(rule) * 1000 * this.penalty;
     await this.wait(
       Date.now() + delay,
       this.penalty > 1.01 ? `Slowed down ×${this.penalty.toFixed(1)} after errors` : 'Pacing',
@@ -223,7 +256,10 @@ export class Limiter {
    */
   after(action: ActionKind, outcome: Outcome, readBudget?: BudgetId) {
     const now = Date.now();
-    if (spendsQuota(outcome)) for (const id of budgetsOf(action, readBudget)) this.uses(id).push(now);
+    if (spendsQuota(outcome)) {
+      this.lastRequestAt = now;
+      for (const id of budgetsOf(action, readBudget)) this.uses(id).push(now);
+    }
     if (outcome === 'done') {
       this.stamps(action).push(now);
       this.sinceBreak.set(action, (this.sinceBreak.get(action) ?? 0) + 1);

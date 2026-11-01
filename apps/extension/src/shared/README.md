@@ -16,6 +16,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | `messages.ts`  | Message types between the dashboard, the content script and the service worker.                                             |
 | `health.ts` | The account health report after a run (#25): X's signals, sample checks, X's notice, the risk level and a suggested rest, as one summary. Pure. |
 | `notify.ts`    | Desktop notifications and their ids.                                                                                        |
+| `pacing.ts` | How work is spread over time (PLAYBOOK B4, #30): work sessions with rests (`SESSION`, `sessionStart`) and varied delays with an occasional longer pause (`pacingDelay`). Only ever slower. Pure. |
 | `risk.ts` | The risk ladder (ADR-0013): risk events (silent blocks included), `assessRisk` (level, pace factor, resume lock, full stop) and duplicate filtering. Pure. |
 | `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings) and action labels.                       |
 | `x-limits.ts`  | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule, the quota check for failed pages (`quotaHit`) and the cap ceilings. Pure. |
@@ -35,6 +36,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 - `../content/` for path checks (`attention.ts`), GraphQL parsing (`graphql.ts`) and message types (`messages.ts`).
 - `../ui/` for the data model, the database, filters, settings, time helpers, archive parsing (`importArchive.ts`) and notifications.
 - `../dev/` for the database and types, to seed demo data in the UI preview.
+- `../../tests/sessions.test.ts` for `pacing.ts` and the default settings.
 - `../../tests/parsers.test.ts` for the parsers in `archive.ts`, `graphql.ts`, `filter.ts`, `time.ts` and `attention.ts`.
 
 ## Rules
@@ -43,6 +45,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 - `ext-content-is-isolated` and `ext-inject-is-isolated`: page scripts may use `shared/` and nothing else, so anything they need from the rest of the extension has to live here.
 - `no-circular`: imports inside `shared/` go one way, for example `filter.ts` → `db.ts` → `settings.ts` → `types.ts`.
 - Safety items from [`docs/PLAYBOOK.md`](../../../../docs/PLAYBOOK.md) implemented here:
+  - B4 (#30): `pacing.ts` sets the work sessions, rests and delay shape; `settings.ts` turns active hours on by default (8:00–23:00).
   - A1–A3 (ADR-0012): `x-limits.ts` holds X's published limits and derives every cap as one fifth of them (deletes: 10 per 15 min; unlikes: 200 a day, shared with ghost-like cleanup); `settings.ts` builds Careful from those ceilings.
   - D1, D3, D4: `attention.ts` detects a logged-out page, X's check pages and an account switch, so the engine waits for the person instead of acting.
   - E5: `upsertItems` in `db.ts` marks a deleted item `present` again only if X shows it more than 5 s after the deletion.

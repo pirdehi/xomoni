@@ -25,11 +25,15 @@ export const PRESETS: Record<Exclude<PresetName, 'custom'>, Record<ActionKind, P
   },
 };
 
-/** Settings before the person changes anything: Careful pacing, no active hours, notifications on. */
+/**
+ * Settings before the person changes anything: Careful pacing, notifications on, and active hours 8:00–23:00
+ * (local time), so work is spread over the day and never runs all night (PLAYBOOK B4). Stored settings keep
+ * the person's own choice.
+ */
 export const DEFAULT_SETTINGS: Settings = {
   preset: 'careful',
   pacing: PRESETS.careful,
-  activeHours: { enabled: false, start: 8, end: 23 },
+  activeHours: { enabled: true, start: 8, end: 23 },
   maxConsecutiveFailures: 2,
   notifications: true,
 };

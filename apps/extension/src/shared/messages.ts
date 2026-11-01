@@ -14,7 +14,8 @@ export type ActorCommand =
   | { cmd: 'unlike'; id: string }
   | { cmd: 'relikeUnlike'; id: string }
   | { cmd: 'unretweet'; id: string }
-  | { cmd: 'canary'; action: Exclude<ActionKind, 'read'>; id: string };
+  | { cmd: 'canary'; action: Exclude<ActionKind, 'read'>; id: string }
+  | { cmd: 'clearPage' };
 
 /** State of an x.com page, reported by the content script in reply to `ping`. */
 export interface PageInfo {
@@ -34,6 +35,8 @@ export interface PageInfo {
   challenge: boolean;
   /** X's notice that the account is suspended or limited, if the page shows one; see `restrictionNotice`. */
   restriction: string | null;
+  /** A pop-up covers the page (PLAYBOOK F3), such as a Premium offer; `clearPage` tries to close it. */
+  obstructed: boolean;
   /** The page's `lang` attribute, which is X's interface language. */
   lang: string;
   /** `document.hidden` in that tab; the dashboard warns when the worker window is hidden. */
@@ -77,6 +80,13 @@ export interface CanaryResult {
    */
   verdict: 'ok' | 'changed' | 'unknown';
   message: string;
+}
+
+/** Result of `clearPage` (PLAYBOOK F3): whether the page is free of pop-ups now, and what was in the way. */
+export interface ClearResult {
+  clear: boolean;
+  /** The pop-up's label or first line, for the activity log; empty when there was none. */
+  what: string;
 }
 
 /** Result of one `scroll` command in the worker page. */

@@ -242,10 +242,9 @@ export class JobContext {
     this.status('Connecting to the X worker window…');
     if ((await workerTab.current()) == null) await workerTab.open();
     await workerTab.keepLoaded();
-    const info = await workerTab.waitReady(this.signal);
     const account = await db.accounts.get(this.job.accountId);
     this.handle ||= account?.handle ?? '';
-    this.assertPage(info);
+    const info = await this.clearAndAssert(await workerTab.waitReady(this.signal));
     this.handle = info.handle || this.handle;
     if (!this.handle)
       throw new Stop(
@@ -367,10 +366,29 @@ export class JobContext {
     );
   }
 
-  /** Re-checks lock / login / account right before an action. */
+  /** Re-checks lock / login / account right before an action, closing a pop-up X put over the page first. */
   async verifyPage() {
     const info = await workerTab.ping();
-    if (info) this.assertPage(info);
+    if (info) await this.clearAndAssert(info);
+  }
+
+  /**
+   * Closes a pop-up X put over the page (PLAYBOOK F3), then checks the page as `assertPage` does; a pop-up that
+   * stays needs the person. Never on a page that already needs them (X's login and checks are pop-ups too),
+   * and never when it shows a restriction: that notice stops the job instead.
+   */
+  private async clearAndAssert(info: PageInfo): Promise<PageInfo> {
+    if (info.obstructed && !info.restriction && !pageNeed({ ...info, obstructed: false }, this.job.accountId)) {
+      const { clear, what } = await workerTab.send({ cmd: 'clearPage' });
+      await this.log(
+        clear ? 'info' : 'warn',
+        'system',
+        clear ? `Closed a pop-up on X’s page: ${what}` : `A pop-up on X’s page didn’t close: ${what}`,
+      );
+      info = (await workerTab.ping()) ?? info;
+    }
+    this.assertPage(info);
+    return info;
   }
 
   /** Leaves an item untouched without counting it as a failure. */
@@ -387,9 +405,9 @@ export class JobContext {
     this.readBudget = readBudgetFor(url);
     await this.limiter.before('read', this.readBudget);
     this.status(`Opening ${url.replace('https://x.com', '')}`);
-    const info = await workerTab.navigate(url, this.signal);
+    let info = await workerTab.navigate(url, this.signal);
     this.limiter.after('read', 'done', this.readBudget);
-    this.assertPage(info);
+    info = await this.clearAndAssert(info);
     try {
       const content = await workerTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
       if (content.kind !== 'tweets') {

@@ -5,9 +5,9 @@ import type { PageInfo } from './messages';
 
 /**
  * What only the person can do: `login` (signed out), `verify` (an X check or account lock), `account` (the
- * worker is signed in to a different X account).
+ * worker is signed in to a different X account), `obstruction` (a pop-up Xomoni couldn't close covers the page).
  */
-export type Need = 'login' | 'verify' | 'account';
+export type Need = 'login' | 'verify' | 'account' | 'obstruction';
 
 /**
  * Whether a path is one of X's login pages: `/login`, the `/i/flow/login` flow, or any page of the newer
@@ -22,15 +22,16 @@ export const isCheckPath = (path: string) =>
 
 /**
  * What the page needs from the person before Xomoni may act, or null when it is signed in to `accountId`
- * with no check showing. Checked in order: login, verify, account.
+ * with no check or pop-up showing. Checked in order: login, verify, account, obstruction.
  */
 export function pageNeed(
-  info: Pick<PageInfo, 'loggedIn' | 'locked' | 'challenge' | 'viewerId'>,
+  info: Pick<PageInfo, 'loggedIn' | 'locked' | 'challenge' | 'viewerId'> & Partial<Pick<PageInfo, 'obstructed'>>,
   accountId: string,
 ): Need | null {
   if (!info.loggedIn) return 'login';
   if (info.locked || info.challenge) return 'verify';
   if (info.viewerId !== accountId) return 'account';
+  if (info.obstructed) return 'obstruction';
   return null;
 }
 
@@ -44,6 +45,8 @@ export function needMessage(need: Need, handle: string): string {
       return 'X wants to confirm it’s you (captcha, code or account unlock). Complete it in the Xomoni window.';
     case 'account':
       return `The Xomoni window is signed in to another X account. Switch back to ${who}.`;
+    case 'obstruction':
+      return 'Something on X’s page is in the way, and Xomoni couldn’t close it. Close it in the Xomoni window; Xomoni continues by itself.';
   }
 }
 
@@ -78,4 +81,5 @@ export const NEED_TITLE: Record<Need, string> = {
   login: 'Log in to X',
   verify: 'Confirm it’s you on X',
   account: 'Switch X account',
+  obstruction: 'Close what covers X’s page',
 };

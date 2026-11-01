@@ -7,9 +7,9 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
 | File         | Responsibility                                                                                                                                                     |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `content.ts` | Entry point: hands the interceptor its end of a private `MessageChannel` (`../shared/bridge.ts`), passes the captures that arrive on it and pass `isCapture` to `net.ts`, and answers `actor` runtime messages through `actor.ts`. Window messages are never trusted (#59).                                              |
-| `actor.ts`   | Runs `ActorCommand`s (ping, wait for content, list visible posts, scroll, delete, unlike, re-like then unlike, undo repost, and the `canary` check before acting, which opens and closes a menu without clicking in it) and maps X's response to an `Outcome`. |
+| `actor.ts`   | Runs `ActorCommand`s (ping, wait for content, list visible posts, scroll, delete, unlike, re-like then unlike, undo repost, the `canary` check before acting, which opens and closes a menu without clicking in it, and `clearPage`, which closes a pop-up over the page with Escape or its own Close button) and maps X's response to an `Outcome`. |
 | `net.ts`     | Parses interceptor captures, resolves `waitForNet` waiters, and sends `rate`, `ingest` and `profile` messages to the service worker. Remembers the page's last timeline HTTP status (`lastTimelineStatus`), which `waitContent` reports.                               |
-| `dom.ts`     | Every X DOM dependency: selectors, the multilingual Delete label, DOM helpers, `waitFor`, and the signed-in user's id and handle.                                  |
+| `dom.ts`     | Every X DOM dependency: selectors, the multilingual Delete label, DOM helpers, `waitFor`, pop-up detection (`openDialog`), account notices, and the signed-in user's id and handle.                                  |
 
 ## Depends on
 
@@ -33,4 +33,5 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
   - B6, E4: `relikeUnlike` likes again only when X shows the post as not liked, and retries the unlike up to 3 times so no like is left behind.
   - D3, D4, D5: write commands are refused while logged out or locked; `ping` reports the signed-in user's id from `twid` so the engine can detect an account switch; nothing is typed on login pages and no cookie is written.
   - A1, F8: `net.ts` reports X's `x-rate-limit-*` headers from every x.com tab, so the user's own browsing is counted too.
+  - F3 (#29): `pageInfo` reports a pop-up over the page (`obstructed`); `clearPage` presses Escape, then the pop-up's own Close button, and clicks nothing else. It refuses on X's login and check pages. `noticeText` also reads pop-ups, so a restriction shown in one stops the job.
   - F1, F2: all selectors live in `dom.ts`; Delete is found by its label (23 spellings), then by X's red danger color. The `canary` command in `actor.ts` checks a post's menu or buttons before the first action of each kind, without acting.

@@ -64,7 +64,7 @@
 | E8 | Archive retrieval limits | 📘 | ✅ |
 | F1 | DOM changes and A/B tests | 🧠 | ✅ |
 | F2 | X interface language | 📘 | ✅ |
-| F3 | Intrusive popups (Premium, cookies, notifications) | 📰 | 🟡 |
+| F3 | Intrusive popups (Premium, cookies, notifications) | 📰 | ✅ |
 | F4 | queryId rotation and response structure changes | 📰 | ✅ |
 | F5 | Background tab slowdown or discard | 📘 | ✅ |
 | F6 | Internet outage, system sleep, X outage | 🧠 | ✅ |
@@ -308,11 +308,12 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 ### F2. X interface language · 📘 · ✅
 - **Scenario:** The Delete label is recognized in 23 languages (including Persian), and the red color of the delete option is also checked as a second method. English is still the recommendation.
 
-### F3. Intrusive popups · 📰 · 🟡
+### F3. Intrusive popups · 📰 · ✅
 - **Mechanism:** A Premium offer, cookie consent, a request to turn on notifications, or "Unlock more on X" may block the click.
-- **Proposed scenario:**
-  - Before each action, if a `[role=dialog]` or mask that does not belong to Xomoni is present, press Escape or the close button.
-  - If the popup stays, set the "Needs you" status with the message "Something on the X page is in the way".
+- **Scenario (implemented, #29):**
+  - On connecting, after each page load and before each action, a pop-up over the page (a dialog in X's `#layers`, or any `aria-modal` element; menus don't count) is closed: first with Escape and a click on its backdrop, then with its own Close button (`app-bar-close` or a button labeled Close). Nothing else in a pop-up is ever clicked, and each attempt is written to the activity log.
+  - Never on X's login or check pages, which are pop-ups too, and never when the page shows a restriction notice (alerts, pop-ups and the top of the main column are read for it): that notice stops the job (C3, C4).
+  - If the pop-up stays, the job waits for the person ("Needs you"): "Something on X's page is in the way, and Xomoni couldn't close it." It continues by itself once the page has been clear for 5 seconds.
 
 ### F4. queryId rotation and response structure changes · 📰 · ✅
 - **Scenario:** Operations are identified by **name**, and the response parser does not depend on the exact structure.
@@ -390,7 +391,7 @@ The ladder is built from dated events per account (`apps/extension/src/shared/ri
 | # | Task | Items |
 |---|---|---|
 | 1 | Adaptive learning of the daily read cap | A4 |
-| 2 | Close intrusive popups | F3 |
+| 2 | ~~Close intrusive popups~~ (done, #29) | F3 |
 | 3 | ~~Work in separate sessions, and log-normal delay~~ (done, #30) | B4 |
 | 4 | Compute clock offset from the `date` header | F7 |
 | 5 | Record unavailable posts as Skipped | E6 |

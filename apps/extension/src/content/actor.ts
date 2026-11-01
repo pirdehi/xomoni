@@ -7,6 +7,7 @@ import type {
   ActionResult,
   ActorCommand,
   CanaryResult,
+  ClearResult,
   ContentState,
   PageInfo,
   ScrollResult,
@@ -19,10 +20,12 @@ import {
   articleInfo,
   click,
   closeMenus,
+  describeDialog,
   findArticle,
   findDeleteMenuItem,
   jitter,
   noticeText,
+  openDialog,
   sleep,
   viewerHandle,
   viewerIdFromCookie,
@@ -58,6 +61,8 @@ export async function runCommand(command: ActorCommand): Promise<unknown> {
       return guarded(() => unretweet(command.id));
     case 'canary':
       return canary(command.action, command.id);
+    case 'clearPage':
+      return clearPage();
   }
 }
 
@@ -74,6 +79,7 @@ function pageInfo(): PageInfo {
     locked: path.startsWith('/account/access'),
     challenge: isCheckPath(path),
     restriction: restrictionNotice(noticeText()),
+    obstructed: !!openDialog(),
     lang: document.documentElement.lang || '',
     hidden: document.hidden,
   };
@@ -130,6 +136,28 @@ async function scrollMore(): Promise<ScrollResult> {
     total: now.length,
     atEnd: scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 8,
   };
+}
+
+/**
+ * Closes a pop-up X put over the page (PLAYBOOK F3): first with Escape (and a click on its backdrop), then with
+ * its own Close button. Nothing else in a pop-up is ever clicked. Refuses on X's login and check pages, which
+ * are pop-ups too and belong to the person.
+ */
+async function clearPage(): Promise<ClearResult> {
+  const dialog = openDialog();
+  if (!dialog) return { clear: true, what: '' };
+  const what = describeDialog(dialog);
+  const info = pageInfo();
+  if (!info.loggedIn || info.locked || info.challenge) return { clear: false, what };
+  const gone = () => !openDialog();
+  closeMenus();
+  if (await waitFor(gone, 1500)) return { clear: true, what };
+  const close = $(SEL.dialogClose, openDialog() ?? document);
+  if (close) {
+    click(close);
+    if (await waitFor(gone, 1500)) return { clear: true, what };
+  }
+  return { clear: false, what };
 }
 
 async function noMenuOpen() {

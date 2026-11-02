@@ -9,6 +9,7 @@
 //     archive-only items) one by one.
 //  3. Report what X has that Xomoni can't see (PLAYBOOK E2, C6).
 // Rule of thumb throughout: if Xomoni can't verify an item, it leaves it alone.
+import { needMessage } from '../shared/attention';
 import { PROFILE_TIMELINE_LIMIT, unseenPosts, worthWarning } from '../shared/coverage';
 import { db, itemKey } from '../shared/db';
 import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
@@ -358,6 +359,8 @@ async function preflight(ctx: JobContext, action: ActionKind, command: ActionCom
   ctx.status('Checking X’s page before acting…');
   const result = await ctx.xTab.send({ cmd: 'canary', action, id: command.id });
   if (result.verdict === 'changed') {
+    // A menu that won't close in a hidden window is Chrome pausing the page, not X changing it (#118).
+    if ((await ctx.xTab.ping())?.hidden) throw new NeedsYou('hidden', needMessage('hidden', ctx.handle));
     await ctx.log('error', 'system', `Check before acting: ${result.message}`);
     throw new Stop(
       'blocked',

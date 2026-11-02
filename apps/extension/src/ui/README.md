@@ -51,7 +51,7 @@ The React dashboard (`dashboard.html`), which runs as an extension page in a nor
   - B6, E4: the "ghost" likes option on the Cleanup page is off by default and shows a warning when turned on.
   - D1: while the runner waits for the person, a "Needs you" banner and page title ask them to act in the X window.
   - E8: `importArchive.ts` refuses an archive without `account.js` or one that belongs to another account.
-  - F5: the worker status chip warns when the X worker window is hidden, and the running-job banner asks to keep it open.
+  - F5: the worker status chip warns when the X worker window is hidden, and the running-job banner asks to keep it open. While a job waits for a hidden window, the banner says Xomoni needs its X window on screen (#118).
   - F8: `startJob` shows the runner's refusal as a toast when another dashboard tab holds the run lock.
   - B1, C1, C2 (ADR-0013): `JobCard` holds Resume back during a resume lock (with a countdown) or a full stop; "Resume anyway" needs typing RESUME. `LimitsPanel` shows the risk level, why, and how long the slower pace lasts.
   - #25: `JobCard` shows the account health report from the end of the job's last run.

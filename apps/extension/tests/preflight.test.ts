@@ -1,14 +1,15 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCleanup } from '../src/engine/cleanup';
-import { type JobContext, Stop } from '../src/engine/context';
+import { type JobContext, NeedsYou, Stop } from '../src/engine/context';
 import type * as Timers from '../src/engine/timers';
 import type * as WorkerTabModule from '../src/engine/worker-tab';
 import { db, itemKey } from '../src/shared/db';
 import type { ActorCommand, CanaryResult } from '../src/shared/messages';
 import type { Item } from '../src/shared/types';
+import { page } from './support/engine';
 
-const { send } = vi.hoisted(() => ({ send: vi.fn() }));
+const { send, ping } = vi.hoisted(() => ({ send: vi.fn(), ping: vi.fn() }));
 
 // The real sleep runs on a Web Worker, which tests don't have; the worker tab needs Chrome.
 vi.mock('../src/engine/timers', async (importOriginal) => ({
@@ -17,7 +18,7 @@ vi.mock('../src/engine/timers', async (importOriginal) => ({
 }));
 vi.mock('../src/engine/worker-tab', async (importOriginal) => ({
   ...(await importOriginal<typeof WorkerTabModule>()),
-  workerTab: { send },
+  workerTab: { send, ping },
 }));
 
 const ACCOUNT = 'acct-1';
@@ -81,8 +82,8 @@ function deepClean(canary: CanaryResult) {
     save: vi.fn(async () => {}),
     setPhase: vi.fn(async () => {}),
     status: vi.fn(),
-    // The X tab port (#11): the fake `send` stands in for the content script.
-    xTab: { send },
+    // The X tab port (#11): the fakes stand in for the content script.
+    xTab: { send, ping },
   };
   return { ctx, run: () => runCleanup(ctx as unknown as JobContext) };
 }
@@ -91,6 +92,7 @@ const sent = (cmd: ActorCommand['cmd']) => send.mock.calls.filter(([c]) => (c as
 
 beforeEach(async () => {
   send.mockReset();
+  ping.mockReset().mockResolvedValue(page());
   await db.items.clear();
   await db.items.bulkAdd([post('1'), post('2')]);
 });
@@ -103,6 +105,17 @@ describe('Check before the first action (#21, PLAYBOOK F1)', () => {
     expect((err as Stop).state).toBe('blocked');
     expect((err as Stop).message).toMatch(/^X changed its page: the post menu/);
     expect(sent('delete')).toBe(0);
+  });
+
+  it('waits for the person instead when the X window is hidden, and acts on nothing (#118)', async () => {
+    ping.mockResolvedValue(page({ hidden: true }));
+    const { ctx, run } = deepClean({ verdict: 'changed', message: 'Escape no longer closes X’s menu' });
+    const err = await run().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(NeedsYou);
+    expect((err as NeedsYou).need).toBe('hidden');
+    expect(sent('delete')).toBe(0);
+    // Not logged as a changed page: X changed nothing.
+    expect(ctx.log).not.toHaveBeenCalledWith('error', 'system', expect.stringMatching(/^Check before acting/));
   });
 
   it('checks once per run, then acts', async () => {

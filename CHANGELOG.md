@@ -22,6 +22,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - An open redirect after sign-out and Google sign-in.
+- A job stopped as "X changed its page" when its X window was hidden, for example fully covered by another window. It now waits for the window to be on screen and continues by itself, without counting a failure.
 - The Cleanup page could start before it knew whether an archive was imported, and treated a cleared date as today.
 
 ## [0.1.0] - 2026-10-30

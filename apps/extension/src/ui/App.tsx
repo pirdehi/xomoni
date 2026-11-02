@@ -233,6 +233,8 @@ function RunnerBanner() {
   }, [attention]);
   if (state.status === 'idle') return null;
   if (attention) {
+    // A hidden window is Chrome pausing the page, not X asking for anything (#118).
+    const who = state.need === 'hidden' ? 'Xomoni needs its X window on screen' : 'X needs you';
     return (
       <div role="alert" className="sticky top-0 z-30 border-b border-line bg-surface">
         <span className="absolute inset-y-0 left-0 w-1 bg-serious" />
@@ -240,7 +242,7 @@ function RunnerBanner() {
           <div className="flex min-w-0 items-start gap-2.5 text-sm">
             <BellRing size={16} className="mt-0.5 shrink-0 text-serious" />
             <div className="min-w-0">
-              <div className="font-medium">X needs you to continue “{job?.title ?? 'this job'}”</div>
+              <div className="font-medium">{`${who} to continue “${job?.title ?? 'this job'}”`}</div>
               <div className="text-ink-2">{state.message} Xomoni continues by itself once you’re done.</div>
             </div>
           </div>

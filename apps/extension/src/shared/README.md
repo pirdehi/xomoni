@@ -4,27 +4,28 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 
 ## Files
 
-| File           | Responsibility                                                                                                              |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `archive.ts`   | Parses the official X data archive (`window.YTD…` files) into item drafts and reads the archive's owner.                    |
+| File           | Responsibility                                                                                                                                                                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `archive.ts`   | Parses the official X data archive (`window.YTD…` files) into item drafts and reads the archive's owner.                                                                                                                                                   |
 | `activity-log.ts` | The activity log export (#34): CSV for spreadsheets and JSON for tools, oldest first, with a link to each post. Pure. |
-| `attention.ts` | Decides when only the person can continue (login, including X's `/i/jf/` flow; X check; wrong account; a pop-up Xomoni couldn't close), the text shown for it, and `restrictionNotice` for X's suspended or limited notices. |
-| `backup.ts` | The archive a person downloads for a date range (Archive page): `archiveItems` picks the posts, replies and reposts in the range, `archiveHtml` writes a self-contained page with every post escaped and no scripts, `archiveJson` the same as data. Pure. |
-| `bridge.ts` | The private channel between the page-world interceptor and the content script (#59): the port handover at `document_start` and `isCapture`. Pure DOM, no `chrome.*`. |
-| `coverage.ts` | What Xomoni can see of an account (PLAYBOOK E2): the profile timeline's ~3,200-post reach and the estimate of posts X has that the inventory doesn't. Pure. |
-| `db.ts`        | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log, consent, the archive-imported marker.              |
-| `filter.ts`    | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration.               |
-| `graphql.ts`   | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts.                        |
-| `json.ts` | Safe reading of JSON Xomoni doesn't control (X's responses, archive files, runtime messages): `asObject`, `asString`, `asNumber`, `asId`, `at`. Everything is `unknown` until checked (ADR-0016). Pure. |
-| `messages.ts`  | Message types between the dashboard, the content script and the service worker.                                             |
-| `health.ts` | The account health report after a run (#25): X's signals, sample checks, X's notice, the risk level and a suggested rest, as one summary. Pure. |
-| `notify.ts`    | Desktop notifications and their ids.                                                                                        |
-| `pacing.ts` | How work is spread over time (PLAYBOOK B4, #30): work sessions with rests (`SESSION`, `sessionStart`) and varied delays with an occasional longer pause (`pacingDelay`). Only ever slower. Pure. |
-| `risk.ts` | The risk ladder (ADR-0013): risk events (silent blocks included), `assessRisk` (level, pace factor, resume lock, full stop) and duplicate filtering. Pure. |
-| `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings to the one-fifth ceilings, and custom pacing to no faster than Careful with `noFasterThan`) and action labels. |
-| `x-limits.ts`  | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule, the quota check for failed pages (`quotaHit`) and the cap ceilings. Pure. |
-| `time.ts`      | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`.                                                 |
-| `types.ts`     | The data model: items, accounts, jobs, log entries, rate-limit observations, settings.                                      |
+| `attention.ts` | Decides when only the person can continue (login, including X's `/i/jf/` flow; X check; wrong account; a pop-up Xomoni couldn't close), the text shown for it, and `restrictionNotice` for X's suspended or limited notices.                               |
+| `backup.ts`    | The archive a person downloads for a date range (Archive page): `archiveItems` picks the posts, replies and reposts in the range, `archiveHtml` writes a self-contained page with every post escaped and no scripts, `archiveJson` the same as data. Pure. |
+| `bridge.ts`    | The private channel between the page-world interceptor and the content script (#59): the port handover at `document_start` and `isCapture`. Pure DOM, no `chrome.*`.                                                                                       |
+| `coverage.ts`  | What Xomoni can see of an account (PLAYBOOK E2): the profile timeline's ~3,200-post reach and the estimate of posts X has that the inventory doesn't. Pure.                                                                                                |
+| `db.ts`        | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log, consent, the archive-imported marker.                                                                                                       |
+| `filter.ts`    | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration.                                                                                                                                              |
+| `graphql.ts`   | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts.                                                                                                                                                       |
+| `json.ts`      | Safe reading of JSON Xomoni doesn't control (X's responses, archive files, runtime messages): `asObject`, `asString`, `asNumber`, `asId`, `at`. Everything is `unknown` until checked (ADR-0016). Pure.                                                    |
+| `messages.ts`  | Message types between the dashboard, the content script and the service worker.                                                                                                                                                                            |
+| `health.ts`    | The account health report after a run (#25): X's signals, sample checks, X's notice, the risk level and a suggested rest, as one summary. Pure.                                                                                                            |
+| `notify.ts`    | Desktop notifications and their ids.                                                                                                                                                                                                                       |
+| `pacing.ts`    | How work is spread over time (PLAYBOOK B4, #30): work sessions with rests (`SESSION`, `sessionStart`) and varied delays with an occasional longer pause (`pacingDelay`). Only ever slower. Pure.                                                           |
+| `risk.ts`      | The risk ladder (ADR-0013): risk events (silent blocks included), `assessRisk` (level, pace factor, resume lock, full stop) and duplicate filtering. Pure.                                                                                                 |
+| `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings to the one-fifth ceilings, and custom pacing to no faster than Careful with `noFasterThan`) and action labels.                                                           |
+| `x-limits.ts`  | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule, the quota check for failed pages (`quotaHit`) and the cap ceilings. Pure.                                                                                 |
+| `x-operations.ts` | The names of X's GraphQL operations Xomoni reads: one list for the page-world interceptor and the content script (#61). Pure data, no imports. |
+| `time.ts`      | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`.                                                                                                                                                                                |
+| `types.ts`     | The data model: items, accounts, jobs, log entries, rate-limit observations, settings.                                                                                                                                                                     |
 
 ## Depends on
 

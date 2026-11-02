@@ -4,13 +4,13 @@
 
 ## Files
 
-| File             | Responsibility                                                                                                                                                                               |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File             | Responsibility                                                                                                                                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `interceptor.ts` | Wraps `fetch` and `XMLHttpRequest`; for the 10 watched operations, posts the URL, method, request body (from `init`, or a copy of a `Request` object's), status, `x-rate-limit-*` and `date` headers and response body over the private channel. |
 
 ## Depends on
 
-- `../shared/bridge.ts` only (`takePort`, the `Capture` type), so the code that runs inside X's page stays small. Its `WATCHED` list must be kept in sync by hand with `TIMELINE_OPS`, `MUTATION_OPS` and `PROFILE_OPS` in `../shared/graphql.ts`.
+- `../shared/bridge.ts` (`takePort`, the `Capture` type) and `../shared/x-operations.ts` (the operations it forwards, the same list the content script parses), so the code that runs inside X's page stays small.
 - Browser globals only: `window.fetch`, `XMLHttpRequest`, `document` (for the port handover) and `MessagePort`.
 
 ## Used by

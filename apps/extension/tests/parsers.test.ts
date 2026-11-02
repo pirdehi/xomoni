@@ -316,6 +316,15 @@ describe('cleanup rules', () => {
     ]);
   });
 
+  it('takes no id from digits inside a handle or other text (#61)', () => {
+    expect(parseIdList('@user12345678, https://x.com/user1234567/status/111222333444, 555666777')).toEqual([
+      '111222333444',
+      '555666777',
+    ]);
+    expect(parseIdList('order 123456789x and x123456789')).toEqual([]);
+    expect(parseIdList('https://twitter.com/me/statuses/123456789?s=20')).toEqual(['123456789']);
+  });
+
   it('estimates duration with batch breaks and daily caps', () => {
     const rule = {
       minDelay: 6,

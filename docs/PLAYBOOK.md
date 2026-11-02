@@ -307,7 +307,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - If the button, the option or Escape no longer works, the job stops as Stopped for safety **before the action**: "X changed its page". A post that can't tell (not on the page, or no longer liked) leaves the check to the next one.
 
 ### F2. X interface language · 📘 · ✅
-- **Scenario:** The Delete label is recognized in 23 languages (including Persian), and the red color of the delete option is also checked as a second method. English is still the recommendation.
+- **Scenario:** The Delete label is recognized in 22 languages, 23 spellings (including Persian), and the red color of the delete option is also checked as a second method. English is still the recommendation.
 
 ### F3. Intrusive popups · 📰 · ✅
 - **Mechanism:** A Premium offer, cookie consent, a request to turn on notifications, or "Unlock more on X" may block the click.

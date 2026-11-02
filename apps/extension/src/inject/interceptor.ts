@@ -3,6 +3,7 @@
 // so the extension can read results and rate-limit headers. It never sends,
 // alters or replays a request.
 import { type Capture, takePort } from '../shared/bridge';
+import { WATCHED_OPS } from '../shared/x-operations';
 
 (() => {
   const w = window as unknown as Record<string, unknown>;
@@ -10,18 +11,7 @@ import { type Capture, takePort } from '../shared/bridge';
   w.__xomoniNet = true;
 
   const OP = /\/i\/api\/graphql\/[^/?]+\/([A-Za-z]+)/;
-  const WATCHED = new Set([
-    'UserTweets',
-    'UserTweetsAndReplies',
-    'Likes',
-    'SearchTimeline',
-    'TweetDetail',
-    'UserByScreenName',
-    'DeleteTweet',
-    'DeleteRetweet',
-    'FavoriteTweet',
-    'UnfavoriteTweet',
-  ]);
+  const WATCHED = WATCHED_OPS;
   // X's rate-limit headers, and `date`: X's own clock, to correct the reset time for a skewed system clock (#31).
   const CAPTURED_HEADERS = ['x-rate-limit-limit', 'x-rate-limit-remaining', 'x-rate-limit-reset', 'date'];
 

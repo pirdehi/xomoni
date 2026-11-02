@@ -5,12 +5,7 @@ import { type JsonObject, asArray, asId, asNumber, asObject, asString, at } from
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
 
-/** GraphQL operations whose responses carry timeline posts for the inventory. */
-export const TIMELINE_OPS = new Set(['UserTweets', 'UserTweetsAndReplies', 'Likes', 'SearchTimeline', 'TweetDetail']);
-/** Write operations whose responses confirm an action the actor performed. */
-export const MUTATION_OPS = new Set(['DeleteTweet', 'DeleteRetweet', 'FavoriteTweet', 'UnfavoriteTweet']);
-/** Operations whose responses carry a user's profile. */
-export const PROFILE_OPS = new Set(['UserByScreenName']);
+export { MUTATION_OPS, PROFILE_OPS, TIMELINE_OPS } from './x-operations';
 
 /** A post as read from a `tweet_results.result` object, whatever timeline it came from. */
 export interface ParsedTweet {

@@ -86,7 +86,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Export the activity log | [#34](https://github.com/pirdehi/xomoni/issues/34) | [#107](https://github.com/pirdehi/xomoni/pull/107) |
 | ⬜ | Separate defaults for Premium accounts | [#33](https://github.com/pirdehi/xomoni/issues/33) | |
 | ⬜ | Learn the daily read limit per account | [#28](https://github.com/pirdehi/xomoni/issues/28) | |
-| ⬜ | Small extension fixes from the documentation pass | [#61](https://github.com/pirdehi/xomoni/issues/61) | |
+| ✅ | Small extension fixes from the documentation pass | [#61](https://github.com/pirdehi/xomoni/issues/61) | [#108](https://github.com/pirdehi/xomoni/pull/108) |
 
 ## Phase 5 · Extension: cloud sync
 

@@ -33,6 +33,8 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
   const now = useNow(1000);
   const settings = useLiveQuery(getSettings, []);
   const pace = usePace(accountId);
+  // Counts re-run every minute as well as on new rows, so actions age out of the last hour and day while idle.
+  const minute = Math.floor(now / 60_000);
   const counts = useLiveQuery(async () => {
     const since = Date.now() - DAY;
     const [rows, reads] = await Promise.all([
@@ -52,7 +54,7 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       if (r.ts > Date.now() - HOUR) u.hour++;
     }
     return out;
-  }, [accountId]);
+  }, [accountId, minute]);
   const usage = pace && counts ? { ...pace, counts } : undefined;
   const observed = useLiveQuery(
     () =>

@@ -468,6 +468,13 @@ async function waitForFresh(ctx: JobContext, key: string, since: number): Promis
 async function pageProblem(ctx: JobContext, content: ContentState, since: number): Promise<ActionResult> {
   const rateLimit = await ctx.pageRateLimit(since);
   if (rateLimit) return rateLimit;
+  // X answered with a tombstone for the post (PLAYBOOK E6): skip it, don't fail and retry.
+  if (content.unavailable)
+    return {
+      outcome: 'not_found',
+      unavailable: true,
+      message: 'The original post is unavailable on X (deleted, or its account is suspended or protected)',
+    };
   if (content.kind === 'timeout') return { outcome: 'failed', message: 'The post page did not load' };
   return { outcome: 'not_found', message: 'The post is no longer available' };
 }

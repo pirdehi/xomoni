@@ -484,6 +484,8 @@ export class JobContext {
       case 'already':
         this.consecutiveFailures = 0;
         this.job.stats.skipped++;
+        // Reported apart (PLAYBOOK E6): likes and reposts of posts X no longer shows.
+        if (result.unavailable) this.job.stats.unavailable = (this.job.stats.unavailable ?? 0) + 1;
         // An "already" unlike is a ghost like: still in X's history, just not shown.
         await markTried(outcome === 'not_found' || action !== 'unlike' ? { status: 'gone', statusAt: Date.now() } : {});
         await this.log('info', action, `Skipped${detail}`, target, outcome);

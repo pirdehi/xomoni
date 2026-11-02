@@ -8,6 +8,7 @@ import {
   extractProfile,
   extractTweets,
   parseVariables,
+  unavailableTweetIds,
 } from '../shared/graphql';
 import type { RuntimeMessage } from '../shared/messages';
 import { viewerHandle, viewerIdFromCookie } from './dom';
@@ -103,6 +104,27 @@ export function clockAhead(date: string | null | undefined, receivedAt: number):
   return Number.isFinite(xNow) ? receivedAt - xNow : 0;
 }
 
+/** Posts X answered for but won't show (PLAYBOOK E6), newest last; capped so a long session can't grow it. */
+const unavailable = new Set<string>();
+const MAX_UNAVAILABLE = 1000;
+
+function rememberUnavailable(id: string) {
+  unavailable.delete(id);
+  unavailable.add(id);
+  if (unavailable.size > MAX_UNAVAILABLE) {
+    const oldest = unavailable.values().next().value;
+    if (oldest !== undefined) unavailable.delete(oldest);
+  }
+}
+
+/**
+ * Whether X's own responses in this tab said post `id` is unavailable: deleted, or from a suspended or protected
+ * account (a tombstone instead of the post).
+ */
+export function isUnavailable(id: string): boolean {
+  return unavailable.has(id);
+}
+
 /**
  * Handles one capture posted by `inject/interceptor.ts`. It resolves matching `waitForNet` waiters
  * (mutations only), then, if a user is signed in, reports rate-limit headers and forwards the
@@ -132,7 +154,10 @@ export function handleCapture(raw: {
     at: Date.now(),
   };
 
-  if (TIMELINE_OPS.has(ev.op)) timelineStatus = ev.status;
+  if (TIMELINE_OPS.has(ev.op)) {
+    timelineStatus = ev.status;
+    if (ev.status < 400) for (const id of unavailableTweetIds(json)) rememberUnavailable(id);
+  }
   if (MUTATION_OPS.has(ev.op)) {
     for (const w of [...waiters]) if (w.ops.includes(ev.op) && w.match(ev.variables)) w.resolve(ev);
   }

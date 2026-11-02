@@ -82,7 +82,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Correct for system clock skew | [#31](https://github.com/pirdehi/xomoni/issues/31) | [#96](https://github.com/pirdehi/xomoni/pull/96) |
 | ✅ | Archive a date range | [#97](https://github.com/pirdehi/xomoni/issues/97) | [#98](https://github.com/pirdehi/xomoni/pull/98) |
 | 🔄 | Pilot on the maintainer's own account | [#27](https://github.com/pirdehi/xomoni/issues/27) | |
-| ⬜ | Count unavailable originals as skipped | [#32](https://github.com/pirdehi/xomoni/issues/32) | |
+| ✅ | Count unavailable originals as skipped | [#32](https://github.com/pirdehi/xomoni/issues/32) | [#109](https://github.com/pirdehi/xomoni/pull/109) |
 | ✅ | Export the activity log | [#34](https://github.com/pirdehi/xomoni/issues/34) | [#107](https://github.com/pirdehi/xomoni/pull/107) |
 | ⬜ | Separate defaults for Premium accounts | [#33](https://github.com/pirdehi/xomoni/issues/33) | |
 | ⬜ | Learn the daily read limit per account | [#28](https://github.com/pirdehi/xomoni/issues/28) | |

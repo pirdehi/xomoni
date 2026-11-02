@@ -150,6 +150,8 @@ export interface JobStats {
   done: number;
   /** Items X reported as missing or already undone. */
   skipped: number;
+  /** Of `skipped`: reposts and likes of posts X no longer shows (PLAYBOOK E6). Missing on older jobs. */
+  unavailable?: number;
   /** Actions that failed; the item stays `present` for a later job. */
   failed: number;
   /** Posts looked at on X pages during scans and sweeps. */

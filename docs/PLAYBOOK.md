@@ -59,7 +59,7 @@
 | E3 | Incomplete or delayed search index | 📘 | ✅ |
 | E4 | Likes timeline depth and "ghost" likes | 📰 | ✅ |
 | E5 | Temporary display of deleted content | 🧠 | ✅ |
-| E6 | Original post unavailable (repost or like) | 🧠 | 🟡 |
+| E6 | Original post unavailable (repost or like) | 🧠 | ✅ |
 | E7 | Edited posts (multiple IDs) | 📘 | ✅ |
 | E8 | Archive retrieval limits | 📘 | ✅ |
 | F1 | DOM changes and A/B tests | 🧠 | ✅ |
@@ -280,10 +280,10 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - A "not found" response (code 144) moves the item to the `gone` status and does not count as a failure.
   - A deleted post counts as "present" again only if it is seen on X again more than 5 seconds after the deletion.
 
-### E6. Original post unavailable · 🧠 · 🟡
+### E6. Original post unavailable · 🧠 · ✅
 - **Mechanism:** Sometimes a repost or like belongs to a post whose account is suspended, private or deleted. In that case the undo or unlike button may not be shown at all.
-- **Current problem:** Such an item counts as Failed. 5 in a row means a stop for no reason.
-- **Proposed scenario:** Record these items as Skipped ("unavailable on X"), not Failed, and count them separately in the report.
+- **Before (#32):** Such an item counted as Failed, so a few in a row stopped the job for no reason.
+- **Scenario:** X's own responses in the tab say which posts it won't show: a `TweetTombstone` or `TweetUnavailable` result instead of the post (`unavailableTweetIds` in `shared/graphql.ts`, remembered by `content/net.ts`). An unlike or undo-repost of such a post, or its post page, is recorded as Skipped ("unavailable on X"), never Failed, and never counts toward the failures-in-a-row stop. The job counts them apart (`stats.unavailable`) and the job card shows the number. A post that is on the page without its buttons, and that X did not mark unavailable, still fails, since that can mean X changed its page.
 
 ### E7. Edited posts · 📘 · ✅
 - **Scenario:** Deleting the latest version deletes the whole post. Older IDs in the archive get "not found" and are skipped.

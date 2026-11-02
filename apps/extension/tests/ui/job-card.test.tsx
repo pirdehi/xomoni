@@ -261,6 +261,13 @@ describe('JobCard', () => {
       expect(progressBar(container)).toHaveStyle({ width: '50%' });
     });
 
+    it('says how many of the skipped items X no longer shows (PLAYBOOK E6, #32)', async () => {
+      await show(
+        job({ state: 'paused', stats: { matched: 10, done: 4, skipped: 3, failed: 0, scanned: 0, unavailable: 2 } }),
+      );
+      expect(await screen.findByText(/3 skipped/)).toHaveTextContent('3 skipped (2 unavailable on X)');
+    });
+
     it('estimates likes with the ghost-like pacing when that option is on', async () => {
       await show(
         job({

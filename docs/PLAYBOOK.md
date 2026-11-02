@@ -32,7 +32,7 @@
 | A3 | Daily action caps (185, 344, likes) | 📘📰 | ✅ |
 | A4 | "Posts read per day" cap | 📰 | 🟡 |
 | A5 | Search and post-page quota | 📰 | ✅ |
-| A6 | Different caps for Premium accounts | 📘📰 | 🟡 |
+| A6 | Different caps for Premium accounts | 📘📰 | ✅ |
 | B1 | Error 226 ("automated behavior") | 📰 | ✅ |
 | B2 | Signed `x-client-transaction-id` header | 📰 | ✅ |
 | B3 | Synthetic click detection (`isTrusted`) | 🧠 | ⚠️ |
@@ -111,8 +111,8 @@
   - The risk ladder is stricter still: a second rate limit within an hour stops the job (§7).
   - A page that fails for another reason is tried again after 1–2 minutes. Only after 3 failed loads does Xomoni continue with the inventory (deep clean).
 
-### A6. Different Premium caps · 📘📰 · 🟡
-- **Proposed scenario:** Xomoni detects the account type from the profile response (`is_blue_verified`). Defaults always stay conservative. For an unverified account, a lower read cap is suggested. For Premium, Balanced mode is only **allowed**.
+### A6. Different Premium caps · 📘📰 · ✅
+- **Scenario (#33):** Xomoni reads the account type from the profile response (`is_blue_verified`) and stores it with the account. Careful stays the default for everyone, and nothing gets faster for Premium: under ADR-0012 there is no Balanced mode. An account not known to be Premium loads pages at **half** the read ceiling (`readFactor` in `shared/x-limits.ts`), since X's 2023 view caps gave unverified accounts a tenth of Premium's. The limits panel says so.
 
 ---
 

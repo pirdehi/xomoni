@@ -73,7 +73,8 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
         settings
           ? `Preset: ${settings.preset.charAt(0).toUpperCase()}${settings.preset.slice(1)} · at most ⅕ of X's limits` +
             (usage && usage.step.factor < 1 ? ` · warm-up day ${usage.step.day} of ${usage.step.days}` : '') +
-            (usage && usage.factor < 1 ? ` · running at ${Math.round(usage.factor * 100)}% of that` : '')
+            (usage && usage.factor < 1 ? ` · running at ${Math.round(usage.factor * 100)}% of that` : '') +
+            (usage && usage.reads < 1 ? ' · page loads at half: the account is not known to be Premium' : '')
           : undefined
       }
     >
@@ -107,7 +108,8 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
           const u = usage?.counts[action] ?? { hour: 0, day: 0 };
           if (!stored) return null;
           // The caps in force now: smaller during warm-up and on the risk ladder, never above one fifth.
-          const rule = scaleRule(stored, usage?.factor ?? 1);
+          const factor = (usage?.factor ?? 1) * (action === 'read' ? (usage?.reads ?? 1) : 1);
+          const rule = scaleRule(stored, factor);
           return (
             <div key={action}>
               <div className="mb-1.5 flex items-baseline justify-between text-xs">

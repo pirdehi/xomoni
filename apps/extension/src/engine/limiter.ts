@@ -14,6 +14,7 @@ import {
   allowances,
   earlierActiveDays,
   liveSlot,
+  readFactor,
   nextSlot,
   scaleAllowances,
   scaleRule,
@@ -45,6 +46,8 @@ export class Limiter {
   private riskState: RiskAssessment = assessRisk([], 0);
   /** Warm-up factor times the risk ladder's factor: at most 1, so never faster than one fifth. */
   private factor = this.step.factor;
+  /** Share of the read caps for this account: half until X shows it is Premium (PLAYBOOK A6, #33). */
+  private reads = readFactor(null);
   /** The current work session (PLAYBOOK B4): when it started and how long it may run before a rest. */
   private sessionStartedAt = Date.now();
   private sessionLength = randomBetween(SESSION.minMs, SESSION.maxMs);
@@ -66,14 +69,16 @@ export class Limiter {
   async init() {
     const now = Date.now();
     const since = now - DAY;
-    const [logs, reads, risk] = await Promise.all([
+    const [logs, reads, risk, account] = await Promise.all([
       db.logs
         .where('[accountId+ts]')
         .between([this.accountId, now - WARMUP_RESET_DAYS * DAY], [this.accountId, Infinity])
         .toArray(),
       db.reads.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray(),
       riskEvents(this.accountId),
+      db.accounts.get(this.accountId),
     ]);
+    this.reads = readFactor(account?.verified);
     const acted: number[] = [];
     const requests: number[] = [];
     for (const row of logs) {
@@ -112,6 +117,11 @@ export class Limiter {
   /** The share of the one-fifth allowances this run may use: warm-up times the risk ladder, at most 1. */
   get paceFactor() {
     return this.factor;
+  }
+
+  /** Share of the read caps this run uses: 1 for a Premium account, half otherwise (PLAYBOOK A6, #33). */
+  get readShare() {
+    return this.reads;
   }
 
   /** Current slowdown factor: 1 is normal, up to 6 after errors. */
@@ -180,8 +190,9 @@ export class Limiter {
    */
   async before(action: ActionKind, readBudget?: BudgetId) {
     // During warm-up the caps shrink and the delays grow; never the other way.
-    const rule = scaleRule(this.settings.pacing[action], this.factor);
+    const rule = scaleRule(this.settings.pacing[action], action === 'read' ? this.factor * this.reads : this.factor);
     const notes = [
+      action === 'read' && this.reads < 1 ? 'page loads at half: the account is not known to be Premium' : '',
       this.step.factor < 1 ? `warm-up day ${this.step.day} of ${this.step.days}` : '',
       this.riskState.capFactor < 1 ? `risk level ${this.riskState.level} (${RISK_LABELS[this.riskState.level]})` : '',
     ].filter(Boolean);

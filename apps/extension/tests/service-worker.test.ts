@@ -267,6 +267,7 @@ describe('service worker: observations from x.com tabs', () => {
           followers: 3,
           following: 4,
           createdAt: Date.UTC(2015, 0, 1),
+          verified: null,
         },
       },
       FROM_TAB,

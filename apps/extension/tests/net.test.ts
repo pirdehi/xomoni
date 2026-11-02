@@ -366,6 +366,7 @@ describe('send', () => {
       followers: null,
       following: null,
       createdAt: null,
+      verified: null,
     },
   };
 

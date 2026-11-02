@@ -40,6 +40,8 @@ export interface ParsedProfile {
   followers: number | null;
   following: number | null;
   createdAt: number | null;
+  /** Whether X shows the account as Premium (`is_blue_verified`); null when the response doesn't say. */
+  verified: boolean | null;
 }
 
 /** One entry of a GraphQL response's `errors` array. */
@@ -168,6 +170,7 @@ export function extractProfile(json: unknown): ParsedProfile | null {
     followers: asNumber(legacy.followers_count) ?? null,
     following: asNumber(legacy.friends_count) ?? null,
     createdAt: parseTwitterDate(at(u, 'core', 'created_at') ?? legacy.created_at),
+    verified: typeof u.is_blue_verified === 'boolean' ? u.is_blue_verified : null,
   };
 }
 

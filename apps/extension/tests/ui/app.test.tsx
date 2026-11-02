@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createScanJob } from '../../src/engine/runner';
 import { runner } from '../../src/engine/platform';
+import { needMessage } from '../../src/shared/attention';
 import { db, upsertAccount } from '../../src/shared/db';
 import type { PageInfo } from '../../src/shared/messages';
 import { App } from '../../src/ui/App';
@@ -240,6 +241,26 @@ describe('App job banner', () => {
     act(() => fake.set({ status: 'running', message: 'Continuing…', need: null }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(document.title).toBe('Xomoni');
+  });
+
+  it('asks for the X window on screen when Chrome has paused it (#118)', async () => {
+    const job = await createScanJob(ME, 'Scan: likes', 'likes');
+    const fake = fakeRunner({ status: 'running', jobId: job.id });
+    openWorker(chrome, pageInfo({ hidden: true }));
+    render(<App />);
+    await screen.findByText('Scan: likes');
+
+    act(() => fake.set({ status: 'attention', message: needMessage('hidden', 'me'), need: 'hidden' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Xomoni needs its X window on screen to continue “Scan: likes”');
+    expect(alert).not.toHaveTextContent('X needs you');
+    expect(alert).toHaveTextContent(/Chrome pauses pages it doesn’t show/);
+    expect(within(sidebar()).getByText('Keep the X worker visible')).toBeInTheDocument();
+
+    await userEvent.click(within(alert).getByRole('button', { name: 'Open X window' }));
+    await waitFor(() => {
+      expect(chrome.tabs.update).toHaveBeenCalledWith(WORKER_TAB.id, { active: true });
+    });
   });
 
   it('shows a toast when the worker window cannot be brought up', async () => {

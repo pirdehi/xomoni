@@ -285,14 +285,17 @@ export class JobContext {
    * worker window. Pauses the job if that takes longer than an hour.
    */
   async waitForYou(request: NeedsYou) {
-    const progress = this.progress();
-    this.repeatNeeds = progress === this.progressAtLastNeed ? this.repeatNeeds + 1 : 1;
-    this.progressAtLastNeed = progress;
-    if (this.repeatNeeds > MAX_REPEAT_NEEDS) {
-      throw new Stop(
-        'blocked',
-        `X keeps asking for the same thing: ${request.message} Check the Xomoni window, then resume.`,
-      );
+    // A window covered again and again is not X asking again; each wait still ends after an hour.
+    if (request.need !== 'hidden') {
+      const progress = this.progress();
+      this.repeatNeeds = progress === this.progressAtLastNeed ? this.repeatNeeds + 1 : 1;
+      this.progressAtLastNeed = progress;
+      if (this.repeatNeeds > MAX_REPEAT_NEEDS) {
+        throw new Stop(
+          'blocked',
+          `X keeps asking for the same thing: ${request.message} Check the Xomoni window, then resume.`,
+        );
+      }
     }
 
     this.job.state = 'waiting';
@@ -580,6 +583,17 @@ export class JobContext {
           // Logged with its outcome so later runs count the request against X's quota; the post is not failed.
           await this.log('warn', action, `${message} — not counted as failed`, target, outcome);
           throw new Interrupted(kind, message);
+        }
+        // In a hidden window X's menus don't finish opening or closing: that is Chrome, not the post (#118).
+        if ((await this.xTab.ping())?.hidden) {
+          await this.log(
+            'warn',
+            action,
+            `Not counted as failed: the Xomoni window was hidden${detail}`,
+            target,
+            outcome,
+          );
+          throw new NeedsYou('hidden', needMessage('hidden', this.handle));
         }
         this.consecutiveFailures++;
         this.job.stats.failed++;

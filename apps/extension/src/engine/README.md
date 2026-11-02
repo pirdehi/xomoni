@@ -49,5 +49,5 @@ The headless engine that runs cleanup and scan jobs. It runs in the dashboard pa
   - E4: ghost likes (`relike`) only in the deep clean, and only when the option is on.
   - E5: `not_found` marks the item `gone` and does not count as a failure.
   - F1 (partial): the job pauses after `maxConsecutiveFailures` failures in a row.
-  - F5 (partial): timers run in a Web Worker.
+  - F5: timers run in a Web Worker. A hidden worker window is a `NeedsYou('hidden')` before every page load and action; a failed check before acting or a failed action while it is hidden waits for the person instead of stopping the job or counting a failure, and repeated hiding doesn't count toward `MAX_REPEAT_NEEDS` (#118).
   - F8: the `xomoni-runner` Web Lock lets only one dashboard tab run a job.

@@ -324,6 +324,10 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - Every run calls `chrome.tabs.update(workerTab, { autoDiscardable: false })`, so Memory Saver leaves the X tab alone.
   - If Chrome unloads the tab anyway, Xomoni reloads it at once and continues, without counting a failure.
   - A worker page that stops answering, or takes more than 45 seconds to load, is waited out like an X outage (F6) instead of failing the job (#60).
+- **Hidden window (implemented, #118):** Chrome doesn't run a hidden page's animations or rendering steps, so X's menus don't finish opening or closing and its timeline stops loading. macOS counts a window as hidden when it is minimized, completely covered by other windows (a maximized editor is enough), on another desktop, or behind a locked or sleeping screen. The pilot's first cleanup stopped as "X changed its page: Escape no longer closes X's menu" for this reason alone.
+  - Before every page load and action, a hidden worker is a "Needs you" (`hidden`): "Keep part of it on screen". The job continues by itself once the window has been on screen for 5 seconds, and pauses after an hour.
+  - A check before acting (F1) that fails while the window is hidden waits for the person instead of stopping the job, and an action that fails while it is hidden is not counted as failed.
+  - Covering the window again and again never counts as X asking for the same thing (D1).
 
 ### F6. Internet outage, system sleep, X outage · 🧠 · ✅
 - **Scenario (implemented, #23):** none of these says anything about the posts, so nothing is counted as failed and the post stays eligible.

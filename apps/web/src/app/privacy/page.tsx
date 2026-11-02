@@ -79,11 +79,13 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Connected browsers:</strong> a name such as “Chrome on macOS”, the extension version and when it last
-          checked in.
+          checked in. You connect a browser by typing a one-time code from your dashboard into the extension; we keep
+          the code and the browser’s key only as one-way hashes, and the key can only report job status.
         </li>
         <li>
-          <strong>Job summaries:</strong> the job’s title (for example “Delete posts before Jan 2024”), its type and
-          state, counts (matched, deleted, skipped, failed, scanned), timestamps, and the X handle the job ran on.
+          <strong>Job summaries:</strong> the job’s title (for example “Delete posts before Jan 2024”), its type, state
+          and phase, counts (matched, deleted, skipped, failed, scanned), timestamps, the X handle the job ran on, and
+          the account’s risk level (a number from 0 to 4). Never the text of a post or a message from X.
         </li>
       </ul>
       <p>

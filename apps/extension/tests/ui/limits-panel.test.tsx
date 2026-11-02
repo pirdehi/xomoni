@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db, kvSet, upsertAccount } from '../../src/shared/db';
+import { db, kvSet, setViewCap, upsertAccount } from '../../src/shared/db';
 import type { RiskEventKind } from '../../src/shared/risk';
 import { ACTION_LABELS, PRESETS } from '../../src/shared/settings';
 import { DAY, HOUR, MINUTE } from '../../src/shared/time';
@@ -156,6 +156,24 @@ describe('LimitsPanel', () => {
     const full = caps('read', 1);
     await waitFor(async () => expect(await usage('read')).toBe(`0/${full.hour} hr · 0/${full.day} day`));
     expect(screen.queryByText(/page loads at half/)).not.toBeInTheDocument();
+  });
+
+  it('shows the posts seen today and the view cap learned from X (#28, PLAYBOOK A4)', async () => {
+    await finishWarmup();
+    await db.reads.bulkAdd([
+      { accountId: ME, budget: 'userTimeline', ts: NOW - HOUR, posts: 120 },
+      { accountId: ME, budget: 'userTimeline', ts: NOW - 2 * HOUR, posts: 30 },
+      { accountId: ME, budget: 'userTimeline', ts: NOW - 2 * DAY, posts: 999 },
+    ]);
+    render(<LimitsPanel accountId={ME} />);
+    expect(await screen.findByText('150 posts seen in the last 24 hours')).toBeInTheDocument();
+
+    await setViewCap(ME, { cap: 400, seen: 500, learnedAt: NOW - HOUR });
+    expect(
+      await screen.findByText(
+        '150 posts seen in the last 24 hours · stops at 400 a day: the view cap learned when X refused pages after 500',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('names a custom preset', async () => {

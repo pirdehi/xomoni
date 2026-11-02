@@ -1,7 +1,7 @@
 // Paces actions and keeps them inside every known limit, at one fifth of every limit X announces
 // (ADR-0012): varied delays, batch breaks, work sessions with rests, rolling hourly/daily caps, X's published
 // limits and the live limits in its rate-limit headers, active hours, and an adaptive slowdown after soft errors.
-import { db, riskEvents } from '../shared/db';
+import { db, getViewCap, riskEvents, setViewCap } from '../shared/db';
 import { SESSION, pacingDelay, sessionStart } from '../shared/pacing';
 import { RISK_LABELS, type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY, HOUR } from '../shared/time';
@@ -14,11 +14,14 @@ import {
   allowances,
   earlierActiveDays,
   liveSlot,
+  type ViewCap,
+  learnViewCap,
   readFactor,
   nextSlot,
   scaleAllowances,
   scaleRule,
   spendsQuota,
+  viewCapFreeAt,
   warmup,
 } from '../shared/x-limits';
 import { randomBetween, sleep } from './timers';
@@ -53,6 +56,12 @@ export class Limiter {
   private sessionLength = randomBetween(SESSION.minMs, SESSION.maxMs);
   /** The last request that reached X, from this run or the history `init` reads; 0 if none is known. */
   private lastRequestAt = 0;
+  /** Posts each page load and scroll of the last 24 h showed (PLAYBOOK A4, #28). */
+  private seenRows: { ts: number; posts: number }[] = [];
+  /** The daily view cap learned for this account, if any. */
+  private viewCap: ViewCap | null = null;
+  /** The stored row of the latest page load or scroll, to add the posts it showed once they are known. */
+  private latestRead: Promise<number> | null = null;
 
   constructor(
     private settings: Settings,
@@ -69,7 +78,7 @@ export class Limiter {
   async init() {
     const now = Date.now();
     const since = now - DAY;
-    const [logs, reads, risk, account] = await Promise.all([
+    const [logs, reads, risk, account, viewCap] = await Promise.all([
       db.logs
         .where('[accountId+ts]')
         .between([this.accountId, now - WARMUP_RESET_DAYS * DAY], [this.accountId, Infinity])
@@ -77,7 +86,9 @@ export class Limiter {
       db.reads.where('[accountId+ts]').between([this.accountId, since], [this.accountId, Infinity]).toArray(),
       riskEvents(this.accountId),
       db.accounts.get(this.accountId),
+      getViewCap(this.accountId),
     ]);
+    this.viewCap = viewCap;
     this.reads = readFactor(account?.verified);
     const acted: number[] = [];
     const requests: number[] = [];
@@ -94,6 +105,7 @@ export class Limiter {
     this.step = warmup(earlierActiveDays(acted, now), this.riskState.warmupDrop);
     this.factor = Math.min(1, this.step.factor * this.riskState.capFactor);
     for (const row of reads) {
+      this.seenRows.push({ ts: row.ts, posts: row.posts ?? 0 });
       this.stamps('read').push(row.ts);
       requests.push(row.ts);
       if (row.budget in BUDGETS) this.uses(row.budget as BudgetId).push(row.ts);
@@ -221,6 +233,17 @@ export class Limiter {
       );
     }
 
+    if (action === 'read' && this.viewCap) {
+      // The daily view cap learned from X for this account (PLAYBOOK A4): wait until the day's posts age out.
+      const free = viewCapFreeAt(this.seenRows, this.viewCap.cap, Date.now());
+      if (free > Date.now()) {
+        await this.wait(
+          free + randomBetween(60_000, 300_000),
+          `Daily view cap learned from X: ${this.viewCap.cap.toLocaleString()} posts a day for this account`,
+        );
+      }
+    }
+
     for (const id of budgetsOf(action, readBudget)) {
       // One fifth of every window X publishes for this kind of request.
       const uses = this.uses(id);
@@ -283,13 +306,47 @@ export class Limiter {
       this.stamps(action).push(now);
       this.sinceBreak.set(action, (this.sinceBreak.get(action) ?? 0) + 1);
       if (action === 'read') {
-        void db.reads.add({ accountId: this.accountId, budget: readBudget ?? 'userTimeline', ts: now });
+        this.latestRead = db.reads.add({ accountId: this.accountId, budget: readBudget ?? 'userTimeline', ts: now });
+        this.seenRows.push({ ts: now, posts: 0 });
       } else {
         this.penalty = Math.max(1, this.penalty * 0.95);
       }
     } else if (outcome === 'rate_limited' || outcome === 'failed') {
       this.penalty = Math.min(6, this.penalty * 1.6);
     }
+  }
+
+  /** Records how many posts the latest page load or scroll showed, for the daily view cap (PLAYBOOK A4). */
+  seen(posts: number) {
+    const latest = this.seenRows.at(-1);
+    if (!latest || posts <= 0) return;
+    latest.posts += posts;
+    const total = latest.posts;
+    void this.latestRead?.then((seq) => db.reads.update(seq, { posts: total }));
+  }
+
+  /** Posts the page loads and scrolls of the last 24 h showed, this run and earlier ones. */
+  get postsSeen() {
+    const since = Date.now() - DAY;
+    return this.seenRows.reduce((sum, s) => (s.ts > since ? sum + s.posts : sum), 0);
+  }
+
+  /** The daily view cap in force for this account, or null. */
+  get learnedViewCap() {
+    return this.viewCap;
+  }
+
+  /**
+   * Called when X refused a page without explaining it by its 15-minute window (PLAYBOOK A4): takes it as X's
+   * daily view cap and stops at 80% of the posts seen in the last 24 h from now on. Returns the new cap, or null
+   * when too few posts were seen to tell or the cap already was lower. It only ever lowers the pace.
+   */
+  async learnViewCap(): Promise<ViewCap | null> {
+    const learned = learnViewCap(this.postsSeen, this.viewCap, Date.now());
+    if (!learned) return null;
+    this.viewCap = learned;
+    await setViewCap(this.accountId, learned);
+    return learned;
   }
 
   /** Waits until `until` (epoch ms), showing `reason`. Used for X's rate-limit resets and after X's checks. */

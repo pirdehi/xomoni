@@ -7,7 +7,7 @@ import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from
 import { DEFAULT_SETTINGS } from '../shared/settings';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } from '../shared/types';
-import { BUDGETS, type BudgetId, quotaHit, readBudgetFor } from '../shared/x-limits';
+import { BUDGETS, type BudgetId, quotaHit, readBudgetFor, unexplainedRefusal } from '../shared/x-limits';
 import { Limiter } from './limiter';
 import { Aborted, randomBetween, sleep } from './timers';
 import { NotReady, WorkerGone, workerTab } from './worker-tab';
@@ -413,6 +413,7 @@ export class JobContext {
     info = await this.clearAndAssert(info);
     try {
       const content = await workerTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
+      this.limiter.seen(content.count);
       if (content.kind !== 'tweets') {
         // No posts can mean X moved the page to its login or a check…
         await this.verifyPage();
@@ -441,6 +442,16 @@ export class JobContext {
       for (const op of budget.ops) {
         const obs = await db.limits.get(`${this.job.accountId}:${op}`);
         if (quotaHit(obs, since)) {
+          // A refusal X's 15-minute window doesn't explain looks like its daily view cap (PLAYBOOK A4).
+          const learned = unexplainedRefusal(obs) ? await this.limiter.learnViewCap() : null;
+          if (learned) {
+            await this.log(
+              'warn',
+              'read',
+              `X refused a page after ${learned.seen.toLocaleString()} posts seen in 24 hours without saying why. ` +
+                `Taken as X’s daily view cap: Xomoni now stops at ${learned.cap.toLocaleString()} posts a day for this account.`,
+            );
+          }
           return { outcome: 'rate_limited', resetAt: obs.reset, message: `${budget.label}: X’s rate limit reached` };
         }
       }
@@ -455,6 +466,7 @@ export class JobContext {
     await this.limiter.before('read', this.readBudget);
     const result = await workerTab.send({ cmd: 'scroll' });
     this.limiter.after('read', 'done', this.readBudget);
+    this.limiter.seen(result.added);
     return result;
   }
 

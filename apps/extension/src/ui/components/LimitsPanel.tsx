@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Gauge } from 'lucide-react';
-import { db, getSettings } from '../../shared/db';
+import { db, getSettings, getViewCap } from '../../shared/db';
 import { RISK_LABELS } from '../../shared/risk';
 import { ACTION_LABELS } from '../../shared/settings';
 import { DAY, HOUR } from '../../shared/time';
@@ -42,10 +42,12 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       db.reads.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray(),
     ]);
     const out: Partial<Record<string, { hour: number; day: number }>> = {};
+    let postsSeen = 0;
     for (const r of reads) {
       const u = (out.read ??= { hour: 0, day: 0 });
       u.day++;
       if (r.ts > Date.now() - HOUR) u.hour++;
+      postsSeen += r.posts ?? 0;
     }
     for (const r of rows) {
       if (r.outcome !== 'done' || r.action === 'read') continue;
@@ -53,9 +55,10 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       u.day++;
       if (r.ts > Date.now() - HOUR) u.hour++;
     }
-    return out;
+    return { byAction: out, postsSeen };
   }, [accountId, minute]);
-  const usage = pace && counts ? { ...pace, counts } : undefined;
+  const viewCap = useLiveQuery(() => getViewCap(accountId), [accountId]);
+  const usage = pace && counts ? { ...pace, counts: counts.byAction } : undefined;
   const observed = useLiveQuery(
     () =>
       db.limits
@@ -119,6 +122,13 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
                 </span>
               </div>
               <Meter value={u.day} max={rule.dailyCap} label={`${ACTION_LABELS[action]} today`} />
+              {action === 'read' && (
+                <p className="mt-1 text-[11px] text-muted">
+                  {fmtNumber(counts?.postsSeen ?? 0)} posts seen in the last 24 hours
+                  {viewCap &&
+                    ` · stops at ${fmtNumber(viewCap.cap)} a day: the view cap learned when X refused pages after ${fmtNumber(viewCap.seen)}`}
+                </p>
+              )}
             </div>
           );
         })}

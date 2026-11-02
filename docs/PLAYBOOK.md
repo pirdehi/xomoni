@@ -30,7 +30,7 @@
 | A1 | Per-endpoint 15-minute quota | 📘 | ✅ |
 | A2 | Error 429 / code 88 | 📘 | ✅ |
 | A3 | Daily action caps (185, 344, likes) | 📘📰 | ✅ |
-| A4 | "Posts read per day" cap | 📰 | 🟡 |
+| A4 | "Posts read per day" cap | 📰 | ✅ |
 | A5 | Search and post-page quota | 📰 | ✅ |
 | A6 | Different caps for Premium accounts | 📘📰 | ✅ |
 | B1 | Error 226 ("automated behavior") | 📰 | ✅ |
@@ -95,14 +95,13 @@
   - Xomoni's caps are one fifth of X's published limits: 10 deletions, undone reposts or unlikes per 15 minutes; 200 unlikes per day (shared with ghost-like cleanup); 960 deletions per day at most.
   - Xomoni never creates posts or replies. The only possible "creation" is the temporary like in the Ghost likes option, which has a separate cap of 200 per day.
 
-### A4. "Posts read per day" cap · 📰 · 🟡
+### A4. "Posts read per day" cap · 📰 · ✅
 - **X mechanism:** In July 2023 these caps were announced: about 1,000 posts per day for an unverified account, about 500 for a new account, and about 10,000 for Premium. Whether they still apply in 2026 is **unknown**. The error message is "Rate limit exceeded".
-- **Current status:** Xomoni only counts page loads (Careful: 400 per hour and 4,000 per day). It does not count the posts seen.
-- **Proposed scenario (adaptive learning):**
-  1. Count "posts rendered in the last 24 hours".
-  2. If a 429 error arrives on a read operation and the headers do not explain it, Xomoni assumes it is the "daily view cap". It records the current count V and sets its daily read cap to 0.8×V.
-  3. Wait until the 24-hour window clears.
-  4. The learned cap is stored for that account.
+- **Scenario (adaptive learning, #28):**
+  1. Every page load and scroll stores how many posts it showed (`reads.posts`), so Xomoni knows the posts seen in the last 24 hours across runs.
+  2. When X refuses a page with a 429 that names no reset time and doesn't say its 15-minute window is used up (`unexplainedRefusal`), Xomoni takes it as the daily view cap: with V posts seen in 24 hours (at least 100), it stops at 0.8×V posts a day for that account (`learnViewCap`). A cap is only ever lowered.
+  3. Page loads then wait until enough of the day's oldest pages age out (`viewCapFreeAt`).
+  4. The cap is stored per account (`viewCap:<account>` in `kv`), logged as a warning, and shown on the limits panel with the posts seen today.
 
 ### A5. Search and post-page quota · 📰 · ✅
 - **X mechanism:** Search and the post page have separate quotas. The search quota is low, on the order of a few dozen requests per 15 minutes.

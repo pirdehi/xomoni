@@ -314,3 +314,58 @@ export function scaleRule(rule: PacingRule, factor: number): PacingRule {
     dailyCap: Math.max(1, Math.floor(rule.dailyCap * f)),
   };
 }
+
+/** The share of the posts seen in a day that a learned view cap keeps (PLAYBOOK A4, #28). */
+export const VIEW_CAP_SHARE = 0.8;
+
+/** Fewer posts seen than this when X refuses a page says nothing about a daily view cap. */
+export const VIEW_CAP_MIN_SEEN = 100;
+
+/**
+ * A daily view cap Xomoni learned for an account (PLAYBOOK A4): X refused a page after `seen` posts in 24 hours
+ * without saying why, so Xomoni stops at `cap` posts a day for that account from then on.
+ */
+export interface ViewCap {
+  cap: number;
+  seen: number;
+  /** Epoch ms. */
+  learnedAt: number;
+}
+
+/**
+ * Whether X refused a read without explaining it by its 15-minute window: a 429 that names no reset time and
+ * doesn't say the window is used up. That is what X's daily view cap looks like (PLAYBOOK A4).
+ */
+export function unexplainedRefusal(obs: {
+  status: number | null;
+  remaining: number | null;
+  reset: number | null;
+}): boolean {
+  return obs.status === 429 && obs.remaining !== 0 && obs.reset == null;
+}
+
+/**
+ * The view cap to learn after X refused a page with `seen` posts seen in 24 hours: 80% of them, never above a cap
+ * learned before. Null when too few posts were seen to tell, or when it would not lower the earlier cap.
+ */
+export function learnViewCap(seen: number, earlier: ViewCap | null, now: number): ViewCap | null {
+  if (seen < VIEW_CAP_MIN_SEEN) return null;
+  const cap = Math.floor(seen * VIEW_CAP_SHARE);
+  if (earlier && earlier.cap <= cap) return null;
+  return { cap, seen, learnedAt: now };
+}
+
+/**
+ * When the posts seen in the last 24 hours fall below `cap` (epoch ms): `now` when they already are, else the
+ * moment enough of the oldest pages age out of the day.
+ */
+export function viewCapFreeAt(seen: readonly { ts: number; posts: number }[], cap: number, now: number): number {
+  const recent = seen.filter((s) => s.ts > now - DAY).sort((a, b) => a.ts - b.ts);
+  let total = recent.reduce((sum, s) => sum + s.posts, 0);
+  if (total < cap) return now;
+  for (const s of recent) {
+    total -= s.posts;
+    if (total < cap) return s.ts + DAY;
+  }
+  return now;
+}

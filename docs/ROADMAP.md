@@ -10,7 +10,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
-**Current focus:** Phase 7 (market readiness), then the rest of Phase 4, Phase 5 and Phase 6.
+**Current focus:** Phase 6, the first release (v0.2.0, waiting for the maintainer's go) and then the install page; Phase 4, the pilot on the maintainer's account. Phases 5 and 7 are done.
 **Last updated:** 2026-11-02
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
@@ -88,7 +88,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Learn the daily read limit per account | [#28](https://github.com/pirdehi/xomoni/issues/28) | [#111](https://github.com/pirdehi/xomoni/pull/111) |
 | ✅ | Small extension fixes from the documentation pass | [#61](https://github.com/pirdehi/xomoni/issues/61) | [#108](https://github.com/pirdehi/xomoni/pull/108) |
 
-## Phase 5 · Extension: cloud sync
+## Phase 5 · Extension: cloud sync ✅
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
@@ -104,7 +104,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ⬜ | Real install link on xomoni.com | [#44](https://github.com/pirdehi/xomoni/issues/44) | |
 | ⏸ | Chrome Web Store listing (put off by the maintainer for now) | [#43](https://github.com/pirdehi/xomoni/issues/43) | |
 
-## Phase 7 · Market readiness
+## Phase 7 · Market readiness ✅
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |

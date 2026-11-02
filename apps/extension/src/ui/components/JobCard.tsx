@@ -7,8 +7,8 @@ import { db, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration } from '../../shared/filter';
 import type { JobHealth } from '../../shared/health';
 import type { Job } from '../../shared/types';
-import { JOB_STATE, fmtAgo, fmtDuration, fmtNumber } from '../format';
-import { resumeAnyway, startJob, usePace, useRisk, useRunner } from '../hooks';
+import { JOB_STATE, errorMessage, fmtAgo, fmtDuration, fmtNumber } from '../format';
+import { resumeAnyway, startJob, toast, usePace, useRisk, useRunner } from '../hooks';
 import { scaleRule } from '../../shared/x-limits';
 import { RISK_LABELS } from '../../shared/risk';
 import { Badge, Button, Modal, cx, useNow } from './ui';
@@ -220,17 +220,20 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
             aria-label="Resume anyway…"
             title="Resume anyway…"
           />
-          <ResumeAnywayModal
-            open={confirming}
-            onClose={() => setConfirming(false)}
-            onConfirm={() => {
-              setConfirming(false);
-              void resumeAnyway(job.id, job.accountId);
-            }}
-            level={risk.level}
-            reason={risk.reason}
-            fullStop={risk.fullStop}
-          />
+          {/* Mounted only while open, so the confirmation starts empty every time. */}
+          {confirming && (
+            <ResumeAnywayModal
+              open
+              onClose={() => setConfirming(false)}
+              onConfirm={() => {
+                setConfirming(false);
+                resumeAnyway(job.id, job.accountId).catch((err: unknown) => toast(errorMessage(err), 'critical'));
+              }}
+              level={risk.level}
+              reason={risk.reason}
+              fullStop={risk.fullStop}
+            />
+          )}
         </>
       )}
       {!TERMINAL.has(job.state) && job.state !== 'running' && job.state !== 'waiting' && (

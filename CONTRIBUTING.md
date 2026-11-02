@@ -26,7 +26,8 @@ npm install            # also installs the git hooks (.githooks)
 | Types | `npm run typecheck` | TypeScript errors in any workspace |
 | Architecture | `npm run arch` | An import breaks a rule in `.dependency-cruiser.cjs` |
 | Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
-| Unit tests | `npm test` | A test fails |
+| Test presence | `npm run tests:check` | A source file is imported by no test and is not listed as exempt with a reason ([docs/TESTING.md](docs/TESTING.md)) |
+| Unit tests and coverage | `npm test` | A test fails, or coverage drops below a workspace's threshold |
 
 It runs automatically before every `git push` (`.githooks/pre-push`). CI runs it again, plus both production builds, the database checks (Row Level Security tests, types drift) and the end-to-end auth tests, and `main` only accepts pull requests with green CI.
 
@@ -47,7 +48,7 @@ npm run test:e2e -w @xomoni/web
    - the unit's README when its responsibility, files or dependencies change;
    - `docs/ARCHITECTURE.md` and an ADR when you add a unit, a rule or make a design decision;
    - `apps/web/.env.example` for every new environment variable.
-5. Add or update tests. Domain logic and use cases get unit tests; security rules (Row Level Security, redirects, auth errors) get tests that prove the negative case too.
+5. Add or update tests on both sides, as [docs/TESTING.md](docs/TESTING.md) describes: a backend test (rule, use case, engine step or database policy) and a frontend test (the component the person uses), with the failure and security cases. Security rules (Row Level Security, redirects, auth errors) get tests that prove the negative case too.
 6. Run `npm run verify`, push, and open a pull request. Fill in the template's safety checklist.
 7. When the pull request finishes a roadmap task, tick it in [docs/ROADMAP.md](docs/ROADMAP.md) with the pull request number, in the same pull request.
 

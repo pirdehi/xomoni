@@ -20,7 +20,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | `notify.ts`    | Desktop notifications and their ids.                                                                                        |
 | `pacing.ts` | How work is spread over time (PLAYBOOK B4, #30): work sessions with rests (`SESSION`, `sessionStart`) and varied delays with an occasional longer pause (`pacingDelay`). Only ever slower. Pure. |
 | `risk.ts` | The risk ladder (ADR-0013): risk events (silent blocks included), `assessRisk` (level, pace factor, resume lock, full stop) and duplicate filtering. Pure. |
-| `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings) and action labels.                       |
+| `settings.ts`  | The Careful preset, default settings, `normalizeSettings` (clamps stored settings to the one-fifth ceilings, and custom pacing to no faster than Careful with `noFasterThan`) and action labels. |
 | `x-limits.ts`  | The one-fifth rule: X's published limits with sources, budgets, allowances, the live-limit rule, the quota check for failed pages (`quotaHit`) and the cap ceilings. Pure. |
 | `time.ts`      | Snowflake ids and X date parsing, the like-time estimate, `DAY` and `HOUR`.                                                 |
 | `types.ts`     | The data model: items, accounts, jobs, log entries, rate-limit observations, settings.                                      |

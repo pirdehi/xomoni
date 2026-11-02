@@ -20,6 +20,8 @@ export interface ProxySupabase {
  */
 export function createProxySupabase(request: NextRequest): ProxySupabase {
   let response = NextResponse.next({ request });
+  // Headers Supabase asks to send with refreshed cookies (no-store), for redirects as well.
+  const sessionHeaders: Record<string, string> = {};
 
   const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {
@@ -29,6 +31,7 @@ export function createProxySupabase(request: NextRequest): ProxySupabase {
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
         Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
+        Object.assign(sessionHeaders, headers);
       },
     },
   });
@@ -37,8 +40,10 @@ export function createProxySupabase(request: NextRequest): ProxySupabase {
     supabase,
     response: () => response,
     redirect(url) {
+      // Keep the refreshed cookies, and the no-store headers Supabase sends with them, on the redirect too.
       const redirect = NextResponse.redirect(url);
       response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+      Object.entries(sessionHeaders).forEach(([key, value]) => redirect.headers.set(key, value));
       return redirect;
     },
   };

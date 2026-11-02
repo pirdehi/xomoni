@@ -20,3 +20,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0014](0014-security-headers-and-a-static-csp.md) | Security headers and a static Content-Security-Policy | Accepted |
 | [0015](0015-architecture-styles-principles-and-patterns.md) | Architecture styles, principles and patterns, named | Accepted |
 | [0016](0016-strict-typescript-and-type-aware-lint.md) | Strict TypeScript and type-aware lint in every workspace | Accepted |
+| [0017](0017-test-standard.md) | Backend and frontend tests for every feature, enforced by the merge gate | Accepted |

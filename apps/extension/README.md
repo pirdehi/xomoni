@@ -8,7 +8,7 @@ The part of Xomoni that acts on X. A Chrome MV3 extension that deletes the perso
 npm run build -w @xomoni/extension       # → apps/extension/dist
 npm run watch -w @xomoni/extension       # rebuild on change
 npm run preview:ui -w @xomoni/extension  # dashboard with demo data, no X connection
-npm test -w @xomoni/extension            # unit tests (tests/)
+npm test -w @xomoni/extension            # engine, kernel and dashboard tests with coverage (tests/, see docs/TESTING.md)
 ```
 
 Load `apps/extension/dist` with **Load unpacked** in `chrome://extensions` (Developer mode).

@@ -7,8 +7,8 @@ import { db } from '../../shared/db';
 import type { DateRange, Item } from '../../shared/types';
 import type { PageProps } from '../navigation';
 import { Button, Callout, Card, Field, PageHeader, Toggle } from '../components/ui';
-import { KIND_PLURAL, downloadFile, fmtDate, fmtNumber, fromDateInput, toDateInput } from '../format';
-import { startJob, useRunner } from '../hooks';
+import { KIND_PLURAL, downloadFile, errorMessage, fmtDate, fmtNumber, fromDateInput, toDateInput } from '../format';
+import { startJob, toast, useRunner } from '../hooks';
 
 /** X's page for requesting the official archive. The person confirms it there with their password, never Xomoni. */
 const X_ARCHIVE_URL = 'https://x.com/settings/download_your_data';
@@ -64,9 +64,13 @@ export function ArchivePage({ account, navigate }: PageProps) {
   const readFromX = async () => {
     if (!range) return;
     const title = `Archive: ${fmtDate(range.after)} – ${fmtDate(range.before - 1)}`;
-    const job = await createScanJob(account.id, title, 'range', range);
-    void startJob(job.id);
-    navigate('jobs');
+    try {
+      const job = await createScanJob(account.id, title, 'range', range);
+      void startJob(job.id);
+      navigate('jobs');
+    } catch (err) {
+      toast(`The archive job could not be saved: ${errorMessage(err)}`, 'critical');
+    }
   };
 
   const fileName = (ext: string) => `xomoni-archive-${account.handle}-${from}-to-${to}.${ext}`;

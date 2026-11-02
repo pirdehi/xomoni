@@ -30,8 +30,10 @@ export function SignUpForm() {
         captchaToken: captcha.token,
       });
       captcha.reset();
-      if (result.ok) setSentTo(result.email);
-      else setFailure(result);
+      if (result.ok) {
+        setFailure(null);
+        setSentTo(result.email);
+      } else setFailure(result);
     });
   }
 

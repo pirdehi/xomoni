@@ -15,7 +15,7 @@ const matches = (level: Level) => (e: LogEntry) =>
 
 function csvCell(v: string | number | null | undefined) {
   const s = v == null ? '' : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 /**

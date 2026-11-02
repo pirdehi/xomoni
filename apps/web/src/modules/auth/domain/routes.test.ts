@@ -15,6 +15,10 @@ describe('safeNextPath', () => {
     ['relative path', 'dashboard'],
     ['empty', ''],
     ['missing', null],
+    // Paths that only become protocol-relative once dot segments are resolved.
+    ['dot segment before a double slash', '/.//evil.example'],
+    ['parent segment before a double slash', '/x/..//evil.example'],
+    ['encoded dot segment before a double slash', '/%2e//evil.example'],
   ])('falls back on %s', (_label, raw) => {
     expect(safeNextPath(raw)).toBe(ROUTES.dashboard);
   });

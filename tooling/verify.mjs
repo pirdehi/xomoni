@@ -8,7 +8,8 @@ const steps = [
   ['Types', 'typecheck'],
   ['Architecture rules', 'arch'],
   ['Documentation', 'docs:check'],
-  ['Unit tests', 'test'],
+  ['Test presence', 'tests:check'],
+  ['Unit tests and coverage', 'test'],
 ];
 
 const results = [];

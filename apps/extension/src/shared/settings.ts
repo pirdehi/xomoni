@@ -54,9 +54,29 @@ export function normalizeSettings(stored: Partial<Settings> | null | undefined):
   if (merged.preset !== 'custom') return { ...merged, preset: 'careful', pacing: PRESETS.careful };
   const pacing = {} as Record<ActionKind, PacingRule>;
   for (const action of Object.keys(DEFAULT_SETTINGS.pacing) as ActionKind[]) {
-    pacing[action] = clampRule(action, { ...DEFAULT_SETTINGS.pacing[action], ...stored?.pacing?.[action] });
+    const rule = clampRule(action, { ...DEFAULT_SETTINGS.pacing[action], ...stored?.pacing?.[action] });
+    pacing[action] = noFasterThan(PRESETS.careful[action], rule);
   }
   return { ...merged, pacing };
+}
+
+/**
+ * `rule`, made no faster than `careful` in any way: delays and pauses at least as long, batches at most as big,
+ * caps at most as high. Careful already runs at the one-fifth ceiling (ADR-0012), so custom pacing can only be
+ * slower; without this, a delay of 0 would let actions burst within the hourly cap.
+ */
+export function noFasterThan(careful: PacingRule, rule: PacingRule): PacingRule {
+  const minDelay = Math.max(careful.minDelay, rule.minDelay);
+  const batchPauseMin = Math.max(careful.batchPauseMin, rule.batchPauseMin);
+  return {
+    minDelay,
+    maxDelay: Math.max(careful.maxDelay, minDelay, rule.maxDelay),
+    batchSize: Math.min(careful.batchSize, rule.batchSize),
+    batchPauseMin,
+    batchPauseMax: Math.max(careful.batchPauseMax, batchPauseMin, rule.batchPauseMax),
+    hourlyCap: Math.min(careful.hourlyCap, rule.hourlyCap),
+    dailyCap: Math.min(careful.dailyCap, rule.dailyCap),
+  };
 }
 
 /** Dashboard labels for each action kind. */

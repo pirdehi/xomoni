@@ -222,8 +222,9 @@ export async function markArchiveImported(accountId: string) {
 }
 
 /**
- * Whether an X archive was ever imported for this account. Imports from before the marker existed are found
- * by looking for an item that came from an archive, once.
+ * Whether an X archive was ever imported for this account: the marker an import sets, or, for imports from
+ * before the marker existed, an item that came from an archive. Read-only, so it can run inside a live query
+ * (Dexie refuses writes there).
  */
 export async function archiveImported(accountId: string): Promise<boolean> {
   if (await kvGet<number | null>(archiveKey(accountId), null)) return true;
@@ -232,6 +233,5 @@ export async function archiveImported(accountId: string): Promise<boolean> {
     .equals(accountId)
     .filter((item) => item.sources.includes('archive'))
     .first();
-  if (fromArchive) await markArchiveImported(accountId);
   return !!fromArchive;
 }

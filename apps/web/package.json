@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -26,12 +26,18 @@
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.0.5",
+    "happy-dom": "^21.0.4",
     "tailwindcss": "^4",
     "typescript": "~5.9.3",
-    "vitest": "^3.2.0"
+    "vitest": "^5.0.5"
   },
   "description": "xomoni.com — website and remote dashboard for the Xomoni extension",
   "license": "MIT",

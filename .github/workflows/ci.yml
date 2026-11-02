@@ -35,6 +35,8 @@ jobs:
         run: npm run verify
       - name: Build the extension
         run: npm run build -w @xomoni/extension
+      - name: Release dry run (versions agree, the zip packages)
+        run: node tooling/release.mjs check && node tooling/release.mjs package
       - name: Build the website
         run: npm run build -w @xomoni/web
 

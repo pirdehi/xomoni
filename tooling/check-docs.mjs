@@ -61,6 +61,8 @@ const REQUIRED_DOCS = [
   'docs/PLAYBOOK.md',
   'docs/ROADMAP.md',
   'docs/TESTING.md',
+  'docs/RELEASING.md',
+  'CHANGELOG.md',
   'docs/adr/README.md',
 ];
 for (const doc of REQUIRED_DOCS) if (!exists(doc)) fail(doc, 'required document is missing');

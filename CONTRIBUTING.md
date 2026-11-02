@@ -39,7 +39,7 @@ npm run test:e2e -w @xomoni/web
 
 ## Making a change
 
-1. Open or pick an issue. The roadmap is in [milestones](https://github.com/pirdehi/xomoni/milestones).
+1. Open or pick an issue. The plan is in [docs/ROADMAP.md](docs/ROADMAP.md), phase by phase, and in [milestones](https://github.com/pirdehi/xomoni/milestones).
 2. Branch from `main`.
 3. Keep to the architecture: put code in the right layer, and let `npm run arch` tell you when you didn't.
 4. Document as you go:
@@ -49,6 +49,7 @@ npm run test:e2e -w @xomoni/web
    - `apps/web/.env.example` for every new environment variable.
 5. Add or update tests. Domain logic and use cases get unit tests; security rules (Row Level Security, redirects, auth errors) get tests that prove the negative case too.
 6. Run `npm run verify`, push, and open a pull request. Fill in the template's safety checklist.
+7. When the pull request finishes a roadmap task, tick it in [docs/ROADMAP.md](docs/ROADMAP.md) with the pull request number, in the same pull request.
 
 Commit messages: one imperative summary line under ~72 characters ("Add password reset"), then a blank line and the why, if useful.
 

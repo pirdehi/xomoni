@@ -8,7 +8,7 @@
 
 **پاک‌سازی حساب X (توییتر) خودتان، شامل پست‌ها، ریپلای‌ها، ریپوست‌ها و لایک‌های قدیمی، از یک داشبورد محلی. بدون کلید API و هماهنگ با محدودیت‌های X.**
 
-[English](README.md) · [تحقیق کامل](docs/RESEARCH.md) · [گزارش مشکل](https://github.com/pirdehi/xomoni/issues)
+[English](README.md) · [نقشه‌ی راه](docs/ROADMAP.md) · [معماری](docs/ARCHITECTURE.md) · [تحقیق کامل](docs/RESEARCH.md) · [گزارش مشکل](https://github.com/pirdehi/xomoni/issues)
 
 <img src="docs/screenshots/overview.png" alt="داشبورد Xomoni" width="900" />
 

@@ -13,6 +13,7 @@
 - [ ] `docs/ARCHITECTURE.md` and an ADR updated if structure, rules or decisions changed
 - [ ] Tests cover new behavior, including failure and security cases
 - [ ] New environment variables documented in `apps/web/.env.example` and set in Vercel
+- [ ] The finished task is ticked in `docs/ROADMAP.md`
 
 ## Safety (see [docs/PLAYBOOK.md](https://github.com/pirdehi/xomoni/blob/main/docs/PLAYBOOK.md))
 

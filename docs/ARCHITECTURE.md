@@ -5,6 +5,16 @@ This document describes how Xomoni is built, the rules that keep it that way, an
 - Why things are the way they are: [decision records](adr/README.md).
 - What Xomoni must never do toward X: [safety playbook](PLAYBOOK.md).
 - How to contribute: [CONTRIBUTING.md](../CONTRIBUTING.md).
+- What is done and what is left: [roadmap](ROADMAP.md).
+
+## Architecture at a glance
+
+| Question | Answer |
+| --- | --- |
+| What architecture is this? | A **modular monolith** in an npm workspaces monorepo. The website uses **hexagonal architecture (ports and adapters)** in vertical feature modules, with the Clean Architecture dependency rule. The extension is **layered by JavaScript context around a shared kernel** and is moving to hexagonal ([#11](https://github.com/pirdehi/xomoni/issues/11)). |
+| Is it SOLID? | SOLID is a set of principles for the code inside each part, not an architecture. Each principle maps to concrete code in [ADR-0015 §2](adr/0015-architecture-styles-principles-and-patterns.md#2-how-the-solid-principles-show-up). |
+| Which design patterns? | Ports and adapters, composition root, use case, observer, state machine, table-driven strategy, command, sliding-window rate limiter, circuit breaker, retry with backoff and others, each with the file it lives in: [ADR-0015 §3](adr/0015-architecture-styles-principles-and-patterns.md#3-design-patterns-in-use). |
+| How is it enforced? | The dependency rules in [§7](#7-enforced-rules) (`npm run arch`), strict TypeScript and lint, the documentation gate, and tests, all in `npm run verify` and CI ([§8](#8-quality-gates)). |
 
 ## Principles
 

@@ -17,7 +17,7 @@ Local emails (confirmation, password reset) land in Mailpit at http://127.0.0.1:
 | `npm run dev -w @xomoni/web` | Development server |
 | `npm run build -w @xomoni/web` | Production build |
 | `npm run typecheck -w @xomoni/web` | Generates route types, then runs `tsc` |
-| `npm test -w @xomoni/web` | Unit tests (domain rules and use cases) |
+| `npm test -w @xomoni/web` | Unit and component tests with coverage: domain rules, use cases, adapters, server code and every UI component ([docs/TESTING.md](../../docs/TESTING.md)) |
 | `npm run test:e2e -w @xomoni/web` | End-to-end auth tests in Chromium against the local Supabase stack (run `supabase start` first) |
 
 ## Structure

@@ -19,7 +19,16 @@ import { DAY } from '../../shared/time';
 import type { CleanupFilter, CleanupOptions, CleanupTarget } from '../../shared/types';
 import type { PageProps } from '../navigation';
 import { Button, Callout, Card, Field, Modal, PageHeader, Segmented, Toggle, cx } from '../components/ui';
-import { TARGET_PLURAL, downloadFile, fmtDate, fmtDuration, fmtNumber, fromDateInput, toDateInput } from '../format';
+import {
+  TARGET_PLURAL,
+  downloadFile,
+  errorMessage,
+  fmtDate,
+  fmtDuration,
+  fmtNumber,
+  fromDateInput,
+  toDateInput,
+} from '../format';
 import { startJob, toast, useRunner } from '../hooks';
 import { useKindCounts } from '../queries';
 
@@ -77,19 +86,30 @@ export function CleanupPage({ account, navigate }: PageProps) {
   const hasArchive = useLiveQuery(() => archiveImported(account.id), [account.id]);
   const [missAcknowledged, setMissAcknowledged] = useState(false);
 
-  const before =
-    age === 'custom' ? (fromDateInput(customDate) ?? startOfToday()) : startOfToday() - AGE_DAYS[age] * DAY;
+  // A date the person cleared or mistyped never falls back to "today", which would match everything: it matches
+  // nothing and keeps Start off until the dates make sense.
+  const pickedBefore = age === 'custom' ? fromDateInput(customDate) : startOfToday() - AGE_DAYS[age] * DAY;
+  const pickedAfter = useAfter ? fromDateInput(afterDate) : null;
+  const dateProblem =
+    pickedBefore == null
+      ? 'Pick the date to clean up before.'
+      : useAfter && pickedAfter == null
+        ? 'Pick the start date of the range, or turn the range off.'
+        : pickedAfter != null && pickedAfter >= pickedBefore
+          ? 'The start date must be before the end date.'
+          : null;
+  const before = pickedBefore ?? 0;
   const filter: CleanupFilter = useMemo(
     () => ({
       target,
       before,
-      after: useAfter ? fromDateInput(afterDate) : null,
+      after: pickedAfter,
       keepMinLikes: minLikes.trim() && Number(minLikes) > 0 ? Number(minLikes) : null,
       keepKeywords: normalizeKeywords(keywords),
       keepIds: parseIdList(ids),
       skipSelfReplies,
     }),
-    [target, before, useAfter, afterDate, minLikes, keywords, ids, skipSelfReplies],
+    [target, before, pickedAfter, minLikes, keywords, ids, skipSelfReplies],
   );
   const filterKey = JSON.stringify(filter);
   const candidates = useLiveQuery(() => findCandidates(account.id, filter), [account.id, filterKey]);
@@ -102,6 +122,9 @@ export function CleanupPage({ account, navigate }: PageProps) {
   // Reposts gain little from the archive: it doesn't say which post a repost points to.
   const needsArchive = hasArchive === false && target !== 'repost';
   const canStart =
+    // Until the archive check has answered, the page can't tell whether the warning applies.
+    hasArchive !== undefined &&
+    dateProblem == null &&
     run.status === 'idle' &&
     (options.sweep || options.deep) &&
     (!!candidates?.length || options.sweep) &&
@@ -109,15 +132,22 @@ export function CleanupPage({ account, navigate }: PageProps) {
 
   const backup = () => {
     if (!candidates?.length) return;
-    downloadFile(`xomoni-backup-${target}s-${toDateInput(Date.now())}.json`, JSON.stringify(candidates, null, 2));
+    downloadFile(
+      `xomoni-backup-${TARGET_PLURAL[target]}-${toDateInput(Date.now())}.json`,
+      JSON.stringify(candidates, null, 2),
+    );
     toast(`Backup of ${fmtNumber(candidates.length)} items downloaded`, 'good');
   };
 
   const start = async () => {
-    const job = await createCleanupJob(account.id, title, filter, options);
-    setConfirming(false);
-    void startJob(job.id);
-    navigate('jobs');
+    try {
+      const job = await createCleanupJob(account.id, title, filter, options);
+      setConfirming(false);
+      void startJob(job.id);
+      navigate('jobs');
+    } catch (err) {
+      toast(`The cleanup could not be saved: ${errorMessage(err)}`, 'critical');
+    }
   };
 
   return (
@@ -193,6 +223,11 @@ export function CleanupPage({ account, navigate }: PageProps) {
                 </div>
               )}
             </div>
+            {dateProblem && (
+              <p role="alert" className="mt-3 text-xs text-critical">
+                {dateProblem}
+              </p>
+            )}
             <div className="mt-4 space-y-3">
               <Toggle
                 checked={useAfter}

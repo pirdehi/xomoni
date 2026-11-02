@@ -2,7 +2,7 @@
 // dataviz spec: <=24px columns, 4px rounded data-ends, 2px surface gaps,
 // hairline grid, legend + per-column tooltip, and a table view.
 import { ChartColumn } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ItemKind } from '../../shared/types';
 import { fmtCompact, fmtNumber } from '../format';
 import { useYearHistogram } from '../queries';
@@ -45,19 +45,19 @@ export function ActivityChart({ accountId }: { accountId: string }) {
     accountId,
     series.map((s) => s.kind),
   );
-  const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   const [hover, setHover] = useState<number | null>(null);
 
-  useLayoutEffect(() => {
-    const el = wrap.current;
+  // A callback ref: it measures the chart's container whenever one appears (after the data loads, or when the
+  // view switches back to the chart) and stops when it goes away.
+  const measure = useCallback((el: HTMLDivElement | null) => {
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       if (entry) setWidth(entry.contentRect.width);
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [view]);
+  }, []);
 
   const totals = series.map((s) => (data ?? []).reduce((sum, d) => sum + (d.values[s.kind] ?? 0), 0));
   const header = (
@@ -134,7 +134,7 @@ export function ActivityChart({ accountId }: { accountId: string }) {
               ))}
             </div>
           )}
-          <div ref={wrap} className="relative" onMouseLeave={() => setHover(null)}>
+          <div ref={measure} className="relative" onMouseLeave={() => setHover(null)}>
             <Plot data={data} series={series} width={width} hover={hover} onHover={setHover} />
           </div>
         </>

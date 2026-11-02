@@ -320,3 +320,39 @@ describe('the ceiling holds everywhere', () => {
     expect(settings.pacing.delete.dailyCap).toBe(960);
   });
 });
+
+describe('custom pacing is never faster than Careful (ADR-0012)', () => {
+  it('raises delays and pauses to Careful’s and lowers batches and caps to Careful’s', () => {
+    const careful = PRESETS.careful.delete;
+    const custom = normalizeSettings({
+      preset: 'custom',
+      pacing: {
+        ...PRESETS.careful,
+        delete: {
+          minDelay: 0,
+          maxDelay: 1,
+          batchSize: 500,
+          batchPauseMin: 0,
+          batchPauseMax: 0,
+          hourlyCap: 1e6,
+          dailyCap: 1e6,
+        },
+      },
+    }).pacing.delete;
+    expect(custom).toEqual(careful);
+  });
+
+  it('keeps every value that is already slower', () => {
+    const slow = {
+      minDelay: 200,
+      maxDelay: 400,
+      batchSize: 5,
+      batchPauseMin: 900,
+      batchPauseMax: 1800,
+      hourlyCap: 2,
+      dailyCap: 20,
+    };
+    const custom = normalizeSettings({ preset: 'custom', pacing: { ...PRESETS.careful, delete: slow } }).pacing.delete;
+    expect(custom).toEqual(slow);
+  });
+});

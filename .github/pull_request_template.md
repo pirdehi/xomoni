@@ -11,7 +11,9 @@
 - [ ] `npm run verify` passes (the pre-push hook runs it)
 - [ ] Doc comments on new exports; unit README updated if responsibility, files or dependencies changed
 - [ ] `docs/ARCHITECTURE.md` and an ADR updated if structure, rules or decisions changed
-- [ ] Tests cover new behavior, including failure and security cases
+- [ ] Backend tests (rules, use cases, engine, database) cover the new behavior, including failure and security cases
+- [ ] Frontend tests (dashboard or website components) cover what the person sees and does
+- [ ] End-to-end test added when the change crosses the browser, the website and Supabase
 - [ ] New environment variables documented in `apps/web/.env.example` and set in Vercel
 - [ ] The finished task is ticked in `docs/ROADMAP.md`
 

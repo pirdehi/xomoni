@@ -20,7 +20,16 @@ import { db } from '../../shared/db';
 import type { ItemKind, ScanTarget } from '../../shared/types';
 import type { PageProps } from '../navigation';
 import { Badge, Button, Callout, Card, EmptyState, PageHeader, Segmented } from '../components/ui';
-import { KIND_PLURAL, downloadFile, fmtDate, fmtNumber, postUrl, toDateInput } from '../format';
+import {
+  KIND_PLURAL,
+  TARGET_PLURAL,
+  downloadFile,
+  errorMessage,
+  fmtDate,
+  fmtNumber,
+  postUrl,
+  toDateInput,
+} from '../format';
 import { startJob, toast, useRunner } from '../hooks';
 import { importArchive } from '../importArchive';
 import { useKindCounts } from '../queries';
@@ -157,9 +166,13 @@ const SCANS: { target: ScanTarget; title: string; body: string; icon: ReactNode 
 function ScanCard({ accountId, navigate }: { accountId: string; navigate: PageProps['navigate'] }) {
   const run = useRunner();
   const scan = async (target: ScanTarget, title: string) => {
-    const job = await createScanJob(accountId, `Scan: ${title}`, target);
-    void startJob(job.id);
-    navigate('jobs');
+    try {
+      const job = await createScanJob(accountId, `Scan: ${title}`, target);
+      void startJob(job.id);
+      navigate('jobs');
+    } catch (err) {
+      toast(`The scan could not be saved: ${errorMessage(err)}`, 'critical');
+    }
   };
   return (
     <Card
@@ -197,6 +210,9 @@ function Browser({ accountId, handle }: { accountId: string; handle: string }) {
   // The page number belongs to one filter; changing the kind, status or search starts again at page 1.
   const filterKey = `${kind}|${status}|${query}`;
   const [paging, setPaging] = useState({ filterKey, page: 0 });
+  // Adjusting state while rendering (React's pattern for state derived from props): a new filter forgets the old
+  // page, so coming back to an earlier filter starts at page 1 too.
+  if (paging.filterKey !== filterKey) setPaging({ filterKey, page: 0 });
   const page = paging.filterKey === filterKey ? paging.page : 0;
   const setPage = (next: number) => setPaging({ filterKey, page: next });
   const counts = useKindCounts(accountId);
@@ -208,7 +224,9 @@ function Browser({ accountId, handle }: { accountId: string; handle: string }) {
       .between([accountId, kind, status, -Infinity], [accountId, kind, status, Infinity])
       .reverse();
     const q = query.trim().toLowerCase();
-    if (q) coll = coll.filter((i) => i.text.toLowerCase().includes(q) || i.author.toLowerCase().includes(q));
+    // Authors are stored without the "@" the rows show and the search box suggests.
+    const author = q.replace(/^@/, '');
+    if (q) coll = coll.filter((i) => i.text.toLowerCase().includes(q) || i.author.toLowerCase().includes(author));
     return coll
       .offset(page * PAGE_SIZE)
       .limit(PAGE_SIZE)
@@ -220,7 +238,10 @@ function Browser({ accountId, handle }: { accountId: string; handle: string }) {
       .where('[accountId+kind+status+createdAt]')
       .between([accountId, kind, status, -Infinity], [accountId, kind, status, Infinity])
       .toArray();
-    downloadFile(`xomoni-${kind}s-${status}-${toDateInput(Date.now())}.json`, JSON.stringify(all, null, 2));
+    downloadFile(
+      `xomoni-${TARGET_PLURAL[kind]}-${status}-${toDateInput(Date.now())}.json`,
+      JSON.stringify(all, null, 2),
+    );
   };
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));

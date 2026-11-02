@@ -21,6 +21,7 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     environment: 'node',
     setupFiles: ['test/setup.ts'],
+    testTimeout: 15_000,
     // The public settings the site reads at import time; tests never reach these addresses.
     env: {
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3000',
@@ -30,9 +31,11 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      include: ['src/**'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/app/**', 'src/**/*.test.{ts,tsx}'],
       reporter: ['text-summary', 'html'],
+      // The level reached when the test standard was adopted (ADR-0017); raise it as coverage grows, never lower it.
+      thresholds: { lines: 96, statements: 95, branches: 92, functions: 93 },
     },
   },
 });

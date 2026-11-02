@@ -1,6 +1,6 @@
 // Stands in for `@marsidev/react-turnstile` in unit tests (aliased in vitest.config.ts): no Cloudflare
 // script, and the test decides what the check does. By default it passes at once with TEST_TOKEN.
-import { useEffect, useImperativeHandle, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useRef, type Ref } from 'react';
 
 /** The token the fake check hands out when it passes. */
 export const TEST_TOKEN = 'turnstile-test-token';
@@ -34,19 +34,25 @@ interface Props {
   onAfterInteractive?: () => void;
 }
 
+/** Like the real widget, it keeps the latest callbacks in a ref and runs the check once, when it mounts. */
 export function Turnstile({ ref, onSuccess, onError, onBeforeInteractive }: Props) {
+  const callbacks = useRef({ onSuccess, onError, onBeforeInteractive });
+  useEffect(() => {
+    callbacks.current = { onSuccess, onError, onBeforeInteractive };
+  });
   useImperativeHandle(ref, () => ({
     reset: () => {
       turnstile.resets++;
-      if (turnstile.outcome === 'success') onSuccess?.(TEST_TOKEN);
+      if (turnstile.outcome === 'success') callbacks.current.onSuccess?.(TEST_TOKEN);
     },
     remove: () => undefined,
     getResponse: () => undefined,
   }));
   useEffect(() => {
-    if (turnstile.outcome === 'success') onSuccess?.(TEST_TOKEN);
-    else if (turnstile.outcome === 'error') onError?.();
-    else if (turnstile.outcome === 'interactive') onBeforeInteractive?.();
-  }, [onSuccess, onError, onBeforeInteractive]);
+    const { onSuccess: success, onError: error, onBeforeInteractive: interactive } = callbacks.current;
+    if (turnstile.outcome === 'success') success?.(TEST_TOKEN);
+    else if (turnstile.outcome === 'error') error?.();
+    else if (turnstile.outcome === 'interactive') interactive?.();
+  }, []);
   return <div data-testid="turnstile" />;
 }

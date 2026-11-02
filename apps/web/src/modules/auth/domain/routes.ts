@@ -31,14 +31,16 @@ export function isGuestOnly(path: string): boolean {
 /**
  * Turns an untrusted `next` value into a same-site path, or `fallback`.
  * Rejects absolute URLs, protocol-relative `//host` and backslash tricks, so links in emails
- * and OAuth round-trips can't be turned into open redirects.
+ * and OAuth round-trips can't be turned into open redirects. The check runs again on the normalized
+ * path: dot segments can turn `/.//evil.example` into `//evil.example`, which a browser reads as another site.
  */
 export function safeNextPath(raw: string | null | undefined, fallback: string = ROUTES.dashboard): string {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return fallback;
   try {
     const url = new URL(raw, 'https://xomoni.invalid');
     if (url.origin !== 'https://xomoni.invalid') return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    return path.startsWith('//') || path.includes('\\') ? fallback : path;
   } catch {
     return fallback;
   }

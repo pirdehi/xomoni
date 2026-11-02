@@ -141,17 +141,20 @@ export async function startJob(jobId: string) {
 }
 
 /**
- * The risk ladder for an account, live: re-evaluated when its risk events change and every 30 seconds, so
- * resume locks open on time. Undefined while loading.
+ * The risk ladder for an account, live: re-evaluated at the current time whenever its risk events change, so a
+ * new warning or a "resume anyway" shows at once, and every 30 seconds, so resume locks open on time.
+ * Undefined while loading.
  */
 export function useRisk(accountId: string | undefined): RiskAssessment | undefined {
-  const events = useLiveQuery(() => (accountId ? riskEvents(accountId) : []), [accountId]);
-  const [now, setNow] = useState(() => Date.now());
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
     return () => clearInterval(id);
   }, []);
-  return events ? assessRisk(events, now) : undefined;
+  return useLiveQuery(
+    async () => assessRisk(accountId ? await riskEvents(accountId) : [], Date.now()),
+    [accountId, tick],
+  );
 }
 
 /**

@@ -27,12 +27,15 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['tests/setup.ts'],
+    testTimeout: 15_000,
     coverage: {
       provider: 'v8',
-      include: ['src/**'],
+      include: ['src/**/*.{ts,tsx}'],
       // The demo-data preview is a development tool, never shipped (rule ext-dev-is-not-shipped).
       exclude: ['src/dev/**'],
       reporter: ['text-summary', 'html'],
+      // The level reached when the test standard was adopted (ADR-0017); raise it as coverage grows, never lower it.
+      thresholds: { lines: 87, statements: 85, branches: 81, functions: 92 },
     },
   },
 });

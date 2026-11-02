@@ -10,7 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --coverage --coverage.include='src/**/*.ts' --coverage.thresholds.100 --coverage.reporter=text-summary"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^5.0.5",

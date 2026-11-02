@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/build-content.mjs",
     "watch": "node scripts/watch.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "icons": "node scripts/make-icons.mjs",
     "preview:ui": "vite --open /preview.html"
   },

@@ -131,11 +131,12 @@ function ChangePassword({ account }: { account: AccountDetails }) {
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // A new key remounts the fields after a change, clearing their values and the password checklist.
+  const [formKey, setFormKey] = useState(0);
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
+    const form = new FormData(event.currentTarget);
     setNotice(null);
     startTransition(async () => {
       const result = await browserAuth.changePassword({
@@ -147,7 +148,7 @@ function ChangePassword({ account }: { account: AccountDetails }) {
       if (result.ok) {
         setFailure(null);
         setNotice('Your new password is saved.');
-        formElement.reset();
+        setFormKey((n) => n + 1);
       } else setFailure(result);
     });
   }
@@ -182,7 +183,7 @@ function ChangePassword({ account }: { account: AccountDetails }) {
         </>
       }
     >
-      <form onSubmit={onSubmit} noValidate className="space-y-4">
+      <form key={formKey} onSubmit={onSubmit} noValidate className="space-y-4">
         <input type="email" name="username" autoComplete="username" value={account.email} readOnly hidden />
         <PasswordField
           label="Current password"

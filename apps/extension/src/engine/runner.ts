@@ -43,6 +43,7 @@ class Runner {
   private listeners = new Set<() => void>();
   private controller: AbortController | null = null;
   private stopRequest: StopRequest | null = null;
+  private starting = false;
 
   /** Registers a state listener (for `useSyncExternalStore`); returns the unsubscribe function. */
   subscribe = (listener: () => void) => {
@@ -66,17 +67,23 @@ class Runner {
    * or another dashboard tab is already running a job.
    */
   async start(jobId: string) {
-    if (this.controller) throw new Error('A job is already running.');
-    const job = await db.jobs.get(jobId);
-    if (!job) throw new Error('Job not found.');
-    await navigator.locks.request(LOCK, { ifAvailable: true }, async (lock) => {
-      if (!lock) {
-        this.set({ busyElsewhere: true });
-        throw new Error('Another Xomoni tab is already running a job. Use that tab, or close it.');
-      }
-      this.set({ busyElsewhere: false });
-      await this.execute(job);
-    });
+    // `starting` covers the moments before `execute` sets the controller, so two quick clicks can't both pass.
+    if (this.controller || this.starting) throw new Error('A job is already running.');
+    this.starting = true;
+    try {
+      const job = await db.jobs.get(jobId);
+      if (!job) throw new Error('Job not found.');
+      await navigator.locks.request(LOCK, { ifAvailable: true }, async (lock) => {
+        if (!lock) {
+          this.set({ busyElsewhere: true });
+          throw new Error('Another Xomoni tab is already running a job. Use that tab, or close it.');
+        }
+        this.set({ busyElsewhere: false });
+        await this.execute(job);
+      });
+    } finally {
+      this.starting = false;
+    }
   }
 
   /**
@@ -136,21 +143,25 @@ class Runner {
     });
 
     let final: { state: JobState; reason: string };
-    let stoppedByYou = false;
+    let stoppedByYou: boolean;
     try {
       await ctx.save();
       await ctx.init();
       await ctx.log('info', 'system', `Started “${job.title}”`);
       await runSteps(ctx);
-      // Completed, but with what the person should know, such as posts Xomoni couldn't see.
+      // Completed, but with what the person should know, such as posts Xomoni couldn't see. If they pressed
+      // Pause as the last step finished, the work is still done; it just needs no notification.
       final = { state: 'completed', reason: ctx.notes.join(' ') };
+      stoppedByYou = this.requestedStop() != null;
     } catch (err) {
-      stoppedByYou = err instanceof Aborted || controller.signal.aborted;
+      // A safety stop wins over the person's Pause: its risk event is always recorded, so the risk ladder
+      // hears of it, and the job ends blocked rather than paused (PLAYBOOK §7).
+      const safetyStop = err instanceof Stop && (err.risk != null || err.state === 'blocked');
+      if (err instanceof Stop && err.risk) await recordRisk(job.accountId, err.risk).catch(() => {});
+      stoppedByYou = !safetyStop && (err instanceof Aborted || controller.signal.aborted);
       if (stoppedByYou) final = this.requestedStop() ?? { state: 'paused', reason: 'Stopped.' };
-      else if (err instanceof Stop) {
-        final = { state: err.state, reason: err.message };
-        if (err.risk) await recordRisk(job.accountId, err.risk).catch(() => {});
-      } else if (err instanceof WorkerGone)
+      else if (err instanceof Stop) final = { state: err.state, reason: err.message };
+      else if (err instanceof WorkerGone)
         final = { state: 'paused', reason: 'The X worker window was closed. Resume to reopen it.' };
       else if (err instanceof PageError)
         final = {

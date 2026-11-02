@@ -22,6 +22,6 @@ These rules apply to any AI assistant working in this repository. They restate t
 - Put code in the right layer (website modules: `domain` → `application` → `infrastructure` / `server` / `client` / `ui`). `npm run arch` checks it.
 - Write a TSDoc comment on every export: purpose and non-obvious facts, not a restatement of the name.
 - Update the unit README, `docs/ARCHITECTURE.md` and ADRs when structure or decisions change.
-- Add tests for new behavior, including the failure and security cases.
+- Add tests for new behavior on both sides, backend and frontend, including the failure and security cases ([`docs/TESTING.md`](docs/TESTING.md)). `npm run tests:check` fails for a source file no test imports.
 - Tick the task in [`docs/ROADMAP.md`](docs/ROADMAP.md) in the pull request that finishes it.
 - Run `npm run verify` before you finish. It must pass.

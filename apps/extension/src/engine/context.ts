@@ -152,6 +152,8 @@ export class JobContext {
    * person's informed consent for the account, or while the risk ladder holds it back.
    */
   async init() {
+    // Loaded first, so even a refused start respects the person's settings (notifications).
+    this.settings = await getSettings();
     // Nothing acts on X before the person read the risks for this account (#24, PLAYBOOK C7).
     if (!(await hasConsent(this.job.accountId))) {
       throw new Stop(
@@ -159,7 +161,6 @@ export class JobContext {
         'Read the risks for this X account first: press Start or Resume in the dashboard, then type I UNDERSTAND.',
       );
     }
-    this.settings = await getSettings();
     this.limiter = new Limiter(this.settings, this.job.accountId, this.signal, (reason, until) =>
       this.hooks.status(reason, until),
     );

@@ -78,7 +78,7 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
       const stopped = new AbortController();
       let channel: RealtimeChannel | null = null;
 
-      void (async () => {
+      const connect = async () => {
         // Load the user's JWT first; otherwise the join goes out with the anon key and RLS rejects it.
         await supabase.realtime.setAuth();
         if (stopped.signal.aborted) return;
@@ -113,7 +113,12 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
           .subscribe((status) => {
             if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) handlers.onStatus(false);
           });
-      })();
+      };
+      // Without a token the feed can't join: the dashboard stays "not live" and keeps its last read.
+      connect().catch((err: unknown) => {
+        console.warn('Live updates unavailable:', err);
+        handlers.onStatus(false);
+      });
 
       return () => {
         stopped.abort();

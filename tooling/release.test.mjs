@@ -1,4 +1,4 @@
-// Tests for tooling/release-lib.mjs, run by `node --test tooling/` in `npm run verify`.
+// Tests for tooling/release-lib.mjs, run by `node --test 'tooling/*.test.mjs'` in `npm run verify`.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { changelogSection, releaseProblems, versionOfTag } from './release-lib.mjs';

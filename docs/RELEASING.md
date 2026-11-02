@@ -22,7 +22,7 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
 
 ## Checked on every pull request
 
-CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. The helpers are tested by `tooling/release.test.mjs` (`node --test tooling/`, part of `npm run verify`).
+CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. The helpers are tested by `tooling/release.test.mjs` (`node --test 'tooling/*.test.mjs'`, part of `npm run verify`).
 
 ## Chrome Web Store
 

@@ -5,6 +5,7 @@ import { deviceRow, fakeSupabase, jobRow, type FakeChannel, type FakeSupabase } 
 import type { LiveHandlers } from '../application/ports';
 import {
   createSupabaseDashboardReader,
+  createSupabaseDevicePairing,
   createSupabaseDeviceRegistry,
   createSupabaseLiveFeed,
   dashboardTopic,
@@ -354,5 +355,36 @@ describe('createSupabaseLiveFeed', () => {
     expect(supabase.channels).toHaveLength(0);
     expect(supabase.removeChannel).not.toHaveBeenCalled();
     expect(handlers.onStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('createSupabaseDevicePairing (ADR-0018)', () => {
+  const clientWith = (answer: { data: unknown; error: { message: string } | null }) => {
+    const rpc = vi.fn(() => Promise.resolve(answer));
+    return { rpc, client: { rpc } as unknown as Parameters<typeof createSupabaseDevicePairing>[0] };
+  };
+
+  it('asks the database for a code and maps it', async () => {
+    const { rpc, client } = clientWith({
+      data: [{ code: 'AB2CD-EF3GH', expires_at: '2026-11-02T12:10:00Z' }],
+      error: null,
+    });
+    expect(await createSupabaseDevicePairing(client).createCode()).toEqual({
+      ok: true,
+      code: { code: 'AB2CD-EF3GH', expiresAt: '2026-11-02T12:10:00Z' },
+    });
+    expect(rpc).toHaveBeenCalledWith('create_pairing_code');
+  });
+
+  it('reports the database’s message, or that no code came back', async () => {
+    expect(
+      await createSupabaseDevicePairing(
+        clientWith({ data: null, error: { message: 'Sign in first.' } }).client,
+      ).createCode(),
+    ).toEqual({ ok: false, message: 'Sign in first.' });
+    expect(await createSupabaseDevicePairing(clientWith({ data: [], error: null }).client).createCode()).toEqual({
+      ok: false,
+      message: 'No code came back. Try again.',
+    });
   });
 });

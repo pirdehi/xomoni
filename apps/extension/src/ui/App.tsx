@@ -32,6 +32,7 @@ import { OverviewPage } from './pages/Overview';
 import { SettingsPage } from './pages/Settings';
 import type { Account } from '../shared/types';
 import type { PageId, PageProps } from './navigation';
+import { startCloudSync } from '../cloud/sync';
 
 const NAV: { id: PageId; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -42,6 +43,19 @@ const NAV: { id: PageId; label: string; icon: ComponentType<{ size?: number }> }
   { id: 'activity', label: 'Activity log', icon: History },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
+
+/** Reports job status to xomoni.com while the dashboard is open, if this browser is connected (ADR-0018). */
+function useCloudSync() {
+  useEffect(
+    () =>
+      startCloudSync(() =>
+        toast(
+          'xomoni.com no longer knows this browser, so its job status is no longer sent. Connect it again in Settings.',
+        ),
+      ),
+    [],
+  );
+}
 
 function useHashRoute(): [PageId, (p: PageId) => void] {
   const read = () => {
@@ -66,6 +80,7 @@ export function App() {
   const [page, navigate] = useHashRoute();
   const account = useActiveAccount();
   const worker = useWorkerStatus();
+  useCloudSync();
 
   return (
     <div className="flex h-full">

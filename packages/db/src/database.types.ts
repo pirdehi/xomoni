@@ -3,6 +3,47 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      device_pairings: {
+        Row: {
+          code_hash: string;
+          expires_at: string;
+          user_id: string;
+        };
+        Insert: {
+          code_hash: string;
+          expires_at: string;
+          user_id: string;
+        };
+        Update: {
+          code_hash?: string;
+          expires_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      device_tokens: {
+        Row: {
+          device_id: string;
+          token_hash: string;
+        };
+        Insert: {
+          device_id: string;
+          token_hash: string;
+        };
+        Update: {
+          device_id?: string;
+          token_hash?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'device_tokens_device_id_fkey';
+            columns: ['device_id'];
+            isOneToOne: true;
+            referencedRelation: 'devices';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       devices: {
         Row: {
           created_at: string;
@@ -112,7 +153,44 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      create_pairing_code: {
+        Args: never;
+        Returns: {
+          code: string;
+          expires_at: string;
+        }[];
+      };
       delete_account: { Args: never; Returns: undefined };
+      device_for_token: {
+        Args: { token: string };
+        Returns: {
+          created_at: string;
+          extension_version: string;
+          id: string;
+          last_seen_at: string;
+          name: string;
+          user_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'devices';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      device_report: {
+        Args: { jobs?: Json; token: string; version: string };
+        Returns: undefined;
+      };
+      normalize_pairing_code: { Args: { code: string }; Returns: string };
+      pair_device: {
+        Args: { code: string; name: string; version: string };
+        Returns: {
+          device_id: string;
+          token: string;
+        }[];
+      };
+      unpair_device: { Args: { token: string }; Returns: undefined };
     };
     Enums: {
       [_ in never]: never;

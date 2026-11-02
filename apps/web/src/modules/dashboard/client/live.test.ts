@@ -14,8 +14,9 @@ beforeEach(() => {
 
 describe('createLiveDashboardServices (browser composition root)', () => {
   it('builds every port on one browser client', () => {
-    createLiveDashboardServices();
+    const services = createLiveDashboardServices();
     expect(createBrowserSupabase).toHaveBeenCalledOnce();
+    expect(Object.keys(services).sort()).toEqual(['feed', 'pairing', 'reader', 'registry']);
   });
 
   it('re-reads devices through the browser client', async () => {

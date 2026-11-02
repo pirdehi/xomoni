@@ -157,6 +157,14 @@ module.exports = {
       to: { path: `${EXT}/(?!background/|shared/|engine/)` },
     },
     {
+      name: 'ext-cloud-is-isolated',
+      severity: 'error',
+      comment:
+        'cloud/ reports job status to xomoni.com (ADR-0018); it uses shared/ only, and the engine never imports it.',
+      from: { path: `${EXT}/cloud/` },
+      to: { path: `${EXT}/(?!cloud/|shared/)` },
+    },
+    {
       name: 'ext-ui-stays-out-of-the-page',
       severity: 'error',
       comment: 'The dashboard UI drives the engine; it never imports content, inject or background code.',

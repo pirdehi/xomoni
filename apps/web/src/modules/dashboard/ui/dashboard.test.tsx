@@ -53,6 +53,7 @@ function fakeServices() {
       listRecentJobs: vi.fn<LiveDashboardServices['reader']['listRecentJobs']>(),
     },
     registry: { disconnect: vi.fn<LiveDashboardServices['registry']['disconnect']>() },
+    pairing: { createCode: vi.fn<LiveDashboardServices['pairing']['createCode']>() },
     feed: {
       subscribe: vi.fn<LiveDashboardServices['feed']['subscribe']>((_viewerId, h) => {
         handlers = h;
@@ -153,7 +154,11 @@ describe('Dashboard', () => {
   });
 
   describe('before a browser is connected', () => {
-    it('explains how to connect the extension, with the account to sign in as', () => {
+    it('explains how to connect the extension with a one-time code (ADR-0018)', async () => {
+      fake.services.pairing.createCode.mockResolvedValue({
+        ok: true,
+        code: { code: 'AB2CD-EF3GH', expiresAt: new Date(NOW + 10 * 60_000).toISOString() },
+      });
       renderDashboard({ devices: [], jobs: [] });
 
       const connect = screen.getByRole('region', { name: 'Connect your browser' });
@@ -161,7 +166,9 @@ describe('Dashboard', () => {
         'href',
         INSTALL_URL,
       );
-      expect(connect).toHaveTextContent('sign in as ada@example.com');
+      expect(connect).toHaveTextContent('type it in the extension under Settings → xomoni.com');
+      await userEvent.click(within(connect).getByRole('button', { name: 'Get a code to connect a browser' }));
+      expect(await within(connect).findByLabelText('Pairing code')).toHaveTextContent('AB2CD-EF3GH');
       expect(connect).toHaveTextContent('Waiting for your browser…');
       expect(screen.queryByRole('region', { name: 'Jobs' })).not.toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Connected browsers' })).not.toBeInTheDocument();
@@ -393,10 +400,11 @@ describe('Dashboard', () => {
         ),
       });
 
-      // Every state is on screen, and the only buttons are signing out and disconnecting a browser.
+      // Every state is on screen, and the only buttons are signing out, disconnecting a browser and getting a code
+      // to connect one: none acts on X.
       expect(jobRows()).toHaveLength(EVERY_STATE.length);
       const buttons = screen.getAllByRole('button').map((button) => button.textContent);
-      expect(new Set(buttons)).toEqual(new Set(['Sign out', 'Disconnect']));
+      expect(new Set(buttons)).toEqual(new Set(['Sign out', 'Disconnect', 'Get a code to connect a browser']));
       const links = screen.getAllByRole('link').map((link) => link.textContent);
       expect(links).toEqual(['Account']);
       // The only form is signing out.

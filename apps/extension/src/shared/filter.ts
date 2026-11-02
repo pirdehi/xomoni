@@ -14,9 +14,16 @@ export function normalizeKeywords(raw: string): string[] {
     .filter(Boolean);
 }
 
-/** Extracts post ids from pasted ids or post URLs. */
+/**
+ * Post ids from pasted post URLs (`…/status/<id>`) or bare ids, separated by spaces, commas or new lines.
+ * Digits inside anything else, such as a handle like `@user12345678`, are not taken for an id (#61).
+ */
 export function parseIdList(raw: string): string[] {
-  return [...raw.matchAll(/(?:status\/)?(\d{6,20})/g)].flatMap((m) => m[1] ?? []);
+  return raw.split(/[\s,]+/).flatMap((token) => {
+    const fromUrl = /\/status(?:es)?\/(\d{6,20})(?:\D|$)/.exec(token)?.[1];
+    if (fromUrl) return [fromUrl];
+    return /^\d{6,20}$/.test(token) ? [token] : [];
+  });
 }
 
 /** Whether an item should be removed under the filter (false = keep it). */

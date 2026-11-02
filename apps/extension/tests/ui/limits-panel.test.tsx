@@ -115,6 +115,18 @@ describe('LimitsPanel', () => {
     expect(screen.getByRole('meter', { name: 'Delete posts & replies today' })).toHaveAttribute('aria-valuenow', '3');
   });
 
+  it('lets actions age out of the last hour while nothing new is logged (#61)', async () => {
+    await finishWarmup();
+    await db.logs.add(log('delete', 55 * MINUTE));
+    render(<LimitsPanel accountId={ME} />);
+    const del = caps('delete', 1);
+    await waitFor(async () => expect(await usage('delete')).toBe(`1/${del.hour} hr · 1/${del.day} day`));
+
+    // Ten minutes later, with no new rows, the panel's minute tick re-counts.
+    vi.setSystemTime(NOW + 10 * MINUTE);
+    await waitFor(async () => expect(await usage('delete')).toBe(`0/${del.hour} hr · 1/${del.day} day`));
+  });
+
   it('counts page loads from the reads table', async () => {
     await finishWarmup();
     await db.reads.bulkAdd([

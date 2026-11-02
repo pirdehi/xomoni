@@ -4,12 +4,12 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
 
 ## Files
 
-| File         | Responsibility                                                                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `content.ts` | Entry point: hands the interceptor its end of a private `MessageChannel` (`../shared/bridge.ts`), passes the captures that arrive on it and pass `isCapture` to `net.ts`, and answers `actor` runtime messages through `actor.ts`. Window messages are never trusted (#59).                                              |
+| File         | Responsibility                                                                                                                                                                                                                                                                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content.ts` | Entry point: hands the interceptor its end of a private `MessageChannel` (`../shared/bridge.ts`), passes the captures that arrive on it and pass `isCapture` to `net.ts`, and answers `actor` runtime messages through `actor.ts`. Window messages are never trusted (#59).                                                                          |
 | `actor.ts`   | Runs `ActorCommand`s (ping, wait for content, list visible posts, scroll, delete, unlike, re-like then unlike, undo repost, the `canary` check before acting, which opens and closes a menu without clicking in it, and `clearPage`, which closes a pop-up over the page with Escape or its own Close button) and maps X's response to an `Outcome`. |
-| `net.ts`     | Parses interceptor captures, resolves `waitForNet` waiters, and sends `rate`, `ingest` and `profile` messages to the service worker. Remembers the page's last timeline HTTP status (`lastTimelineStatus`), which `waitContent` reports.                               |
-| `dom.ts`     | Every X DOM dependency: selectors, the multilingual Delete label, DOM helpers, `waitFor`, pop-up detection (`openDialog`), account notices, and the signed-in user's id and handle.                                  |
+| `net.ts`     | Parses interceptor captures, resolves `waitForNet` waiters, and sends `rate`, `ingest` and `profile` messages to the service worker. Remembers the page's last timeline HTTP status (`lastTimelineStatus`), which `waitContent` reports.                                                                                                             |
+| `dom.ts`     | Every X DOM dependency: selectors, the multilingual Delete label, DOM helpers, `waitFor`, pop-up detection (`openDialog`), account notices, and the signed-in user's id and handle.                                                                                                                                                                  |
 
 ## Depends on
 

@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import { type RiskEvent, type RiskEventKind, isDuplicateRisk } from './risk';
 import { normalizeSettings } from './settings';
 import { DAY } from './time';
+import type { ViewCap } from './x-limits';
 import { CONSENT_VERSION } from '@xomoni/consent';
 import type {
   Account,
@@ -33,6 +34,8 @@ export interface ReadUse {
   budget: string;
   /** Epoch ms. */
   ts: number;
+  /** Posts the page load or scroll showed, for the daily view cap (#28); missing on older rows. */
+  posts?: number;
 }
 
 class XomoniDB extends Dexie {
@@ -234,4 +237,16 @@ export async function archiveImported(accountId: string): Promise<boolean> {
     .filter((item) => item.sources.includes('archive'))
     .first();
   return !!fromArchive;
+}
+
+const viewCapKey = (accountId: string) => `viewCap:${accountId}`;
+
+/** The daily view cap learned for an account (PLAYBOOK A4, #28), or null when none was learned. */
+export function getViewCap(accountId: string): Promise<ViewCap | null> {
+  return kvGet<ViewCap | null>(viewCapKey(accountId), null);
+}
+
+/** Stores the daily view cap learned for an account; it applies to every later run. */
+export function setViewCap(accountId: string, cap: ViewCap) {
+  return kvSet(viewCapKey(accountId), cap);
 }

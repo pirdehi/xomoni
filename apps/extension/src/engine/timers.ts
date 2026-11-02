@@ -24,7 +24,10 @@ function timerWorker(): Worker {
 /** Background-safe sleep; rejects with Aborted when the signal fires. */
 export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(new Aborted());
+    if (signal?.aborted) {
+      reject(new Aborted());
+      return;
+    }
     const id = ++seq;
     const onAbort = () => {
       pending.delete(id);

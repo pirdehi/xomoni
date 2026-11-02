@@ -68,7 +68,7 @@ export async function runDueChecks(ctx: JobContext) {
     ctx.checkpoint();
     ctx.status('Checking that X applied an earlier action…');
     const result = await applied(ctx, check);
-    await db.checks.delete(check.seq!);
+    if (check.seq !== undefined) await db.checks.delete(check.seq);
     const minutes = Math.round((Date.now() - check.at) / MINUTE);
     if (result === null) ctx.samples.unclear++;
     else if (result) ctx.samples.applied++;

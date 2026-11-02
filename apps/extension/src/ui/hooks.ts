@@ -8,6 +8,7 @@ import type { PageInfo } from '../shared/messages';
 import type { Account } from '../shared/types';
 import { runner } from '../engine/runner';
 import { WorkerGone, workerTab } from '../engine/worker-tab';
+import { errorMessage } from './format';
 
 /** Live state of the job runner in this dashboard tab (the `runner` singleton from `engine/runner.ts`). */
 export function useRunner() {
@@ -54,7 +55,7 @@ export function useWorkerStatus(intervalMs = 3000): WorkerStatus {
       }
     };
     void tick();
-    const t = setInterval(tick, intervalMs);
+    const t = setInterval(() => void tick(), intervalMs);
     return () => {
       alive = false;
       clearInterval(t);
@@ -136,7 +137,7 @@ export function useConsentRequest() {
 export async function startJob(jobId: string) {
   const job = await db.jobs.get(jobId);
   if (job && !(await hasConsent(job.accountId)) && !(await askConsent(job.accountId))) return;
-  runner.start(jobId).catch((err) => toast(err instanceof Error ? err.message : String(err), 'critical'));
+  runner.start(jobId).catch((err: unknown) => toast(errorMessage(err), 'critical'));
 }
 
 /**

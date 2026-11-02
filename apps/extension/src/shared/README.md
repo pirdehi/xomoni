@@ -14,6 +14,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 | `db.ts`        | The Dexie database (`xomoni`) and its write helpers: inventory upsert, accounts, `kv`, settings, activity log, consent, the archive-imported marker.              |
 | `filter.ts`    | Cleanup rules: matching items, finding candidates in the inventory, choosing the action, estimating duration.               |
 | `graphql.ts`   | Parses X's internal GraphQL responses (posts, profile, errors) and turns them into inventory drafts.                        |
+| `json.ts` | Safe reading of JSON Xomoni doesn't control (X's responses, archive files, runtime messages): `asObject`, `asString`, `asNumber`, `asId`, `at`. Everything is `unknown` until checked (ADR-0016). Pure. |
 | `messages.ts`  | Message types between the dashboard, the content script and the service worker.                                             |
 | `health.ts` | The account health report after a run (#25): X's signals, sample checks, X's notice, the risk level and a suggested rest, as one summary. Pure. |
 | `notify.ts`    | Desktop notifications and their ids.                                                                                        |
@@ -39,7 +40,7 @@ The kernel of the extension: the data model, parsers for X's GraphQL traffic and
 - `../dev/` for the database and types, to seed demo data in the UI preview.
 - `../../tests/sessions.test.ts` for `pacing.ts` and the default settings.
 - `../../tests/archive-range.test.ts` for `backup.ts`.
-- `../../tests/parsers.test.ts` for the parsers in `archive.ts`, `graphql.ts`, `filter.ts`, `time.ts` and `attention.ts`.
+- `../../tests/parsers.test.ts` for the parsers in `archive.ts`, `graphql.ts` (through `json.ts`), `filter.ts`, `time.ts` and `attention.ts`.
 
 ## Rules
 

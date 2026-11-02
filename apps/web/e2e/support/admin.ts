@@ -41,6 +41,7 @@ export async function addDevice(userId: string, name: string): Promise<string> {
     body: { user_id: userId, name, extension_version: '0.2.0' },
     prefer: 'return=representation',
   });
+  if (!device) throw new Error(`Supabase returned no device for ${name}`);
   return device.id;
 }
 

@@ -114,8 +114,7 @@ export class WorkerTab {
       if ((await this.current()) == null) throw new WorkerGone();
       throw new NotReady(String(err instanceof Error ? err.message : err));
     }
-    if (reply && typeof reply === 'object' && 'error' in reply)
-      throw new PageError(String((reply as { error: unknown }).error));
+    if (reply && typeof reply === 'object' && 'error' in reply) throw new PageError(String(reply.error));
     return reply as Reply<C['cmd']>;
   }
 

@@ -27,7 +27,9 @@ describe('RISK_LEVEL', () => {
   it('names the levels as the extension does', () => {
     const source = readFileSync(join(__dirname, '../../../../../extension/src/shared/risk.ts'), 'utf8');
     const block = /RISK_LABELS[^{]*\{([^}]*)\}/.exec(source)?.[1] ?? '';
-    const extension = Object.fromEntries([...block.matchAll(/(\d):\s*'([^']+)'/g)].map(([, n, name]) => [n, name]));
+    const extension = Object.fromEntries(
+      [...block.matchAll(/(\d):\s*'([^']+)'/g)].map(([, n = '', name = '']) => [n, name] as const),
+    );
     expect(Object.keys(extension)).toHaveLength(5);
     for (const [level, { label }] of Object.entries(RISK_LEVEL)) expect(label).toBe(extension[level]);
   });
@@ -61,7 +63,7 @@ describe('accountRisks (#41)', () => {
       ['bob', 3],
       ['ada', 2],
     ]);
-    expect(risks[1].reportedAt).toBe('2026-10-31T12:00:00Z');
+    expect(risks[1]?.reportedAt).toBe('2026-10-31T12:00:00Z');
   });
 
   it('keeps each browser’s level apart, since each browser has its own ladder', () => {

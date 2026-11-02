@@ -90,7 +90,7 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
       if (!prev) {
         return {
           ...d,
-          key: keys[i],
+          key: itemKey(accountId, d.kind, d.id),
           accountId,
           sources: [source],
           status: 'present',

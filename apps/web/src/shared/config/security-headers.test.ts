@@ -8,7 +8,7 @@ const LOCAL = { supabaseUrl: 'http://127.0.0.1:54321', siteUrl: 'http://localhos
 function directives(policy: string): Map<string, string[]> {
   return new Map(
     policy.split('; ').map((part) => {
-      const [name, ...sources] = part.split(' ');
+      const [name = '', ...sources] = part.split(' ');
       return [name, sources];
     }),
   );

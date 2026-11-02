@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, type FormEvent } from 'react';
+import { useState, useTransition, type SubmitEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES, type AuthFailure } from '../domain/auth-error';
@@ -21,11 +21,11 @@ export function SignInForm() {
   const [email, setEmail] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const input = { email: form.get('email'), password: form.get('password'), next, captchaToken: captcha.token };
-    setEmail(String(input.email ?? ''));
+    setEmail(typeof input.email === 'string' ? input.email : '');
     setNotice(null);
     startTransition(async () => {
       const result = await browserAuth.signIn(input);

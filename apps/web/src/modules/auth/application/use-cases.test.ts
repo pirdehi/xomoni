@@ -78,7 +78,7 @@ describe('signUp', () => {
     const d = deps();
     const result = await useCases.signUp(d, { email: 'nope', password: 'short' });
     expect(result).toMatchObject({ ok: false, code: 'invalid_input' });
-    expect(result.ok === false && result.fieldErrors).toMatchObject({
+    expect(!result.ok && result.fieldErrors).toMatchObject({
       email: expect.any(String),
       password: expect.any(String),
     });

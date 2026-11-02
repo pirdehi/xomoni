@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CircleAlert, Laptop, LogOut, Puzzle, RefreshCw, ShieldAlert } from 'lucide-react';
@@ -110,7 +111,7 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
                   </div>
                   <button
                     type="button"
-                    onClick={() => onDisconnect(device)}
+                    onClick={() => void onDisconnect(device)}
                     className="btn btn-secondary py-1.5 text-sm"
                   >
                     Disconnect
@@ -130,9 +131,16 @@ function AccountBar({ viewer, live }: { viewer: DashboardViewer; live: boolean }
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
         {viewer.avatarUrl ? (
-          // Google profile pictures; plain <img> keeps the referrer off.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={viewer.avatarUrl} alt="" referrerPolicy="no-referrer" className="size-11 rounded-full" />
+          // Google profile pictures, loaded as they are (no optimizer) with the referrer off.
+          <Image
+            src={viewer.avatarUrl}
+            alt=""
+            width={44}
+            height={44}
+            unoptimized
+            referrerPolicy="no-referrer"
+            className="size-11 rounded-full"
+          />
         ) : (
           <div className="flex size-11 items-center justify-center rounded-full bg-accent-soft font-semibold text-accent">
             {(viewer.name || viewer.email).slice(0, 1).toUpperCase()}

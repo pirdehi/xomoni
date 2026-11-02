@@ -142,7 +142,7 @@ describe('graphql parsing', () => {
     };
     const tweets = extractTweets(json);
     expect(tweets.map((t) => t.id)).toEqual(['1', '2', '3', '4']);
-    expect(tweets[2].source?.id).toBe('800');
+    expect(tweets[2]?.source?.id).toBe('800');
 
     const drafts = draftsFromTimeline('UserTweets', tweets, ME, {});
     expect(drafts.map((d) => [d.kind, d.id, d.targetId])).toEqual([
@@ -150,8 +150,8 @@ describe('graphql parsing', () => {
       ['reply', '2', '2'],
       ['repost', '3', '800'],
     ]);
-    expect(drafts[1].selfReply).toBe(true);
-    expect(drafts[2].author).toBe('author');
+    expect(drafts[1]?.selfReply).toBe(true);
+    expect(drafts[2]?.author).toBe('author');
   });
 
   it('records likes only from the viewer’s own Likes timeline, with checked like times', () => {
@@ -160,26 +160,26 @@ describe('graphql parsing', () => {
       {
         ...extractTweets({
           e: [entry('tweet-a', idAt(Date.UTC(2022, 0, 2)), tweet(idAt(created, 1n), { user: '7' }))],
-        })[0],
+        })[0]!,
       },
       {
         ...extractTweets({
           e: [entry('tweet-b', idAt(Date.UTC(2022, 0, 1)), tweet(idAt(created, 2n), { user: '8' }))],
-        })[0],
+        })[0]!,
       },
     ];
     expect(draftsFromTimeline('Likes', tweets, ME, { userId: '999' })).toEqual([]);
     const drafts = draftsFromTimeline('Likes', tweets, ME, { userId: ME });
     expect(drafts.map((d) => d.kind)).toEqual(['like', 'like']);
-    expect(drafts[0].likedAt).toBe(Date.UTC(2022, 0, 2));
+    expect(drafts[0]?.likedAt).toBe(Date.UTC(2022, 0, 2));
 
     // Out-of-order sortIndexes mean they are not like times: drop all estimates.
-    const shuffled = draftsFromTimeline('Likes', [tweets[1], tweets[0]], ME, { userId: ME });
+    const shuffled = draftsFromTimeline('Likes', [tweets[1]!, tweets[0]!], ME, { userId: ME });
     expect(shuffled.every((d) => d.likedAt === null)).toBe(true);
 
     // Posts X marks as no longer liked are not recorded as likes.
-    const unliked = [{ ...tweets[0], favorited: false }, tweets[1]];
-    expect(draftsFromTimeline('Likes', unliked, ME, { userId: ME }).map((d) => d.id)).toEqual([tweets[1].id]);
+    const unliked = [{ ...tweets[0]!, favorited: false }, tweets[1]!];
+    expect(draftsFromTimeline('Likes', unliked, ME, { userId: ME }).map((d) => d.id)).toEqual([tweets[1]!.id]);
   });
 
   it('reads profiles and errors', () => {
@@ -240,8 +240,8 @@ describe('archive', () => {
       ['repost', '', 'someone'],
       ['reply', '13', 'me'],
     ]);
-    expect(drafts[0].likes).toBe(4);
-    expect(drafts[2].selfReply).toBe(false);
+    expect(drafts[0]?.likes).toBe(4);
+    expect(drafts[2]?.selfReply).toBe(false);
 
     const likeId = idAt(Date.UTC(2019, 5, 1));
     const likes = archiveLikeDrafts(
@@ -332,7 +332,7 @@ describe('cleanup rules', () => {
   });
 
   it('builds scoped search URLs', () => {
-    const [url] = sweepUrls({ ...base, target: 'reply' }, 'me');
+    const [url = ''] = sweepUrls({ ...base, target: 'reply' }, 'me');
     const q = new URL(url).searchParams.get('q');
     expect(q).toBe('from:me until:2024-01-02 filter:replies');
     expect(new URL(url).searchParams.get('f')).toBe('live');

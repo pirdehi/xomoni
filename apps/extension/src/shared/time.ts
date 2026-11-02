@@ -16,7 +16,7 @@ export function parseTwitterDate(value: unknown): number | null {
     const t = Date.parse(value);
     return Number.isNaN(t) ? null : t;
   }
-  const month = MONTHS.indexOf(m[1]);
+  const month = MONTHS.indexOf(m[1] ?? '');
   if (month < 0) return null;
   const offset = (m[6] === '-' ? -1 : 1) * (Number(m[7]) * 60 + Number(m[8])) * 60_000;
   return Date.UTC(Number(m[9]), month, Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5])) - offset;

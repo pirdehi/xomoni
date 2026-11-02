@@ -24,15 +24,62 @@ export default defineConfig(
     'packages/db/src/database.types.ts',
     'supabase/.temp/',
   ]),
-  js.configs.recommended,
-  tseslint.configs.recommended,
   {
-    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+    // Rules are changed here, with a reason, never switched off from inside the code (ADR-0016).
+    linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: 'error' },
+  },
+  js.configs.recommended,
+  // Type-aware rules (#101): they read each file's types through the workspace's tsconfig, so floating
+  // promises, unsafe `any`, non-exhaustive switches and needless conditions fail the lint.
+  tseslint.configs.strictTypeChecked,
+  {
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+      parserOptions: {
+        // vite.config.ts runs in Node, outside the extension's browser tsconfig; it has its own.
+        projectService: {
+          allowDefaultProject: ['apps/extension/vite.config.ts'],
+          defaultProject: 'apps/extension/tsconfig.node.json',
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }],
+      // `() => setOpen(false)` is the idiomatic React handler; a void value used anywhere else still fails.
+      '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
+      // Numbers read naturally in messages; objects, null and undefined in a template still fail.
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      '@typescript-eslint/switch-exhaustiveness-check': [
+        'error',
+        { considerDefaultExhaustiveForUnions: true, requireDefaultForNonUnion: false },
+      ],
       eqeqeq: ['error', 'smart'],
       'no-console': ['error', { allow: ['warn', 'error', 'info'] }],
+    },
+  },
+  {
+    // Plain JavaScript (configs, build scripts, tooling) has no types to check.
+    files: ['**/*.{js,mjs,cjs}'],
+    extends: [tseslint.configs.disableTypeChecked],
+  },
+  {
+    // The page-world interceptor keeps X's own fetch and XMLHttpRequest methods to call them later with the
+    // page's `this`: holding unbound methods is the point there (ADR-0016).
+    files: ['apps/extension/src/inject/interceptor.ts'],
+    rules: { '@typescript-eslint/unbound-method': 'off' },
+  },
+  {
+    // Tests (ADR-0016): a missing value fails the test anyway, so `!` is allowed; Vitest and Playwright
+    // callbacks are async by contract; mocks are asserted through their methods; and Vitest types its
+    // asymmetric matchers (`expect.any(String)`) as `any`.
+    files: ['**/*.test.{ts,tsx}', '**/tests/**/*.{ts,tsx}', '**/e2e/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
     },
   },
   {

@@ -16,7 +16,7 @@ const CAPTURE = {
   body: '{"data":{"delete_tweet":{}}}',
 };
 
-let port: MessagePort;
+let port: MessagePort | undefined;
 
 beforeAll(async () => {
   vi.stubGlobal('chrome', { runtime: { onMessage: { addListener: () => {} } } });
@@ -41,8 +41,8 @@ describe('content script: only the private channel is trusted (#59)', () => {
   });
 
   it('handles a capture from the interceptor, and drops malformed data on the channel', async () => {
-    port.postMessage({ ...CAPTURE, status: 'ok' });
-    port.postMessage(CAPTURE);
+    port!.postMessage({ ...CAPTURE, status: 'ok' });
+    port!.postMessage(CAPTURE);
     await vi.waitFor(() => expect(handleCapture).toHaveBeenCalledOnce());
     expect(handleCapture).toHaveBeenCalledWith(CAPTURE);
   });

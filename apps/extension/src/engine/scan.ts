@@ -37,7 +37,7 @@ export function scanUrls(target: ScanTarget, handle: string, createdAt: number |
         for (const [from, to] of [
           [Date.UTC(year, 6, 1), Date.UTC(year + 1, 0, 1)],
           [Date.UTC(year, 0, 1), Date.UTC(year, 6, 1)],
-        ]) {
+        ] as const) {
           const since = Math.max(from, range.after) - DAY;
           const until = Math.min(to, end) + DAY;
           if (from >= end || to <= range.after) continue;
@@ -61,7 +61,7 @@ export function scanUrls(target: ScanTarget, handle: string, createdAt: number |
         for (const [since, until] of [
           [`${year}-07-01`, `${year + 1}-01-01`],
           [`${year}-01-01`, `${year}-07-01`],
-        ]) {
+        ] as const) {
           if (Date.parse(since) > now.getTime()) continue;
           urls.push(searchUrl(handle, since, until));
         }
@@ -86,20 +86,21 @@ export async function runScan(ctx: JobContext) {
   // Resume from the page the previous run reached.
   const startAt = Math.max(0, Number(ctx.job.phase.split('/')[0]) - 1 || 0);
 
-  for (let i = startAt; i < urls.length; i++) {
+  for (const [i, url] of urls.entries()) {
+    if (i < startAt) continue;
     const phase = `${i + 1}/${urls.length}`;
     // Loading the page an earlier run reached again: count its posts from where that page started.
     if (ctx.job.phase === phase && ctx.job.scannedAtPageStart != null)
       ctx.job.stats.scanned = ctx.job.scannedAtPageStart;
     else ctx.job.scannedAtPageStart = ctx.job.stats.scanned;
     await ctx.setPhase(phase);
-    const content = await ctx.navigate(urls[i]);
+    const content = await ctx.navigate(url);
     if (content.kind !== 'tweets') continue;
     ctx.job.stats.scanned += content.count;
 
     let idle = 0;
     let old = 0;
-    const timeline = !urls[i].includes('/search?');
+    const timeline = !url.includes('/search?');
     for (let n = 0; n < MAX_SCROLLS_PER_PAGE && idle < MAX_IDLE_SCROLLS; n++) {
       const scrolled = await ctx.scroll();
       ctx.job.stats.scanned += scrolled.added;

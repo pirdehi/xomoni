@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@xomoni/db';
 import { NextResponse, type NextRequest } from 'next/server';
 import { SUPABASE_KEY, SUPABASE_URL } from './env';
@@ -6,7 +7,7 @@ import { SUPABASE_KEY, SUPABASE_URL } from './env';
 /** A Supabase client for the proxy, plus the response that carries any refreshed session cookies. */
 export interface ProxySupabase {
   /** The client; reading the session through it refreshes an expiring token. */
-  supabase: ReturnType<typeof createServerClient<Database>>;
+  supabase: SupabaseClient<Database>;
   /** The pass-through response, with refreshed cookies and headers applied. */
   response: () => NextResponse;
   /** Builds a redirect that keeps the refreshed cookies. */

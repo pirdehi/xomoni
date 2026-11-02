@@ -20,7 +20,7 @@ test.describe('security headers (#8)', () => {
       ['/login', 'Sign in'],
       ['/signup', 'Create account'],
       ['/forgot-password', 'Send reset link'],
-    ]) {
+    ] as const) {
       await page.goto(path);
       // The button turns on only once Turnstile's script and frame have produced a token.
       await expect(page.getByRole('button', { name: button, exact: true })).toBeEnabled({ timeout: 30_000 });

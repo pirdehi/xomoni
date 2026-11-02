@@ -2,8 +2,9 @@
 import { type Need, needMessage, pageNeed } from '../shared/attention';
 import { addLog, db, getSettings, hasConsent, recordRisk, riskEvents } from '../shared/db';
 import { type JobHealth, type SampleTally, healthReport } from '../shared/health';
-import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from '../shared/risk';
 import type { ActionResult, PageInfo } from '../shared/messages';
+import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from '../shared/risk';
+import { DEFAULT_SETTINGS } from '../shared/settings';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } from '../shared/types';
 import { BUDGETS, type BudgetId, quotaHit, readBudgetFor } from '../shared/x-limits';
@@ -23,7 +24,7 @@ const OUTAGE_LIMIT_MS = 3 * HOUR;
 const ONLINE_CHECK_MS = 10_000;
 
 /** Whether the browser has a network connection. True where `navigator` is missing. */
-const online = () => globalThis.navigator?.onLine !== false;
+const online = () => (globalThis as { navigator?: Partial<Navigator> }).navigator?.onLine !== false;
 
 /** What to do when X limits the account; shown when a job stops for a restriction. */
 const RESTRICTED_ADVICE =
@@ -116,7 +117,8 @@ export interface RunnerHooks {
  */
 export class JobContext {
   /** Settings read when the run started (`init`); changes apply from the next run. */
-  settings!: Settings;
+  /** The defaults until `init` loads the person's settings. */
+  settings: Settings = DEFAULT_SETTINGS;
   limiter!: Limiter;
   /** The account's handle without `@`, used in URLs and search queries; set by `connect`. */
   handle = '';

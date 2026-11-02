@@ -92,6 +92,11 @@ class Runner {
     this.request({ state: 'cancelled', reason: 'Cancelled by you.' });
   }
 
+  /** The stop the person asked for while the job ran; `pause` and `cancel` set it from outside `execute`. */
+  private requestedStop(): StopRequest | null {
+    return this.stopRequest;
+  }
+
   private request(req: StopRequest) {
     if (!this.controller) return;
     this.stopRequest = req;
@@ -119,7 +124,7 @@ class Runner {
           return;
         }
         this.set({ status: 'attention', message: request.message, waitUntil: null, need: request.need });
-        if (ctx.settings?.notifications !== false) {
+        if (ctx.settings.notifications) {
           void notify(
             ATTENTION_ID,
             `Xomoni needs you: ${NEED_TITLE[request.need]}`,
@@ -141,7 +146,7 @@ class Runner {
       final = { state: 'completed', reason: ctx.notes.join(' ') };
     } catch (err) {
       stoppedByYou = err instanceof Aborted || controller.signal.aborted;
-      if (stoppedByYou) final = this.stopRequest ?? { state: 'paused', reason: 'Stopped.' };
+      if (stoppedByYou) final = this.requestedStop() ?? { state: 'paused', reason: 'Stopped.' };
       else if (err instanceof Stop) {
         final = { state: err.state, reason: err.message };
         if (err.risk) await recordRisk(job.accountId, err.risk).catch(() => {});
@@ -185,7 +190,7 @@ class Runner {
           `Account health: ${job.health.summary}`,
         );
       }
-      if (!stoppedByYou && ctx.settings?.notifications !== false) {
+      if (!stoppedByYou && ctx.settings.notifications) {
         void notify(
           FINISHED_ID,
           `Xomoni: ${STATE_VERB[final.state].replace(/:$/, '')} “${job.title}”`,

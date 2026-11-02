@@ -201,7 +201,7 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
           size="sm"
           variant="primary"
           icon={<Play size={13} />}
-          onClick={() => startJob(job.id)}
+          onClick={() => void startJob(job.id)}
           disabled={run.status !== 'idle'}
         >
           {job.state === 'queued' ? 'Start' : 'Resume'}
@@ -238,7 +238,7 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
           size="sm"
           variant="ghost"
           icon={<Ban size={13} />}
-          onClick={() => db.jobs.update(job.id, { state: 'cancelled', finishedAt: Date.now() })}
+          onClick={() => void db.jobs.update(job.id, { state: 'cancelled', finishedAt: Date.now() })}
         >
           Cancel
         </Button>
@@ -248,7 +248,7 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
           size="sm"
           variant="ghost"
           icon={<Trash2 size={13} />}
-          onClick={() => db.jobs.delete(job.id)}
+          onClick={() => void db.jobs.delete(job.id)}
           title="Remove from the list (the activity log is kept)"
         >
           Remove

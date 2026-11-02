@@ -64,7 +64,7 @@ export function createSupabaseAuthGateway(supabase: SupabaseClient<Database>): A
     async currentAccount() {
       // getUser asks the Auth server, so a pending email change made on another device shows up.
       const { data, error } = await supabase.auth.getUser();
-      if (error || !data.user) return null;
+      if (error) return null;
       return { email: data.user.email ?? '', pendingEmail: data.user.new_email ?? null };
     },
 

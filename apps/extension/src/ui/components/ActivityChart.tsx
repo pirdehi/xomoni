@@ -52,7 +52,9 @@ export function ActivityChart({ accountId }: { accountId: string }) {
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setWidth(entry.contentRect.width);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, [view]);
@@ -127,7 +129,7 @@ export function ActivityChart({ accountId }: { accountId: string }) {
               {series.map((s, i) => (
                 <span key={s.kind} className="inline-flex items-center gap-1.5">
                   <span className="size-2.5 rounded-sm" style={{ background: s.color }} />
-                  {s.label} <span className="text-ink">{fmtCompact(totals[i])}</span>
+                  {s.label} <span className="text-ink">{fmtCompact(totals[i] ?? 0)}</span>
                 </span>
               ))}
             </div>

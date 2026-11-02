@@ -31,7 +31,7 @@ describe('scanUrls: reading one date range from X', () => {
   it('never searches the future, and needs a range', () => {
     const urls = scanUrls('range', 'me', null, { after: Date.now() - 10 * DAY, before: Date.now() + 400 * DAY });
     for (const url of urls.slice(1)) {
-      const since = query(url).match(/since:(\S+)/)![1];
+      const since = query(url).match(/since:(\S+)/)![1]!;
       expect(Date.parse(since)).toBeLessThan(Date.now());
     }
     expect(scanUrls('range', 'me', null)).toEqual([]);
@@ -104,29 +104,28 @@ describe('runScan: a range scan stops scrolling the timeline once it is past the
 
 describe('the archive file for a date range', () => {
   const RANGE: DateRange = { after: utc(2024, 1, 1), before: utc(2025, 1, 1) };
-  const item = (over: Partial<Item>): Item =>
-    ({
-      key: '',
-      accountId: 'acct-1',
-      kind: 'post',
-      id: '1',
-      targetId: '1',
-      createdAt: utc(2024, 5, 15),
-      likedAt: null,
-      text: 'hello',
-      author: 'me',
-      inReplyToId: null,
-      selfReply: false,
-      likes: 3,
-      reposts: 1,
-      replies: 0,
-      sources: ['scan'],
-      status: 'present',
-      seenAt: 0,
-      statusAt: 0,
-      lastJobId: null,
-      ...over,
-    }) as Item;
+  const item = (over: Partial<Item>): Item => ({
+    key: '',
+    accountId: 'acct-1',
+    kind: 'post',
+    id: '1',
+    targetId: '1',
+    createdAt: utc(2024, 5, 15),
+    likedAt: null,
+    text: 'hello',
+    author: 'me',
+    inReplyToId: null,
+    selfReply: false,
+    likes: 3,
+    reposts: 1,
+    replies: 0,
+    sources: ['scan'],
+    status: 'present',
+    seenAt: 0,
+    statusAt: 0,
+    lastJobId: null,
+    ...over,
+  });
   const ITEMS = [
     item({ id: '3', createdAt: utc(2024, 8, 1), text: 'later' }),
     item({ id: '2', kind: 'reply', createdAt: utc(2024, 2, 1), status: 'deleted' }),
@@ -143,8 +142,8 @@ describe('the archive file for a date range', () => {
   });
 
   it('links a repost to the original post', () => {
-    expect(itemUrl(ITEMS[2])).toBe('https://x.com/friend/status/900');
-    expect(itemUrl(ITEMS[0])).toBe('https://x.com/me/status/3');
+    expect(itemUrl(ITEMS[2]!)).toBe('https://x.com/friend/status/900');
+    expect(itemUrl(ITEMS[0]!)).toBe('https://x.com/me/status/3');
   });
 
   it('escapes every post, so the page can never run or add markup', () => {
@@ -164,7 +163,9 @@ describe('the archive file for a date range', () => {
 
   it('writes JSON with the range, counts and every item', () => {
     const items = archiveItems(ITEMS, RANGE, ['post', 'reply', 'repost']);
-    const data = JSON.parse(archiveJson({ id: 'acct-1', handle: 'me', name: 'Me' }, RANGE, items));
+    const data = JSON.parse(archiveJson({ id: 'acct-1', handle: 'me', name: 'Me' }, RANGE, items)) as {
+      items: { id: string; status: string }[];
+    };
     expect(data).toMatchObject({
       format: 'xomoni-archive',
       version: 1,
@@ -172,7 +173,7 @@ describe('the archive file for a date range', () => {
       range: { from: '2024-01-01T00:00:00.000Z', until: '2025-01-01T00:00:00.000Z' },
       counts: { post: 1, reply: 1, repost: 1 },
     });
-    expect(data.items.map((i: { id: string; status: string }) => [i.id, i.status])).toEqual([
+    expect(data.items.map((i) => [i.id, i.status])).toEqual([
       ['2', 'deleted'],
       ['9', 'present'],
       ['3', 'present'],

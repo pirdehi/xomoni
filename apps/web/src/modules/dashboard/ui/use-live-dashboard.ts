@@ -10,7 +10,7 @@ export interface LiveDashboard extends DashboardSnapshot {
   /** Whether live updates are flowing. */
   live: boolean;
   /** Disconnects a device and drops its jobs from view; resolves to an error message on failure. */
-  disconnect(device: Device): Promise<string | null>;
+  disconnect: (device: Device) => Promise<string | null>;
 }
 
 /**
@@ -32,7 +32,9 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
       if (d) setDevices(d);
       if (j) setJobs(j);
     }
-    const onVisible = () => document.visibilityState === 'visible' && refetch();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refetch();
+    };
     document.addEventListener('visibilitychange', onVisible);
 
     const stop = services.feed.subscribe(viewerId, {
@@ -40,7 +42,7 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
       onDevice: (device) => setDevices((list) => upsertNewestFirst(list, device, 'lastSeenAt')),
       onStatus(connected) {
         setLive(connected);
-        if (connected) refetch();
+        if (connected) void refetch();
       },
     });
 

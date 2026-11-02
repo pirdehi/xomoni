@@ -24,8 +24,8 @@ export function DeleteAccountSection() {
     if (typed !== 'DELETE') return;
     startTransition(async () => {
       const result = await deleteAccount();
-      if (result?.error) setError(result.error);
-      setReauthenticate(!!result?.reauthenticate);
+      if (result.error) setError(result.error);
+      setReauthenticate(!!result.reauthenticate);
     });
   }
 

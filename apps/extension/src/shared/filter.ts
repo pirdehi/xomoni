@@ -16,7 +16,7 @@ export function normalizeKeywords(raw: string): string[] {
 
 /** Extracts post ids from pasted ids or post URLs. */
 export function parseIdList(raw: string): string[] {
-  return [...raw.matchAll(/(?:status\/)?(\d{6,20})/g)].map((m) => m[1]);
+  return [...raw.matchAll(/(?:status\/)?(\d{6,20})/g)].flatMap((m) => m[1] ?? []);
 }
 
 /** Whether an item should be removed under the filter (false = keep it). */

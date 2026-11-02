@@ -28,10 +28,10 @@ const SPREAD = 0.25;
  * `breakMinMs`, a new session starts at `now`. Seeding from history means a new run can't skip a rest.
  */
 export function sessionStart(stamps: readonly number[], now: number): number {
-  const newestFirst = stamps.filter((t) => t <= now).sort((a, b) => b - a);
-  if (!newestFirst.length || now - newestFirst[0] >= SESSION.breakMinMs) return now;
-  let start = newestFirst[0];
-  for (const t of newestFirst.slice(1)) {
+  const [newest, ...older] = stamps.filter((t) => t <= now).sort((a, b) => b - a);
+  if (newest === undefined || now - newest >= SESSION.breakMinMs) return now;
+  let start = newest;
+  for (const t of older) {
     if (start - t >= SESSION.breakMinMs) break;
     start = t;
   }

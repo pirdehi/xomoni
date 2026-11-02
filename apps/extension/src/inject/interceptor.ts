@@ -80,10 +80,11 @@ import { type Capture, takePort } from '../shared/bridge';
   const nativeOpen = XMLHttpRequest.prototype.open;
   const nativeSend = XMLHttpRequest.prototype.send;
 
-  XMLHttpRequest.prototype.open = function (this: TrackedXhr, method: string, url: string | URL, ...rest: unknown[]) {
+  // X's own arguments are passed on untouched; they are typed `unknown` because the page may send anything.
+  XMLHttpRequest.prototype.open = function (this: TrackedXhr, method: unknown, url: unknown, ...rest: unknown[]) {
     this.__xomoni = { method: String(method).toUpperCase(), url: String(url) };
-    return (nativeOpen as (...args: unknown[]) => void).call(this, method, url, ...rest);
-  } as typeof XMLHttpRequest.prototype.open;
+    (nativeOpen as (...args: unknown[]) => void).call(this, method, url, ...rest);
+  };
 
   XMLHttpRequest.prototype.send = function (this: TrackedXhr, body?: Document | XMLHttpRequestBodyInit | null) {
     try {
@@ -109,6 +110,6 @@ import { type Capture, takePort } from '../shared/bridge';
     } catch {
       /* never interfere with the page */
     }
-    return nativeSend.call(this, body);
+    nativeSend.call(this, body);
   };
 })();

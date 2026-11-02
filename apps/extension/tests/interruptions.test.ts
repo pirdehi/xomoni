@@ -34,7 +34,7 @@ function setup() {
   ctx.limiter = new Limiter(DEFAULT_SETTINGS, ACCOUNT, new AbortController().signal, () => {});
   const cooldown = vi.spyOn(ctx.limiter, 'cooldown').mockResolvedValue();
   /** Minutes until the end of the `n`th wait. */
-  const waited = (n: number) => (cooldown.mock.calls[n][0] - Date.now()) / MINUTE;
+  const waited = (n: number) => (cooldown.mock.calls[n]![0] - Date.now()) / MINUTE;
   return { ctx, job, cooldown, waited };
 }
 

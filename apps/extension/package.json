@@ -31,7 +31,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^5.0.5",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.7",
     "happy-dom": "^21.0.4",
     "tailwindcss": "^4.3.3",

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createLiveDashboardServices } from '../client/live';
 import { upsertNewestFirst } from '../domain/job-status';
 import { RECENT_JOBS_LIMIT, type DashboardSnapshot, type Device } from '../domain/model';
+import type { PairingResult } from '../domain/pairing';
 
 /** State and actions of the live dashboard. */
 export interface LiveDashboard extends DashboardSnapshot {
@@ -11,6 +12,8 @@ export interface LiveDashboard extends DashboardSnapshot {
   live: boolean;
   /** Disconnects a device and drops its jobs from view; resolves to an error message on failure. */
   disconnect: (device: Device) => Promise<string | null>;
+  /** Makes a one-time code that connects a browser (ADR-0018). */
+  createPairingCode: () => Promise<PairingResult>;
 }
 
 /**
@@ -60,5 +63,5 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
     return null;
   }
 
-  return { devices, jobs, live, disconnect };
+  return { devices, jobs, live, disconnect, createPairingCode: () => services.pairing.createCode() };
 }

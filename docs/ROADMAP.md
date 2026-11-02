@@ -92,7 +92,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| ⬜ | Sign in from the extension | [#38](https://github.com/pirdehi/xomoni/issues/38) | |
+| 🔄 | Connect the extension with a one-time code ([ADR-0018](adr/0018-pair-the-extension-with-a-one-time-code.md)): cloud and website done | [#38](https://github.com/pirdehi/xomoni/issues/38) | [#112](https://github.com/pirdehi/xomoni/pull/112) |
 | ⬜ | Register devices and send heartbeats | [#39](https://github.com/pirdehi/xomoni/issues/39) | |
 | ⬜ | Sync job summaries (status only) | [#40](https://github.com/pirdehi/xomoni/issues/40) | |
 

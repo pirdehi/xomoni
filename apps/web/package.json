@@ -36,7 +36,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "happy-dom": "^21.0.4",
     "tailwindcss": "^4",
-    "typescript": "~5.9.3",
+    "typescript": "~7.0.2",
     "vitest": "^5.0.5"
   },
   "description": "xomoni.com — website and remote dashboard for the Xomoni extension",

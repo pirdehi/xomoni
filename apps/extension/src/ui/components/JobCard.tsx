@@ -87,7 +87,15 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
             <span>
               <span className="font-semibold text-ink">{fmtNumber(done)}</span> removed
             </span>
-            <span>{fmtNumber(skipped)} skipped</span>
+            <span>
+              {fmtNumber(skipped)} skipped
+              {!!job.stats.unavailable && (
+                <span title="Reposts and likes of posts X no longer shows: deleted, or from a suspended or protected account">
+                  {' '}
+                  ({fmtNumber(job.stats.unavailable)} unavailable on X)
+                </span>
+              )}
+            </span>
             {failed > 0 && <span className="text-critical">{fmtNumber(failed)} failed</span>}
             <span>{fmtNumber(remaining)} remaining</span>
             {eta != null && !TERMINAL.has(job.state) && (

@@ -149,6 +149,38 @@ export function extractTweets(json: unknown): ParsedTweet[] {
   return out;
 }
 
+/** `__typename`s X gives a post it answers for but won't show: deleted, or from a suspended or protected account. */
+const UNAVAILABLE_TYPES = new Set(['TweetTombstone', 'TweetUnavailable']);
+
+/**
+ * Ids of posts X answered with but won't show (PLAYBOOK E6): a `tweet_results.result` that is a tombstone or
+ * "unavailable" instead of a post, identified by its own `rest_id` or by its timeline entry (`tweet-<id>`).
+ * Such a post can't be unliked or un-reposted from its page, so Xomoni skips it instead of failing.
+ */
+export function unavailableTweetIds(json: unknown): string[] {
+  const out = new Set<string>();
+  const walk = (node: unknown, entryTweetId: string | undefined, depth: number) => {
+    if (depth > 60) return;
+    if (Array.isArray(node)) {
+      for (const child of asArray(node)) walk(child, entryTweetId, depth + 1);
+      return;
+    }
+    const obj = asObject(node);
+    if (!obj) return;
+    const entry = /^tweet-(\d+)$/.exec(asString(obj.entryId) ?? '')?.[1] ?? entryTweetId;
+    const results = asObject(obj.tweet_results);
+    if (results) {
+      const type = asString(at(results, 'result', '__typename'));
+      const id = asString(at(results, 'result', 'rest_id')) ?? entry;
+      if (type && UNAVAILABLE_TYPES.has(type) && id) out.add(id);
+      return;
+    }
+    for (const value of Object.values(obj)) walk(value, entry, depth + 1);
+  };
+  walk(json, undefined, 0);
+  return [...out];
+}
+
 /**
  * The user in a `UserByScreenName` response, or null. Reads X's newer `core` and `avatar` fields first, then
  * `legacy`.

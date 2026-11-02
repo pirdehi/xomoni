@@ -32,7 +32,7 @@ import {
   viewerIdFromCookie,
   waitFor,
 } from './dom';
-import { type NetEvent, lastTimelineStatus, resetAtFrom, waitForNet } from './net';
+import { type NetEvent, isUnavailable, lastTimelineStatus, resetAtFrom, waitForNet } from './net';
 
 const bootId = Math.random().toString(36).slice(2);
 
@@ -99,6 +99,16 @@ async function guarded(action: () => Promise<ActionResult>): Promise<ActionResul
   }
 }
 
+/** What a like or repost of a post X won't show gets: skipped, never failed (PLAYBOOK E6, #32). */
+const UNAVAILABLE: ActionResult = {
+  outcome: 'not_found',
+  unavailable: true,
+  message: 'The original post is unavailable on X (deleted, or its account is suspended or protected)',
+};
+
+/** `result` for post `id`, unless X said the post is unavailable: then the unavailable skip. */
+const orUnavailable = (id: string, result: ActionResult): ActionResult => (isUnavailable(id) ? UNAVAILABLE : result);
+
 async function waitContent(timeoutMs: number): Promise<ContentState> {
   const kind = await waitFor<ContentState['kind']>(() => {
     if ($(SEL.article)) return 'tweets';
@@ -107,7 +117,14 @@ async function waitContent(timeoutMs: number): Promise<ContentState> {
     return null;
   }, timeoutMs);
   if (kind === 'tweets') await sleep(400); // let the rest of the first page render
-  return { kind: kind ?? 'timeout', count: $$(SEL.article).length, http: lastTimelineStatus() };
+  // On a post page, X may answer with a tombstone for the post instead of rendering it.
+  const focal = /\/status\/(\d+)/.exec(location.pathname)?.[1];
+  return {
+    kind: kind ?? 'timeout',
+    count: $$(SEL.article).length,
+    http: lastTimelineStatus(),
+    unavailable: !!focal && isUnavailable(focal),
+  };
 }
 
 function visibleTweets(): VisibleTweet[] {
@@ -203,13 +220,13 @@ async function deletePost(id: string): Promise<ActionResult> {
 
 async function unlike(id: string): Promise<ActionResult> {
   const article = findArticle(id);
-  if (!article) return { outcome: 'not_found', message: 'Post is not on the page' };
+  if (!article) return orUnavailable(id, { outcome: 'not_found', message: 'Post is not on the page' });
   await focus(article);
   const button = $(SEL.unlike, article);
   if (!button) {
     return $(SEL.like, article)
       ? { outcome: 'already', message: 'X shows this post as not liked (a "ghost" like)' }
-      : { outcome: 'failed', message: 'Like button not found' };
+      : orUnavailable(id, { outcome: 'failed', message: 'Like button not found' });
   }
   const response = waitForNet(['UnfavoriteTweet'], (v) => v.tweet_id === id);
   click(button);
@@ -219,11 +236,11 @@ async function unlike(id: string): Promise<ActionResult> {
 /** Removes a like X no longer displays: like it again, then unlike it. */
 async function relikeUnlike(id: string): Promise<ActionResult> {
   const article = findArticle(id);
-  if (!article) return { outcome: 'not_found', message: 'Post is not on the page' };
+  if (!article) return orUnavailable(id, { outcome: 'not_found', message: 'Post is not on the page' });
   await focus(article);
   if (!$(SEL.unlike, article)) {
     const like = $(SEL.like, article);
-    if (!like) return { outcome: 'failed', message: 'Like button not found' };
+    if (!like) return orUnavailable(id, { outcome: 'failed', message: 'Like button not found' });
     const liked = waitForNet(['FavoriteTweet'], (v) => v.tweet_id === id);
     click(like);
     const result = classify(await liked, 'FavoriteTweet');
@@ -252,13 +269,13 @@ async function relikeUnlike(id: string): Promise<ActionResult> {
 async function unretweet(id: string): Promise<ActionResult> {
   const reposted = id ? [] : $$(SEL.article).filter((a) => $(SEL.unretweet, a));
   const article = id ? findArticle(id) : reposted.length === 1 ? reposted[0] : null;
-  if (!article) return { outcome: 'not_found', message: 'Post is not on the page' };
+  if (!article) return orUnavailable(id, { outcome: 'not_found', message: 'Post is not on the page' });
   await focus(article);
   const button = $(SEL.unretweet, article);
   if (!button) {
     return $(SEL.retweet, article)
       ? { outcome: 'already', message: 'Not reposted anymore' }
-      : { outcome: 'failed', message: 'Repost button not found' };
+      : orUnavailable(id, { outcome: 'failed', message: 'Repost button not found' });
   }
   const sourceId = id || articleInfo(article)?.id || '';
   click(button);

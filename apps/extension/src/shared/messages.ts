@@ -70,6 +70,8 @@ export interface ContentState {
    * 0 means X or the connection failed, not that the posts are gone.
    */
   http: number | null;
+  /** The post page's post is one X answered for but won't show (PLAYBOOK E6). */
+  unavailable?: boolean;
 }
 
 /** Result of one `canary` command (PLAYBOOK F1). */
@@ -114,6 +116,8 @@ export interface ActionResult {
   message?: string;
   /** When X's rate-limit window resets (epoch ms, from `x-rate-limit-reset`). */
   resetAt?: number | null;
+  /** With `not_found`: X showed the post as unavailable (deleted, suspended or protected account; PLAYBOOK E6). */
+  unavailable?: boolean;
 }
 
 /** Messages from the content script to the service worker. */

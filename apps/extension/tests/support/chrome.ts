@@ -10,10 +10,19 @@ export const WORKER_TAB = { id: 7, windowId: 3 };
  * `vi.unstubAllGlobals()`.
  */
 export function stubChrome() {
+  // chrome.storage.local, in memory, with change events like Chrome's.
+  const local = new Map<string, unknown>();
+  const changeListeners = new Set<
+    (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void
+  >();
+  const emit = (key: string, oldValue: unknown, newValue: unknown) => {
+    for (const listener of changeListeners) listener({ [key]: { oldValue, newValue } }, 'local');
+  };
   const chrome = {
     runtime: {
       id: 'test-extension',
       getURL: vi.fn((path: string) => `chrome-extension://test-extension/${path}`),
+      getManifest: vi.fn(() => ({ version: '0.3.0' })),
       sendMessage: vi.fn(() => Promise.resolve(undefined)),
       onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
     },
@@ -33,6 +42,29 @@ export function stubChrome() {
       clear: vi.fn(() => Promise.resolve(true)),
     },
     storage: {
+      local: {
+        get: vi.fn((key: string) => Promise.resolve(local.has(key) ? { [key]: local.get(key) } : {})),
+        set: vi.fn((items: Record<string, unknown>) => {
+          for (const [key, value] of Object.entries(items)) {
+            const old = local.get(key);
+            local.set(key, value);
+            emit(key, old, value);
+          }
+          return Promise.resolve();
+        }),
+        remove: vi.fn((key: string) => {
+          const old = local.get(key);
+          local.delete(key);
+          emit(key, old, undefined);
+          return Promise.resolve();
+        }),
+      },
+      onChanged: {
+        addListener: vi.fn((listener: Parameters<typeof changeListeners.add>[0]) => changeListeners.add(listener)),
+        removeListener: vi.fn((listener: Parameters<typeof changeListeners.add>[0]) =>
+          changeListeners.delete(listener),
+        ),
+      },
       session: {
         get: vi.fn(() => Promise.resolve({})),
         set: vi.fn(() => Promise.resolve(undefined)),

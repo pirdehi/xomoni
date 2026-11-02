@@ -40,7 +40,7 @@ flowchart LR
   person -- "starts and watches cleanups" --> ext
   person -- "signs up and in, follows progress" --> web
   ext -- "clicks X's own buttons in a normal tab" --> x
-  ext -. "job status only (planned, Phase 5)" .-> sb
+  ext -. "job status only, with a device token (ADR-0018)" .-> sb
   web -- "auth, reads status, live updates" --> sb
   web -- "captcha widget on auth forms" --> turnstile
   sb -- "sign-in with Google" --> google
@@ -101,6 +101,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/inject`](../apps/extension/src/inject/README.md) | Page-world script: reads X's own GraphQL responses and rate-limit headers. Never sends. |
 | [`apps/extension/src/engine`](../apps/extension/src/engine/README.md) | Job runner, pacing limiter, safety policy, cleanup and scan strategies. |
 | [`apps/extension/src/shared`](../apps/extension/src/shared/README.md) | Types, IndexedDB schema, parsers, filters, settings: the extension's kernel. |
+| [`apps/extension/src/cloud`](../apps/extension/src/cloud/README.md) | Connects the browser to a xomoni.com account with a one-time code and reports job status only (ADR-0018). |
 | [`apps/extension/src/ui`](../apps/extension/src/ui/README.md) | The dashboard (React). |
 | [`apps/extension/src/dev`](../apps/extension/src/dev/README.md) | UI preview with demo data; never shipped. |
 | [`apps/web`](../apps/web/README.md) | xomoni.com: landing and legal pages, sign-in, the live dashboard. |
@@ -186,16 +187,17 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 
 | Context | Area | Can use |
 | --- | --- | --- |
-| Dashboard page (extension origin) | `ui/` + `engine/` | `chrome.*`, IndexedDB, React |
+| Dashboard page (extension origin) | `ui/` + `engine/` + `cloud/` | `chrome.*`, IndexedDB, React, `fetch` to xomoni.com's cloud (status only) |
 | Service worker | `background/` | `chrome.*`, IndexedDB |
 | x.com tab, isolated world | `content/` | DOM of x.com, `chrome.runtime` messaging |
 | x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), a `MessagePort` to the content script |
 
-`shared/` is the kernel every area may use. The other areas don't import each other, with one exception: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today). These are the `ext-*` rules below. The target design moves the pure parts of `shared/` and `engine/` into `packages/core` behind ports (X tab, storage, notifier, clock), as tracked in [issue #11](https://github.com/pirdehi/xomoni/issues/11); the current rules already keep the areas from tangling.
+`shared/` is the kernel every area may use. The other areas don't import each other, with two exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), and `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open. The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The target design moves the pure parts of `shared/` and `engine/` into `packages/core` behind ports (X tab, storage, notifier, clock), as tracked in [issue #11](https://github.com/pirdehi/xomoni/issues/11); the current rules already keep the areas from tangling.
 
 ## 6. Data
 
 - **Schema:** [`supabase/migrations`](../supabase/migrations). Two tables, `devices` and `jobs`, both owned by `auth.users` with `on delete cascade`, plus `delete_account()`, which needs a sign-in within the last 10 minutes (read from the JWT's `amr` claim), so a stolen session can't delete the account. Each account connects at most 10 devices, and each device keeps its newest 1,000 jobs (older ones are removed). `jobs.risk_level` carries the X account's risk-ladder level (0–4) as a number only, never X's reason or notice text.
+- **Pairing** ([ADR-0018](adr/0018-pair-the-extension-with-a-one-time-code.md)): `create_pairing_code()` (signed-in person) makes a one-time code; the extension, with no session, trades it with `pair_device()` for a device token and then calls only `device_report()` (heartbeat and up to 50 job summaries) and `unpair_device()`. Codes and tokens are stored as SHA-256 hashes in `device_pairings` and `device_tokens`, which have Row Level Security on and no policies.
 - **Row Level Security** on every table: a user reads and writes only their own rows; a job must belong to one of the user's devices. `anon` has no access.
 - **Realtime:** each dashboard listens on a private channel, `dashboard:<user id>`; a policy on `realtime.messages` admits only its owner, and Row Level Security decides which row changes reach them.
 - **Types:** [`packages/db`](../packages/db/README.md) holds the generated `Database` type. CI regenerates it from the migrations and fails on drift.
@@ -227,6 +229,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | `ext-content-is-isolated` | The content script importing anything but `shared/`. |
 | `ext-inject-is-isolated` | The page-world script importing anything but `shared/`. |
 | `ext-background-is-thin` | The service worker importing UI or page scripts. |
+| `ext-cloud-is-isolated` | The status reporter importing anything but `shared/`; the engine can't import it either (`ext-engine-is-headless`). |
 | `ext-ui-stays-out-of-the-page` | The dashboard importing content, inject or background code. |
 | `ext-dev-is-not-shipped` | Product code importing the demo-data preview. |
 

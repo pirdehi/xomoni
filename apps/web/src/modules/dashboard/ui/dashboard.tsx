@@ -8,6 +8,8 @@ import { INSTALL_URL } from '@/shared/config/site';
 import { isOnline, jobProgress, jobStateView, relativeTime, type Tone } from '../domain/job-status';
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
+import type { PairingResult } from '../domain/pairing';
+import { PairingPanel } from './pairing-panel';
 import { useLiveDashboard } from './use-live-dashboard';
 
 /** Who is signed in, as the dashboard header shows them. */
@@ -45,7 +47,7 @@ const BAR_CLASS: Record<Tone, string> = {
  * connected browsers. It shows; it never starts, resumes or changes a job (ADR-0006).
  */
 export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initial: DashboardSnapshot }) {
-  const { devices, jobs, live, disconnect } = useLiveDashboard(viewer.id, initial);
+  const { devices, jobs, live, disconnect, createPairingCode } = useLiveDashboard(viewer.id, initial);
   const now = useNow(30_000);
 
   async function onDisconnect(device: Device) {
@@ -67,7 +69,7 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
       {risks.length > 0 && <AccountRisks risks={risks} deviceName={deviceName} now={now} />}
 
       {devices.length === 0 ? (
-        <ConnectBrowser email={viewer.email} />
+        <ConnectBrowser createCode={createPairingCode} />
       ) : (
         <section aria-labelledby="jobs-title">
           <h2 id="jobs-title" className="text-lg font-semibold">
@@ -120,6 +122,9 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
               );
             })}
           </ul>
+          <div className="mt-4">
+            <PairingPanel createCode={createPairingCode} />
+          </div>
         </section>
       )}
     </div>
@@ -170,7 +175,7 @@ function AccountBar({ viewer, live }: { viewer: DashboardViewer; live: boolean }
   );
 }
 
-function ConnectBrowser({ email }: { email: string }) {
+function ConnectBrowser({ createCode }: { createCode: () => Promise<PairingResult> }) {
   return (
     <section className="card p-6 sm:p-8" aria-labelledby="connect-title">
       <div className="flex items-center gap-2 text-accent">
@@ -181,8 +186,8 @@ function ConnectBrowser({ email }: { email: string }) {
         Connect your browser
       </h2>
       <p className="mt-2 max-w-2xl leading-relaxed text-ink-2">
-        Cleanups run in the Xomoni extension on your computer. Sign it in with this account and its jobs appear here
-        live.
+        Cleanups run in the Xomoni extension on your computer. Connect it to this account and its jobs appear here live.
+        The extension only reports status: what it is doing, never what you posted.
       </p>
       <ol className="mt-6 space-y-4">
         <Step n={1}>
@@ -192,8 +197,11 @@ function ConnectBrowser({ email }: { email: string }) {
           in Chrome, Edge or Brave on your computer.
         </Step>
         <Step n={2}>
-          In the extension, open <strong className="font-medium text-ink">Settings → Account</strong> and sign in as{' '}
-          <strong className="font-medium text-ink">{email}</strong>.
+          <span className="mb-3 block">
+            Get a one-time code, then type it in the extension under{' '}
+            <strong className="font-medium text-ink">Settings → xomoni.com</strong>.
+          </span>
+          <PairingPanel createCode={createCode} />
         </Step>
         <Step n={3}>This page updates by itself as soon as your browser connects.</Step>
       </ol>

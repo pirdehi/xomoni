@@ -21,7 +21,12 @@ function fakeServices() {
     return stop;
   });
   return {
-    services: { reader: { listDevices, listRecentJobs }, registry: { disconnect }, feed: { subscribe } },
+    services: {
+      reader: { listDevices, listRecentJobs },
+      registry: { disconnect },
+      feed: { subscribe },
+      pairing: { createCode: vi.fn<LiveDashboardServices['pairing']['createCode']>() },
+    },
     listDevices,
     listRecentJobs,
     disconnect,

@@ -2,7 +2,7 @@ import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel, type SupabaseClient } 
 import type { Database, DeviceRow, JobRow } from '@xomoni/db';
 import type { Device, JobSummary } from '../domain/model';
 import { toRiskLevel } from '../domain/risk';
-import type { DashboardReader, DeviceRegistry, LiveFeed } from '../application/ports';
+import type { DashboardReader, DevicePairing, DeviceRegistry, LiveFeed } from '../application/ports';
 
 type Client = SupabaseClient<Database>;
 
@@ -63,6 +63,18 @@ export function createSupabaseDeviceRegistry(supabase: Client): DeviceRegistry {
     async disconnect(deviceId) {
       const { error } = await supabase.from('devices').delete().eq('id', deviceId);
       return error ? { ok: false, message: error.message } : { ok: true };
+    },
+  };
+}
+
+/** One-time pairing codes from `create_pairing_code()`, which only a signed-in person may call (ADR-0018). */
+export function createSupabaseDevicePairing(supabase: Client): DevicePairing {
+  return {
+    async createCode() {
+      const { data, error } = await supabase.rpc('create_pairing_code');
+      const row = data?.[0];
+      if (error || !row) return { ok: false, message: error?.message ?? 'No code came back. Try again.' };
+      return { ok: true, code: { code: row.code, expiresAt: row.expires_at } };
     },
   };
 }

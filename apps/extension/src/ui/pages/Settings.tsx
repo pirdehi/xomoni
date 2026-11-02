@@ -12,6 +12,7 @@ import { Button, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../co
 import { downloadFile, errorMessage, toDateInput } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
+import { CloudCard } from '../components/CloudCard';
 
 const ACTIONS: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
 const COLUMNS: { key: keyof PacingRule; label: string; unit?: string }[] = [
@@ -231,6 +232,8 @@ export function SettingsPage(_props: PageProps) {
               </div>
             </div>
           </Card>
+
+          <CloudCard />
 
           <Card title="Appearance & data">
             <Field label="Theme">

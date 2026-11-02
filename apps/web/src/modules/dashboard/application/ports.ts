@@ -1,4 +1,5 @@
 import type { Device, JobSummary } from '../domain/model';
+import type { PairingResult } from '../domain/pairing';
 
 /** Reads the signed-in person's devices and recent jobs. Row Level Security scopes every read. */
 export interface DashboardReader {
@@ -28,4 +29,10 @@ export interface LiveHandlers {
 export interface LiveFeed {
   /** Starts listening for the viewer's rows; returns a function that stops listening. */
   subscribe(viewerId: string, handlers: LiveHandlers): () => void;
+}
+
+/** One-time codes that connect a browser's extension to the signed-in account (ADR-0018). */
+export interface DevicePairing {
+  /** A new code, replacing any earlier one; it works once, for ten minutes. */
+  createCode(): Promise<PairingResult>;
 }

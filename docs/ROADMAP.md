@@ -101,7 +101,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ⬜ | Release process | [#45](https://github.com/pirdehi/xomoni/issues/45) | |
-| ⬜ | Real install link on xomoni.com | [#44](https://github.com/pirdehi/xomoni/issues/44) | |
+| ✅ | Real install link on xomoni.com ([/install](https://xomoni.com/install)) | [#44](https://github.com/pirdehi/xomoni/issues/44) | [#114](https://github.com/pirdehi/xomoni/pull/114) |
 | ⏸ | Chrome Web Store listing (put off by the maintainer for now) | [#43](https://github.com/pirdehi/xomoni/issues/43) | |
 
 ## Phase 7 · Market readiness

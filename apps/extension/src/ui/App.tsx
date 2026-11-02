@@ -15,7 +15,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { type ComponentType, useEffect, useState } from 'react';
-import { runner } from '../engine/runner';
+import { runner } from '../engine/platform';
 import { workerTab } from '../engine/worker-tab';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';

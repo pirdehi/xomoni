@@ -2,13 +2,13 @@
 // one open dashboard tab drives the worker.
 import { NEED_TITLE, type Need } from '../shared/attention';
 import { db, recordRisk } from '../shared/db';
-import { ATTENTION_ID, FINISHED_ID, clearNotification, notify } from '../shared/notify';
+import { ATTENTION_ID, FINISHED_ID } from '../shared/notification-ids';
 import type { CleanupFilter, CleanupOptions, DateRange, Job, JobState, ScanTarget } from '../shared/types';
 import { runCleanup } from './cleanup';
 import { Interrupted, JobContext, NeedsYou, Stop } from './context';
 import { runScan } from './scan';
 import { Aborted } from './timers';
-import { NotReady, PageError, WorkerGone } from './worker-tab';
+import { type EnginePorts, NotReady, PageError, WorkerGone } from './ports';
 
 const LOCK = 'xomoni-runner';
 
@@ -38,11 +38,17 @@ const IDLE: RunnerState = {
 
 type StopRequest = { state: Extract<JobState, 'paused' | 'cancelled'>; reason: string };
 
-class Runner {
+/**
+ * Runs one job at a time in this dashboard tab, through the platform `ports` it is given (#11). The dashboard's
+ * instance, wired to Chrome, is `runner` in `platform.ts`.
+ */
+export class Runner {
   private state: RunnerState = IDLE;
   private listeners = new Set<() => void>();
   private controller: AbortController | null = null;
   private stopRequest: StopRequest | null = null;
+
+  constructor(private readonly ports: EnginePorts) {}
   private starting = false;
 
   /** Registers a state listener (for `useSyncExternalStore`); returns the unsubscribe function. */
@@ -118,29 +124,34 @@ class Runner {
     Object.assign(job, { state: 'running', stateReason: '', startedAt: job.startedAt ?? Date.now(), finishedAt: null });
     this.set({ jobId: job.id, status: 'running', message: 'Starting…', waitUntil: null, need: null });
 
-    const ctx = new JobContext(job, controller.signal, {
-      status: (message, waitUntil) => {
-        if (this.state.status === 'stopping' || this.state.status === 'attention') return;
-        this.set({ status: waitUntil ? 'waiting' : 'running', message, waitUntil: waitUntil ?? null });
+    const ctx = new JobContext(
+      job,
+      controller.signal,
+      {
+        status: (message, waitUntil) => {
+          if (this.state.status === 'stopping' || this.state.status === 'attention') return;
+          this.set({ status: waitUntil ? 'waiting' : 'running', message, waitUntil: waitUntil ?? null });
+        },
+        attention: (request) => {
+          if (this.state.status === 'stopping') return;
+          if (!request) {
+            this.ports.notifier.clear(ATTENTION_ID);
+            this.set({ status: 'running', message: 'Continuing…', waitUntil: null, need: null });
+            return;
+          }
+          this.set({ status: 'attention', message: request.message, waitUntil: null, need: request.need });
+          if (ctx.settings.notifications) {
+            void this.ports.notifier.notify(
+              ATTENTION_ID,
+              `Xomoni needs you: ${NEED_TITLE[request.need]}`,
+              `${request.message} “${job.title}” continues by itself afterwards.`,
+              true,
+            );
+          }
+        },
       },
-      attention: (request) => {
-        if (this.state.status === 'stopping') return;
-        if (!request) {
-          clearNotification(ATTENTION_ID);
-          this.set({ status: 'running', message: 'Continuing…', waitUntil: null, need: null });
-          return;
-        }
-        this.set({ status: 'attention', message: request.message, waitUntil: null, need: request.need });
-        if (ctx.settings.notifications) {
-          void notify(
-            ATTENTION_ID,
-            `Xomoni needs you: ${NEED_TITLE[request.need]}`,
-            `${request.message} “${job.title}” continues by itself afterwards.`,
-            true,
-          );
-        }
-      },
-    });
+      this.ports,
+    );
 
     let final: { state: JobState; reason: string };
     let stoppedByYou: boolean;
@@ -170,7 +181,7 @@ class Runner {
         };
       else final = { state: 'failed', reason: err instanceof Error ? err.message : String(err) };
     }
-    clearNotification(ATTENTION_ID);
+    this.ports.notifier.clear(ATTENTION_ID);
     // After the runner recorded the stop's risk event, so the report includes it.
     job.health = await ctx.health().catch(() => job.health);
 
@@ -202,7 +213,7 @@ class Runner {
         );
       }
       if (!stoppedByYou && ctx.settings.notifications) {
-        void notify(
+        void this.ports.notifier.notify(
           FINISHED_ID,
           `Xomoni: ${STATE_VERB[final.state].replace(/:$/, '')} “${job.title}”`,
           `${summary}. ${final.reason || job.health?.summary || ''}`.trim(),
@@ -253,7 +264,6 @@ const STATE_VERB: Record<JobState, string> = {
  * The runner of this dashboard tab. It runs one job at a time while holding the `xomoni-runner` Web Lock, so
  * only one open dashboard drives the worker.
  */
-export const runner = new Runner();
 
 /** A job still marked running with no runner holding the lock was interrupted. */
 export async function recoverInterruptedJobs() {

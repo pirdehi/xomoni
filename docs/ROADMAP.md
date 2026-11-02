@@ -112,7 +112,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Name the architecture: styles, principles and patterns ([ADR-0015](adr/0015-architecture-styles-principles-and-patterns.md)) | [#100](https://github.com/pirdehi/xomoni/issues/100) | [#104](https://github.com/pirdehi/xomoni/pull/104) |
 | ✅ | Strictest TypeScript settings and type-aware lint in every workspace ([ADR-0016](adr/0016-strict-typescript-and-type-aware-lint.md)) | [#101](https://github.com/pirdehi/xomoni/issues/101) | [#105](https://github.com/pirdehi/xomoni/pull/105) |
 | ✅ | Test standard: backend and frontend tests for every feature, enforced ([ADR-0017](adr/0017-test-standard.md), [testing](TESTING.md)) | [#102](https://github.com/pirdehi/xomoni/issues/102) | [#106](https://github.com/pirdehi/xomoni/pull/106) |
-| ⬜ | Extension core behind ports; layer rules enforced in CI | [#11](https://github.com/pirdehi/xomoni/issues/11) | |
+| ✅ | Extension core behind ports; layer rules enforced in CI | [#11](https://github.com/pirdehi/xomoni/issues/11) | [#115](https://github.com/pirdehi/xomoni/pull/115) |
 
 ## Dropped
 

@@ -81,6 +81,8 @@ function deepClean(canary: CanaryResult) {
     save: vi.fn(async () => {}),
     setPhase: vi.fn(async () => {}),
     status: vi.fn(),
+    // The X tab port (#11): the fake `send` stands in for the content script.
+    xTab: { send },
   };
   return { ctx, run: () => runCleanup(ctx as unknown as JobContext) };
 }

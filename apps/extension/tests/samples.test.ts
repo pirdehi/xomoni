@@ -37,6 +37,8 @@ function fakeContext(page: ContentState['kind'] = 'tweets', visible: VisibleTwee
     status: vi.fn(),
     log: vi.fn(async (_level: string, _action: string, _message: string) => 0),
     samples: { applied: 0, notApplied: 0, unclear: 0 },
+    // The X tab port (#11): the fake `send` above stands in for the content script.
+    xTab: { send },
   };
 }
 const asContext = (ctx: ReturnType<typeof fakeContext>) => ctx as unknown as JobContext;

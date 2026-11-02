@@ -1,30 +1,8 @@
 // The "worker" is a normal x.com tab in its own window, signed in with the
 // user's own session. The dashboard drives it one command at a time.
-import type {
-  ActionResult,
-  ActorCommand,
-  CanaryResult,
-  ClearResult,
-  ContentState,
-  PageInfo,
-  ScrollResult,
-  VisibleTweet,
-} from '../shared/messages';
+import type { ActorCommand, PageInfo } from '../shared/messages';
+import { NotReady, PageError, type Reply, WorkerGone, type XTab } from './ports';
 import { sleep } from './timers';
-
-type Reply<C extends ActorCommand['cmd']> = C extends 'ping'
-  ? PageInfo
-  : C extends 'waitContent'
-    ? ContentState
-    : C extends 'visible'
-      ? VisibleTweet[]
-      : C extends 'scroll'
-        ? ScrollResult
-        : C extends 'canary'
-          ? CanaryResult
-          : C extends 'clearPage'
-            ? ClearResult
-            : ActionResult;
 
 // Session storage is cleared when the browser restarts, which is also when
 // Chrome starts reusing tab ids — so a stale id never points at another tab.
@@ -39,7 +17,7 @@ async function storedTabId(): Promise<number | null> {
  * Handle to the worker: a normal x.com tab in its own window, driven one command at a time. Its tab id is
  * kept in `chrome.storage.session` under `workerTab`, where the service worker reads it too.
  */
-export class WorkerTab {
+export class WorkerTab implements XTab {
   private tabId: number | null = null;
 
   /** Returns the live worker tab id, or null if none is open. */
@@ -163,21 +141,8 @@ export class WorkerTab {
   }
 }
 
-/** The worker tab was closed. The runner pauses the job; resuming opens a new worker. */
-export class WorkerGone extends Error {
-  constructor() {
-    super('The X worker window was closed');
-  }
-}
+// The errors are part of the port; re-exported for code that imports them from here.
+export { NotReady, PageError, WorkerGone };
 
-/**
- * No content script answered in the worker tab, usually because the page is loading, reloading or was
- * unloaded by Chrome. The runner waits and runs the job's steps again (`JobContext.waitOut`).
- */
-export class NotReady extends Error {}
-
-/** The content script in the worker tab reported an error running a command. The runner pauses the job. */
-export class PageError extends Error {}
-
-/** The worker handle shared by the engine and the dashboard UI. */
+/** The worker handle shared by the engine (through `platform.ts`) and the dashboard UI. */
 export const workerTab = new WorkerTab();

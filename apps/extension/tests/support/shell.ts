@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { type RunnerState, runner } from '../../src/engine/runner';
+import { type RunnerState } from '../../src/engine/runner';
+import { runner } from '../../src/engine/platform';
 import type { PageInfo } from '../../src/shared/messages';
 import type { Item, ItemKind, ItemStatus, LogEntry } from '../../src/shared/types';
 import { WORKER_TAB, type stubChrome } from './chrome';

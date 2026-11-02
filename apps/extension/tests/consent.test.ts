@@ -4,13 +4,19 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { JobContext, Stop } from '../src/engine/context';
 import { db, hasConsent, recordConsent } from '../src/shared/db';
 import type { Job } from '../src/shared/types';
+import { chromePorts } from '../src/engine/platform';
 
 const ACCOUNT = 'acct-1';
 const context = () =>
-  new JobContext({ id: 'j', accountId: ACCOUNT } as Job, new AbortController().signal, {
-    status: () => {},
-    attention: () => {},
-  });
+  new JobContext(
+    { id: 'j', accountId: ACCOUNT } as Job,
+    new AbortController().signal,
+    {
+      status: () => {},
+      attention: () => {},
+    },
+    chromePorts,
+  );
 
 beforeEach(async () => {
   await Promise.all([db.consents.clear(), db.risk.clear()]);

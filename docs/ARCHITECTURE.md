@@ -11,7 +11,7 @@ This document describes how Xomoni is built, the rules that keep it that way, an
 
 | Question | Answer |
 | --- | --- |
-| What architecture is this? | A **modular monolith** in an npm workspaces monorepo. The website uses **hexagonal architecture (ports and adapters)** in vertical feature modules, with the Clean Architecture dependency rule. The extension is **layered by JavaScript context around a shared kernel** and is moving to hexagonal ([#11](https://github.com/pirdehi/xomoni/issues/11)). |
+| What architecture is this? | A **modular monolith** in an npm workspaces monorepo. The website uses **hexagonal architecture (ports and adapters)** in vertical feature modules, with the Clean Architecture dependency rule. The extension is **layered by JavaScript context around a shared kernel**, with its engine behind ports (a hexagonal core, [#11](https://github.com/pirdehi/xomoni/issues/11)). |
 | Is it SOLID? | SOLID is a set of principles for the code inside each part, not an architecture. Each principle maps to concrete code in [ADR-0015 §2](adr/0015-architecture-styles-principles-and-patterns.md#2-how-the-solid-principles-show-up). |
 | Which design patterns? | Ports and adapters, composition root, use case, observer, state machine, table-driven strategy, command, sliding-window rate limiter, circuit breaker, retry with backoff and others, each with the file it lives in: [ADR-0015 §3](adr/0015-architecture-styles-principles-and-patterns.md#3-design-patterns-in-use). |
 | How is it enforced? | The dependency rules in [§7](#7-enforced-rules) (`npm run arch`), strict TypeScript and lint ([ADR-0016](adr/0016-strict-typescript-and-type-aware-lint.md)), the documentation gate, and backend and frontend tests with coverage thresholds ([testing](TESTING.md)), all in `npm run verify` and CI ([§8](#8-quality-gates)). |
@@ -192,7 +192,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | x.com tab, isolated world | `content/` | DOM of x.com, `chrome.runtime` messaging |
 | x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), a `MessagePort` to the content script |
 
-`shared/` is the kernel every area may use. The other areas don't import each other, with two exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), and `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open. The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The target design moves the pure parts of `shared/` and `engine/` into `packages/core` behind ports (X tab, storage, notifier, clock), as tracked in [issue #11](https://github.com/pirdehi/xomoni/issues/11); the current rules already keep the areas from tangling.
+`shared/` is the kernel every area may use. The other areas don't import each other, with two exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), and `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open. The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The engine's core depends on ports, not on Chrome (#11): `engine/ports.ts` defines `XTab` (the worker tab) and `Notifier`, `engine/platform.ts` is the composition root that wires the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`) and creates the dashboard's `runner`, and `JobContext` and `Runner` receive the ports. Rule `ext-engine-core-uses-ports` and an ESLint rule against `chrome` in the core keep it that way; tests run the engine on fake ports.
 
 ## 6. Data
 
@@ -226,6 +226,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | `web-server-code-is-server-only` | A `server/` file without the `server-only` guard. |
 | `ext-shared-is-the-kernel` | `shared/` depending on any other extension area. |
 | `ext-engine-is-headless` | The engine importing UI, page scripts or the service worker. |
+| `ext-engine-core-uses-ports` | The engine's core importing the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`) instead of its ports; ESLint also forbids `chrome` in the core. |
 | `ext-content-is-isolated` | The content script importing anything but `shared/`. |
 | `ext-inject-is-isolated` | The page-world script importing anything but `shared/`. |
 | `ext-background-is-thin` | The service worker importing UI or page scripts. |

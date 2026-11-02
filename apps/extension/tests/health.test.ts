@@ -6,6 +6,7 @@ import { db } from '../src/shared/db';
 import { type SampleTally, healthReport } from '../src/shared/health';
 import { type RiskEvent, type RiskEventKind, assessRisk } from '../src/shared/risk';
 import type { Job } from '../src/shared/types';
+import { chromePorts } from '../src/engine/platform';
 
 const { ping } = vi.hoisted(() => ({ ping: vi.fn(async (): Promise<unknown> => null) }));
 
@@ -77,10 +78,15 @@ describe('JobContext.health', () => {
 
   it('counts only the signals since the run started and what X’s page shows now', async () => {
     await db.risk.add({ accountId: 'acct', kind: 'rate_limited', at: Date.now() - 2 * MINUTE });
-    const ctx = new JobContext({ id: 'j', accountId: 'acct' } as Job, new AbortController().signal, {
-      status: () => {},
-      attention: () => {},
-    });
+    const ctx = new JobContext(
+      { id: 'j', accountId: 'acct' } as Job,
+      new AbortController().signal,
+      {
+        status: () => {},
+        attention: () => {},
+      },
+      chromePorts,
+    );
     await db.risk.add({ accountId: 'acct', kind: 'automation_flag', at: Date.now() + 1 });
     ctx.samples.applied = 2;
     ping.mockResolvedValueOnce({ restriction: 'Your account is temporarily limited', locked: false });

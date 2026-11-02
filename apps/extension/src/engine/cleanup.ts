@@ -19,7 +19,7 @@ import { readBudgetFor } from '../shared/x-limits';
 import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
 import { runDueChecks, sampleAction } from './samples';
 import { randomBetween, sleep } from './timers';
-import { NotReady, workerTab } from './worker-tab';
+import { NotReady } from './ports';
 
 // Each pass must remove something to continue, so this only guards against loops.
 const MAX_PASSES = 500;
@@ -206,7 +206,7 @@ async function sweep(ctx: JobContext, url: string, repeat = true) {
     let idle = 0;
     while (idle < MAX_IDLE_SCROLLS) {
       ctx.checkpoint();
-      const targets = await pickTargets(ctx, await workerTab.send({ cmd: 'visible' }), passStart, unresolved);
+      const targets = await pickTargets(ctx, await ctx.xTab.send({ cmd: 'visible' }), passStart, unresolved);
       if (targets.length) {
         idle = 0;
         for (const [i, item] of targets.entries()) {
@@ -356,7 +356,7 @@ async function handOffSafe(ctx: JobContext, unsettled: Item[], run: () => Promis
 async function preflight(ctx: JobContext, action: ActionKind, command: ActionCommand) {
   if (action === 'read' || ctx.preflighted.has(action)) return;
   ctx.status('Checking X’s page before acting…');
-  const result = await workerTab.send({ cmd: 'canary', action, id: command.id });
+  const result = await ctx.xTab.send({ cmd: 'canary', action, id: command.id });
   if (result.verdict === 'changed') {
     await ctx.log('error', 'system', `Check before acting: ${result.message}`);
     throw new Stop(
@@ -378,7 +378,7 @@ async function act(ctx: JobContext, item: Item, action: ActionKind) {
     await preflight(ctx, action, command);
     const preview = item.text.replace(/\s+/g, ' ').slice(0, 60);
     ctx.status(`${PROGRESS[action]}: “${preview}${item.text.length > 60 ? '…' : ''}”`);
-    const result = await workerTab.send(command);
+    const result = await ctx.xTab.send(command);
     if (await ctx.settle(action, item, result)) {
       if (result.outcome === 'done') await sampleAction(ctx, action, command.id);
       return;

@@ -12,7 +12,8 @@ import {
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCleanupJob, runner } from '../../src/engine/runner';
+import { createCleanupJob } from '../../src/engine/runner';
+import { runner } from '../../src/engine/platform';
 import { db, hasConsent, upsertAccount } from '../../src/shared/db';
 import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
 import { ConsentDialog } from '../../src/ui/components/ConsentDialog';

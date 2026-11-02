@@ -10,7 +10,7 @@ import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } fro
 import { BUDGETS, type BudgetId, quotaHit, readBudgetFor, unexplainedRefusal } from '../shared/x-limits';
 import { Limiter } from './limiter';
 import { Aborted, randomBetween, sleep } from './timers';
-import { NotReady, WorkerGone, workerTab } from './worker-tab';
+import { type EnginePorts, NotReady, WorkerGone, type XTab } from './ports';
 
 /** How long a job waits for the person before pausing. */
 const WAIT_FOR_YOU_MS = HOUR;
@@ -141,11 +141,17 @@ export class JobContext {
   private outageSince = 0;
   private progressAtOutage = -1;
 
+  /** The X tab this run drives (a port; the dashboard's adapter is `worker-tab.ts`). */
+  readonly xTab: XTab;
+
   constructor(
     public job: Job,
     public signal: AbortSignal,
     private hooks: RunnerHooks,
-  ) {}
+    ports: EnginePorts,
+  ) {
+    this.xTab = ports.xTab;
+  }
 
   /**
    * Loads settings and seeds the limiter. Call before anything else. Refuses to run (blocked) without the
@@ -179,7 +185,7 @@ export class JobContext {
     const [events, pending, info] = await Promise.all([
       riskEvents(accountId),
       db.checks.where('[accountId+dueAt]').between([accountId, -Infinity], [accountId, Infinity]).count(),
-      workerTab.ping().catch(() => null),
+      this.xTab.ping().catch(() => null),
     ]);
     const now = Date.now();
     return healthReport({
@@ -243,11 +249,11 @@ export class JobContext {
   /** Opens the worker if needed and verifies it is signed in to the right account. */
   async connect(): Promise<PageInfo> {
     this.status('Connecting to the X worker window…');
-    if ((await workerTab.current()) == null) await workerTab.open();
-    await workerTab.keepLoaded();
+    if ((await this.xTab.current()) == null) await this.xTab.open();
+    await this.xTab.keepLoaded();
     const account = await db.accounts.get(this.job.accountId);
     this.handle ||= account?.handle ?? '';
-    const info = await this.clearAndAssert(await workerTab.waitReady(this.signal));
+    const info = await this.clearAndAssert(await this.xTab.waitReady(this.signal));
     this.handle = info.handle || this.handle;
     if (!this.handle)
       throw new Stop(
@@ -296,7 +302,7 @@ export class JobContext {
     this.hooks.attention(request);
 
     // An error code alone doesn't put X's prompt on screen; a fresh load does.
-    if (request.fromAction) await workerTab.navigate('https://x.com/home', this.signal).catch(rethrowIfStopped);
+    if (request.fromAction) await this.xTab.navigate('https://x.com/home', this.signal).catch(rethrowIfStopped);
 
     const deadline = Date.now() + WAIT_FOR_YOU_MS;
     let settledSince = 0;
@@ -305,7 +311,7 @@ export class JobContext {
         throw new Stop('paused', `Waited an hour for you. ${request.message} Then resume the job.`);
       }
       await sleep(1500, this.signal);
-      const info = await workerTab.ping();
+      const info = await this.xTab.ping();
       settledSince = info && !pageNeed(info, this.job.accountId) ? settledSince || Date.now() : 0;
     }
 
@@ -356,7 +362,7 @@ export class JobContext {
       await this.limiter.cooldown(Date.now() + randomBetween(20, 40) * 1000, 'Back online — continuing shortly');
       return;
     }
-    if (this.outages === 1 && (await workerTab.discarded())) {
+    if (this.outages === 1 && (await this.xTab.discarded())) {
       await this.log('info', 'system', 'Chrome unloaded the X tab to save memory; reloading it');
       return;
     }
@@ -371,7 +377,7 @@ export class JobContext {
 
   /** Re-checks lock / login / account right before an action, closing a pop-up X put over the page first. */
   async verifyPage() {
-    const info = await workerTab.ping();
+    const info = await this.xTab.ping();
     if (info) await this.clearAndAssert(info);
   }
 
@@ -382,13 +388,13 @@ export class JobContext {
    */
   private async clearAndAssert(info: PageInfo): Promise<PageInfo> {
     if (info.obstructed && !info.restriction && !pageNeed({ ...info, obstructed: false }, this.job.accountId)) {
-      const { clear, what } = await workerTab.send({ cmd: 'clearPage' });
+      const { clear, what } = await this.xTab.send({ cmd: 'clearPage' });
       await this.log(
         clear ? 'info' : 'warn',
         'system',
         clear ? `Closed a pop-up on X’s page: ${what}` : `A pop-up on X’s page didn’t close: ${what}`,
       );
-      info = (await workerTab.ping()) ?? info;
+      info = (await this.xTab.ping()) ?? info;
     }
     this.assertPage(info);
     return info;
@@ -408,11 +414,11 @@ export class JobContext {
     this.readBudget = readBudgetFor(url);
     await this.limiter.before('read', this.readBudget);
     this.status(`Opening ${url.replace('https://x.com', '')}`);
-    let info = await workerTab.navigate(url, this.signal);
+    let info = await this.xTab.navigate(url, this.signal);
     this.limiter.after('read', 'done', this.readBudget);
     info = await this.clearAndAssert(info);
     try {
-      const content = await workerTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
+      const content = await this.xTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
       this.limiter.seen(content.count);
       if (content.kind !== 'tweets') {
         // No posts can mean X moved the page to its login or a check…
@@ -426,7 +432,7 @@ export class JobContext {
     } catch (err) {
       if (!(err instanceof NotReady)) throw err;
       // The page reloaded while loading — X redirecting to its login or a check page does that.
-      this.assertPage(await workerTab.waitReady(this.signal, info.bootId));
+      this.assertPage(await this.xTab.waitReady(this.signal, info.bootId));
       throw err;
     }
   }
@@ -464,7 +470,7 @@ export class JobContext {
   async scroll() {
     this.checkpoint();
     await this.limiter.before('read', this.readBudget);
-    const result = await workerTab.send({ cmd: 'scroll' });
+    const result = await this.xTab.send({ cmd: 'scroll' });
     this.limiter.after('read', 'done', this.readBudget);
     this.limiter.seen(result.added);
     return result;

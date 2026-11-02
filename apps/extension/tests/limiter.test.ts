@@ -1,14 +1,15 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Limiter } from '../src/engine/limiter';
-import { db } from '../src/shared/db';
+import { db, upsertAccount } from '../src/shared/db';
 import { DEFAULT_SETTINGS } from '../src/shared/settings';
+import { readFactor } from '../src/shared/x-limits';
 
 const ACCOUNT = 'acct-1';
 const limiter = () => new Limiter(DEFAULT_SETTINGS, ACCOUNT, new AbortController().signal, () => {});
 
 beforeEach(async () => {
-  await Promise.all([db.reads.clear(), db.logs.clear(), db.limits.clear()]);
+  await Promise.all([db.reads.clear(), db.logs.clear(), db.limits.clear(), db.accounts.clear()]);
 });
 
 describe('Limiter slowdown (#57)', () => {
@@ -88,6 +89,26 @@ describe('Limiter memory across runs', () => {
     await db.reads.add({ accountId: ACCOUNT, budget: 'search', ts: Date.now() - 2 * 86_400_000 });
     await limiter().init();
     expect(await db.reads.count()).toBe(0);
+  });
+});
+
+describe('Limiter: page loads by account type (#33, PLAYBOOK A6)', () => {
+  it('halves page loads for an account not known to be Premium, and keeps the ceiling for Premium', async () => {
+    expect([readFactor(true), readFactor(false), readFactor(null), readFactor(undefined)]).toEqual([1, 0.5, 0.5, 0.5]);
+
+    const unknown = limiter();
+    await unknown.init();
+    expect(unknown.readShare).toBe(0.5);
+
+    await upsertAccount({ id: ACCOUNT, handle: 'me', verified: false });
+    const unverified = limiter();
+    await unverified.init();
+    expect(unverified.readShare).toBe(0.5);
+
+    await upsertAccount({ id: ACCOUNT, verified: true });
+    const premium = limiter();
+    await premium.init();
+    expect(premium.readShare).toBe(1);
   });
 });
 

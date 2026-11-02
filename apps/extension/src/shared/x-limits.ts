@@ -196,6 +196,18 @@ export function quotaHit<T extends LiveLimit & { at: number }>(live: T | undefin
 }
 
 /**
+ * The share of the read ceiling an account gets (PLAYBOOK A4, A6, #33). X's 2023 view caps gave unverified
+ * accounts a tenth of what Premium got; whether they still apply is unknown, so Xomoni stays well below them by
+ * halving page loads for every account not known to be Premium. Premium gets nothing faster than the ceiling.
+ */
+export function readFactor(verified: boolean | null | undefined): number {
+  return verified === true ? 1 : UNVERIFIED_READ_FACTOR;
+}
+
+/** Page loads and scrolls an account not known to be Premium may use, as a share of `READ_CEILING`. */
+export const UNVERIFIED_READ_FACTOR = 0.5;
+
+/**
  * Xomoni's own ceiling for page loads and scrolls. X publishes no limit for loading its pages; the read
  * budgets above apply one fifth of each page's own quota on top of this.
  */

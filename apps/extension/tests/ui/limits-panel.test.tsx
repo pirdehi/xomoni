@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db, kvSet } from '../../src/shared/db';
+import { db, kvSet, upsertAccount } from '../../src/shared/db';
 import type { RiskEventKind } from '../../src/shared/risk';
 import { ACTION_LABELS, PRESETS } from '../../src/shared/settings';
 import { DAY, HOUR, MINUTE } from '../../src/shared/time';
@@ -58,6 +58,8 @@ describe('LimitsPanel', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     await resetDb();
+    // A Premium account, so these tests see the full read ceiling; #33's test turns it off.
+    await upsertAccount({ id: ME, handle: 'me', verified: true });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -77,11 +79,12 @@ describe('LimitsPanel', () => {
     render(<LimitsPanel accountId={ME} />);
     await screen.findByText(/warm-up day 1 of 4/);
     for (const action of ['delete', 'unretweet', 'unlike', 'relike', 'read'] as const) {
-      const { hour, day } = caps(action, 0.25);
+      const factor = 0.25;
+      const { hour, day } = caps(action, factor);
       expect(await usage(action)).toBe(`0/${hour} hr · 0/${day} day`);
       const meter = screen.getByRole('meter', { name: `${ACTION_LABELS[action]} today` });
       expect(meter).toHaveAttribute('aria-valuenow', '0');
-      expect(meter).toHaveAttribute('aria-valuemax', String(scaleRule(PRESETS.careful[action], 0.25).dailyCap));
+      expect(meter).toHaveAttribute('aria-valuemax', String(scaleRule(PRESETS.careful[action], factor).dailyCap));
     }
   });
 
@@ -139,6 +142,20 @@ describe('LimitsPanel', () => {
 
     const read = caps('read', 1);
     await waitFor(async () => expect(await usage('read')).toBe(`2/${read.hour} hr · 3/${read.day} day`));
+  });
+
+  it('halves page loads until X shows the account is Premium, then shows the full ceiling (#33)', async () => {
+    await finishWarmup();
+    await upsertAccount({ id: ME, verified: false });
+    render(<LimitsPanel accountId={ME} />);
+    expect(await screen.findByText(/page loads at half: the account is not known to be Premium/)).toBeInTheDocument();
+    const half = caps('read', 0.5);
+    expect(await usage('read')).toBe(`0/${half.hour} hr · 0/${half.day} day`);
+
+    await upsertAccount({ id: ME, verified: true });
+    const full = caps('read', 1);
+    await waitFor(async () => expect(await usage('read')).toBe(`0/${full.hour} hr · 0/${full.day} day`));
+    expect(screen.queryByText(/page loads at half/)).not.toBeInTheDocument();
   });
 
   it('names a custom preset', async () => {

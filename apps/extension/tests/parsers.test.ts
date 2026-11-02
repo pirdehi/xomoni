@@ -182,6 +182,12 @@ describe('graphql parsing', () => {
     expect(draftsFromTimeline('Likes', unliked, ME, { userId: ME }).map((d) => d.id)).toEqual([tweets[1]!.id]);
   });
 
+  it('reads whether X shows the account as Premium (#33)', () => {
+    const premium = (value: unknown) =>
+      extractProfile({ data: { user: { result: { rest_id: ME, is_blue_verified: value, legacy: {} } } } })?.verified;
+    expect([premium(true), premium(false), premium('yes'), premium(undefined)]).toEqual([true, false, null, null]);
+  });
+
   it('reads profiles and errors', () => {
     const profile = extractProfile({
       data: {
@@ -194,7 +200,7 @@ describe('graphql parsing', () => {
         },
       },
     });
-    expect(profile).toMatchObject({ id: ME, handle: 'me', postsCount: 12, likesCount: 3 });
+    expect(profile).toMatchObject({ id: ME, handle: 'me', postsCount: 12, likesCount: 3, verified: null });
     expect(extractErrors({ errors: [{ message: 'nope', extensions: { code: 226 } }] })).toEqual([
       { code: 226, message: 'nope' },
     ]);

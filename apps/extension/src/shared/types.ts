@@ -85,6 +85,11 @@ export interface Account {
   createdAt: number | null;
   /** When X's profile counters were last seen (epoch ms); missing before. `postsCount` is from then. */
   profileAt?: number;
+  /**
+   * Whether X shows the account as Premium (`is_blue_verified`), as last seen; missing or null when unknown.
+   * Accounts not known to be Premium load pages at half the pace (PLAYBOOK A6, #33).
+   */
+  verified?: boolean | null;
   updatedAt: number;
 }
 

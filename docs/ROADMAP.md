@@ -84,7 +84,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | 🔄 | Pilot on the maintainer's own account | [#27](https://github.com/pirdehi/xomoni/issues/27) | |
 | ✅ | Count unavailable originals as skipped | [#32](https://github.com/pirdehi/xomoni/issues/32) | [#109](https://github.com/pirdehi/xomoni/pull/109) |
 | ✅ | Export the activity log | [#34](https://github.com/pirdehi/xomoni/issues/34) | [#107](https://github.com/pirdehi/xomoni/pull/107) |
-| ⬜ | Separate defaults for Premium accounts | [#33](https://github.com/pirdehi/xomoni/issues/33) | |
+| ✅ | Separate defaults for Premium accounts | [#33](https://github.com/pirdehi/xomoni/issues/33) | [#110](https://github.com/pirdehi/xomoni/pull/110) |
 | ⬜ | Learn the daily read limit per account | [#28](https://github.com/pirdehi/xomoni/issues/28) | |
 | ✅ | Small extension fixes from the documentation pass | [#61](https://github.com/pirdehi/xomoni/issues/61) | [#108](https://github.com/pirdehi/xomoni/pull/108) |
 

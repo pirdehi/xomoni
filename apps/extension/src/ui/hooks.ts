@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { db, hasConsent, kvGet, kvSet, recordRisk, riskEvents, upsertAccount } from '../shared/db';
 import { type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY } from '../shared/time';
-import { WARMUP_RESET_DAYS, earlierActiveDays, spendsQuota, warmup } from '../shared/x-limits';
+import { WARMUP_RESET_DAYS, earlierActiveDays, readFactor, spendsQuota, warmup } from '../shared/x-limits';
 import type { PageInfo } from '../shared/messages';
 import type { Account } from '../shared/types';
 import { runner } from '../engine/runner';
@@ -170,6 +170,8 @@ export async function resumeAnyway(jobId: string, accountId: string) {
 export interface Pace {
   /** Warm-up step, already dropped back for recent warnings. */
   step: ReturnType<typeof warmup>;
+  /** Share of the read caps: 1 for a Premium account, less otherwise (PLAYBOOK A6). */
+  reads: number;
   /** The risk ladder. */
   risk: RiskAssessment;
   /** Share of Xomoni's one-fifth allowances in force: warm-up times the risk ladder, at most 1. */
@@ -184,12 +186,13 @@ export function usePace(accountId: string | undefined): Pace | undefined {
   return useLiveQuery(async () => {
     if (!accountId) return undefined;
     const now = Date.now();
-    const [logs, events] = await Promise.all([
+    const [logs, events, account] = await Promise.all([
       db.logs
         .where('[accountId+ts]')
         .between([accountId, now - WARMUP_RESET_DAYS * DAY], [accountId, Infinity])
         .toArray(),
       riskEvents(accountId),
+      db.accounts.get(accountId),
     ]);
     const acted = logs.filter(
       (r) => r.outcome && r.action !== 'system' && r.action !== 'read' && spendsQuota(r.outcome),
@@ -202,6 +205,6 @@ export function usePace(accountId: string | undefined): Pace | undefined {
       ),
       risk.warmupDrop,
     );
-    return { step, risk, factor: Math.min(1, step.factor * risk.capFactor) };
+    return { step, risk, factor: Math.min(1, step.factor * risk.capFactor), reads: readFactor(account?.verified) };
   }, [accountId]);
 }

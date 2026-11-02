@@ -166,7 +166,10 @@ export class Limiter {
    */
   private async restBetweenSessions() {
     const now = Date.now();
-    if (this.lastRequestAt && now - this.lastRequestAt >= SESSION.breakMinMs) return this.startSession(now);
+    if (this.lastRequestAt && now - this.lastRequestAt >= SESSION.breakMinMs) {
+      this.startSession(now);
+      return;
+    }
     if (now - this.sessionStartedAt < this.sessionLength) return;
     await this.wait(now + randomBetween(SESSION.breakMinMs, SESSION.breakMaxMs), 'Resting between work sessions');
   }
@@ -185,21 +188,24 @@ export class Limiter {
     const warm = notes.length ? ` · ${notes.join(' · ')}` : '';
     const now = Date.now();
     const stamps = this.stamps(action);
-    while (stamps.length && stamps[0] < now - DAY) stamps.shift();
+    while (stamps[0] !== undefined && stamps[0] < now - DAY) stamps.shift();
 
     await this.waitForActiveHours();
     await this.restBetweenSessions();
 
-    if (stamps.length >= rule.dailyCap) {
+    // The oldest action still inside the cap's window; the cap frees up a window after it.
+    const dayCapFrom = stamps.length >= rule.dailyCap ? stamps[stamps.length - rule.dailyCap] : undefined;
+    if (dayCapFrom !== undefined) {
       await this.wait(
-        stamps[stamps.length - rule.dailyCap] + DAY + randomBetween(60_000, 300_000),
+        dayCapFrom + DAY + randomBetween(60_000, 300_000),
         `Daily cap of ${rule.dailyCap} reached${warm}`,
       );
     }
     const lastHour = stamps.filter((t) => t > Date.now() - HOUR);
-    if (lastHour.length >= rule.hourlyCap) {
+    const hourCapFrom = lastHour.length >= rule.hourlyCap ? lastHour[lastHour.length - rule.hourlyCap] : undefined;
+    if (hourCapFrom !== undefined) {
       await this.wait(
-        lastHour[lastHour.length - rule.hourlyCap] + HOUR + randomBetween(10_000, 60_000),
+        hourCapFrom + HOUR + randomBetween(10_000, 60_000),
         `Hourly cap of ${rule.hourlyCap} reached${warm}`,
       );
     }
@@ -212,9 +218,11 @@ export class Limiter {
       if (slot > Date.now()) {
         const i = allowed.findIndex((a) => uses.filter((t) => t > Date.now() - a.windowMs).length >= a.limit);
         const full = BUDGETS[id].published[i];
-        const what = full
-          ? ` (${allowed[i].limit} of X’s ${full.limit} per ${full.windowMs >= DAY ? 'day' : '15 min'}${warm})`
-          : '';
+        const share = allowed[i];
+        const what =
+          full && share
+            ? ` (${share.limit} of X’s ${full.limit} per ${full.windowMs >= DAY ? 'day' : '15 min'}${warm})`
+            : '';
         await this.wait(
           slot + randomBetween(5_000, 30_000),
           `${BUDGETS[id].label}: Xomoni’s share of X’s limit used${what}`,

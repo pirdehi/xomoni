@@ -76,7 +76,7 @@ describe('interceptor: request bodies passed inside a Request (#60)', () => {
     vi.stubGlobal('window', win);
     vi.stubGlobal('document', doc);
     vi.stubGlobal('location', { origin: 'https://x.com' });
-    vi.stubGlobal('XMLHttpRequest', class {});
+    vi.stubGlobal('XMLHttpRequest', function FakeXhr() {});
     channel.port1.onmessage = (event) => captures.push(event.data);
     offerPort(doc, channel.port2);
     // A page script: load it for its effect on `window`.

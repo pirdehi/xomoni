@@ -21,22 +21,28 @@ const page = {
 };
 const tab = { id: 1, windowId: 1 };
 
+/** A stub API method that answers `value` the way Chrome's promise-based APIs do. */
+const answers =
+  <T>(value: T) =>
+  () =>
+    Promise.resolve(value);
+
 (globalThis as unknown as { chrome: unknown }).chrome = {
-  runtime: { getURL: (p: string) => `/${p}`, sendMessage: async () => undefined, onMessage: { addListener() {} } },
+  runtime: { getURL: (p: string) => `/${p}`, sendMessage: answers(undefined), onMessage: { addListener() {} } },
   tabs: {
-    get: async () => tab,
-    update: async () => tab,
-    sendMessage: async (_id: number, msg: { command: { cmd: string } }) =>
-      msg.command.cmd === 'ping' ? page : { outcome: 'done' },
+    get: answers(tab),
+    update: answers(tab),
+    sendMessage: (_id: number, msg: { command: { cmd: string } }) =>
+      Promise.resolve(msg.command.cmd === 'ping' ? page : { outcome: 'done' }),
   },
   windows: {
-    create: async () => ({ id: 1, tabs: [tab] }),
-    get: async () => ({ id: 1, state: 'normal' }),
-    update: async () => undefined,
+    create: answers({ id: 1, tabs: [tab] }),
+    get: answers({ id: 1, state: 'normal' }),
+    update: answers(undefined),
   },
-  notifications: { create: async () => '', clear: async () => true },
+  notifications: { create: answers(''), clear: answers(true) },
   storage: {
-    session: { get: async () => ({ workerTab: 1 }), set: async () => undefined, remove: async () => undefined },
+    session: { get: answers({ workerTab: 1 }), set: answers(undefined), remove: answers(undefined) },
   },
 };
 

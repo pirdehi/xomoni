@@ -22,9 +22,8 @@ export interface NetEvent {
   headers: Record<string, string | null>;
   /** The request's GraphQL variables, from the JSON body or the URL query. */
   variables: Record<string, unknown>;
-  /** The parsed response body; null when it was empty or not JSON. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  json: any;
+  /** The parsed response body, of a shape X controls; null when it was empty or not JSON. Read it with `shared/json`. */
+  json: unknown;
   /** When the content script received it, in ms since the epoch. */
   at: number;
 }
@@ -127,7 +126,7 @@ export function handleCapture(raw: {
   const ev: NetEvent = {
     op: raw.op,
     status: raw.status,
-    headers: raw.headers ?? {},
+    headers: raw.headers,
     variables: parseVariables(raw.url, raw.reqBody),
     json,
     at: Date.now(),

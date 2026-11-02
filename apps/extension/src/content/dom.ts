@@ -65,8 +65,7 @@ const DELETE_LABELS = new Set([
 const DANGER_RGB = 'rgb(244, 33, 46)';
 
 /** `querySelector` shorthand: the first match under `root` (the whole document by default), or null. */
-export const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) =>
-  root.querySelector<T>(sel);
+export const $ = (sel: string, root: ParentNode = document) => root.querySelector<HTMLElement>(sel);
 /** `querySelectorAll` shorthand that returns a real array. */
 export const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => [
   ...root.querySelectorAll<T>(sel),
@@ -88,10 +87,10 @@ export function articleInfo(article: Element): { id: string; handle: string; tim
   for (const time of $$('time', article)) {
     const link = time.parentElement;
     if (link?.tagName !== 'A') continue;
-    const m = (link.getAttribute('href') ?? '').match(/^\/([^/]+)\/status\/(\d+)/);
-    if (!m) continue;
+    const [, handle, id] = (link.getAttribute('href') ?? '').match(/^\/([^/]+)\/status\/(\d+)/) ?? [];
+    if (!handle || !id) continue;
     const t = Date.parse(time.getAttribute('datetime') ?? '');
-    return { handle: m[1], id: m[2], time: Number.isNaN(t) ? null : t };
+    return { handle, id, time: Number.isNaN(t) ? null : t };
   }
   return null;
 }
@@ -112,7 +111,7 @@ export function findArticle(id: string): HTMLElement | null {
 export function findDeleteMenuItem(): HTMLElement | null {
   const items = $$(SEL.menuItem);
   return (
-    items.find((el) => DELETE_LABELS.has((el.textContent ?? '').trim().toLowerCase())) ??
+    items.find((el) => DELETE_LABELS.has(el.textContent.trim().toLowerCase())) ??
     items.find((el) => getComputedStyle($('span', el) ?? el).color === DANGER_RGB) ??
     null
   );
@@ -139,7 +138,10 @@ export function closeMenus() {
 export function waitFor<T>(probe: () => T | null | undefined | false, timeoutMs: number): Promise<T | null> {
   return new Promise((resolve) => {
     const first = probe();
-    if (first) return resolve(first);
+    if (first) {
+      resolve(first);
+      return;
+    }
     let done = false;
     const finish = (value: T | null) => {
       if (done) return;
@@ -181,9 +183,9 @@ export function viewerIdFromCookie(): string | null {
  * limited" banner appears). Capped so a long timeline is not scanned; posts further down can't trigger a match.
  */
 export function noticeText(): string {
-  const alerts = $$('[role="alert"]').map((el) => (el as HTMLElement).innerText);
-  const dialogs = $$(SEL.dialog).map((el) => (el.innerText ?? '').slice(0, 1500));
-  const column = $<HTMLElement>('[data-testid="primaryColumn"]')?.innerText.slice(0, 1500) ?? '';
+  const alerts = $$('[role="alert"]').map((el) => el.innerText);
+  const dialogs = $$(SEL.dialog).map((el) => el.innerText.slice(0, 1500));
+  const column = $('[data-testid="primaryColumn"]')?.innerText.slice(0, 1500) ?? '';
   return [...alerts, ...dialogs, column].join('\n');
 }
 
@@ -195,11 +197,11 @@ export function openDialog(): HTMLElement | null {
 /** A short description of a pop-up for the activity log: its label, or its first line of text. */
 export function describeDialog(dialog: HTMLElement): string {
   const label = dialog.getAttribute('aria-label');
-  const firstLine = (dialog.innerText ?? dialog.textContent ?? '').trim().split(/\n+/)[0] ?? '';
+  const firstLine = dialog.innerText.trim().split(/\n+/)[0] ?? '';
   return (label || firstLine || 'a pop-up').slice(0, 80);
 }
 
 /** The signed-in user's handle, read from the sidebar Profile link; null until X has rendered that link. */
 export function viewerHandle(): string | null {
-  return $<HTMLAnchorElement>(SEL.profileLink)?.getAttribute('href')?.replace(/^\//, '') || null;
+  return $(SEL.profileLink)?.getAttribute('href')?.replace(/^\//, '') || null;
 }

@@ -1,0 +1,11 @@
+{
+  "//": "Build and test configuration that runs in Node (vite.config.ts). Kept apart from tsconfig.json so Node's globals never reach the extension's browser code.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}

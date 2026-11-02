@@ -5,7 +5,7 @@ import { expect, test as base } from '@playwright/test';
  * Content-Security-Policy (#8). A page that needs a new origin must add it to the policy on purpose
  * (`src/shared/config/security-headers.ts`). Other origins' pages, such as Turnstile's frame, are ignored.
  */
-export const test = base.extend<{ cspGuard: void }>({
+export const test = base.extend<{ cspGuard: undefined }>({
   cspGuard: [
     async ({ page, baseURL }, use) => {
       const blocked: string[] = [];
@@ -20,7 +20,7 @@ export const test = base.extend<{ cspGuard: void }>({
         },
         new URL(baseURL ?? 'http://localhost:3000').origin,
       );
-      await use();
+      await use(undefined);
       expect(blocked, 'blocked by the Content-Security-Policy').toEqual([]);
     },
     { auto: true },

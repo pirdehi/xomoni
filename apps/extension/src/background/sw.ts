@@ -46,7 +46,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.runtime.onMessage.addListener((message: RuntimeMessage, sender) => {
   if (!sender.tab) return;
-  void handle(message).catch((err) => console.warn('[xomoni] failed to store observation', err));
+  void handle(message).catch((err: unknown) => console.warn('[xomoni] failed to store observation', err));
 });
 
 async function handle(message: RuntimeMessage) {

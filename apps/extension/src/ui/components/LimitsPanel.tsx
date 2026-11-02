@@ -39,7 +39,7 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       db.logs.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray(),
       db.reads.where('[accountId+ts]').between([accountId, since], [accountId, Infinity]).toArray(),
     ]);
-    const out: Record<string, { hour: number; day: number }> = {};
+    const out: Partial<Record<string, { hour: number; day: number }>> = {};
     for (const r of reads) {
       const u = (out.read ??= { hour: 0, day: 0 });
       u.day++;
@@ -69,7 +69,7 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
       title="Limits & pacing"
       subtitle={
         settings
-          ? `Preset: ${settings.preset[0].toUpperCase()}${settings.preset.slice(1)} · at most ⅕ of X's limits` +
+          ? `Preset: ${settings.preset.charAt(0).toUpperCase()}${settings.preset.slice(1)} · at most ⅕ of X's limits` +
             (usage && usage.step.factor < 1 ? ` · warm-up day ${usage.step.day} of ${usage.step.days}` : '') +
             (usage && usage.factor < 1 ? ` · running at ${Math.round(usage.factor * 100)}% of that` : '')
           : undefined

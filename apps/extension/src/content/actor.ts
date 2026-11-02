@@ -3,6 +3,7 @@
 // headers); success is only reported once X's response confirms it.
 import { isCheckPath, isLoginPath, restrictionNotice } from '../shared/attention';
 import { extractErrors } from '../shared/graphql';
+import { at } from '../shared/json';
 import type {
   ActionResult,
   ActorCommand,
@@ -217,7 +218,7 @@ async function unlike(id: string): Promise<ActionResult> {
 
 /** Removes a like X no longer displays: like it again, then unlike it. */
 async function relikeUnlike(id: string): Promise<ActionResult> {
-  let article = findArticle(id);
+  const article = findArticle(id);
   if (!article) return { outcome: 'not_found', message: 'Post is not on the page' };
   await focus(article);
   if (!$(SEL.unlike, article)) {
@@ -231,8 +232,8 @@ async function relikeUnlike(id: string): Promise<ActionResult> {
   }
   // Never leave a re-like behind: retry the unlike before giving up.
   for (let attempt = 0; attempt < 3; attempt++) {
-    article = findArticle(id);
-    if (article && (await waitFor(() => $(SEL.unlike, article!), 5000))) {
+    const found = findArticle(id);
+    if (found && (await waitFor(() => $(SEL.unlike, found), 5000))) {
       const result = await unlike(id);
       if (result.outcome !== 'failed') return result;
     }
@@ -369,6 +370,8 @@ export function classify(ev: NetEvent | null, op: string): ActionResult {
       case 139:
       case 327:
         return { ...base, outcome: 'already' };
+      default:
+        break;
     }
     // Unknown errors are failures even when a data object came back.
     return { ...base, outcome: ev.status === 403 ? 'restricted' : 'failed' };
@@ -377,7 +380,7 @@ export function classify(ev: NetEvent | null, op: string): ActionResult {
   if (ev.status === 403) return { outcome: 'restricted', http: 403, message: 'X refused the action (HTTP 403)' };
   if (ev.status >= 400 || ev.status === 0)
     return { outcome: 'failed', http: ev.status, message: `X answered HTTP ${ev.status}` };
-  return ev.json?.data
+  return at(ev.json, 'data')
     ? { outcome: 'done', http: ev.status }
     : { outcome: 'failed', http: ev.status, message: 'Unexpected response' };
 }

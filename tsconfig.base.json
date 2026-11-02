@@ -1,0 +1,16 @@
+{
+  "//": "Shared compiler rules for every workspace (#101). Workspaces extend this file and add only what their runtime needs (lib, jsx, types, paths). See CONTRIBUTING.md#typescript.",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  }
+}

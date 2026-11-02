@@ -54,7 +54,7 @@ describe('the one-fifth rule', () => {
     expect(allowances('search')).toEqual([{ limit: 60, windowMs: 15 * MINUTE }]);
     expect(allowances('likedPosts')).toEqual([{ limit: 15, windowMs: 15 * MINUTE }]);
     for (const id of Object.keys(BUDGETS) as (keyof typeof BUDGETS)[]) {
-      allowances(id).forEach((a, i) => expect(a.limit).toBe(Math.floor(BUDGETS[id].published[i].limit / 5)));
+      allowances(id).forEach((a, i) => expect(a.limit).toBe(Math.floor(BUDGETS[id].published[i]!.limit / 5)));
     }
   });
 
@@ -290,7 +290,7 @@ describe('the ceiling holds everywhere', () => {
     for (const step of WARMUP_STEPS) {
       for (const id of Object.keys(BUDGETS) as (keyof typeof BUDGETS)[]) {
         scaleAllowances(allowances(id), step).forEach((a, i) => {
-          expect(a.limit).toBeLessThanOrEqual(BUDGETS[id].published[i].limit / 5);
+          expect(a.limit).toBeLessThanOrEqual(BUDGETS[id].published[i]!.limit / 5);
         });
       }
       for (const action of Object.keys(PRESETS.careful) as ActionKind[]) {

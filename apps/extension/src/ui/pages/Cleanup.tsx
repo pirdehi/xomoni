@@ -25,21 +25,27 @@ import { useKindCounts } from '../queries';
 
 type Age = '30d' | '90d' | '6m' | '1y' | '2y' | 'custom';
 
-const AGES: { value: Age; label: string; days: number }[] = [
-  { value: '30d', label: '30 days', days: 30 },
-  { value: '90d', label: '90 days', days: 90 },
-  { value: '6m', label: '6 months', days: 182 },
-  { value: '1y', label: '1 year', days: 365 },
-  { value: '2y', label: '2 years', days: 730 },
-  { value: 'custom', label: 'Pick a date', days: 0 },
+const AGES: { value: Age; label: string }[] = [
+  { value: '30d', label: '30 days' },
+  { value: '90d', label: '90 days' },
+  { value: '6m', label: '6 months' },
+  { value: '1y', label: '1 year' },
+  { value: '2y', label: '2 years' },
+  { value: 'custom', label: 'Pick a date' },
 ];
 
-const TARGETS: { value: CleanupTarget; label: string; icon: ReactNode; verb: string }[] = [
-  { value: 'post', label: 'Posts', icon: <SquarePen size={16} />, verb: 'Delete' },
-  { value: 'reply', label: 'Replies', icon: <MessageSquareReply size={16} />, verb: 'Delete' },
-  { value: 'repost', label: 'Reposts', icon: <Repeat2 size={16} />, verb: 'Undo' },
-  { value: 'like', label: 'Likes', icon: <Heart size={16} />, verb: 'Remove' },
+/** How far back each preset age reaches, in days. */
+const AGE_DAYS: Record<Exclude<Age, 'custom'>, number> = { '30d': 30, '90d': 90, '6m': 182, '1y': 365, '2y': 730 };
+
+const TARGETS: { value: CleanupTarget; label: string; icon: ReactNode }[] = [
+  { value: 'post', label: 'Posts', icon: <SquarePen size={16} /> },
+  { value: 'reply', label: 'Replies', icon: <MessageSquareReply size={16} /> },
+  { value: 'repost', label: 'Reposts', icon: <Repeat2 size={16} /> },
+  { value: 'like', label: 'Likes', icon: <Heart size={16} /> },
 ];
+
+/** The verb a job title uses for each target. */
+const VERB: Record<CleanupTarget, string> = { post: 'Delete', reply: 'Delete', repost: 'Undo', like: 'Remove' };
 
 const startOfToday = () => new Date(new Date().setHours(0, 0, 0, 0)).getTime();
 
@@ -72,9 +78,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
   const [missAcknowledged, setMissAcknowledged] = useState(false);
 
   const before =
-    age === 'custom'
-      ? (fromDateInput(customDate) ?? startOfToday())
-      : startOfToday() - AGES.find((a) => a.value === age)!.days * DAY;
+    age === 'custom' ? (fromDateInput(customDate) ?? startOfToday()) : startOfToday() - AGE_DAYS[age] * DAY;
   const filter: CleanupFilter = useMemo(
     () => ({
       target,
@@ -94,8 +98,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
   const rule = settings?.pacing[action];
   const eta = rule && candidates ? estimateDuration(candidates.length, rule) : 0;
   const days = rule && candidates ? Math.ceil(candidates.length / rule.dailyCap) : 0;
-  const meta = TARGETS.find((t) => t.value === target)!;
-  const title = `${meta.verb} ${TARGET_PLURAL[target]} older than ${fmtDate(before)}`;
+  const title = `${VERB[target]} ${TARGET_PLURAL[target]} older than ${fmtDate(before)}`;
   // Reposts gain little from the archive: it doesn't say which post a repost points to.
   const needsArchive = hasArchive === false && target !== 'repost';
   const canStart =
@@ -113,7 +116,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
   const start = async () => {
     const job = await createCleanupJob(account.id, title, filter, options);
     setConfirming(false);
-    startJob(job.id);
+    void startJob(job.id);
     navigate('jobs');
   };
 
@@ -381,7 +384,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
       <ConfirmStart
         open={confirming}
         onClose={() => setConfirming(false)}
-        onConfirm={start}
+        onConfirm={() => void start()}
         title={title}
         count={candidates?.length ?? 0}
         sweep={options.sweep}

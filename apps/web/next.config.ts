@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source.
   transpilePackages: ['@xomoni/consent', '@xomoni/db'],
   // CSP, HSTS, framing and the rest, on every response (ADR-0014).
-  async headers() {
+  headers() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl)
       throw new Error(
@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
       dev: process.env.NODE_ENV === 'development',
     };
-    return [{ source: '/:path*', headers: securityHeaders(settings) }];
+    return Promise.resolve([{ source: '/:path*', headers: securityHeaders(settings) }]);
   },
   turbopack: {
     // npm workspaces hoist dependencies to the monorepo root.

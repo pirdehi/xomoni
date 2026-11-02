@@ -69,7 +69,7 @@ const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;'
 
 /** Text made safe to place in HTML: every markup character is escaped, so a post can never add markup. */
 export function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (c) => ESCAPES[c]);
+  return text.replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
 }
 
 const KIND_LABEL: Record<ArchiveKind, string> = { post: 'Post', reply: 'Reply', repost: 'Repost' };

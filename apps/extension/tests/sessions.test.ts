@@ -21,7 +21,7 @@ const REST = 'Resting between work sessions';
 const sequence =
   (...values: number[]) =>
   () =>
-    values.length > 1 ? values.shift()! : values[0];
+    (values.length > 1 ? values.shift() : values[0]) ?? 0;
 
 const average = (rule: { minDelay: number; maxDelay: number }, n = 20_000) => {
   let sum = 0;
@@ -102,7 +102,7 @@ describe('Limiter: rests between work sessions (#30)', () => {
     await l.init();
     await l.before('read', 'userTimeline');
     expect(rests()).toHaveLength(1);
-    const minutes = (rests()[0][1] - NOW) / MINUTE;
+    const minutes = (rests()[0]![1] - NOW) / MINUTE;
     expect(minutes).toBeGreaterThanOrEqual(SESSION.breakMinMs / MINUTE);
     expect(minutes).toBeLessThanOrEqual(SESSION.breakMaxMs / MINUTE);
   });

@@ -1,6 +1,7 @@
 // Isolated-world content script on x.com: bridges the page interceptor to the
 // extension and executes actor commands from the dashboard.
 import { isCapture, offerPort } from '../shared/bridge';
+import { asObject } from '../shared/json';
 import type { ActorCommand } from '../shared/messages';
 import { runCommand } from './actor';
 import { handleCapture } from './net';
@@ -13,8 +14,16 @@ channel.port1.onmessage = (event) => {
 };
 offerPort(document, channel.port2);
 
-chrome.runtime.onMessage.addListener((message: { type?: string; command?: ActorCommand }, _sender, sendResponse) => {
-  if (message?.type !== 'actor' || !message.command) return;
-  runCommand(message.command).then(sendResponse, (err) => sendResponse({ error: String(err?.message ?? err) }));
+/** Whether a runtime message is a command from the dashboard for this tab. */
+function isActorMessage(message: unknown): message is { type: 'actor'; command: ActorCommand } {
+  const m = asObject(message);
+  return m?.type === 'actor' && !!asObject(m.command);
+}
+
+chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  if (!isActorMessage(message)) return;
+  runCommand(message.command).then(sendResponse, (err: unknown) =>
+    sendResponse({ error: err instanceof Error ? err.message : String(err) }),
+  );
   return true;
 });

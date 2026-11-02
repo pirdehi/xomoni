@@ -13,7 +13,7 @@ type Level = 'all' | 'success' | 'problems';
 const matches = (level: Level) => (e: LogEntry) =>
   level === 'all' ? true : level === 'success' ? e.level === 'success' : e.level === 'warn' || e.level === 'error';
 
-function csvCell(v: unknown) {
+function csvCell(v: string | number | null | undefined) {
   const s = v == null ? '' : String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }

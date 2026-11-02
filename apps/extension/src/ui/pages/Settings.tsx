@@ -9,7 +9,7 @@ import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/
 import { X_PUBLISHED_LIMITS, capCeilings, share } from '../../shared/x-limits';
 import type { PageProps } from '../navigation';
 import { Button, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
-import { downloadFile, toDateInput } from '../format';
+import { downloadFile, errorMessage, toDateInput } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
 
@@ -25,7 +25,10 @@ const COLUMNS: { key: keyof PacingRule; label: string; unit?: string }[] = [
 ];
 
 // Every save goes through the safety rules: custom values are clamped to one fifth of X's limits.
-const save = (s: Settings) => kvSet('settings', normalizeSettings(s));
+/** Saves settings brought back inside the safety rules; a failed save shows a toast. */
+const save = (s: Settings) => {
+  kvSet('settings', normalizeSettings(s)).catch((err: unknown) => toast(errorMessage(err), 'critical'));
+};
 
 /**
  * Pacing presets and per-action rules, active hours, notifications, the failure limit, theme, and
@@ -310,7 +313,7 @@ function XLimitsTable() {
                     {l.limit} per {per}
                   </td>
                   <td className="py-1 pl-3 font-medium text-ink">
-                    {'neverUsed' in l && l.neverUsed ? 'none: Xomoni never posts' : `${share(l.limit)} per ${per}`}
+                    {'neverUsed' in l ? 'none: Xomoni never posts' : `${share(l.limit)} per ${per}`}
                   </td>
                   <td className="py-1 pl-3">
                     <a className="text-accent underline" href={l.source} target="_blank" rel="noreferrer">

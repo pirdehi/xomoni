@@ -77,7 +77,7 @@ describe('sampleAction (#22, PLAYBOOK C5)', () => {
     await sampleAction(ctx, 'read', '3', () => 0);
     const checks = await db.checks.toArray();
     expect(checks.map((c) => c.postId)).toEqual(['1']);
-    const wait = (checks[0].dueAt - checks[0].at) / MINUTE;
+    const wait = (checks[0]!.dueAt - checks[0]!.at) / MINUTE;
     expect(wait).toBeGreaterThanOrEqual(10);
     expect(wait).toBeLessThanOrEqual(30);
   });
@@ -132,7 +132,7 @@ describe('runDueChecks: catching a silent block (#22, PLAYBOOK C5)', () => {
     await runDueChecks(asContext(blank));
     expect(await db.checks.count()).toBe(0);
     expect(await db.risk.count()).toBe(0);
-    expect(blank.log.mock.calls[0][2]).toMatch(/could not show/);
+    expect(blank.log.mock.calls[0]?.[2]).toMatch(/could not show/);
   });
 });
 

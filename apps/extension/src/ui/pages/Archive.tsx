@@ -65,7 +65,7 @@ export function ArchivePage({ account, navigate }: PageProps) {
     if (!range) return;
     const title = `Archive: ${fmtDate(range.after)} – ${fmtDate(range.before - 1)}`;
     const job = await createScanJob(account.id, title, 'range', range);
-    startJob(job.id);
+    void startJob(job.id);
     navigate('jobs');
   };
 

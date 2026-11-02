@@ -1,4 +1,4 @@
-import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database, DeviceRow, JobRow } from '@xomoni/db';
 import type { Device, JobSummary } from '../domain/model';
 import { toRiskLevel } from '../domain/risk';
@@ -75,13 +75,13 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
   return {
     subscribe(viewerId, handlers) {
       const filter = `user_id=eq.${viewerId}`;
-      let cancelled = false;
+      const stopped = new AbortController();
       let channel: RealtimeChannel | null = null;
 
-      (async () => {
+      void (async () => {
         // Load the user's JWT first; otherwise the join goes out with the anon key and RLS rejects it.
         await supabase.realtime.setAuth();
-        if (cancelled) return;
+        if (stopped.signal.aborted) return;
         channel = supabase
           .channel(dashboardTopic(viewerId), { config: { private: true } })
           // "SUBSCRIBED" arrives before Postgres changes flow; this system message means they do.
@@ -110,12 +110,14 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
             { event: 'UPDATE', schema: 'public', table: 'devices', filter },
             ({ new: row }) => handlers.onDevice(toDevice(row)),
           )
-          .subscribe((status) => status !== 'SUBSCRIBED' && handlers.onStatus(false));
+          .subscribe((status) => {
+            if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) handlers.onStatus(false);
+          });
       })();
 
       return () => {
-        cancelled = true;
-        if (channel) supabase.removeChannel(channel);
+        stopped.abort();
+        if (channel) void supabase.removeChannel(channel);
       };
     },
   };

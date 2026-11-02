@@ -53,6 +53,17 @@ npm run test:e2e -w @xomoni/web
 
 Commit messages: one imperative summary line under ~72 characters ("Add password reset"), then a blank line and the why, if useful.
 
+## TypeScript
+
+The rules are in [ADR-0016](docs/adr/0016-strict-typescript-and-type-aware-lint.md) and enforced by `npm run verify`. In short:
+
+- Every workspace extends [`tsconfig.base.json`](tsconfig.base.json): `strict`, `noUncheckedIndexedAccess`, no unused code, no implicit returns or fallthrough. Add only runtime options (`lib`, `jsx`, `types`) to a workspace's own `tsconfig.json`.
+- No `any`. Data from outside (X's responses, archive files, messages, storage) is `unknown` until a check narrows it; in the extension, read it with `src/shared/json.ts`.
+- No non-null assertions (`!`) and no casts that hide a missing check. Narrow with a condition, give a default, or fail with a clear error. Tests may use `!`.
+- Every promise is awaited, returned, or marked `void` on purpose with its errors handled.
+- Every `switch` over a union handles every case.
+- No `eslint-disable`, `@ts-ignore` or `@ts-expect-error`. If a rule is wrong for some code, change it in `eslint.config.mjs` with a comment and an ADR.
+
 ## Database changes
 
 ```bash

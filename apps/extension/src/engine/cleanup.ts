@@ -14,7 +14,7 @@ import { db, itemKey } from '../shared/db';
 import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
 import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../shared/messages';
 import { DAY, searchDate } from '../shared/time';
-import type { Account, ActionKind, CleanupFilter, Item, ItemKind } from '../shared/types';
+import type { Account, ActionKind, CleanupFilter, CleanupOptions, Item, ItemKind } from '../shared/types';
 import { readBudgetFor } from '../shared/x-limits';
 import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
 import { runDueChecks, sampleAction } from './samples';
@@ -31,13 +31,19 @@ const MAX_QUOTA_RETRIES = 3;
 /** Loads of a sweep page that fails for another reason before handing over to the inventory. */
 const MAX_PAGE_LOADS = 3;
 
+/** The job's cleanup rules. A job without them stops as failed before any step runs. */
+function rules(ctx: JobContext): { filter: CleanupFilter; options: CleanupOptions } {
+  const { filter, options } = ctx.job;
+  if (!filter || !options) throw new Stop('failed', 'This job has no cleanup rules.');
+  return { filter, options };
+}
+
 /**
  * Runs a cleanup job: the sweep, then the deep clean, as the job's options enable. Keeps `stats.matched`
  * current before and after.
  */
 export async function runCleanup(ctx: JobContext) {
-  const { filter, options } = ctx.job;
-  if (!filter || !options) throw new Stop('failed', 'This job has no cleanup rules.');
+  const { filter, options } = rules(ctx);
   await refreshMatched(ctx);
   const account = await db.accounts.get(ctx.job.accountId);
 
@@ -94,7 +100,7 @@ async function inventoryTotals(account: Account) {
 
 /** matched = everything settled so far + what the inventory still says matches. */
 async function refreshMatched(ctx: JobContext) {
-  const remaining = (await findCandidates(ctx.job.accountId, ctx.job.filter!)).length;
+  const remaining = (await findCandidates(ctx.job.accountId, rules(ctx).filter)).length;
   const { done, skipped, failed } = ctx.job.stats;
   ctx.job.stats.matched = done + skipped + failed + remaining;
   await ctx.save();
@@ -204,7 +210,7 @@ async function sweep(ctx: JobContext, url: string, repeat = true) {
       if (targets.length) {
         idle = 0;
         for (const [i, item] of targets.entries()) {
-          await handOffSafe(ctx, targets.slice(i), () => act(ctx, item, actionFor(ctx.job.filter!.target)));
+          await handOffSafe(ctx, targets.slice(i), () => act(ctx, item, actionFor(rules(ctx).filter.target)));
           acted++;
         }
         continue;
@@ -228,7 +234,7 @@ async function sweep(ctx: JobContext, url: string, repeat = true) {
 
 /** Search showed nothing although the inventory still has matching posts (PLAYBOOK C6, E2). */
 async function noteSearchGap(ctx: JobContext) {
-  const left = (await findCandidates(ctx.job.accountId, ctx.job.filter!)).length;
+  const left = (await findCandidates(ctx.job.accountId, rules(ctx).filter)).length;
   if (!left) return;
   await ctx.note(
     `X search showed none of the ${left.toLocaleString()} matching posts in your inventory: X may be hiding this account from search, or the posts are too old for search to show.${
@@ -265,7 +271,7 @@ async function pickTargets(
   since: number,
   unresolved: Set<string>,
 ): Promise<Item[]> {
-  const filter = ctx.job.filter!;
+  const filter = rules(ctx).filter;
   const me = ctx.handle.toLowerCase();
   const live = needsLiveData(filter);
   const kinds: ItemKind[] =
@@ -387,8 +393,8 @@ function deepUrl(item: Item, handle: string) {
 }
 
 async function deepClean(ctx: JobContext) {
-  const filter = ctx.job.filter!;
-  const action = filter.target === 'like' && ctx.job.options!.ghostLikes ? 'relike' : actionFor(filter.target);
+  const filter = rules(ctx).filter;
+  const action = filter.target === 'like' && rules(ctx).options.ghostLikes ? 'relike' : actionFor(filter.target);
   const candidates = (await findCandidates(ctx.job.accountId, filter)).filter(
     (i) => i.lastJobId !== ctx.job.id && !ctx.attempted.has(i.id),
   );
@@ -424,7 +430,7 @@ async function deepClean(ctx: JobContext) {
 
 /** Opens the item's page, re-checks the rule against what X shows now, then acts. */
 async function visit(ctx: JobContext, item: Item, action: ActionKind) {
-  const filter = ctx.job.filter!;
+  const filter = rules(ctx).filter;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const navStart = Date.now();
     const content = await ctx.navigate(deepUrl(item, ctx.handle));

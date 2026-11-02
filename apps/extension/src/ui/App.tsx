@@ -21,6 +21,7 @@ import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, cx } from './components/ui';
 import { ConsentDialog } from './components/ConsentDialog';
+import { errorMessage } from './format';
 import { type WorkerStatus, toast, useActiveAccount, useRunner, useToasts, useWorkerStatus } from './hooks';
 import { ActivityPage } from './pages/Activity';
 import { ArchivePage } from './pages/Archive';
@@ -195,7 +196,7 @@ function WorkerChip({ worker }: { worker: WorkerStatus }) {
         type="button"
         title={open ? 'Show the X worker window' : 'Open the X worker window'}
         onClick={() =>
-          (open ? workerTab.focus() : workerTab.open()).catch((e) => toast(String(e?.message ?? e), 'critical'))
+          void (open ? workerTab.focus() : workerTab.open()).catch((e: unknown) => toast(errorMessage(e), 'critical'))
         }
         className="shrink-0 rounded p-1 text-muted hover:bg-surface hover:text-ink"
       >
@@ -233,7 +234,7 @@ function RunnerBanner() {
               size="sm"
               variant="primary"
               icon={<ExternalLink size={13} />}
-              onClick={() => workerTab.focus().catch((e) => toast(String(e?.message ?? e), 'critical'))}
+              onClick={() => void workerTab.focus().catch((e: unknown) => toast(errorMessage(e), 'critical'))}
             >
               Open X window
             </Button>

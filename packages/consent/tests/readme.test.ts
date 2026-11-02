@@ -12,7 +12,7 @@ describe('consent text', () => {
       block,
       'README.md needs a consent block between <!-- consent:start --> and <!-- consent:end -->',
     ).not.toBeNull();
-    expect(block![1].trim()).toBe(consentMarkdown());
+    expect(block?.[1]?.trim()).toBe(consentMarkdown());
   });
 
   it('covers X’s rule, the remaining risk, the research disclaimer, permanence, the archive and what Xomoni never does', () => {

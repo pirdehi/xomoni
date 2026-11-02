@@ -71,9 +71,10 @@ export function healthReport(input: {
   const restHours = Math.max(REST_HOURS[risk.level], untilResume, notice ? 24 : 0);
 
   const parts: string[] = [];
-  const seen = SIGNAL_NAMES.filter(([kind]) => signals[kind]).map(([kind, one, many]) =>
-    count(signals[kind]!, one, many),
-  );
+  const seen = SIGNAL_NAMES.flatMap(([kind, one, many]) => {
+    const n = signals[kind];
+    return n ? [count(n, one, many)] : [];
+  });
   if (risk.level === 0 && !seen.length && !notice) parts.push('Healthy: no warnings from X.');
   else if (risk.level > 0) parts.push(`Risk level ${risk.level} (${RISK_LABELS[risk.level]}): ${risk.reason}.`);
   if (seen.length) parts.push(`During this run X sent ${list(seen)}.`);

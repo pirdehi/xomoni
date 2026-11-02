@@ -21,7 +21,7 @@ import { JobCard } from '../components/JobCard';
 import { LimitsPanel } from '../components/LimitsPanel';
 import { LogList } from '../components/LogList';
 import { Button, Card, EmptyState, PageHeader, StatTile, cx } from '../components/ui';
-import { fmtCompact, fmtNumber } from '../format';
+import { errorMessage, fmtCompact, fmtNumber } from '../format';
 import { type WorkerStatus, toast } from '../hooks';
 import { useKindCounts } from '../queries';
 
@@ -185,7 +185,7 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
 
 function Onboarding({ worker }: { worker: WorkerStatus }) {
   const open = () =>
-    (worker.open ? workerTab.focus() : workerTab.open()).catch((e) => toast(String(e?.message ?? e), 'critical'));
+    void (worker.open ? workerTab.focus() : workerTab.open()).catch((e: unknown) => toast(errorMessage(e), 'critical'));
   const loggedIn = !!worker.info?.loggedIn;
   return (
     <div className="mx-auto max-w-2xl pt-6">

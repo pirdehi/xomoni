@@ -158,7 +158,7 @@ function ScanCard({ accountId, navigate }: { accountId: string; navigate: PagePr
   const run = useRunner();
   const scan = async (target: ScanTarget, title: string) => {
     const job = await createScanJob(accountId, `Scan: ${title}`, target);
-    startJob(job.id);
+    void startJob(job.id);
     navigate('jobs');
   };
   return (

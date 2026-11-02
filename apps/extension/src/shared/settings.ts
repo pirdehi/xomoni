@@ -1,3 +1,4 @@
+import { asNumber } from './json';
 import type { ActionKind, PacingRule, PresetName, Settings } from './types';
 import { capCeilings, clampRule } from './x-limits';
 
@@ -47,8 +48,9 @@ export function normalizeSettings(stored: Partial<Settings> | null | undefined):
   const merged = { ...DEFAULT_SETTINGS, ...stored };
   // Unknown failures in a row before the job pauses: at most 3, so a changed page or a quiet refusal by X
   // can't be retried again and again (PLAYBOOK C3).
-  const failures = Number(merged.maxConsecutiveFailures);
-  merged.maxConsecutiveFailures = Number.isFinite(failures) ? Math.min(3, Math.max(1, Math.round(failures))) : 2;
+  // Stored settings are read back from IndexedDB as they were saved, so the number may be missing or text.
+  const failures = asNumber(merged.maxConsecutiveFailures);
+  merged.maxConsecutiveFailures = failures === undefined ? 2 : Math.min(3, Math.max(1, Math.round(failures)));
   if (merged.preset !== 'custom') return { ...merged, preset: 'careful', pacing: PRESETS.careful };
   const pacing = {} as Record<ActionKind, PacingRule>;
   for (const action of Object.keys(DEFAULT_SETTINGS.pacing) as ActionKind[]) {

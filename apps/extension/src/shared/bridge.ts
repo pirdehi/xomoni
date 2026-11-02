@@ -45,7 +45,8 @@ export function offerPort(doc: Target, port: MessagePort) {
  */
 export function takePort(doc: Target, onPort: (port: MessagePort) => void) {
   const take = (event: Event) => {
-    const port = (event as MessageEvent).ports?.[0];
+    // Read the ports by shape, not with `instanceof`: the event crosses from the extension's world to the page's.
+    const port = (event as Partial<MessageEvent>).ports?.[0];
     if (!port) return;
     event.preventDefault();
     doc.removeEventListener(PORT_EVENT, take);

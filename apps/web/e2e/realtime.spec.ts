@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { REALTIME_SUBSCRIBE_STATES, createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { addDevice, addJobs, createConfirmedUser } from './support/admin';
 import { PASSWORD, uniqueEmail } from './support/flows';
 
@@ -38,7 +38,8 @@ function joinDashboard(client: SupabaseClient, viewerId: string): Promise<{ stat
         if (msg.extension === 'postgres_changes' && msg.status === 'ok') resolve({ status: 'live', titles });
       })
       .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') resolve({ status, titles });
+        if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT)
+          resolve({ status, titles });
       });
   });
 }
@@ -49,8 +50,8 @@ test.describe('dashboard Realtime channel (#81)', () => {
     const otherEmail = uniqueEmail('rt-other');
     const ownerId = await createConfirmedUser(ownerEmail, PASSWORD);
     await createConfirmedUser(otherEmail, PASSWORD);
-    const clients = [await signedIn(ownerEmail), await signedIn(otherEmail), supabase()];
-    const [owner, other, anonymous] = clients;
+    const [owner, other, anonymous] = [await signedIn(ownerEmail), await signedIn(otherEmail), supabase()] as const;
+    const clients = [owner, other, anonymous];
 
     const mine = await joinDashboard(owner, ownerId);
     expect(mine.status).toBe('live');

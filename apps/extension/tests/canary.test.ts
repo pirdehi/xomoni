@@ -45,7 +45,7 @@ function renderX({
     el.setAttribute('role', 'menu');
     el.innerHTML = items;
     el.querySelectorAll('[role="menuitem"]').forEach((item) =>
-      item.addEventListener('click', () => optionClicks.push(item.textContent ?? '')),
+      item.addEventListener('click', () => optionClicks.push(item.textContent)),
     );
     document.body.append(el);
   };
@@ -81,7 +81,9 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
 
   it('reports a changed page when the menu has no Delete option, and closes the menu', async () => {
     renderX({ menu: ['Pin to your profile', 'Remove'] });
-    expect(await canary('delete')).toMatchObject({ verdict: 'changed', message: expect.stringMatching(/Delete/) });
+    const result = await canary('delete');
+    expect(result.verdict).toBe('changed');
+    expect(result.message).toMatch(/Delete/);
     expect(optionClicks).toEqual([]);
     expect(menuOpen()).toBe(false);
   });
@@ -93,7 +95,9 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
 
   it('reports a changed page when Escape no longer closes the menu', async () => {
     renderX({ escapeCloses: false });
-    expect(await canary('delete')).toMatchObject({ verdict: 'changed', message: expect.stringMatching(/Escape/) });
+    const result = await canary('delete');
+    expect(result.verdict).toBe('changed');
+    expect(result.message).toMatch(/Escape/);
     expect(optionClicks).toEqual([]);
   });
 

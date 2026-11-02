@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, type FormEvent, type ReactNode } from 'react';
+import { useState, useTransition, type SubmitEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { browserAuth } from '../client/auth';
@@ -23,7 +23,7 @@ const NOTICES: Record<string, string> = {
 export function AccountSettings({ account }: { account: AccountDetails }) {
   const params = useSearchParams();
   const notice = Object.entries(NOTICES).find(([key]) => {
-    const [k, v] = key.split('=');
+    const [k = '', v] = key.split('=');
     return params.get(k) === v;
   })?.[1];
 
@@ -86,7 +86,7 @@ function ChangeEmail({ account }: { account: AccountDetails }) {
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     startTransition(async () => {
@@ -132,7 +132,7 @@ function ChangePassword({ account }: { account: AccountDetails }) {
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);

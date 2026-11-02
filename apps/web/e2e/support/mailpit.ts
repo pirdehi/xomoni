@@ -24,8 +24,8 @@ export async function waitForEmail(
   const deadline = Date.now() + 20_000;
   for (;;) {
     const found = await emailsTo(address, subject);
-    if (found.length >= count) {
-      const latest = found[found.length - 1];
+    const latest = found.length >= count ? found[found.length - 1] : undefined;
+    if (latest) {
       const message = (await (await fetch(`${base()}/api/v1/message/${latest.ID}`)).json()) as {
         HTML: string;
         Subject: string;
@@ -40,8 +40,8 @@ export async function waitForEmail(
 
 /** The `/auth/confirm` link in an email's HTML, as a path relative to the site. */
 export function confirmLink(html: string): string {
-  const match = /href="([^"]*\/auth\/confirm\?[^"]+)"/.exec(html);
-  if (!match) throw new Error('No /auth/confirm link in the email');
-  const url = new URL(match[1].replaceAll('&amp;', '&'));
+  const href = /href="([^"]*\/auth\/confirm\?[^"]+)"/.exec(html)?.[1];
+  if (!href) throw new Error('No /auth/confirm link in the email');
+  const url = new URL(href.replaceAll('&amp;', '&'));
   return `${url.pathname}${url.search}`;
 }

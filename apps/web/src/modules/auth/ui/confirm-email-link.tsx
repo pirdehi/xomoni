@@ -10,7 +10,14 @@ import { SubmitButton } from './fields';
 import { FormAlert } from './form-alert';
 import { useSignedInNavigation } from './navigation';
 
-const COPY: Record<string, { title: string; description: string; action: string }> = {
+/** What the confirmation page says for each kind of email link Supabase sends. */
+interface Copy {
+  title: string;
+  description: string;
+  action: string;
+}
+
+const COPY = {
   email: {
     title: 'Confirm your email address',
     description: 'One more click and your Xomoni account is ready.',
@@ -31,7 +38,15 @@ const COPY: Record<string, { title: string; description: string; action: string 
     description: 'Confirm this address for your Xomoni account.',
     action: 'Confirm',
   },
-};
+} satisfies Record<string, Copy>;
+
+/** Whether `type` is a kind of link this page has its own copy for. */
+const isKnownType = (type: string | null): type is keyof typeof COPY => !!type && Object.hasOwn(COPY, type);
+
+/** The copy for a link's `type`, or the generic one for a type this page doesn't know. */
+function copyFor(type: string | null): Copy {
+  return isKnownType(type) ? COPY[type] : COPY.email;
+}
 
 /**
  * The page behind every link Xomoni emails. It verifies the link only when the person clicks, because
@@ -40,7 +55,7 @@ const COPY: Record<string, { title: string; description: string; action: string 
 export function ConfirmEmailLink() {
   const params = useSearchParams();
   const query = { token_hash: params.get('token_hash'), type: params.get('type'), next: params.get('next') };
-  const copy = COPY[query.type ?? ''] ?? COPY.email;
+  const copy = copyFor(query.type);
   const navigate = useSignedInNavigation();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

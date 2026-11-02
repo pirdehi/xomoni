@@ -1,11 +1,9 @@
 // Parsing of X's internal GraphQL responses, as observed from the web app's own
 // traffic. The walker is deliberately schema-agnostic: X reshuffles timeline
 // payloads often, but tweets are always reachable through `tweet_results`.
+import { type JsonObject, asArray, asId, asNumber, asObject, asString, at } from './json';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Json = any;
 
 /** GraphQL operations whose responses carry timeline posts for the inventory. */
 export const TIMELINE_OPS = new Set(['UserTweets', 'UserTweetsAndReplies', 'Likes', 'SearchTimeline', 'TweetDetail']);
@@ -68,87 +66,89 @@ export function opName(url: string): string | null {
 export function parseVariables(url: string, body: string | null): Record<string, unknown> {
   try {
     if (body) {
-      const parsed = JSON.parse(body);
-      if (parsed && typeof parsed.variables === 'object') return parsed.variables ?? {};
+      const variables = asObject(at(JSON.parse(body), 'variables'));
+      if (variables) return variables;
     }
     const raw = new URL(url, 'https://x.com').searchParams.get('variables');
-    return raw ? JSON.parse(raw) : {};
+    return (raw && asObject(JSON.parse(raw))) || {};
   } catch {
     return {};
   }
 }
 
 /** The errors in a GraphQL response body; empty when there are none. */
-export function extractErrors(json: Json): GraphqlError[] {
-  const errors = Array.isArray(json?.errors) ? json.errors : [];
-  return errors.map((e: Json) => ({
-    code: toInt(e?.code ?? e?.extensions?.code),
-    message: String(e?.message ?? ''),
+export function extractErrors(json: unknown): GraphqlError[] {
+  return asArray(at(json, 'errors')).map((e) => ({
+    code: asNumber(at(e, 'code') ?? at(e, 'extensions', 'code')) ?? null,
+    message: asString(at(e, 'message')) ?? '',
   }));
 }
 
-function toInt(v: unknown): number | null {
-  const n = typeof v === 'string' ? Number(v) : v;
-  return typeof n === 'number' && Number.isFinite(n) ? n : null;
-}
-
-function unwrap(result: Json): Json | null {
-  if (!result || typeof result !== 'object') return null;
-  if (result.__typename === 'TweetWithVisibilityResults' && result.tweet) return result.tweet;
-  if (!result.legacy && result.tweet?.legacy) return result.tweet;
-  return result.legacy ? result : null;
+/** The post object inside a `tweet_results.result`, unwrapping `TweetWithVisibilityResults`; null without one. */
+function unwrap(result: unknown): JsonObject | null {
+  const r = asObject(result);
+  if (!r) return null;
+  const inner = asObject(r.tweet);
+  if (r.__typename === 'TweetWithVisibilityResults' && inner) return inner;
+  if (!r.legacy && inner?.legacy) return inner;
+  return r.legacy ? r : null;
 }
 
 /**
  * Parses one `tweet_results.result`, unwrapping `TweetWithVisibilityResults`. Returns null when it has no
  * post data, for example for an unavailable post. A repost's original is parsed into `source`.
  */
-export function parseTweet(result: Json, sortIndex: string | null): ParsedTweet | null {
+export function parseTweet(result: unknown, sortIndex: string | null): ParsedTweet | null {
   const t = unwrap(result);
-  if (!t) return null;
-  const legacy = t.legacy;
-  const id: string | undefined = t.rest_id ?? legacy.id_str;
+  const legacy = asObject(t?.legacy);
+  if (!t || !legacy) return null;
+  const id = asString(t.rest_id) ?? asString(legacy.id_str);
   if (!id) return null;
-  const user = t.core?.user_results?.result;
-  const sourceResult = legacy.retweeted_status_result?.result;
+  const user = at(t, 'core', 'user_results', 'result');
+  const sourceResult = at(legacy, 'retweeted_status_result', 'result');
+  const favorited = legacy.favorited;
   return {
     id,
-    authorId: legacy.user_id_str ?? user?.rest_id ?? '',
-    authorHandle: user?.core?.screen_name ?? user?.legacy?.screen_name ?? '',
+    authorId: asString(legacy.user_id_str) ?? asString(at(user, 'rest_id')) ?? '',
+    authorHandle: asString(at(user, 'core', 'screen_name')) ?? asString(at(user, 'legacy', 'screen_name')) ?? '',
     createdAt: parseTwitterDate(legacy.created_at) ?? snowflakeTime(id) ?? 0,
-    text: t.note_tweet?.note_tweet_results?.result?.text ?? legacy.full_text ?? '',
-    inReplyToId: legacy.in_reply_to_status_id_str ?? null,
-    inReplyToUserId: legacy.in_reply_to_user_id_str ?? null,
-    likes: toInt(legacy.favorite_count) ?? 0,
-    reposts: toInt(legacy.retweet_count) ?? 0,
-    replies: toInt(legacy.reply_count) ?? 0,
-    favorited: typeof legacy.favorited === 'boolean' ? legacy.favorited : null,
+    text: asString(at(t, 'note_tweet', 'note_tweet_results', 'result', 'text')) ?? asString(legacy.full_text) ?? '',
+    inReplyToId: asString(legacy.in_reply_to_status_id_str) ?? null,
+    inReplyToUserId: asString(legacy.in_reply_to_user_id_str) ?? null,
+    likes: asNumber(legacy.favorite_count) ?? 0,
+    reposts: asNumber(legacy.retweet_count) ?? 0,
+    replies: asNumber(legacy.reply_count) ?? 0,
+    favorited: typeof favorited === 'boolean' ? favorited : null,
     source: sourceResult ? parseTweet(sourceResult, null) : null,
     sortIndex,
   };
 }
 
 /** Every timeline tweet in a response, in document order, de-duplicated. */
-export function extractTweets(json: Json): ParsedTweet[] {
+export function extractTweets(json: unknown): ParsedTweet[] {
   const out: ParsedTweet[] = [];
   const seen = new Set<string>();
-  const walk = (node: Json, sortIndex: string | null, depth: number) => {
-    if (!node || typeof node !== 'object' || depth > 60) return;
+  const walk = (node: unknown, sortIndex: string | null, depth: number) => {
+    if (depth > 60) return;
     if (Array.isArray(node)) {
-      for (const child of node) walk(child, sortIndex, depth + 1);
+      for (const child of asArray(node)) walk(child, sortIndex, depth + 1);
       return;
     }
-    if (typeof node.entryId === 'string' && typeof node.sortIndex === 'string') sortIndex = node.sortIndex;
-    if (node.tweet_results && typeof node.tweet_results === 'object') {
+    const obj = asObject(node);
+    if (!obj) return;
+    const entrySortIndex = asString(obj.sortIndex);
+    if (typeof obj.entryId === 'string' && entrySortIndex !== undefined) sortIndex = entrySortIndex;
+    const results = asObject(obj.tweet_results);
+    if (results) {
       // Stop here: quoted and reposted posts inside a tweet are not timeline entries.
-      const tweet = parseTweet(node.tweet_results.result, sortIndex);
+      const tweet = parseTweet(results.result, sortIndex);
       if (tweet && !seen.has(tweet.id)) {
         seen.add(tweet.id);
         out.push(tweet);
       }
       return;
     }
-    for (const key in node) walk(node[key], sortIndex, depth + 1);
+    for (const value of Object.values(obj)) walk(value, sortIndex, depth + 1);
   };
   walk(json, null, 0);
   return out;
@@ -158,20 +158,21 @@ export function extractTweets(json: Json): ParsedTweet[] {
  * The user in a `UserByScreenName` response, or null. Reads X's newer `core` and `avatar` fields first, then
  * `legacy`.
  */
-export function extractProfile(json: Json): ParsedProfile | null {
-  const u = json?.data?.user?.result;
-  if (!u?.rest_id) return null;
-  const legacy = u.legacy ?? {};
+export function extractProfile(json: unknown): ParsedProfile | null {
+  const u = asObject(at(json, 'data', 'user', 'result'));
+  const id = asString(u?.rest_id);
+  if (!u || !id) return null;
+  const legacy = asObject(u.legacy) ?? {};
   return {
-    id: u.rest_id,
-    handle: u.core?.screen_name ?? legacy.screen_name ?? '',
-    name: u.core?.name ?? legacy.name ?? '',
-    avatar: u.avatar?.image_url ?? legacy.profile_image_url_https ?? '',
-    postsCount: toInt(legacy.statuses_count),
-    likesCount: toInt(legacy.favourites_count),
-    followers: toInt(legacy.followers_count),
-    following: toInt(legacy.friends_count),
-    createdAt: parseTwitterDate(u.core?.created_at ?? legacy.created_at),
+    id,
+    handle: asString(at(u, 'core', 'screen_name')) ?? asString(legacy.screen_name) ?? '',
+    name: asString(at(u, 'core', 'name')) ?? asString(legacy.name) ?? '',
+    avatar: asString(at(u, 'avatar', 'image_url')) ?? asString(legacy.profile_image_url_https) ?? '',
+    postsCount: asNumber(legacy.statuses_count) ?? null,
+    likesCount: asNumber(legacy.favourites_count) ?? null,
+    followers: asNumber(legacy.followers_count) ?? null,
+    following: asNumber(legacy.friends_count) ?? null,
+    createdAt: parseTwitterDate(at(u, 'core', 'created_at') ?? legacy.created_at),
   };
 }
 
@@ -187,15 +188,15 @@ export function draftsFromTimeline(
   variables: Record<string, unknown>,
 ): ItemDraft[] {
   if (op === 'Likes') {
-    if (String(variables.userId ?? '') !== viewerId) return [];
+    if (asId(variables.userId) !== viewerId) return [];
     // The Likes timeline can briefly keep posts you just unliked; X marks them favorited: false.
     const drafts = tweets
       .filter((t) => t.favorited !== false)
       .map((t) => likeDraft(t, estimateLikedAt(t.sortIndex, t.id, t.createdAt)));
     // Like times must descend down the timeline; otherwise the sortIndex is not a like time.
     for (let i = 1; i < drafts.length; i++) {
-      const prev = drafts[i - 1].likedAt;
-      const cur = drafts[i].likedAt;
+      const prev = drafts[i - 1]?.likedAt;
+      const cur = drafts[i]?.likedAt;
       if (prev == null || cur == null || cur > prev) {
         drafts.forEach((d) => (d.likedAt = null));
         break;

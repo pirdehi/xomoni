@@ -110,10 +110,11 @@ export function assessRisk(events: readonly RiskEvent[], now: number): RiskAsses
   }
   // Two rate limits within an hour: retreat.
   const limits = of('rate_limited');
-  for (let i = 1; i < limits.length; i++) {
-    if (limits[i].at - limits[i - 1].at > HOUR) continue;
-    slow(0.5, limits[i].at + WEEK);
-    lockResume(limits[i], limits[i].at + 6 * HOUR);
+  for (const [i, limit] of limits.entries()) {
+    const previous = limits[i - 1];
+    if (!previous || limit.at - previous.at > HOUR) continue;
+    slow(0.5, limit.at + WEEK);
+    lockResume(limit, limit.at + 6 * HOUR);
   }
   // After the person resumes anyway, a quarter of the pace for 48 h.
   if (lastOverride > now - DEFENSIVE_MS) slow(0.25, lastOverride + DEFENSIVE_MS);

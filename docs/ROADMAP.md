@@ -108,8 +108,8 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| 🔄 | Roadmap in the repository, linked to the maintainer's roadmap | [#99](https://github.com/pirdehi/xomoni/issues/99) | |
-| ⬜ | Name the architecture: styles, principles and patterns | [#100](https://github.com/pirdehi/xomoni/issues/100) | |
+| ✅ | Roadmap in the repository, linked to the maintainer's roadmap | [#99](https://github.com/pirdehi/xomoni/issues/99) | [#103](https://github.com/pirdehi/xomoni/pull/103) |
+| ✅ | Name the architecture: styles, principles and patterns ([ADR-0015](adr/0015-architecture-styles-principles-and-patterns.md)) | [#100](https://github.com/pirdehi/xomoni/issues/100) | [#104](https://github.com/pirdehi/xomoni/pull/104) |
 | ⬜ | Strictest TypeScript settings and type-aware lint in every workspace | [#101](https://github.com/pirdehi/xomoni/issues/101) | |
 | ⬜ | Test standard: backend and frontend tests for every feature, enforced | [#102](https://github.com/pirdehi/xomoni/issues/102) | |
 | ⬜ | Extension core behind ports; layer rules enforced in CI | [#11](https://github.com/pirdehi/xomoni/issues/11) | |

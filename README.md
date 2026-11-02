@@ -11,7 +11,7 @@
 ![Chrome MV3](https://img.shields.io/badge/Chrome-MV3%20·%20116%2B-4285F4?logo=googlechrome&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
 
-[فارسی](README.fa.md) · [Research notes](docs/RESEARCH.md) · [Report a bug](https://github.com/pirdehi/xomoni/issues)
+[فارسی](README.fa.md) · [Roadmap](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md) · [Research notes](docs/RESEARCH.md) · [Report a bug](https://github.com/pirdehi/xomoni/issues)
 
 <img src="docs/screenshots/overview.png" alt="Xomoni dashboard overview" width="900" />
 

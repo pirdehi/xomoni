@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Download, History } from 'lucide-react';
+import { FileJson, FileSpreadsheet, History } from 'lucide-react';
 import { useState } from 'react';
+import { activityCsv, activityJson } from '../../shared/activity-log';
 import { db } from '../../shared/db';
 import type { LogEntry } from '../../shared/types';
 import type { PageProps } from '../navigation';
@@ -13,14 +14,10 @@ type Level = 'all' | 'success' | 'problems';
 const matches = (level: Level) => (e: LogEntry) =>
   level === 'all' ? true : level === 'success' ? e.level === 'success' : e.level === 'warn' || e.level === 'error';
 
-function csvCell(v: string | number | null | undefined) {
-  const s = v == null ? '' : String(v);
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
 /**
  * The account's activity log, newest first, filterable by level and loaded 100 entries at first,
- * then 200 more at a time. The CSV export always contains every entry, whatever the filter.
+ * then 200 more at a time. The exports (CSV for spreadsheets, JSON for tools) always contain every entry,
+ * whatever the filter, so a person can audit what was deleted or skipped (#34).
  */
 export function ActivityPage({ account }: PageProps) {
   const [level, setLevel] = useState<Level>('all');
@@ -37,15 +34,11 @@ export function ActivityPage({ account }: PageProps) {
     [account.id, level, limit],
   );
 
-  const exportCsv = async () => {
+  const exportLog = async (format: 'csv' | 'json') => {
     const all = await db.logs.where('[accountId+ts]').between([account.id, 0], [account.id, Infinity]).toArray();
-    const header = ['time', 'level', 'action', 'outcome', 'post_id', 'job_id', 'message'];
-    const lines = all.map((e) =>
-      [new Date(e.ts).toISOString(), e.level, e.action, e.outcome, e.targetId, e.jobId, e.message]
-        .map(csvCell)
-        .join(','),
-    );
-    downloadFile(`xomoni-activity-${toDateInput(Date.now())}.csv`, [header.join(','), ...lines].join('\n'), 'text/csv');
+    const name = `xomoni-activity-${account.handle}-${toDateInput(Date.now())}.${format}`;
+    if (format === 'csv') downloadFile(name, activityCsv(all), 'text/csv');
+    else downloadFile(name, activityJson(account, all));
   };
 
   return (
@@ -54,9 +47,14 @@ export function ActivityPage({ account }: PageProps) {
         title="Activity log"
         description="Every action, skip and safety stop, with the post it touched."
         actions={
-          <Button icon={<Download size={14} />} onClick={() => void exportCsv()}>
-            Export CSV
-          </Button>
+          <>
+            <Button icon={<FileSpreadsheet size={14} />} onClick={() => void exportLog('csv')}>
+              Export CSV
+            </Button>
+            <Button icon={<FileJson size={14} />} onClick={() => void exportLog('json')}>
+              Export JSON
+            </Button>
+          </>
         }
       />
       <div className="mb-4">

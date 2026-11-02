@@ -11,7 +11,7 @@ import { pageProps, resetDb } from '../support/fixtures';
 import { captureDownloads, logEntry } from '../support/shell';
 
 const T0 = Date.UTC(2024, 4, 1, 10, 0, 0);
-const HEADER = 'time,level,action,outcome,post_id,job_id,message';
+const HEADER = 'time,level,action,outcome,post_id,post_url,job_id,message';
 
 const exportButton = () => screen.getByRole('button', { name: 'Export CSV' });
 
@@ -149,12 +149,12 @@ describe('Activity page', () => {
       await screen.findByText('Deleted');
 
       const { file, text } = await exportCsv();
-      expect(file.name).toBe(`xomoni-activity-${toDateInput(Date.now())}.csv`);
+      expect(file.name).toBe(`xomoni-activity-me-${toDateInput(Date.now())}.csv`);
       expect(file.type).toBe('text/csv');
       expect(text.split('\n')).toEqual([
         HEADER,
-        '2024-05-01T10:00:00.000Z,info,system,,,job-1,Job started',
-        '2024-05-01T10:00:01.000Z,success,delete,done,111,job-1,Deleted',
+        '2024-05-01T10:00:00.000Z,info,system,,,,job-1,Job started',
+        '2024-05-01T10:00:01.000Z,success,delete,done,111,https://x.com/i/web/status/111,job-1,Deleted',
       ]);
     });
 
@@ -174,17 +174,17 @@ describe('Activity page', () => {
       const ts = (ms: number) => new Date(ms).toISOString();
       expect(body).toBe(
         [
-          `${ts(T0)},info,system,,,,"X said ""no"""`,
-          `${ts(T0 + 1)},info,system,,,,"one, two"`,
-          `${ts(T0 + 2)},info,system,,,,"first line\nsecond line"`,
-          `${ts(T0 + 3)},info,system,,,,"""quoted"", and\nsplit"`,
-          `${ts(T0 + 4)},info,system,,,,plain text`,
+          `${ts(T0)},info,system,,,,,"X said ""no"""`,
+          `${ts(T0 + 1)},info,system,,,,,"one, two"`,
+          `${ts(T0 + 2)},info,system,,,,,"first line\nsecond line"`,
+          `${ts(T0 + 3)},info,system,,,,,"""quoted"", and\nsplit"`,
+          `${ts(T0 + 4)},info,system,,,,,plain text`,
         ].join('\n'),
       );
       expect(
         parseCsv(text)
           .slice(1)
-          .map((row) => row[6]),
+          .map((row) => row[7]),
       ).toEqual(['X said "no"', 'one, two', 'first line\nsecond line', '"quoted", and\nsplit', 'plain text']);
     });
 
@@ -195,7 +195,7 @@ describe('Activity page', () => {
       await screen.findByText(/before/);
 
       const { text } = await exportCsv();
-      expect(text.split('\n')[1]).toBe(`${new Date(T0).toISOString()},info,system,,,,"before\rafter"`);
+      expect(text.split('\n')[1]).toBe(`${new Date(T0).toISOString()},info,system,,,,,"before\rafter"`);
     });
 
     it('exports every entry of this account, whatever the filter and the loaded page', async () => {
@@ -214,8 +214,41 @@ describe('Activity page', () => {
       const { text } = await exportCsv();
       const rows = parseCsv(text);
       expect(rows).toHaveLength(1 + 151);
-      expect(rows.map((r) => r[6])).toContain('A warning');
-      expect(rows.map((r) => r[6])).not.toContain('Not mine');
+      expect(rows.map((r) => r[7])).toContain('A warning');
+      expect(rows.map((r) => r[7])).not.toContain('Not mine');
+    });
+
+    it('exports the same entries as JSON, with links to the posts', async () => {
+      await db.logs.bulkAdd([
+        logEntry({
+          ts: T0 + 1,
+          level: 'success',
+          action: 'delete',
+          outcome: 'done',
+          targetId: '111',
+          message: 'Deleted',
+        }),
+        logEntry({ ts: T0, level: 'info', action: 'system', message: 'Job started', jobId: 'job-1' }),
+        logEntry({ ts: T0 + 2, accountId: 'someone-else', message: 'Not mine' }),
+      ]);
+      render(<ActivityPage {...await pageProps()} />);
+      await screen.findByText('Deleted');
+      const downloads = captureDownloads();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
+      await waitFor(() => expect(downloads).toHaveLength(1));
+      const file = downloads[0]!;
+      expect(file.name).toBe(`xomoni-activity-me-${toDateInput(Date.now())}.json`);
+      const data = JSON.parse(await file.text()) as {
+        format: string;
+        account: { handle: string };
+        entries: { message: string; postUrl: string | null; outcome: string | null }[];
+      };
+      expect(data).toMatchObject({ format: 'xomoni-activity', account: { handle: 'me' } });
+      expect(data.entries.map((e) => [e.message, e.outcome, e.postUrl])).toEqual([
+        ['Job started', null, null],
+        ['Deleted', 'done', 'https://x.com/i/web/status/111'],
+      ]);
     });
 
     it('exports just the header when there is nothing to export', async () => {

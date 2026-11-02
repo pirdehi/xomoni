@@ -9,6 +9,7 @@ const steps = [
   ['Architecture rules', 'arch'],
   ['Documentation', 'docs:check'],
   ['Test presence', 'tests:check'],
+  ['Tooling tests', 'test:tooling'],
   ['Unit tests and coverage', 'test'],
 ];
 

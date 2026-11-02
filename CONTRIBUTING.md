@@ -27,6 +27,7 @@ npm install            # also installs the git hooks (.githooks)
 | Architecture | `npm run arch` | An import breaks a rule in `.dependency-cruiser.cjs` |
 | Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
 | Test presence | `npm run tests:check` | A source file is imported by no test and is not listed as exempt with a reason ([docs/TESTING.md](docs/TESTING.md)) |
+| Tooling tests | `npm run test:tooling` | A test of the repository's own scripts fails (`node --test tooling/`) |
 | Unit tests and coverage | `npm test` | A test fails, or coverage drops below a workspace's threshold |
 
 It runs automatically before every `git push` (`.githooks/pre-push`). CI runs it again, plus both production builds, the database checks (Row Level Security tests, types drift) and the end-to-end auth tests, and `main` only accepts pull requests with green CI.
@@ -64,6 +65,10 @@ The rules are in [ADR-0016](docs/adr/0016-strict-typescript-and-type-aware-lint.
 - Every promise is awaited, returned, or marked `void` on purpose with its errors handled.
 - Every `switch` over a union handles every case.
 - No `eslint-disable`, `@ts-ignore` or `@ts-expect-error`. If a rule is wrong for some code, change it in `eslint.config.mjs` with a comment and an ADR.
+
+## Releases
+
+The extension ships as a zip on GitHub Releases from a version tag; [docs/RELEASING.md](docs/RELEASING.md) has the steps. Every pull request that changes what people see adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
 
 ## Database changes
 

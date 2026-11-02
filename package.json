@@ -31,6 +31,7 @@
     "arch": "depcruise apps packages --config .dependency-cruiser.cjs",
     "docs:check": "node tooling/check-docs.mjs",
     "tests:check": "node tooling/check-tests.mjs",
+    "test:tooling": "node --test tooling/",
     "verify": "node tooling/verify.mjs",
     "prepare": "node tooling/install-git-hooks.mjs"
   },

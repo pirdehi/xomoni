@@ -3,7 +3,8 @@ import 'fake-indexeddb/auto';
 import { CONSENT_VERSION } from '@xomoni/consent';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCleanupJob, runner } from '../../src/engine/runner';
+import { createCleanupJob } from '../../src/engine/runner';
+import { runner } from '../../src/engine/platform';
 import { db, hasConsent, kvGet, kvSet, recordConsent, recordRisk } from '../../src/shared/db';
 import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
 import {

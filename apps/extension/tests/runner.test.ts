@@ -2,15 +2,17 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Interrupted, type JobContext, NeedsYou, Stop } from '../src/engine/context';
 import {
-  type RunnerState,
   createCleanupJob,
   createScanJob,
   recoverInterruptedJobs,
-  runner,
+  Runner,
+  type RunnerState,
 } from '../src/engine/runner';
+import { runner } from '../src/engine/platform';
 import { Aborted } from '../src/engine/timers';
 import type * as Timers from '../src/engine/timers';
 import { NotReady, PageError, WorkerGone } from '../src/engine/worker-tab';
+import type { XTab } from '../src/engine/ports';
 import type * as WorkerTabModule from '../src/engine/worker-tab';
 import { NEED_TITLE } from '../src/shared/attention';
 import { db, kvSet, recordConsent, upsertAccount } from '../src/shared/db';
@@ -163,6 +165,31 @@ function runUntilStopped(): Promise<void> {
 const finishedNotified = () => notify.mock.calls.some(([id]) => id === FINISHED_ID);
 
 describe('runner: a run that ends by itself', () => {
+  it('runs on whatever ports it is given, not on Chrome directly (#11, ADR-0015)', async () => {
+    const current = vi.fn(() => Promise.resolve(42));
+    // A test double: the same fakes as the worker tab, standing in for any other XTab adapter.
+    const tab = { ...worker, current } as unknown as XTab;
+    const notifier = { notify: vi.fn(() => Promise.resolve()), clear: vi.fn() };
+    const other = new Runner({ xTab: tab, notifier });
+    const job = await newCleanup();
+    let seen: unknown;
+    runCleanup.mockImplementation(async (ctx) => {
+      seen = ctx.xTab;
+    });
+
+    await other.start(job.id);
+
+    expect(seen).toBe(tab);
+    expect(current).toHaveBeenCalled();
+    expect(notifier.notify).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('Finished'),
+      expect.any(String),
+    );
+    // The Chrome adapters behind the dashboard's own runner were not touched.
+    expect(notify).not.toHaveBeenCalled();
+  });
+
   it('completes a cleanup job, logs a summary and the health report, and notifies', async () => {
     const job = await newCleanup();
     let during: Job | undefined;

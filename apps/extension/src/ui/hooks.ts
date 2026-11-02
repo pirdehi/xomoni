@@ -6,7 +6,7 @@ import { DAY } from '../shared/time';
 import { WARMUP_RESET_DAYS, earlierActiveDays, readFactor, spendsQuota, warmup } from '../shared/x-limits';
 import type { PageInfo } from '../shared/messages';
 import type { Account } from '../shared/types';
-import { runner } from '../engine/runner';
+import { runner } from '../engine/platform';
 import { WorkerGone, workerTab } from '../engine/worker-tab';
 import { errorMessage } from './format';
 

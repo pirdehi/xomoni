@@ -7,6 +7,7 @@ import type * as WorkerTabModule from '../src/engine/worker-tab';
 import { db } from '../src/shared/db';
 import { DEFAULT_SETTINGS } from '../src/shared/settings';
 import type { Job } from '../src/shared/types';
+import { chromePorts } from '../src/engine/platform';
 
 const { discarded, worker } = vi.hoisted(() => ({
   discarded: vi.fn(async () => false),
@@ -29,7 +30,7 @@ const HOUR = 60 * MINUTE;
 
 function setup() {
   const job = { id: 'j', accountId: ACCOUNT, stats: { matched: 0, done: 0, skipped: 0, failed: 0, scanned: 0 } } as Job;
-  const ctx = new JobContext(job, new AbortController().signal, { status: () => {}, attention: () => {} });
+  const ctx = new JobContext(job, new AbortController().signal, { status: () => {}, attention: () => {} }, chromePorts);
   ctx.settings = DEFAULT_SETTINGS;
   ctx.limiter = new Limiter(DEFAULT_SETTINGS, ACCOUNT, new AbortController().signal, () => {});
   const cooldown = vi.spyOn(ctx.limiter, 'cooldown').mockResolvedValue();

@@ -7,6 +7,7 @@ import type { ActionResult, ContentState } from '../src/shared/messages';
 import type * as Timers from '../src/engine/timers';
 import { DAY } from '../src/shared/time';
 import type { Job } from '../src/shared/types';
+import { chromePorts } from '../src/engine/platform';
 
 // The real sleep runs on a Web Worker, which tests don't have.
 vi.mock('../src/engine/timers', async (importOriginal) => ({
@@ -117,10 +118,15 @@ describe('Sweep after a rate limit (#16, PLAYBOOK A5)', () => {
 
 describe('JobContext.pageRateLimit', () => {
   const context = () =>
-    new JobContext({ id: 'j', accountId: ACCOUNT } as Job, new AbortController().signal, {
-      status: () => {},
-      attention: () => {},
-    });
+    new JobContext(
+      { id: 'j', accountId: ACCOUNT } as Job,
+      new AbortController().signal,
+      {
+        status: () => {},
+        attention: () => {},
+      },
+      chromePorts,
+    );
   const observe = (op: string, at: number, patch: { status?: number; remaining?: number | null }) =>
     db.limits.put({
       key: `${ACCOUNT}:${op}`,

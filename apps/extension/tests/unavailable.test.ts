@@ -12,6 +12,7 @@ import { unavailableTweetIds } from '../src/shared/graphql';
 import type { ActionResult, ContentState } from '../src/shared/messages';
 import { DEFAULT_SETTINGS } from '../src/shared/settings';
 import type { Item, Job } from '../src/shared/types';
+import { chromePorts } from '../src/engine/platform';
 
 // The real sleep runs on a Web Worker, which tests don't have.
 vi.mock('../src/engine/timers', async (importOriginal) => ({
@@ -179,7 +180,12 @@ describe('the engine counts them as skipped, apart, and never toward the failure
       accountId: ACCOUNT,
       stats: { matched: 0, done: 0, skipped: 0, failed: 0, scanned: 0 },
     } as Job;
-    const ctx = new JobContext(job, new AbortController().signal, { status: () => {}, attention: () => {} });
+    const ctx = new JobContext(
+      job,
+      new AbortController().signal,
+      { status: () => {}, attention: () => {} },
+      chromePorts,
+    );
     ctx.settings = DEFAULT_SETTINGS;
     ctx.limiter = new Limiter(DEFAULT_SETTINGS, ACCOUNT, new AbortController().signal, () => {});
 

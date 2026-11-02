@@ -22,7 +22,7 @@ Three different kinds of answer are often mixed up, so this record keeps them ap
 | Repository | **Modular monolith in a monorepo** | npm workspaces: `apps/*`, `packages/*` ([ADR-0007](0007-npm-workspaces-monorepo.md)) | One repository and one version history; units are separate packages whose dependencies are checked. Apps never import each other; shared code lives in `packages/`. |
 | Product | **Local-first client with a view-only cloud** | `apps/extension` acts on X; `apps/web` and Supabase only show status ([ADR-0004](0004-x-data-stays-local.md), [ADR-0006](0006-website-is-view-only.md)) | The extension owns all X data and every action. The cloud holds job status only. |
 | Website | **Hexagonal architecture (ports and adapters)**, organized as **vertical feature modules**, with the **Clean Architecture dependency rule** | `apps/web/src/modules/<module>/{domain,application,infrastructure,server,client,ui}` ([ADR-0008](0008-hexagonal-modules-for-the-website.md)) | Dependencies point inward: `domain` ← `application` ← adapters (`infrastructure`) and composition roots (`server`, `client`). Use cases see only ports (interfaces); Supabase is an adapter behind them. Routes in `src/app` are thin. |
-| Extension | **Layered by execution context, around a shared kernel**, moving to **hexagonal** | `apps/extension/src/{shared,engine,content,inject,background,ui}` ([ARCHITECTURE §5](../ARCHITECTURE.md#5-extension-appsextension)) | Each area runs in its own JavaScript context and talks to the others by messages. `shared/` is the kernel every area may use. Today the engine still calls IndexedDB and `chrome.*` directly; [#11](https://github.com/pirdehi/xomoni/issues/11) moves it behind ports (X tab, storage, notifier, clock), the same shape as the website. |
+| Extension | **Layered by execution context, around a shared kernel**, with a **hexagonal engine core** | `apps/extension/src/{shared,engine,content,inject,background,ui}` ([ARCHITECTURE §5](../ARCHITECTURE.md#5-extension-appsextension)) | Each area runs in its own JavaScript context and talks to the others by messages. `shared/` is the kernel every area may use. Since #11 the engine's core reaches the X tab and notifications through ports (`engine/ports.ts`), wired to Chrome in the composition root `engine/platform.ts`; IndexedDB (Dexie) is still used directly as the kernel's store. |
 | Data | **Authorization in the database** | `supabase/migrations`: Row Level Security on every table | The database itself decides who reads which row; the website's checks are a second line, not the only one. |
 
 ### 2. How the SOLID principles show up
@@ -33,7 +33,7 @@ Three different kinds of answer are often mixed up, so this record keeps them ap
 | **O**pen/closed | New behavior is added as data or as a new adapter, not by editing the core. | X's limits are rows in `shared/x-limits.ts`, which the limiter reads; pacing presets are a table in `shared/settings.ts`; a new sign-in provider is a new `AuthGateway` adapter. |
 | **L**iskov substitution | Any implementation of a port can stand in for another. | Use case tests in `auth/application/use-cases.test.ts` run against an in-memory `AuthGateway`; production uses `infrastructure/supabase-auth-gateway.ts`; the use cases can't tell the difference. |
 | **I**nterface segregation | Ports are small and named for what the caller needs. | The dashboard has three ports, `DashboardReader`, `DeviceRegistry` and `LiveFeed` (`dashboard/application/ports.ts`), instead of one "dashboard service". |
-| **D**ependency inversion | Use cases depend on ports; composition roots inject the adapters. | `auth/server/deps.ts` (server) and `dashboard/client/live.ts` (browser) build the adapters and pass them in. In the extension this is partial until [#11](https://github.com/pirdehi/xomoni/issues/11). |
+| **D**ependency inversion | Use cases depend on ports; composition roots inject the adapters. | `auth/server/deps.ts` (server) and `dashboard/client/live.ts` (browser) build the adapters and pass them in. In the extension, `engine/platform.ts` hands the Chrome adapters to `Runner` and `JobContext` through the `XTab` and `Notifier` ports (#11). |
 
 Xomoni favors functions and plain data over class hierarchies: there is no inheritance of behavior beyond `Error` subclasses and Dexie's database class, and no dependency-injection container. Wiring is explicit code in a composition root.
 
@@ -41,8 +41,8 @@ Xomoni favors functions and plain data over class hierarchies: there is no inher
 
 | Pattern | Problem it solves here | Where |
 | --- | --- | --- |
-| Ports and adapters (Gateway) | Keep Supabase out of the use cases. | `apps/web/src/modules/*/application/ports.ts`, `*/infrastructure/supabase-*.ts` |
-| Composition root | One place per runtime decides which adapters a use case gets. | `apps/web/src/modules/auth/server/deps.ts`, `apps/web/src/modules/dashboard/client/live.ts` |
+| Ports and adapters (Gateway) | Keep Supabase out of the use cases, and Chrome out of the engine's core. | `apps/web/src/modules/*/application/ports.ts`, `*/infrastructure/supabase-*.ts`; `apps/extension/src/engine/ports.ts` with `worker-tab.ts` and `shared/notify.ts` |
+| Composition root | One place per runtime decides which adapters a use case gets. | `apps/web/src/modules/auth/server/deps.ts`, `apps/web/src/modules/dashboard/client/live.ts`, `apps/extension/src/engine/platform.ts` |
 | Use case (application service) | One function per thing a person can do, independent of UI and transport. | `apps/web/src/modules/auth/application/use-cases.ts` |
 | Data access layer | Every page and action reads the session through one checked path. | `apps/web/src/modules/auth/server/session.ts` (`currentViewer`, `requireViewer`) |
 | Data mapper | Database rows become domain types in one place. | `apps/web/src/modules/dashboard/infrastructure/supabase-dashboard.ts` |
@@ -66,7 +66,7 @@ Xomoni favors functions and plain data over class hierarchies: there is no inher
 ## Consequences
 
 - Contributors get one answer to "what architecture is this?": a modular monolith; hexagonal feature modules on the website; context layers around a kernel in the extension, moving to hexagonal; SOLID as the guide for code inside them; named patterns where they help.
-- The extension's gap (direct IndexedDB and `chrome.*` calls from the engine) is now stated rather than implied; [#11](https://github.com/pirdehi/xomoni/issues/11) closes it.
+- The extension's engine reaches Chrome only through ports since #11; IndexedDB stays the kernel's store, used directly.
 - This record must be kept current: when code moves, the file paths above move with it.
 
 ## Alternatives considered

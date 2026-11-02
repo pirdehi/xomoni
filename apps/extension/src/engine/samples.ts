@@ -7,7 +7,6 @@ import { MINUTE } from '../shared/time';
 import type { ActionKind, SampleCheck } from '../shared/types';
 import { type JobContext, Stop, riskBlock } from './context';
 import { randomBetween } from './timers';
-import { workerTab } from './worker-tab';
 
 /** Share of confirmed actions checked again later: about 4% more page loads. */
 export const SAMPLE_RATE = 1 / 25;
@@ -47,7 +46,7 @@ async function applied(ctx: JobContext, check: SampleCheck): Promise<boolean | n
     // X shows its "not found" panel or nothing for a deleted post; a timeout says nothing.
     return check.action === 'delete' && content.kind !== 'timeout' ? true : null;
   }
-  const post = (await workerTab.send({ cmd: 'visible' })).find((v) => v.id === check.postId);
+  const post = (await ctx.xTab.send({ cmd: 'visible' })).find((v) => v.id === check.postId);
   if (check.action === 'delete') return !post;
   if (!post) return null;
   return check.action === 'unretweet' ? !post.reposted : !post.liked;

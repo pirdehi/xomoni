@@ -7,6 +7,7 @@ import { db, getViewCap, setViewCap, upsertAccount } from '../src/shared/db';
 import { DEFAULT_SETTINGS } from '../src/shared/settings';
 import type { Job } from '../src/shared/types';
 import { VIEW_CAP_MIN_SEEN, learnViewCap, unexplainedRefusal, viewCapFreeAt } from '../src/shared/x-limits';
+import { chromePorts } from '../src/engine/platform';
 
 // The real sleep runs on a Web Worker, which tests don't have; waits end at once and are recorded instead.
 vi.mock('../src/engine/timers', async (importOriginal) => ({
@@ -117,10 +118,15 @@ describe('a refused page teaches the cap (JobContext.pageRateLimit)', () => {
   });
 
   async function context() {
-    const ctx = new JobContext({ id: 'j', accountId: ACCOUNT } as Job, new AbortController().signal, {
-      status: () => {},
-      attention: () => {},
-    });
+    const ctx = new JobContext(
+      { id: 'j', accountId: ACCOUNT } as Job,
+      new AbortController().signal,
+      {
+        status: () => {},
+        attention: () => {},
+      },
+      chromePorts,
+    );
     ctx.limiter = new Limiter(DEFAULT_SETTINGS, ACCOUNT, new AbortController().signal, () => {});
     await db.reads.add({ accountId: ACCOUNT, budget: 'userTimeline', ts: NOW - HOUR, posts: 1000 });
     await ctx.limiter.init();

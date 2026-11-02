@@ -65,6 +65,17 @@ export default defineConfig(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
+    // The engine's core uses its ports, never `chrome.*` (#11, ADR-0015); only the adapters touch Chrome.
+    files: ['apps/extension/src/engine/**/*.ts'],
+    ignores: ['apps/extension/src/engine/worker-tab.ts', 'apps/extension/src/engine/platform.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'chrome', message: 'Use the engine ports (engine/ports.ts); only the adapters touch chrome.*.' },
+      ],
+    },
+  },
+  {
     // The page-world interceptor keeps X's own fetch and XMLHttpRequest methods to call them later with the
     // page's `this`: holding unbound methods is the point there (ADR-0016).
     files: ['apps/extension/src/inject/interceptor.ts'],

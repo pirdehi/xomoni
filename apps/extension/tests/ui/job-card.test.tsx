@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { act, render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as RunnerModule from '../../src/engine/runner';
+import type * as PlatformModule from '../../src/engine/platform';
 import type { RunnerState } from '../../src/engine/runner';
 import { workerTab } from '../../src/engine/worker-tab';
 import { db, recordConsent } from '../../src/shared/db';
@@ -58,8 +58,8 @@ const fake = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../src/engine/runner', async (importOriginal) => ({
-  ...(await importOriginal<typeof RunnerModule>()),
+vi.mock('../../src/engine/platform', async (importOriginal) => ({
+  ...(await importOriginal<typeof PlatformModule>()),
   runner: fake.runner,
 }));
 

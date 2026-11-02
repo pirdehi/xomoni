@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Ban, Clock, Play, Pause, ScanSearch, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { runner } from '../../engine/runner';
+import { runner } from '../../engine/platform';
 import { workerTab } from '../../engine/worker-tab';
 import { db, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration } from '../../shared/filter';

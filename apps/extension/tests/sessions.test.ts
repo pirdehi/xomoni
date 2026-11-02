@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Limiter } from '../src/engine/limiter';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Limiter, type WaitNotifier } from '../src/engine/limiter';
 import type * as Timers from '../src/engine/timers';
 import { db } from '../src/shared/db';
 import { LONG_PAUSE, SESSION, pacingDelay, sessionStart } from '../src/shared/pacing';
@@ -79,7 +79,7 @@ describe('sessionStart: the current work session, from recent requests', () => {
 
 describe('Limiter: rests between work sessions (#30)', () => {
   const settings = { ...DEFAULT_SETTINGS, activeHours: { ...DEFAULT_SETTINGS.activeHours, enabled: false } };
-  let onWait: ReturnType<typeof vi.fn>;
+  let onWait: Mock<WaitNotifier>;
   const limiter = () => new Limiter(settings, ACCOUNT, new AbortController().signal, onWait);
   const pageLoads = (minutes: number[]) =>
     db.reads.bulkAdd(minutes.map((m) => ({ accountId: ACCOUNT, budget: 'userTimeline', ts: NOW - m * MINUTE })));

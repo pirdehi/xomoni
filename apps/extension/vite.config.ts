@@ -25,6 +25,14 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
+    setupFiles: ['tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**'],
+      // The demo-data preview is a development tool, never shipped (rule ext-dev-is-not-shipped).
+      exclude: ['src/dev/**'],
+      reporter: ['text-summary', 'html'],
+    },
   },
 });

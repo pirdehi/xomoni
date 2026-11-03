@@ -5,6 +5,7 @@ import {
   articleInfo,
   closeMenus,
   describeDialog,
+  describeLayers,
   describeOpenMenu,
   findArticle,
   findDeleteMenuItem,
@@ -128,6 +129,21 @@ describe('menus, pop-ups and notices', () => {
     closeMenus();
     expect(dialogKeys).toHaveBeenCalledOnce();
     expect(menuKeys).not.toHaveBeenCalled();
+  });
+
+  it('describes what is open over the page by structure, never by its text (#121)', () => {
+    document.body.innerHTML = '<div id="layers"></div>';
+    expect(describeLayers()).toBe('menus open: 0, pop-ups: none, buttons: none');
+    document.body.innerHTML = `<div id="layers">
+      <div role="menu"><div role="menuitem">Delete my secret post</div></div>
+      <div role="alertdialog" data-testid="confirmationSheetDialog">
+        <button data-testid="confirmationSheetConfirm">Delete</button>
+        <div role="button" data-testid="confirmationSheetCancel">Cancel</div>
+      </div>
+    </div>`;
+    expect(describeLayers()).toBe(
+      'menus open: 1, pop-ups: div role=alertdialog testid=confirmationSheetDialog, buttons: confirmationSheetConfirm, confirmationSheetCancel',
+    );
   });
 
   it('describes where an open menu sits by structure, never by its text', () => {

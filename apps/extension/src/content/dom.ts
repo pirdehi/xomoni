@@ -154,6 +154,31 @@ function escapeKey(type: 'keydown' | 'keyup'): KeyboardEvent {
   return event;
 }
 
+/** Names an element for the activity log by tag, role and test id, never by its text. */
+function elementName(el: Element | null): string {
+  if (!el) return 'nothing';
+  const role = el.getAttribute('role');
+  const testid = el.getAttribute('data-testid');
+  return [el.tagName.toLowerCase(), role && `role=${role}`, testid && `testid=${testid}`].filter(Boolean).join(' ');
+}
+
+/**
+ * What is open over X's page, for the activity log when an expected sheet doesn't appear: how many menus, each
+ * pop-up and the test ids of the buttons in X's `#layers`. Structure only, never text.
+ */
+export function describeLayers(): string {
+  const menus = $$(SEL.menu).length;
+  const dialogs = $$(SEL.dialog).map(elementName);
+  const buttons = $$('#layers [data-testid]')
+    .filter((el) => el.matches('button, [role="button"]'))
+    .map((el) => el.getAttribute('data-testid'));
+  return [
+    `menus open: ${menus}`,
+    `pop-ups: ${dialogs.length ? dialogs.join('; ') : 'none'}`,
+    `buttons: ${buttons.length ? buttons.join(', ') : 'none'}`,
+  ].join(', ');
+}
+
 /**
  * Where an open menu sits, for the activity log when it won't close: what has focus, whether the menu is in
  * X's `#layers` and whether a mask covers the page. Names elements by tag, role and test id, never by text.
@@ -161,15 +186,9 @@ function escapeKey(type: 'keydown' | 'keyup'): KeyboardEvent {
 export function describeOpenMenu(): string {
   const menu = $(SEL.menu);
   if (!menu) return 'no menu open';
-  const name = (el: Element | null) => {
-    if (!el) return 'nothing';
-    const role = el.getAttribute('role');
-    const testid = el.getAttribute('data-testid');
-    return [el.tagName.toLowerCase(), role && `role=${role}`, testid && `testid=${testid}`].filter(Boolean).join(' ');
-  };
   const focused = document.activeElement;
   return [
-    `focus: ${name(focused)}${focused && menu.contains(focused) ? ' (in the menu)' : ''}`,
+    `focus: ${elementName(focused)}${focused && menu.contains(focused) ? ' (in the menu)' : ''}`,
     menu.closest('#layers') ? 'menu in #layers' : 'menu outside #layers',
     $(SEL.mask) ? 'mask shown' : 'no mask',
   ].join(', ');

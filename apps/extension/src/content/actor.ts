@@ -22,6 +22,7 @@ import {
   click,
   closeMenus,
   describeDialog,
+  describeLayers,
   describeOpenMenu,
   findArticle,
   findDeleteMenuItem,
@@ -210,8 +211,10 @@ async function deletePost(id: string): Promise<ActionResult> {
   click(item);
   const confirm = await waitFor(() => $(SEL.confirm), 4000);
   if (!confirm || !findArticle(id)) {
+    // What was open instead, for the log: tells an ignored click from a changed sheet (#121).
+    const seen = confirm ? 'the post left the page' : describeLayers();
     closeMenus();
-    return { outcome: 'failed', message: 'Delete confirmation did not appear for this post' };
+    return { outcome: 'failed', message: `Delete confirmation did not appear for this post (${seen})` };
   }
   const response = waitForNet(['DeleteTweet'], (v) => v.tweet_id === id);
   await sleep(jitter(150, 400));

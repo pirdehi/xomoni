@@ -120,6 +120,20 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     expect(optionClicks).toEqual([]);
   });
 
+  it('a Delete that opens no confirmation fails, saying what was open instead (#121)', async () => {
+    document.cookie = 'twid=u%3D1';
+    renderX();
+    // The simulated Delete option records the click and opens nothing, as an ignored click would.
+    const result = (await runCommand({ cmd: 'delete', id: '1' })) as { outcome: string; message: string };
+    expect(result.outcome).toBe('failed');
+    expect(result.message).toBe(
+      'Delete confirmation did not appear for this post (menus open: 1, pop-ups: none, buttons: none)',
+    );
+    expect(optionClicks).toEqual(['Delete']);
+    expect(menuOpen()).toBe(false);
+    document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  });
+
   it('cannot tell from a post that is not on the page', async () => {
     renderX();
     expect(await canary('delete', '999')).toMatchObject({ verdict: 'unknown' });

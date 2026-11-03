@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { AuthCard, AuthLegalNote, AuthLink, OrDivider } from './auth-card';
+import { AuthCard, AuthLegalNote, AuthLink, FormSkeleton, OrDivider } from './auth-card';
 
 describe('AuthCard', () => {
   it('shows the logo, title, description, content and footer', () => {
@@ -56,5 +56,13 @@ describe('AuthLink', () => {
     render(<AuthLink href="/signup">Create one</AuthLink>);
 
     expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/signup');
+  });
+});
+
+describe('FormSkeleton', () => {
+  it('tells assistive technology the form is loading', () => {
+    render(<FormSkeleton />);
+
+    expect(screen.getByLabelText('Loading')).toHaveAttribute('aria-busy', 'true');
   });
 });

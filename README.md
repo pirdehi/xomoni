@@ -172,7 +172,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 `npm run verify` also runs automatically before every `git push`.
 
-**Stack:** TypeScript, React 19, Tailwind CSS 4, Dexie (IndexedDB), Vite and esbuild for the extension; Next.js 16, Supabase and Vercel for the website; Vitest, ESLint, Prettier and dependency-cruiser for quality.
+**Stack:** TypeScript, React 19 and Fluent UI for both interfaces; Dexie (IndexedDB), Vite and esbuild for the extension; Next.js 16, Supabase and Vercel for the website; Vitest, ESLint, Prettier and dependency-cruiser for quality.
 
 ## Project status
 

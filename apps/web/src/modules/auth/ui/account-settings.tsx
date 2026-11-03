@@ -1,8 +1,9 @@
 'use client';
 
+import { Button, Link, makeStyles, tokens, typographyStyles } from '@fluentui/react-components';
+import { SignOut20Regular } from '@fluentui/react-icons';
 import { useState, useTransition, type SubmitEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { LogOut } from 'lucide-react';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES, type AuthFailure } from '../domain/auth-error';
 import { ROUTES } from '../domain/routes';
@@ -10,6 +11,47 @@ import type { AccountDetails } from '../domain/viewer';
 import { CaptchaStatus, useCaptcha } from './captcha';
 import { PasswordField, SubmitButton, TextField } from './fields';
 import { FormAlert } from './form-alert';
+
+const useStyles = makeStyles({
+  page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXL },
+  header: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalL,
+  },
+  title: { ...typographyStyles.title2, margin: 0, color: tokens.colorNeutralForeground1 },
+  signedIn: {
+    margin: `${tokens.spacingVerticalXS} 0 0`,
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase300,
+  },
+  email: { color: tokens.colorNeutralForeground1, fontWeight: tokens.fontWeightSemibold },
+  section: {
+    padding: tokens.spacingHorizontalXXL,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadius2XLarge,
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: tokens.shadow2,
+  },
+  sectionTitle: { ...typographyStyles.subtitle2, margin: 0, color: tokens.colorNeutralForeground1 },
+  sectionText: {
+    maxWidth: '672px',
+    margin: `${tokens.spacingVerticalXS} 0 0`,
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase300,
+    lineHeight: tokens.lineHeightBase300,
+  },
+  sectionBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalL,
+    maxWidth: '384px',
+    marginTop: tokens.spacingVerticalXL,
+  },
+  form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+});
 
 const NOTICES: Record<string, string> = {
   'password=updated': 'Your new password is saved.',
@@ -21,6 +63,7 @@ const NOTICES: Record<string, string> = {
  * section.
  */
 export function AccountSettings({ account }: { account: AccountDetails }) {
+  const s = useStyles();
   const params = useSearchParams();
   const notice = Object.entries(NOTICES).find(([key]) => {
     const [k = '', v] = key.split('=');
@@ -28,20 +71,19 @@ export function AccountSettings({ account }: { account: AccountDetails }) {
   })?.[1];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className={s.page}>
+      <div className={s.header}>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
-          <p className="mt-1 text-sm text-muted">
-            Signed in as <span className="font-medium text-ink">{account.email}</span>
+          <h1 className={s.title}>Account</h1>
+          <p className={s.signedIn}>
+            Signed in as <span className={s.email}>{account.email}</span>
             {account.signInMethods.length > 0 && <> · Sign-in methods: {account.signInMethods.join(', ')}</>}
           </p>
         </div>
         <form action={ROUTES.signOut} method="post">
-          <button type="submit" className="btn btn-secondary py-2">
-            <LogOut className="size-4" aria-hidden />
+          <Button type="submit" icon={<SignOut20Regular />}>
             Sign out
-          </button>
+          </Button>
         </form>
       </div>
       {notice && <FormAlert tone="info" message={notice} />}
@@ -53,14 +95,15 @@ export function AccountSettings({ account }: { account: AccountDetails }) {
 }
 
 function Section({ title, description, children }: { title: string; description: ReactNode; children: ReactNode }) {
+  const s = useStyles();
   const id = title.toLowerCase().replace(/\W+/g, '-');
   return (
-    <section className="card p-6" aria-labelledby={id}>
-      <h2 id={id} className="font-semibold">
+    <section className={s.section} aria-labelledby={id}>
+      <h2 id={id} className={s.sectionTitle}>
         {title}
       </h2>
-      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-2">{description}</p>
-      <div className="mt-5 max-w-sm">{children}</div>
+      <p className={s.sectionText}>{description}</p>
+      <div className={s.sectionBody}>{children}</div>
     </section>
   );
 }
@@ -72,16 +115,16 @@ function Sessions() {
       description="Signed in on a computer you no longer use? This signs out every browser where your account is open, this one included. The others can't renew their session, and anything still open there stops working within the hour."
     >
       <form action={`${ROUTES.signOut}?scope=everywhere`} method="post">
-        <button type="submit" className="btn btn-secondary py-2">
-          <LogOut className="size-4" aria-hidden />
+        <Button type="submit" icon={<SignOut20Regular />}>
           Sign out everywhere
-        </button>
+        </Button>
       </form>
     </Section>
   );
 }
 
 function ChangeEmail({ account }: { account: AccountDetails }) {
+  const s = useStyles();
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -110,7 +153,7 @@ function ChangeEmail({ account }: { account: AccountDetails }) {
           message={`Waiting for confirmation: ${account.email} → ${pendingEmail}. Open the links in both inboxes.`}
         />
       )}
-      <form onSubmit={onSubmit} noValidate className="mt-4 space-y-4">
+      <form onSubmit={onSubmit} noValidate className={s.form}>
         <TextField
           label="New email"
           name="email"
@@ -127,6 +170,7 @@ function ChangeEmail({ account }: { account: AccountDetails }) {
 }
 
 function ChangePassword({ account }: { account: AccountDetails }) {
+  const s = useStyles();
   const captcha = useCaptcha('change_password');
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<AuthFailure | null>(null);
@@ -171,19 +215,14 @@ function ChangePassword({ account }: { account: AccountDetails }) {
       description={
         <>
           Enter your current password to choose a new one. Signed up with Google, or don’t remember it?{' '}
-          <button
-            type="button"
-            onClick={emailLink}
-            disabled={pending || !captcha.token}
-            className="font-medium text-accent underline-offset-2 hover:underline disabled:opacity-60"
-          >
+          <Link as="button" inline onClick={emailLink} disabled={pending || !captcha.token}>
             Email me a link to set a password
-          </button>
+          </Link>
           .
         </>
       }
     >
-      <form key={formKey} onSubmit={onSubmit} noValidate className="space-y-4">
+      <form key={formKey} onSubmit={onSubmit} noValidate className={s.form}>
         <input type="email" name="username" autoComplete="username" value={account.email} readOnly hidden />
         <PasswordField
           label="Current password"

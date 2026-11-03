@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { requireAccount } from '@/modules/auth/server/session';
+import { AccountMain, AccountSkeleton } from '@/modules/auth/ui/account-layout';
 import { AccountSettings } from '@/modules/auth/ui/account-settings';
 import { DeleteAccountSection } from '@/modules/auth/ui/delete-account';
+import { ButtonLink } from '@/shared/ui/links';
 import { SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
 
 export const metadata: Metadata = { title: 'Account' };
@@ -13,15 +14,15 @@ export default function AccountPage() {
   return (
     <>
       <SiteHeader>
-        <Link href="/dashboard" className="rounded-md px-3 py-2 text-ink-2 hover:text-ink">
+        <ButtonLink href="/dashboard" appearance="subtle">
           Dashboard
-        </Link>
+        </ButtonLink>
       </SiteHeader>
-      <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
-        <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-surface-2" aria-busy />}>
+      <AccountMain>
+        <Suspense fallback={<AccountSkeleton />}>
           <Account />
         </Suspense>
-      </main>
+      </AccountMain>
       <SiteFooter />
     </>
   );
@@ -30,9 +31,9 @@ export default function AccountPage() {
 async function Account() {
   const account = await requireAccount('/account');
   return (
-    <div className="space-y-10">
+    <>
       <AccountSettings account={account} />
       <DeleteAccountSection />
-    </div>
+    </>
   );
 }

@@ -78,9 +78,6 @@ function counts(row: HTMLElement) {
 
 describe('Dashboard', () => {
   let fake: ReturnType<typeof fakeServices>;
-  let confirmAnswer: boolean;
-  const confirmSpy = vi.fn<(message?: string) => boolean>(() => confirmAnswer);
-  const alertSpy = vi.fn<(message?: string) => void>();
 
   function renderDashboard(initial: DashboardSnapshot, viewer: DashboardViewer = VIEWER) {
     return render(<Dashboard viewer={viewer} initial={initial} />);
@@ -93,17 +90,10 @@ describe('Dashboard', () => {
     vi.mocked(createLiveDashboardServices).mockReset().mockReturnValue(fake.services);
     fake.services.reader.listDevices.mockResolvedValue([]);
     fake.services.reader.listRecentJobs.mockResolvedValue([]);
-    confirmAnswer = true;
-    confirmSpy.mockClear();
-    alertSpy.mockReset();
-    // happy-dom has no confirm or alert.
-    vi.stubGlobal('confirm', confirmSpy);
-    vi.stubGlobal('alert', alertSpy);
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.unstubAllGlobals();
   });
 
   describe('account bar', () => {
@@ -196,6 +186,31 @@ describe('Dashboard', () => {
       expect(within(row!).getByRole('progressbar', { name: 'Progress' })).toHaveAttribute('aria-valuenow', '30');
       expect(counts(row!)).toEqual({ Deleted: '50', Matched: '200', Skipped: '10', Progress: '30%' });
       expect(row).toHaveTextContent('Deleting posts');
+    });
+
+    it('colors the state badge and the counts by what they mean', () => {
+      renderDashboard({
+        devices: [device()],
+        jobs: [
+          job({ id: 'a', state: 'blocked', failed: 2, updatedAt: ago(MINUTE) }),
+          job({ id: 'b', state: 'completed', updatedAt: ago(2 * MINUTE) }),
+        ],
+      });
+
+      const [blocked, completed] = jobRows();
+      expect(within(blocked!).getByText('Stopped for safety')).toHaveAttribute('data-tone', 'critical');
+      expect(within(completed!).getByText('Completed')).toHaveAttribute('data-tone', 'good');
+      const chip = (row: HTMLElement, label: string) =>
+        within(row)
+          .getAllByRole('term')
+          .find((term) => term.textContent === label)
+          ?.closest('[data-tone]');
+      expect(chip(blocked!, 'Deleted')).toHaveAttribute('data-tone', 'success');
+      expect(chip(blocked!, 'Failed')).toHaveAttribute('data-tone', 'danger');
+      expect(chip(blocked!, 'Matched')).toHaveAttribute('data-tone', 'neutral');
+      expect(chip(blocked!, 'Progress')).toHaveAttribute('data-tone', 'brand');
+      // A job stopped for safety is not waiting for the person: its reason is plain text, not an alert.
+      expect(within(blocked!).queryByRole('alert')).not.toBeInTheDocument();
     });
 
     it('counts unlikes as removed and shows failures only when there are some', () => {
@@ -343,7 +358,7 @@ describe('Dashboard', () => {
       expect(browsers).toHaveTextContent('Last seen 5 minutes ago');
     });
 
-    it('disconnects a browser after confirming, and drops its jobs', async () => {
+    it('disconnects a browser after confirming in a dialog, and drops its jobs', async () => {
       fake.services.registry.disconnect.mockResolvedValue({ ok: true });
       renderDashboard({
         devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows' })],
@@ -353,21 +368,26 @@ describe('Dashboard', () => {
 
       await userEvent.click(within(browsers).getAllByRole('button', { name: 'Disconnect' })[0]!);
 
-      expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Disconnect “Chrome on macOS”?'));
-      expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Nothing on X changes.'));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Disconnect “Chrome on macOS”?' });
+      expect(dialog).toHaveTextContent('Its job history on this page is removed too. Nothing on X changes.');
+      expect(fake.services.registry.disconnect).not.toHaveBeenCalled();
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Disconnect' }));
+
       expect(fake.services.registry.disconnect).toHaveBeenCalledWith('dev-1');
       await waitFor(() => expect(browsers).not.toHaveTextContent('Chrome on macOS'));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
       expect(jobRows()).toHaveLength(1);
       expect(jobRows()[0]).toHaveTextContent('Delete replies');
-      expect(alertSpy).not.toHaveBeenCalled();
     });
 
     it('does nothing when the person cancels', async () => {
-      confirmAnswer = false;
       renderDashboard({ devices: [device()], jobs: [] });
 
       await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+      const dialog = await screen.findByRole('alertdialog');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
       expect(fake.services.registry.disconnect).not.toHaveBeenCalled();
       expect(screen.getByRole('region', { name: 'Connected browsers' })).toHaveTextContent('Chrome on macOS');
     });
@@ -377,9 +397,18 @@ describe('Dashboard', () => {
       renderDashboard({ devices: [device()], jobs: [] });
 
       await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+      const dialog = await screen.findByRole('alertdialog');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Disconnect' }));
 
-      await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Could not disconnect. Try again.'));
+      // The dialog stays open with the reason, so the person can try again or cancel.
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('Could not disconnect. Try again.');
       expect(screen.getByRole('region', { name: 'Connected browsers' })).toHaveTextContent('Chrome on macOS');
+
+      // Cancelling clears the reason; asking again starts clean.
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+      await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+      expect(within(await screen.findByRole('alertdialog')).queryByRole('alert')).not.toBeInTheDocument();
     });
   });
 

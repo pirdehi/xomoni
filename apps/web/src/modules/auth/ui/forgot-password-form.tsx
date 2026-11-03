@@ -1,15 +1,20 @@
 'use client';
 
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { useState, useTransition, type SubmitEvent } from 'react';
-import { MailCheck } from 'lucide-react';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES, type AuthFailure } from '../domain/auth-error';
 import { CaptchaStatus, useCaptcha } from './captcha';
 import { SubmitButton, TextField } from './fields';
-import { FormAlert } from './form-alert';
+import { CheckInbox, FormAlert } from './form-alert';
+
+const useStyles = makeStyles({
+  form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+});
 
 /** Requests a password reset link. The answer never says whether the address has an account. */
 export function ForgotPasswordForm() {
+  const s = useStyles();
   const captcha = useCaptcha('password_reset');
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<AuthFailure | null>(null);
@@ -29,20 +34,16 @@ export function ForgotPasswordForm() {
   if (sentTo) {
     return (
       <div role="status">
-        <div className="flex items-center gap-2 text-accent">
-          <MailCheck className="size-5" aria-hidden />
-          <p className="font-medium">Check your inbox</p>
-        </div>
-        <p className="mt-2 text-sm leading-relaxed text-ink-2">
-          If <strong className="font-medium text-ink">{sentTo}</strong> has a Xomoni account, we sent it a link to
-          choose a new password. The link expires in 1 hour.
-        </p>
+        <CheckInbox>
+          If <strong>{sentTo}</strong> has a Xomoni account, we sent it a link to choose a new password. The link
+          expires in 1 hour.
+        </CheckInbox>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className={s.form}>
       <TextField
         label="Email"
         name="email"

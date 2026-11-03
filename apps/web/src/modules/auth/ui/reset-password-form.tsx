@@ -1,5 +1,6 @@
 'use client';
 
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { useState, useTransition, type SubmitEvent } from 'react';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES, type AuthFailure } from '../domain/auth-error';
@@ -8,8 +9,13 @@ import { PasswordField, SubmitButton } from './fields';
 import { FormAlert } from './form-alert';
 import { useSignedInNavigation } from './navigation';
 
+const useStyles = makeStyles({
+  form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+});
+
 /** Sets a new password after a reset link signed the person in, then opens their account page. */
 export function ResetPasswordForm({ email }: { email: string }) {
+  const s = useStyles();
   const navigate = useSignedInNavigation();
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<AuthFailure | null>(null);
@@ -25,7 +31,7 @@ export function ResetPasswordForm({ email }: { email: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className={s.form}>
       {/* Lets password managers save the new password against the right account. */}
       <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
       <PasswordField

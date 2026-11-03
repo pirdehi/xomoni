@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteAccount, type ActionState } from '../server/actions';
 import { DeleteAccountSection } from './delete-account';
 
@@ -11,22 +11,25 @@ const deleteAction = vi.mocked(deleteAccount);
 
 const NEEDS_SIGN_IN = 'To delete your account, sign in again first.';
 
-/** Stands in for the browser's prompt (happy-dom has none) and answers it with `answer`. */
-function typeInPrompt(answer: string | null) {
-  const prompt = vi.fn<(message?: string) => string | null>(() => answer);
-  vi.stubGlobal('prompt', prompt);
-  return prompt;
+const deleteButton = () => screen.getByRole('button', { name: 'Delete my Xomoni account' });
+const dialog = () => screen.getByRole('dialog', { name: 'Delete your Xomoni account?' });
+const confirmButton = () => within(dialog()).getByRole('button', { name: 'Delete account' });
+
+/** Opens the confirmation and types `word` into it. */
+async function openAndType(word: string) {
+  await userEvent.click(deleteButton());
+  if (word) await userEvent.type(within(dialog()).getByLabelText('Type DELETE to confirm'), word);
 }
 
-const deleteButton = () => screen.getByRole('button', { name: 'Delete my Xomoni account' });
+/** Opens the confirmation, types DELETE and confirms. */
+async function confirmDeletion() {
+  await openAndType('DELETE');
+  await userEvent.click(confirmButton());
+}
 
 describe('DeleteAccountSection', () => {
   beforeEach(() => {
     deleteAction.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it('says what goes and what stays', () => {
@@ -34,65 +37,87 @@ describe('DeleteAccountSection', () => {
 
     const section = screen.getByRole('region', { name: 'Delete account' });
     expect(section).toHaveTextContent('Your X account and everything stored in the extension stay as they are.');
+    expect(deleteButton()).toHaveAttribute('data-variant', 'danger');
   });
 
   it('asks the person to type DELETE, saying nothing on X is deleted', async () => {
-    const prompt = typeInPrompt(null);
     render(<DeleteAccountSection />);
 
     await userEvent.click(deleteButton());
 
-    expect(prompt).toHaveBeenCalledOnce();
-    expect(prompt.mock.calls[0]![0]).toContain('Nothing on X is deleted');
-    expect(prompt.mock.calls[0]![0]).toContain('Type DELETE to confirm.');
+    expect(dialog()).toHaveTextContent('Nothing on X is deleted');
+    const field = within(dialog()).getByLabelText('Type DELETE to confirm');
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(confirmButton()).toBeDisabled();
   });
 
   it.each([
-    ['cancels the prompt', null],
     ['types something else', 'delete'],
     ['adds spaces', ' DELETE '],
+    ['types only part of it', 'DELET'],
     ['leaves it empty', ''],
-  ])('does nothing when the person %s', async (_case, answer) => {
-    typeInPrompt(answer);
+  ])('keeps the deletion locked when the person %s', async (_case, word) => {
     render(<DeleteAccountSection />);
 
-    await userEvent.click(deleteButton());
+    await openAndType(word);
+    await userEvent.keyboard('{Enter}');
 
+    expect(confirmButton()).toBeDisabled();
     expect(deleteAction).not.toHaveBeenCalled();
-    expect(deleteButton()).toBeEnabled();
+  });
+
+  it('closes without deleting when the person cancels, and starts empty next time', async () => {
+    render(<DeleteAccountSection />);
+
+    await openAndType('DELETE');
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(deleteAction).not.toHaveBeenCalled();
+    await userEvent.click(deleteButton());
+    expect(within(dialog()).getByLabelText('Type DELETE to confirm')).toHaveValue('');
+    expect(confirmButton()).toBeDisabled();
   });
 
   it('deletes the account once DELETE is typed, and blocks a second click meanwhile', async () => {
-    typeInPrompt('DELETE');
     let finish: (state: ActionState) => void = () => undefined;
     deleteAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     render(<DeleteAccountSection />);
 
-    await userEvent.click(deleteButton());
+    await confirmDeletion();
 
     expect(deleteAction).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
     await act(async () => finish({ error: 'Something went wrong on our side. Try again in a moment.' }));
     expect(deleteButton()).toBeEnabled();
   });
 
+  it('confirms with Enter once DELETE is typed', async () => {
+    deleteAction.mockResolvedValue({});
+    render(<DeleteAccountSection />);
+
+    await openAndType('DELETE');
+    await userEvent.keyboard('{Enter}');
+
+    expect(deleteAction).toHaveBeenCalledOnce();
+  });
+
   it('shows why the deletion failed, without offering to sign in again', async () => {
-    typeInPrompt('DELETE');
     deleteAction.mockResolvedValue({ error: 'Something went wrong on our side. Try again in a moment.' });
     render(<DeleteAccountSection />);
 
-    await userEvent.click(deleteButton());
+    await confirmDeletion();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong on our side.');
     expect(screen.queryByRole('button', { name: 'Sign in again' })).not.toBeInTheDocument();
   });
 
   it('offers to sign in again when the last sign-in is too old (#80)', async () => {
-    typeInPrompt('DELETE');
     deleteAction.mockResolvedValue({ error: `${NEEDS_SIGN_IN} This keeps someone…`, reauthenticate: true });
     render(<DeleteAccountSection />);
 
-    await userEvent.click(deleteButton());
+    await confirmDeletion();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(NEEDS_SIGN_IN);
     const form = screen.getByRole('button', { name: 'Sign in again' }).closest('form');
@@ -102,14 +127,13 @@ describe('DeleteAccountSection', () => {
   });
 
   it('drops the sign-in offer when a later attempt fails for another reason', async () => {
-    typeInPrompt('DELETE');
     deleteAction.mockResolvedValueOnce({ error: NEEDS_SIGN_IN, reauthenticate: true });
     deleteAction.mockResolvedValueOnce({ error: 'Too many attempts. Wait a minute and try again.' });
     render(<DeleteAccountSection />);
 
-    await userEvent.click(deleteButton());
+    await confirmDeletion();
     await screen.findByRole('button', { name: 'Sign in again' });
-    await userEvent.click(deleteButton());
+    await confirmDeletion();
 
     expect(await screen.findByText('Too many attempts. Wait a minute and try again.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sign in again' })).not.toBeInTheDocument();

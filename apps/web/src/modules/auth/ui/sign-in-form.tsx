@@ -1,5 +1,6 @@
 'use client';
 
+import { Button, makeStyles, tokens } from '@fluentui/react-components';
 import { useState, useTransition, type SubmitEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { browserAuth } from '../client/auth';
@@ -11,8 +12,16 @@ import { PasswordField, SubmitButton, TextField } from './fields';
 import { FormAlert } from './form-alert';
 import { useSignedInNavigation } from './navigation';
 
+const useStyles = makeStyles({
+  form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+  password: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
+  forgot: { margin: 0, fontSize: tokens.fontSizeBase300, textAlign: 'right' },
+  wide: { width: '100%' },
+});
+
 /** Email and password sign-in. Offers to resend the confirmation link when the email isn't confirmed yet. */
 export function SignInForm() {
+  const s = useStyles();
   const next = useSearchParams().get('next');
   const navigate = useSignedInNavigation();
   const captcha = useCaptcha('sign_in');
@@ -47,7 +56,7 @@ export function SignInForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className={s.form}>
       <TextField
         label="Email"
         name="email"
@@ -56,7 +65,7 @@ export function SignInForm() {
         required
         error={failure?.fieldErrors?.email}
       />
-      <div>
+      <div className={s.password}>
         <PasswordField
           label="Password"
           name="password"
@@ -64,7 +73,7 @@ export function SignInForm() {
           required
           error={failure?.fieldErrors?.password}
         />
-        <p className="mt-2 text-right text-sm">
+        <p className={s.forgot}>
           <AuthLink href={ROUTES.forgotPassword}>Forgot password?</AuthLink>
         </p>
       </div>
@@ -75,14 +84,9 @@ export function SignInForm() {
       <CaptchaStatus captcha={captcha} />
       {failure && failure.code !== 'invalid_input' && <FormAlert message={AUTH_ERROR_MESSAGES[failure.code]} />}
       {failure?.code === 'email_not_confirmed' && (
-        <button
-          type="button"
-          onClick={resend}
-          disabled={pending || !captcha.token}
-          className="btn btn-secondary w-full"
-        >
+        <Button className={s.wide} onClick={resend} disabled={pending || !captcha.token}>
           Send the confirmation link again
-        </button>
+        </Button>
       )}
       {notice && <FormAlert tone="info" message={notice} />}
     </form>

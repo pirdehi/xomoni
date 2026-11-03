@@ -343,8 +343,10 @@ test.describe('account page', () => {
     await signUpConfirmed(page, email);
     await page.goto('/account');
 
-    page.once('dialog', (dialog) => dialog.accept('DELETE'));
     await page.getByRole('button', { name: 'Delete my Xomoni account' }).click();
+    const confirm = page.getByRole('dialog', { name: 'Delete your Xomoni account?' });
+    await confirm.getByLabel('Type DELETE to confirm').fill('DELETE');
+    await confirm.getByRole('button', { name: 'Delete account' }).click();
     await expect(page).toHaveURL(/\/\?account=deleted$/);
 
     await signIn(page, email, PASSWORD);

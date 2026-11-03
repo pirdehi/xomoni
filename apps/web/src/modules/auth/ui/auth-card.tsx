@@ -1,6 +1,68 @@
+'use client';
+
+import { Divider, Skeleton, SkeletonItem, makeStyles, tokens, typographyStyles } from '@fluentui/react-components';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Logo } from '@/shared/ui/site-chrome';
+
+const useStyles = makeStyles({
+  main: {
+    display: 'flex',
+    flexGrow: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `56px ${tokens.spacingHorizontalL}`,
+    backgroundImage: `radial-gradient(60% 45% at 50% 0%, ${tokens.colorBrandBackground2} 0%, transparent 100%)`,
+  },
+  column: { width: '100%', maxWidth: '400px' },
+  logo: { display: 'flex', justifyContent: 'center' },
+  card: {
+    boxSizing: 'border-box',
+    marginTop: tokens.spacingVerticalXXL,
+    padding: tokens.spacingHorizontalXXL,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadius2XLarge,
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: tokens.shadow16,
+    '@media (min-width: 640px)': { padding: '32px' },
+  },
+  title: { ...typographyStyles.title3, margin: 0, color: tokens.colorNeutralForeground1 },
+  description: {
+    margin: `${tokens.spacingVerticalS} 0 0`,
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase300,
+    lineHeight: tokens.lineHeightBase300,
+  },
+  body: { marginTop: tokens.spacingVerticalXXL },
+  footer: {
+    margin: `${tokens.spacingVerticalXXL} 0 0`,
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase300,
+    textAlign: 'center',
+  },
+  divider: { margin: `${tokens.spacingVerticalXXL} 0`, color: tokens.colorNeutralForeground3 },
+  legal: {
+    margin: `${tokens.spacingVerticalXXL} 0 0`,
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+  },
+  legalLink: {
+    color: 'inherit',
+    textDecorationLine: 'underline',
+    textUnderlineOffset: '2px',
+    ':hover': { color: tokens.colorNeutralForeground1 },
+  },
+  link: {
+    color: tokens.colorBrandForegroundLink,
+    fontWeight: tokens.fontWeightSemibold,
+    textDecorationLine: 'none',
+    textUnderlineOffset: '2px',
+    ':hover': { color: tokens.colorBrandForegroundLinkHover, textDecorationLine: 'underline' },
+  },
+  skeleton: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
+});
 
 /** The centered card every auth page uses: logo, title, optional description, content and a footer line. */
 export function AuthCard({
@@ -14,18 +76,19 @@ export function AuthCard({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const s = useStyles();
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm">
-        <div className="flex justify-center">
+    <main className={s.main}>
+      <div className={s.column}>
+        <div className={s.logo}>
           <Logo />
         </div>
-        <div className="card mt-8 p-6 sm:p-8">
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          {description && <p className="mt-2 text-sm leading-relaxed text-ink-2">{description}</p>}
-          <div className="mt-6">{children}</div>
+        <div className={s.card}>
+          <h1 className={s.title}>{title}</h1>
+          {description && <p className={s.description}>{description}</p>}
+          <div className={s.body}>{children}</div>
         </div>
-        {footer && <p className="mt-6 text-center text-sm text-muted">{footer}</p>}
+        {footer && <p className={s.footer}>{footer}</p>}
       </div>
     </main>
   );
@@ -33,26 +96,22 @@ export function AuthCard({
 
 /** A horizontal rule with "or" in the middle, between the password form and Google. */
 export function OrDivider() {
-  return (
-    <div className="my-6 flex items-center gap-3 text-xs text-muted" role="separator">
-      <span className="h-px flex-1 bg-line" />
-      or
-      <span className="h-px flex-1 bg-line" />
-    </div>
-  );
+  const s = useStyles();
+  return <Divider className={s.divider}>or</Divider>;
 }
 
 /** States what this account is (not an X account) and links the terms and privacy policy. */
 export function AuthLegalNote() {
+  const s = useStyles();
   return (
-    <p className="mt-6 text-xs leading-relaxed text-muted">
+    <p className={s.legal}>
       This is your Xomoni account, not your X account. Xomoni never asks for your X password. By continuing you agree to
       the{' '}
-      <Link href="/terms" className="underline underline-offset-2 hover:text-ink">
+      <Link href="/terms" className={s.legalLink}>
         Terms
       </Link>{' '}
       and{' '}
-      <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">
+      <Link href="/privacy" className={s.legalLink}>
         Privacy Policy
       </Link>
       .
@@ -62,9 +121,22 @@ export function AuthLegalNote() {
 
 /** A link styled for auth pages. */
 export function AuthLink({ href, children }: { href: string; children: ReactNode }) {
+  const s = useStyles();
   return (
-    <Link href={href} className="font-medium text-accent underline-offset-2 hover:underline">
+    <Link href={href} className={s.link}>
       {children}
     </Link>
+  );
+}
+
+/** Stands in for a form while the page loads what it needs on the server (`aria-busy`). */
+export function FormSkeleton() {
+  const s = useStyles();
+  return (
+    <Skeleton className={s.skeleton} aria-busy aria-label="Loading">
+      <SkeletonItem size={16} />
+      <SkeletonItem size={40} />
+      <SkeletonItem size={40} />
+    </Skeleton>
   );
 }

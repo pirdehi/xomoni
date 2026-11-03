@@ -1,8 +1,21 @@
 'use client';
 
+import { Link, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { TURNSTILE_SITE_KEY } from '@/shared/config/site';
+
+const useStyles = makeStyles({
+  // No margin: it sits in the form's stack, which spaces it.
+  status: {
+    margin: 0,
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+    textAlign: 'center',
+  },
+  stuck: { color: tokens.colorNeutralForeground2 },
+});
 
 /** How long to wait for a token before offering to retry the check. */
 const SLOW_CHECK_MS = 20_000;
@@ -92,20 +105,21 @@ export function useCaptcha(action: string): Captcha {
  * stalled (with a retry).
  */
 export function CaptchaStatus({ captcha }: { captcha: Captcha }) {
+  const s = useStyles();
   if (captcha.token) return null;
   if (captcha.stuck) {
     return (
-      <p className="mt-2 text-center text-xs text-ink-2" role="alert">
+      <p className={mergeClasses(s.status, s.stuck)} role="alert">
         The security check didn’t finish. Check your connection, then{' '}
-        <button type="button" onClick={captcha.retry} className="font-medium text-accent underline underline-offset-2">
+        <Link as="button" inline onClick={captcha.retry}>
           try again
-        </button>
+        </Link>
         .
       </p>
     );
   }
   return (
-    <p className="mt-2 text-center text-xs text-muted" role="status">
+    <p className={s.status} role="status">
       {captcha.interactive ? 'Tick the box above to continue.' : 'Running a quick security check…'}
     </p>
   );

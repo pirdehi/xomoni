@@ -123,8 +123,8 @@ Every interface on Fluent UI React v9, and no Tailwind ([ADR-0019](adr/0019-flue
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| 🔄 | ADR-0019, Fluent foundation in the extension, and a redesigned job card | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#124](https://github.com/pirdehi/xomoni/pull/124) |
-| ⬜ | The rest of the extension dashboard on Fluent; Tailwind removed from the extension | [#123](https://github.com/pirdehi/xomoni/issues/123) | |
+| ✅ | ADR-0019, Fluent foundation in the extension, and a redesigned job card | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#124](https://github.com/pirdehi/xomoni/pull/124) |
+| ✅ | The rest of the extension dashboard on Fluent; Tailwind removed from the extension | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#125](https://github.com/pirdehi/xomoni/pull/125) |
 | ⬜ | xomoni.com: Fluent with server-rendered styles in Next.js | [#123](https://github.com/pirdehi/xomoni/issues/123) | |
 | ⬜ | xomoni.com: redesign the home page and every public page with Fluent | [#123](https://github.com/pirdehi/xomoni/issues/123) | |
 | ⬜ | xomoni.com: sign-in, account and dashboard pages on Fluent; Tailwind removed from the website | [#123](https://github.com/pirdehi/xomoni/issues/123) | |

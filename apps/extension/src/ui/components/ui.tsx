@@ -22,11 +22,6 @@ import {
 import { Dismiss20Regular } from '@fluentui/react-icons';
 import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
-/** Joins the truthy class names with spaces, so conditional classes can be written inline. */
-export function cx(...parts: (string | false | null | undefined)[]) {
-  return parts.filter(Boolean).join(' ');
-}
-
 const useStyles = makeStyles({
   card: {
     backgroundColor: tokens.colorNeutralBackground1,
@@ -129,6 +124,7 @@ const useStyles = makeStyles({
   segment: { minWidth: 'auto' },
   dialogText: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalM },
   dialogBody: { position: 'relative' },
+  dialogActions: { whiteSpace: 'nowrap' },
   dialogTitle: { paddingRight: '40px' },
   dialogClose: { position: 'absolute', top: `calc(-1 * ${tokens.spacingVerticalXS})`, right: 0 },
   empty: {
@@ -226,7 +222,7 @@ export function Card({
           <div className={styles.minW0}>
             {title && <h2 className={styles.cardTitle}>{title}</h2>}
             {subtitle && (
-              <Caption1 as="p" className={styles.cardSubtitle}>
+              <Caption1 as="p" block className={styles.cardSubtitle}>
                 {subtitle}
               </Caption1>
             )}
@@ -255,8 +251,8 @@ const APPEARANCE = {
 
 /**
  * The dashboard's button, a Fluent `Button`: `secondary` and `type="button"` by default (both can be
- * overridden); `ghost` is Fluent's subtle appearance. Use `danger` only for actions that remove data. The
- * variant and size are in `data-variant` and `data-size`.
+ * overridden); `ghost` is Fluent's subtle appearance. Use `danger` only for actions that remove data; disabled, it
+ * looks like any disabled button. The variant and size are in `data-variant` and `data-size`.
  */
 export function Button({
   variant = 'secondary',
@@ -265,11 +261,14 @@ export function Button({
   className,
   children,
   type = 'button',
+  iconPosition = 'before',
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: 'sm' | 'md';
   icon?: ReactNode;
+  /** Where the icon sits: before the label (default) or after it, as for a "Next" chevron. */
+  iconPosition?: 'before' | 'after';
 }) {
   const styles = useStyles();
   return (
@@ -279,7 +278,9 @@ export function Button({
       appearance={APPEARANCE[variant]}
       size={size === 'sm' ? 'small' : 'medium'}
       icon={icon ? <>{icon}</> : undefined}
-      className={mergeClasses(variant === 'danger' && styles.danger, className)}
+      iconPosition={iconPosition}
+      // A disabled danger button keeps Fluent's disabled look, so it never looks clickable.
+      className={mergeClasses(variant === 'danger' && !rest.disabled && styles.danger, className)}
       data-variant={variant}
       data-size={size}
     >
@@ -470,7 +471,7 @@ export function Modal({
         <DialogBody className={styles.dialogBody}>
           <DialogTitle className={styles.dialogTitle}>{title}</DialogTitle>
           <DialogContent className={styles.dialogText}>{children}</DialogContent>
-          {footer && <DialogActions>{footer}</DialogActions>}
+          {footer && <DialogActions className={styles.dialogActions}>{footer}</DialogActions>}
           <FluentButton
             appearance="subtle"
             aria-label="Close"
@@ -500,10 +501,10 @@ export function EmptyState({
   return (
     <div className={styles.empty}>
       <div className={styles.emptyIcon}>{icon}</div>
-      <Body1 as="p" className={styles.emptyTitle}>
+      <Body1 as="p" block align="center" className={styles.emptyTitle}>
         {title}
       </Body1>
-      <Caption1 as="p" className={styles.emptyBody}>
+      <Caption1 as="p" block align="center" className={styles.emptyBody}>
         {body}
       </Caption1>
       {action && <div className={styles.emptyAction}>{action}</div>}
@@ -561,11 +562,11 @@ export function PageHeader({
   return (
     <div className={styles.pageHeader}>
       <div>
-        <Title3 as="h1" className={styles.pageTitle}>
+        <Title3 as="h1" block className={styles.pageTitle}>
           {title}
         </Title3>
         {description && (
-          <Body1 as="p" className={styles.pageDescription}>
+          <Body1 as="p" block className={styles.pageDescription}>
             {description}
           </Body1>
         )}

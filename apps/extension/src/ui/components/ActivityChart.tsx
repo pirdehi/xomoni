@@ -1,24 +1,136 @@
-// Stacked columns of what is still on the account, by year. Follows the
-// dataviz spec: <=24px columns, 4px rounded data-ends, 2px surface gaps,
-// hairline grid, legend + per-column tooltip, and a table view.
-import { ChartColumn } from 'lucide-react';
+// Stacked columns of what is still on the account, by year, drawn with Fluent tokens (ADR-0019). Follows the
+// dataviz spec: <=24px columns, 4px rounded data-ends, 2px surface gaps, hairline grid, legend + per-column
+// tooltip, and a table view.
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import { DataBarVertical20Regular } from '@fluentui/react-icons';
 import { useCallback, useState } from 'react';
 import type { ItemKind } from '../../shared/types';
 import { fmtCompact, fmtNumber } from '../format';
 import { useYearHistogram } from '../queries';
 import { Card, EmptyState, Segmented } from './ui';
 
-const SERIES: Record<'activity' | 'likes', { kind: ItemKind; label: string; color: string }[]> = {
+/** The categorical slot a series is drawn in; each slot is a Fluent token in both themes (see `useSeriesStyles`). */
+type Slot = 's1' | 's2' | 's3';
+
+interface Series {
+  kind: ItemKind;
+  label: string;
+  slot: Slot;
+}
+
+const SERIES: Record<'activity' | 'likes', Series[]> = {
   activity: [
-    { kind: 'post', label: 'Posts', color: 'var(--s1)' },
-    { kind: 'reply', label: 'Replies', color: 'var(--s2)' },
-    { kind: 'repost', label: 'Reposts', color: 'var(--s3)' },
+    { kind: 'post', label: 'Posts', slot: 's1' },
+    { kind: 'reply', label: 'Replies', slot: 's2' },
+    { kind: 'repost', label: 'Reposts', slot: 's3' },
   ],
-  likes: [{ kind: 'like', label: 'Liked posts', color: 'var(--s1)' }],
+  likes: [{ kind: 'like', label: 'Liked posts', slot: 's1' }],
 };
 
 const H = 220;
 const PAD = { top: 12, right: 8, bottom: 26, left: 40 };
+
+const useStyles = makeStyles({
+  actions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: tokens.spacingHorizontalS,
+  },
+  loading: { height: `${H + 32}px` },
+  tableWrap: { maxHeight: '16rem', overflowY: 'auto' },
+  table: { fontVariantNumeric: 'tabular-nums' },
+  head: { position: 'sticky', top: 0, zIndex: 1, backgroundColor: tokens.colorNeutralBackground1 },
+  headCell: {
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground3,
+  },
+  endAlign: { justifyContent: 'flex-end' },
+  numeric: { textAlign: 'right', color: tokens.colorNeutralForeground1 },
+  year: { color: tokens.colorNeutralForeground2 },
+  legend: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    columnGap: tokens.spacingHorizontalL,
+    rowGap: tokens.spacingVerticalXS,
+    marginBottom: tokens.spacingVerticalM,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+    color: tokens.colorNeutralForeground2,
+  },
+  legendItem: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalSNudge },
+  legendTotal: {
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  swatch: { width: '10px', height: '10px', flexShrink: 0, borderRadius: tokens.borderRadiusSmall },
+  swatchSmall: { width: '8px', height: '8px' },
+  plot: { position: 'relative' },
+  svg: { display: 'block' },
+  grid: { stroke: tokens.colorNeutralStroke2 },
+  axis: { stroke: tokens.colorNeutralStroke1 },
+  tick: {
+    fill: tokens.colorNeutralForeground3,
+    fontFamily: tokens.fontFamilyBase,
+    fontSize: tokens.fontSizeBase200,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  column: { transitionProperty: 'opacity', transitionDuration: tokens.durationFaster },
+  tooltip: {
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalXXS,
+    minWidth: '144px',
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    pointerEvents: 'none',
+    borderRadius: tokens.borderRadiusLarge,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: tokens.shadow16,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+  },
+  tooltipYear: {
+    marginBottom: tokens.spacingVerticalXXS,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+  tooltipRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: tokens.spacingHorizontalL,
+    color: tokens.colorNeutralForeground2,
+  },
+  tooltipValue: { color: tokens.colorNeutralForeground1, fontVariantNumeric: 'tabular-nums' },
+});
+
+/**
+ * The series colors: Xomoni's brand blue, then Fluent's pumpkin and magenta, each with its own step in light and
+ * dark. Checked with the dataviz palette validator: every pair stays apart for protan and deutan readers (ΔE ≥ 9)
+ * and each fill keeps 3:1 against the card. Status colors are left to states, never used for a series.
+ */
+const useSeriesStyles = makeStyles({
+  s1: { fill: tokens.colorCompoundBrandBackground, backgroundColor: tokens.colorCompoundBrandBackground },
+  s2: { fill: tokens.colorPalettePumpkinBorderActive, backgroundColor: tokens.colorPalettePumpkinBorderActive },
+  s3: { fill: tokens.colorPaletteMagentaBorderActive, backgroundColor: tokens.colorPaletteMagentaBorderActive },
+});
 
 function niceMax(v: number) {
   if (v <= 4) return 4;
@@ -35,9 +147,13 @@ function topRounded(x: number, y: number, w: number, h: number, r: number) {
 /**
  * Card with a per-year chart or table of the account's items still marked present in the inventory,
  * either posts, replies and reposts or likes. Years come from each item's `createdAt` (for likes,
- * the liked post's date, not the like time).
+ * the liked post's date, not the like time). The chart follows its container's width, and its colors
+ * come from Fluent tokens, so both themes stay legible. Each column stacks its series bottom-up in legend
+ * order; every mark and color swatch names its series in `data-series` (`post`, `reply`, `repost`, `like`).
  */
 export function ActivityChart({ accountId }: { accountId: string }) {
+  const styles = useStyles();
+  const seriesStyles = useSeriesStyles();
   const [mode, setMode] = useState<'activity' | 'likes'>('activity');
   const [view, setView] = useState<'chart' | 'table'>('chart');
   const series = SERIES[mode];
@@ -61,7 +177,7 @@ export function ActivityChart({ accountId }: { accountId: string }) {
 
   const totals = series.map((s) => (data ?? []).reduce((sum, d) => sum + (d.values[s.kind] ?? 0), 0));
   const header = (
-    <div className="flex items-center gap-2">
+    <div className={styles.actions}>
       <Segmented
         value={mode}
         onChange={setMode}
@@ -88,53 +204,53 @@ export function ActivityChart({ accountId }: { accountId: string }) {
       actions={header}
     >
       {data === undefined ? (
-        <div style={{ height: H + 32 }} />
+        <div className={styles.loading} />
       ) : !data.length ? (
         <EmptyState
-          icon={<ChartColumn size={18} />}
+          icon={<DataBarVertical20Regular />}
           title="No data yet"
           body="Import your X archive or run a scan from the Inventory page to see your history here."
         />
       ) : view === 'table' ? (
-        <div className="max-h-64 overflow-y-auto">
-          <table className="tabular w-full text-sm">
-            <thead className="sticky top-0 bg-surface text-left text-xs text-muted">
-              <tr>
-                <th className="py-1.5 font-medium">Year</th>
+        <div className={styles.tableWrap}>
+          <Table size="small" className={styles.table}>
+            <TableHeader className={styles.head}>
+              <TableRow>
+                <TableHeaderCell className={styles.headCell}>Year</TableHeaderCell>
                 {series.map((s) => (
-                  <th key={s.kind} className="py-1.5 text-right font-medium">
+                  <TableHeaderCell key={s.kind} className={styles.headCell} button={{ className: styles.endAlign }}>
                     {s.label}
-                  </th>
+                  </TableHeaderCell>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {[...data].reverse().map((d) => (
-                <tr key={d.year} className="border-t border-line">
-                  <td className="py-1.5 text-ink-2">{d.year}</td>
+                <TableRow key={d.year}>
+                  <TableCell className={styles.year}>{d.year}</TableCell>
                   {series.map((s) => (
-                    <td key={s.kind} className="py-1.5 text-right">
+                    <TableCell key={s.kind} className={styles.numeric}>
                       {fmtNumber(d.values[s.kind] ?? 0)}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       ) : (
         <>
           {series.length > 1 && (
-            <div className="mb-3 flex flex-wrap gap-4 text-xs text-ink-2">
+            <div className={styles.legend}>
               {series.map((s, i) => (
-                <span key={s.kind} className="inline-flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-sm" style={{ background: s.color }} />
-                  {s.label} <span className="text-ink">{fmtCompact(totals[i] ?? 0)}</span>
+                <span key={s.kind} className={styles.legendItem}>
+                  <span className={mergeClasses(styles.swatch, seriesStyles[s.slot])} data-series={s.kind} />
+                  {s.label} <span className={styles.legendTotal}>{fmtCompact(totals[i] ?? 0)}</span>
                 </span>
               ))}
             </div>
           )}
-          <div ref={measure} className="relative" onMouseLeave={() => setHover(null)}>
+          <div ref={measure} className={styles.plot} onMouseLeave={() => setHover(null)}>
             <Plot data={data} series={series} width={width} hover={hover} onHover={setHover} />
           </div>
         </>
@@ -151,11 +267,13 @@ function Plot({
   onHover,
 }: {
   data: { year: number; values: Record<string, number> }[];
-  series: { kind: ItemKind; label: string; color: string }[];
+  series: Series[];
   width: number;
   hover: number | null;
   onHover: (i: number | null) => void;
 }) {
+  const styles = useStyles();
+  const seriesStyles = useSeriesStyles();
   const innerW = Math.max(10, width - PAD.left - PAD.right);
   const innerH = H - PAD.top - PAD.bottom;
   const max = niceMax(Math.max(1, ...data.map((d) => series.reduce((s, x) => s + (d.values[x.kind] ?? 0), 0))));
@@ -170,7 +288,7 @@ function Plot({
 
   return (
     <>
-      <svg width={width} height={H} role="img" aria-label="Posts per year">
+      <svg className={styles.svg} width={width} height={H} role="img" aria-label="Posts per year">
         {ticks.map((t) => (
           <g key={t}>
             <line
@@ -178,20 +296,21 @@ function Plot({
               x2={PAD.left + innerW}
               y1={y(t)}
               y2={y(t)}
-              stroke={t === 0 ? 'var(--axis)' : 'var(--grid)'}
+              className={t === 0 ? styles.axis : styles.grid}
               strokeWidth={1}
+              shapeRendering="crispEdges"
             />
-            <text x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="tabular fill-muted text-[11px]">
+            <text x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className={styles.tick}>
               {fmtCompact(t)}
             </text>
           </g>
         ))}
         {data.map((d, i) => {
-          const cx = PAD.left + band * i + band / 2;
+          const center = PAD.left + band * i + band / 2;
           let acc = 0;
           const segments = series.map((s) => ({ s, v: d.values[s.kind] ?? 0 })).filter((x) => x.v > 0);
           return (
-            <g key={d.year} opacity={hover == null || hover === i ? 1 : 0.55}>
+            <g key={d.year} className={styles.column} opacity={hover == null || hover === i ? 1 : 0.55}>
               {segments.map(({ s, v }, j) => {
                 const y0 = y(acc);
                 acc += v;
@@ -200,13 +319,26 @@ function Plot({
                 const h = Math.max(0, y0 - y1 - gap);
                 const top = j === segments.length - 1;
                 return top ? (
-                  <path key={s.kind} d={topRounded(cx - barW / 2, y1, barW, h, 4)} fill={s.color} />
+                  <path
+                    key={s.kind}
+                    d={topRounded(center - barW / 2, y1, barW, h, 4)}
+                    className={seriesStyles[s.slot]}
+                    data-series={s.kind}
+                  />
                 ) : (
-                  <rect key={s.kind} x={cx - barW / 2} y={y1 + gap} width={barW} height={h} fill={s.color} />
+                  <rect
+                    key={s.kind}
+                    x={center - barW / 2}
+                    y={y1 + gap}
+                    width={barW}
+                    height={h}
+                    className={seriesStyles[s.slot]}
+                    data-series={s.kind}
+                  />
                 );
               })}
               {i % labelEvery === 0 && (
-                <text x={cx} y={H - 8} textAnchor="middle" className="tabular fill-muted text-[11px]">
+                <text x={center} y={H - 8} textAnchor="middle" className={styles.tick}>
                   {d.year}
                 </text>
               )}
@@ -223,18 +355,18 @@ function Plot({
         })}
       </svg>
       {hovered && (
-        <div
-          className="pointer-events-none absolute top-0 z-10 min-w-36 rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg"
-          style={{ left: Math.min(Math.max(0, hoverX + 14), width - 160) }}
-        >
-          <div className="mb-1 font-medium text-ink">{hovered.year}</div>
+        <div className={styles.tooltip} style={{ left: Math.min(Math.max(0, hoverX + 14), width - 160) }}>
+          <div className={styles.tooltipYear}>{hovered.year}</div>
           {series.map((s) => (
-            <div key={s.kind} className="flex items-center justify-between gap-4 text-ink-2">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-sm" style={{ background: s.color }} />
+            <div key={s.kind} className={styles.tooltipRow}>
+              <span className={styles.legendItem}>
+                <span
+                  className={mergeClasses(styles.swatch, styles.swatchSmall, seriesStyles[s.slot])}
+                  data-series={s.kind}
+                />
                 {s.label}
               </span>
-              <span className="tabular text-ink">{fmtNumber(hovered.values[s.kind] ?? 0)}</span>
+              <span className={styles.tooltipValue}>{fmtNumber(hovered.values[s.kind] ?? 0)}</span>
             </div>
           ))}
         </div>

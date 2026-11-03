@@ -88,6 +88,21 @@ describe('App navigation', () => {
     }
   });
 
+  it('marks the current page in the sidebar', async () => {
+    window.location.hash = '#/jobs';
+    render(<App />);
+    await pageHeading('Jobs');
+
+    const nav = within(sidebar()).getByRole('navigation');
+    expect(within(nav).getByRole('button', { name: 'Jobs' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-current', 'false');
+
+    await userEvent.click(within(nav).getByRole('button', { name: 'Settings' }));
+    await pageHeading('Settings');
+    expect(within(nav).getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('button', { name: 'Jobs' })).toHaveAttribute('aria-current', 'false');
+  });
+
   it('follows the hash when it changes from outside, as with the Back button', async () => {
     render(<App />);
     await pageHeading('Overview');
@@ -113,26 +128,33 @@ describe('App navigation', () => {
 
     expect(container.querySelector('img[src="https://pbs.twimg.com/me.jpg"]')).not.toBeNull();
     // Without a name, the handle stands in for it.
-    expect(within(sidebar()).getByText('me', { selector: '.font-medium' })).toBeInTheDocument();
+    expect(within(sidebar()).getByText('me')).toBeInTheDocument();
     expect(within(sidebar()).queryByText('M')).not.toBeInTheDocument();
   });
 });
 
 describe('App worker status', () => {
-  const states: [string, PageInfo | null][] = [
-    ['X worker loading…', null],
-    ['X account locked', pageInfo({ locked: true, loggedIn: true })],
-    ['Log in to X in the worker', pageInfo({ loggedIn: false, viewerId: null })],
-    ['X wants you to confirm it’s you', pageInfo({ challenge: true })],
-    ['Keep the X worker visible', pageInfo({ hidden: true })],
-    ['X worker connected', pageInfo()],
+  const states: [string, PageInfo | null, string][] = [
+    ['X worker loading…', null, 'accent'],
+    ['X account locked', pageInfo({ locked: true, loggedIn: true }), 'critical'],
+    ['Log in to X in the worker', pageInfo({ loggedIn: false, viewerId: null }), 'warn'],
+    ['X wants you to confirm it’s you', pageInfo({ challenge: true }), 'warn'],
+    ['Keep the X worker visible', pageInfo({ hidden: true }), 'warn'],
+    ['X worker connected', pageInfo(), 'good'],
   ];
 
-  it.each(states)('says “%s”', async (text, info) => {
+  it.each(states)('says “%s”', async (text, info, tone) => {
     await upsertAccount(account());
     openWorker(chrome, info);
     render(<App />);
     expect(await within(sidebar()).findByText(text)).toBeInTheDocument();
+    expect(within(sidebar()).getByText(text).closest('[data-tone]')).toHaveAttribute('data-tone', tone);
+  });
+
+  it('shows a neutral status while no worker is open', async () => {
+    render(<App />);
+    const text = await within(sidebar()).findByText('X worker not open');
+    expect(text.closest('[data-tone]')).toHaveAttribute('data-tone', 'neutral');
   });
 
   it('warns about a locked account before anything else', async () => {
@@ -194,7 +216,8 @@ describe('App job banner', () => {
 
     expect(await screen.findByText('Scan: your posts')).toBeInTheDocument();
     expect(screen.getByText(/Keep this tab and the X worker window open \(not minimized\)/)).toBeInTheDocument();
-    const banner = screen.getByText('Scan: your posts').closest('div')!.parentElement!;
+    const banner = screen.getByRole('region', { name: 'Running job' });
+    expect(banner).toHaveTextContent('Scan: your posts');
     await userEvent.click(within(banner).getByRole('button', { name: 'Pause' }));
     expect(pause).toHaveBeenCalled();
   });
@@ -290,6 +313,27 @@ describe('App toasts and consent', () => {
     });
     expect(screen.getByText('Archive imported')).toBeInTheDocument();
     expect(screen.getByText('Something failed')).toBeInTheDocument();
+  });
+
+  it('colors toasts by tone, without making them alerts', async () => {
+    render(<App />);
+    await pageHeading('Overview');
+
+    // The toast store outlives a test, so these texts are new to this one.
+    act(() => {
+      toast('Backup saved', 'good');
+      toast('Export failed', 'critical');
+      toast('Connect it again in Settings.');
+    });
+    expect(screen.getByText('Backup saved').closest('[data-tone]')).toHaveAttribute('data-tone', 'good');
+    expect(screen.getByText('Export failed').closest('[data-tone]')).toHaveAttribute('data-tone', 'critical');
+    expect(screen.getByText('Connect it again in Settings.').closest('[data-tone]')).toHaveAttribute(
+      'data-tone',
+      'neutral',
+    );
+    // Only the "needs you" banner is an alert; toasts are read out politely.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Export failed').closest('[aria-live]')).toHaveAttribute('aria-live', 'polite');
   });
 
   it('shows the consent dialog before an account’s first job, and closing it starts nothing', async () => {

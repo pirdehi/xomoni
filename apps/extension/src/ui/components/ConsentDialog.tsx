@@ -1,14 +1,40 @@
 import { CONSENT_DECISION, CONSENT_INTRO, CONSENT_PHRASE, CONSENT_SECTIONS, CONSENT_TITLE } from '@xomoni/consent';
+import { Input, Link, makeStyles, tokens } from '@fluentui/react-components';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { db, recordConsent } from '../../shared/db';
 import { type ConsentRequest, useConsentRequest } from '../hooks';
-import { Button, Modal } from './ui';
+import { Button, Field, Modal } from './ui';
+
+const useStyles = makeStyles({
+  // The text scrolls on its own, so the typed confirmation below it stays in view.
+  text: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalM,
+    maxHeight: '55vh',
+    overflowY: 'auto',
+    paddingRight: tokens.spacingHorizontalXS,
+    color: tokens.colorNeutralForeground2,
+  },
+  paragraph: { margin: 0 },
+  lead: { fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1 },
+  points: {
+    margin: `${tokens.spacingVerticalXS} 0 0`,
+    paddingLeft: tokens.spacingHorizontalXL,
+    listStyleType: 'disc',
+    '& > li + li': { marginTop: tokens.spacingVerticalXXS },
+  },
+  decision: { margin: 0, fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1 },
+  input: { width: '100%' },
+  // The kit's dialog footer takes half the dialog's width; the label stays on one line and widens it instead.
+  noWrap: { whiteSpace: 'nowrap' },
+});
 
 /**
  * The informed-consent dialog (#24, PLAYBOOK C7): the shared text from `@xomoni/consent`, shown before an X
  * account's first job. Going ahead needs typing I UNDERSTAND, which is stored for that account with the
- * text's version; closing it starts nothing. Rendered once by the app shell.
+ * text's version; closing it starts nothing. Rendered once by the app shell, on the kit's Fluent `Modal` (ADR-0019).
  */
 export function ConsentDialog() {
   const request = useConsentRequest();
@@ -17,6 +43,7 @@ export function ConsentDialog() {
 }
 
 function ConsentForm({ request }: { request: ConsentRequest }) {
+  const styles = useStyles();
   const account = useLiveQuery(() => db.accounts.get(request.accountId), [request.accountId]);
   const [typed, setTyped] = useState('');
 
@@ -34,26 +61,31 @@ function ConsentForm({ request }: { request: ConsentRequest }) {
           <Button variant="ghost" onClick={() => request.answer(false)}>
             Not now
           </Button>
-          <Button variant="primary" disabled={typed.trim() !== CONSENT_PHRASE} onClick={() => void agree()}>
+          <Button
+            variant="primary"
+            className={styles.noWrap}
+            disabled={typed.trim() !== CONSENT_PHRASE}
+            onClick={() => void agree()}
+          >
             I understand, continue
           </Button>
         </>
       }
     >
-      <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
-        <p>{CONSENT_INTRO}</p>
+      <div className={styles.text}>
+        <p className={styles.paragraph}>{CONSENT_INTRO}</p>
         {CONSENT_SECTIONS.map(({ title, text, points, link }) => (
           <div key={title}>
-            <p>
-              <span className="font-medium text-ink">{title}.</span> {text}{' '}
+            <p className={styles.paragraph}>
+              <span className={styles.lead}>{title}.</span> {text}{' '}
               {link && (
-                <a href={link.href} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                <Link href={link.href} target="_blank" rel="noreferrer" inline>
                   {link.label}
-                </a>
+                </Link>
               )}
             </p>
             {points && (
-              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              <ul className={styles.points}>
                 {points.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
@@ -61,21 +93,18 @@ function ConsentForm({ request }: { request: ConsentRequest }) {
             )}
           </div>
         ))}
-        <p className="font-medium text-ink">{CONSENT_DECISION}</p>
+        <p className={styles.decision}>{CONSENT_DECISION}</p>
       </div>
-      <label className="mt-4 block">
-        <span className="text-xs text-muted">
-          Type {CONSENT_PHRASE} to continue{account?.handle ? ` with @${account.handle}` : ''}
-        </span>
-        <input
-          className="field mt-1"
+      <Field label={`Type ${CONSENT_PHRASE} to continue${account?.handle ? ` with @${account.handle}` : ''}`}>
+        <Input
+          className={styles.input}
           value={typed}
-          onChange={(e) => setTyped(e.target.value)}
+          onChange={(_, data) => setTyped(data.value)}
           autoComplete="off"
           spellCheck={false}
           aria-label={`Type ${CONSENT_PHRASE} to continue`}
         />
-      </label>
+      </Field>
     </Modal>
   );
 }

@@ -172,6 +172,7 @@ describe('Inventory page', () => {
       await userEvent.upload(fileInputs().files, [owner, TWEETS()]);
 
       expect(await screen.findByText('Starting…')).toBeInTheDocument();
+      expect(screen.getByRole('progressbar', { name: 'Starting…' })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Choose data folder' })).not.toBeInTheDocument();
       release();
       expect(await screen.findByRole('button', { name: 'Choose data folder' })).toBeInTheDocument();
@@ -251,8 +252,8 @@ describe('Inventory page', () => {
       );
       expect(oldest).toHaveTextContent('Old post');
       expect(oldest).toHaveTextContent('1,234');
-      expect(within(oldest!).getByText('Archive')).toBeInTheDocument();
-      expect(within(oldest!).getByText('Scan')).toBeInTheDocument();
+      expect(within(oldest!).getByText('Archive')).toHaveAttribute('data-tone', 'neutral');
+      expect(within(oldest!).getByText('Scan')).toHaveAttribute('data-tone', 'accent');
       expect(within(oldest!).getByRole('link', { name: 'Open on X' })).toHaveAttribute('target', '_blank');
       expect(kindTab('Posts')).toHaveAttribute('aria-pressed', 'true');
       expect(kindTab('Posts')).toHaveTextContent('Posts 2');
@@ -338,6 +339,23 @@ describe('Inventory page', () => {
       // Once the search result is in, bob's like is gone; until then the earlier rows are still shown.
       await waitFor(() => expect(screen.queryByText('Other')).not.toBeInTheDocument());
       expect(screen.getByText('Something')).toBeInTheDocument();
+    });
+
+    it('clears the search with its clear button and lists every item again', async () => {
+      await seed([draft({ id: '1000000001', text: 'Launch day!' }), draft({ id: '1000000002', text: 'Lunch' })]);
+      render(<InventoryPage {...await pageProps()} />);
+      await screen.findByText('Lunch');
+      const box = screen.getByRole('searchbox', { name: 'Search text or @author' });
+
+      await userEvent.type(box, 'launch');
+      await waitFor(() => expect(screen.queryByText('Lunch')).not.toBeInTheDocument());
+      expect(screen.getByText('Filtered · page 1')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+      expect(box).toHaveValue('');
+      expect(await screen.findByText('Lunch')).toBeInTheDocument();
+      expect(screen.getByText('Launch day!')).toBeInTheDocument();
+      expect(screen.getByText('2 items · page 1 of 1')).toBeInTheDocument();
     });
 
     // Authors are stored without the "@" that rows show and the search box suggests.

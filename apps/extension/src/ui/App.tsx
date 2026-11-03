@@ -1,25 +1,51 @@
 import {
-  Activity,
-  Archive,
-  BellRing,
-  CircleCheck,
-  Database,
-  ExternalLink,
-  History,
-  LayoutDashboard,
-  ListChecks,
-  LoaderCircle,
-  Pause,
-  Settings as SettingsIcon,
-  Sparkles,
-  TriangleAlert,
-} from 'lucide-react';
-import { type ComponentType, useEffect, useState } from 'react';
+  Avatar,
+  Body1,
+  Body1Strong,
+  Caption1,
+  Button as FluentButton,
+  MessageBar,
+  MessageBarBody,
+  MessageBarGroup,
+  type MessageBarIntent,
+  Nav,
+  NavItem,
+  Spinner,
+  Subtitle2,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import {
+  AlertUrgent20Regular,
+  Archive20Filled,
+  Archive20Regular,
+  Board20Filled,
+  Board20Regular,
+  CheckmarkCircle16Filled,
+  Database20Filled,
+  Database20Regular,
+  type FluentIcon,
+  History20Filled,
+  History20Regular,
+  Open16Regular,
+  Pause16Regular,
+  Pulse20Regular,
+  Settings20Filled,
+  Settings20Regular,
+  Sparkle20Filled,
+  Sparkle20Regular,
+  TaskListLtr20Filled,
+  TaskListLtr20Regular,
+  Warning16Filled,
+  bundleIcon,
+} from '@fluentui/react-icons';
+import { type ReactNode, useEffect, useState } from 'react';
 import { runner } from '../engine/platform';
 import { workerTab } from '../engine/worker-tab';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Button, cx } from './components/ui';
+import { Button, type Tone } from './components/ui';
 import { ConsentDialog } from './components/ConsentDialog';
 import { errorMessage } from './format';
 import { type WorkerStatus, toast, useActiveAccount, useRunner, useToasts, useWorkerStatus } from './hooks';
@@ -34,15 +60,162 @@ import type { Account } from '../shared/types';
 import type { PageId, PageProps } from './navigation';
 import { startCloudSync } from '../cloud/sync';
 
-const NAV: { id: PageId; label: string; icon: ComponentType<{ size?: number }> }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'cleanup', label: 'Cleanup', icon: Sparkles },
-  { id: 'archive', label: 'Archive', icon: Archive },
-  { id: 'inventory', label: 'Inventory', icon: Database },
-  { id: 'jobs', label: 'Jobs', icon: ListChecks },
-  { id: 'activity', label: 'Activity log', icon: History },
-  { id: 'settings', label: 'Settings', icon: SettingsIcon },
+// Each page's icon: Fluent's Nav shows the filled one for the current page and the outline for the others.
+const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
+  { id: 'overview', label: 'Overview', icon: bundleIcon(Board20Filled, Board20Regular) },
+  { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
+  { id: 'archive', label: 'Archive', icon: bundleIcon(Archive20Filled, Archive20Regular) },
+  { id: 'inventory', label: 'Inventory', icon: bundleIcon(Database20Filled, Database20Regular) },
+  { id: 'jobs', label: 'Jobs', icon: bundleIcon(TaskListLtr20Filled, TaskListLtr20Regular) },
+  { id: 'activity', label: 'Activity log', icon: bundleIcon(History20Filled, History20Regular) },
+  { id: 'settings', label: 'Settings', icon: bundleIcon(Settings20Filled, Settings20Regular) },
 ];
+
+/** Fluent's message bar intent for each toast tone. */
+const TOAST_INTENT = {
+  good: 'success',
+  critical: 'error',
+  neutral: 'info',
+} as const satisfies Record<'good' | 'critical' | 'neutral', MessageBarIntent>;
+
+// The page column's width and side padding, shared by the content and the sticky banners so they line up.
+const COLUMN = { maxWidth: '72rem', marginInline: 'auto', paddingInline: tokens.spacingHorizontalXXXL } as const;
+
+const useStyles = makeStyles({
+  shell: {
+    display: 'flex',
+    height: '100vh',
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground1,
+    fontFamily: tokens.fontFamilyBase,
+  },
+  main: { flexGrow: 1, minWidth: 0, overflowY: 'auto' },
+  content: { ...COLUMN, paddingBlock: tokens.spacingVerticalXXXL },
+  sidebar: {
+    display: 'flex',
+    flexDirection: 'column',
+    flexShrink: 0,
+    width: '240px',
+    boxSizing: 'border-box',
+    overflowY: 'auto',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRight: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  brand: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalMNudge,
+    padding: tokens.spacingHorizontalXL,
+  },
+  logo: { display: 'block', width: '28px', height: '28px', borderRadius: tokens.borderRadiusLarge },
+  brandText: { display: 'flex', flexDirection: 'column' },
+  muted: { color: tokens.colorNeutralForeground3 },
+  nav: { flexGrow: 1, paddingInline: tokens.spacingHorizontalM },
+  navList: { rowGap: tokens.spacingVerticalXXS },
+  navItem: {
+    backgroundColor: tokens.colorTransparentBackground,
+    ':hover': { backgroundColor: tokens.colorSubtleBackgroundHover, color: tokens.colorNeutralForeground1 },
+    ':active': { backgroundColor: tokens.colorSubtleBackgroundPressed },
+  },
+  navItemCurrent: {
+    backgroundColor: tokens.colorBrandBackground2,
+    color: tokens.colorBrandForeground2,
+    ':hover': { backgroundColor: tokens.colorBrandBackground2Hover, color: tokens.colorBrandForeground2 },
+    ':active': { backgroundColor: tokens.colorBrandBackground2Pressed },
+  },
+  footer: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalM,
+    padding: tokens.spacingHorizontalL,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  chip: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXS} ${tokens.spacingVerticalXS} ${tokens.spacingHorizontalMNudge}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusLarge,
+  },
+  chipStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    minWidth: 0,
+    color: tokens.colorNeutralForeground2,
+  },
+  chipIcon: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    width: '16px',
+    height: '16px',
+  },
+  dot: { width: '8px', height: '8px', borderRadius: tokens.borderRadiusCircular, backgroundColor: 'currentColor' },
+  truncate: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  account: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalMNudge, minWidth: 0 },
+  accountText: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  banner: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderBottom: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    boxShadow: tokens.shadow2,
+  },
+  attention: {
+    backgroundColor: tokens.colorStatusWarningBackground1,
+    borderBottomColor: tokens.colorStatusWarningBorder1,
+  },
+  attentionBar: {
+    position: 'absolute',
+    insetBlock: 0,
+    left: 0,
+    width: '4px',
+    backgroundColor: tokens.colorStatusWarningForeground1,
+  },
+  bannerRow: {
+    ...COLUMN,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalL,
+    paddingBlock: tokens.spacingVerticalMNudge,
+  },
+  attentionRow: { paddingBlock: tokens.spacingVerticalM },
+  bannerText: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalMNudge, minWidth: 0 },
+  bannerTextTop: { alignItems: 'flex-start' },
+  bannerIcon: { flexShrink: 0, color: tokens.colorBrandForeground1 },
+  attentionIcon: { flexShrink: 0, color: tokens.colorStatusWarningForeground1 },
+  stack: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  noShrink: { flexShrink: 0 },
+  secondary: { color: tokens.colorNeutralForeground2 },
+  actions: { display: 'flex', flexShrink: 0, gap: tokens.spacingHorizontalS },
+  toasts: {
+    position: 'fixed',
+    right: tokens.spacingHorizontalXL,
+    bottom: tokens.spacingVerticalXL,
+    zIndex: 2,
+    width: '320px',
+    pointerEvents: 'none',
+  },
+  toastGroup: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalS },
+  toast: { pointerEvents: 'auto', boxShadow: tokens.shadow16, borderRadius: tokens.borderRadiusLarge },
+  toastNeutral: { backgroundColor: tokens.colorNeutralBackground1 },
+});
+
+/** The icon color for each worker status tone. */
+const useToneStyles = makeStyles({
+  neutral: { color: tokens.colorNeutralForeground3 },
+  accent: { color: tokens.colorBrandForeground1 },
+  good: { color: tokens.colorStatusSuccessForeground1 },
+  warn: { color: tokens.colorStatusWarningForeground1 },
+  critical: { color: tokens.colorStatusDangerForeground1 },
+});
 
 /** Reports job status to xomoni.com while the dashboard is open, if this browser is connected (ADR-0018). */
 function useCloudSync() {
@@ -72,22 +245,24 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
 }
 
 /**
- * The dashboard shell: sidebar with worker status, the running-job banner, the current page and
- * toasts. Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, only the
- * onboarding view is shown, whatever the hash says.
+ * The dashboard shell, on Fluent UI (ADR-0019): a full-height sidebar (Fluent `Nav`, with the current page marked
+ * `aria-current="page"`, the worker status and the account), the running-job banner, the current page and toasts.
+ * Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, only the onboarding view is shown,
+ * whatever the hash says.
  */
 export function App() {
+  const styles = useStyles();
   const [page, navigate] = useHashRoute();
   const account = useActiveAccount();
   const worker = useWorkerStatus();
   useCloudSync();
 
   return (
-    <div className="flex h-full">
+    <div className={styles.shell}>
       <Sidebar page={page} navigate={navigate} account={account ?? null} worker={worker} />
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main className={styles.main}>
         <RunnerBanner />
-        <div className="mx-auto max-w-6xl px-8 py-8">
+        <div className={styles.content}>
           {account === undefined ? null : !account ? (
             <OverviewPage account={null} worker={worker} navigate={navigate} />
           ) : (
@@ -131,97 +306,112 @@ function Sidebar({
   account: Account | null;
   worker: WorkerStatus;
 }) {
+  const styles = useStyles();
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <img src="icons/icon48.png" alt="" className="size-7 rounded-lg" />
-        <div>
-          <div className="text-sm font-semibold tracking-tight">Xomoni</div>
-          <div className="text-[11px] text-muted">X account manager</div>
+    <aside className={styles.sidebar}>
+      <div className={styles.brand}>
+        <img src="icons/icon48.png" alt="" className={styles.logo} />
+        <div className={styles.brandText}>
+          <Subtitle2>Xomoni</Subtitle2>
+          <Caption1 className={styles.muted}>X account manager</Caption1>
         </div>
       </div>
-      <nav className="flex-1 space-y-0.5 px-3">
-        {NAV.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => navigate(id)}
-            className={cx(
-              'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
-              page === id ? 'bg-accent-soft font-medium text-accent' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
-            )}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
+      <nav className={styles.nav}>
+        <Nav selectedValue={page} className={styles.navList}>
+          {NAV.map(({ id, label, icon: Icon }) => (
+            <NavItem
+              key={id}
+              value={id}
+              icon={<Icon />}
+              onClick={() => navigate(id)}
+              className={mergeClasses(styles.navItem, page === id && styles.navItemCurrent)}
+            >
+              {label}
+            </NavItem>
+          ))}
+        </Nav>
       </nav>
-      <div className="space-y-3 border-t border-line p-4">
+      <div className={styles.footer}>
         <WorkerChip worker={worker} />
-        {account && (
-          <div className="flex items-center gap-2.5">
-            {account.avatar ? (
-              <img src={account.avatar} alt="" className="size-8 rounded-full" />
-            ) : (
-              <div className="flex size-8 items-center justify-center rounded-full bg-surface-2 text-xs font-semibold text-ink-2">
-                {(account.name || account.handle || '?').slice(0, 1).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="truncate text-sm font-medium">{account.name || account.handle}</div>
-              <div className="truncate text-xs text-muted">@{account.handle}</div>
-            </div>
-          </div>
-        )}
+        {account && <AccountRow account={account} />}
       </div>
     </aside>
   );
 }
 
-function WorkerChip({ worker }: { worker: WorkerStatus }) {
-  const { open, info } = worker;
-  let text = 'X worker not open';
-  let icon = <span className="size-2 rounded-full bg-muted" />;
-  if (open && !info) {
-    text = 'X worker loading…';
-    icon = <LoaderCircle size={12} className="animate-spin text-ink-2" />;
-  } else if (info?.locked) {
-    text = 'X account locked';
-    icon = <TriangleAlert size={12} className="text-critical" />;
-  } else if (info && !info.loggedIn) {
-    text = 'Log in to X in the worker';
-    icon = <TriangleAlert size={12} className="text-serious" />;
-  } else if (info?.challenge) {
-    text = 'X wants you to confirm it’s you';
-    icon = <TriangleAlert size={12} className="text-serious" />;
-  } else if (info?.hidden) {
-    text = 'Keep the X worker visible';
-    icon = <TriangleAlert size={12} className="text-serious" />;
-  } else if (info) {
-    text = 'X worker connected';
-    icon = <CircleCheck size={12} className="text-good" />;
-  }
+/** The signed-in X account: its picture (or its initial) beside its name and handle. */
+function AccountRow({ account }: { account: Account }) {
+  const styles = useStyles();
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-2.5 py-2">
-      <span className="flex min-w-0 items-center gap-2 text-xs text-ink-2">
-        {icon}
-        <span className="truncate">{text}</span>
+    <div className={styles.account}>
+      {/* Decorative: the name is written next to it. Without a picture, the initial stands in. */}
+      <Avatar
+        aria-hidden
+        size={32}
+        image={account.avatar ? { src: account.avatar } : undefined}
+        initials={account.avatar ? undefined : (account.name || account.handle || '?').slice(0, 1).toUpperCase()}
+      />
+      <div className={styles.accountText}>
+        <Body1Strong className={styles.truncate}>{account.name || account.handle}</Body1Strong>
+        <Caption1 className={mergeClasses(styles.truncate, styles.muted)}>@{account.handle}</Caption1>
+      </div>
+    </div>
+  );
+}
+
+/** The tones the worker chip uses. */
+type WorkerTone = Exclude<Tone, 'serious'>;
+
+/** What the worker chip says, and its tone, for the worker's state; the first matching problem wins. */
+function workerState({ open, info }: WorkerStatus): { text: string; tone: WorkerTone } {
+  if (open && !info) return { text: 'X worker loading…', tone: 'accent' };
+  if (info?.locked) return { text: 'X account locked', tone: 'critical' };
+  if (info && !info.loggedIn) return { text: 'Log in to X in the worker', tone: 'warn' };
+  if (info?.challenge) return { text: 'X wants you to confirm it’s you', tone: 'warn' };
+  if (info?.hidden) return { text: 'Keep the X worker visible', tone: 'warn' };
+  if (info) return { text: 'X worker connected', tone: 'good' };
+  return { text: 'X worker not open', tone: 'neutral' };
+}
+
+function WorkerChip({ worker }: { worker: WorkerStatus }) {
+  const styles = useStyles();
+  const toneStyles = useToneStyles();
+  const { text, tone } = workerState(worker);
+  const icon: ReactNode =
+    tone === 'accent' ? (
+      <Spinner size="extra-tiny" aria-hidden />
+    ) : tone === 'good' ? (
+      <CheckmarkCircle16Filled aria-hidden />
+    ) : tone === 'neutral' ? (
+      <span className={styles.dot} />
+    ) : (
+      <Warning16Filled aria-hidden />
+    );
+  const title = worker.open ? 'Show the X worker window' : 'Open the X worker window';
+  return (
+    <div className={styles.chip} data-tone={tone}>
+      <span className={styles.chipStatus}>
+        <span className={mergeClasses(styles.chipIcon, toneStyles[tone])}>{icon}</span>
+        <Caption1 className={styles.truncate}>{text}</Caption1>
       </span>
-      <button
-        type="button"
-        title={open ? 'Show the X worker window' : 'Open the X worker window'}
+      <FluentButton
+        appearance="subtle"
+        size="small"
+        icon={<Open16Regular />}
+        title={title}
+        aria-label={title}
         onClick={() =>
-          void (open ? workerTab.focus() : workerTab.open()).catch((e: unknown) => toast(errorMessage(e), 'critical'))
+          void (worker.open ? workerTab.focus() : workerTab.open()).catch((e: unknown) =>
+            toast(errorMessage(e), 'critical'),
+          )
         }
-        className="shrink-0 rounded p-1 text-muted hover:bg-surface hover:text-ink"
-      >
-        <ExternalLink size={13} />
-      </button>
+      />
     </div>
   );
 }
 
 function RunnerBanner() {
+  const styles = useStyles();
   const state = useRunner();
   const job = useLiveQuery(() => (state.jobId ? db.jobs.get(state.jobId) : undefined), [state.jobId]);
   const attention = state.status === 'attention';
@@ -236,26 +426,26 @@ function RunnerBanner() {
     // A hidden window is Chrome pausing the page, not X asking for anything (#118).
     const who = state.need === 'hidden' ? 'Xomoni needs its X window on screen' : 'X needs you';
     return (
-      <div role="alert" className="sticky top-0 z-30 border-b border-line bg-surface">
-        <span className="absolute inset-y-0 left-0 w-1 bg-serious" />
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-8 py-3">
-          <div className="flex min-w-0 items-start gap-2.5 text-sm">
-            <BellRing size={16} className="mt-0.5 shrink-0 text-serious" />
-            <div className="min-w-0">
-              <div className="font-medium">{`${who} to continue “${job?.title ?? 'this job'}”`}</div>
-              <div className="text-ink-2">{state.message} Xomoni continues by itself once you’re done.</div>
+      <div role="alert" className={mergeClasses(styles.banner, styles.attention)}>
+        <span className={styles.attentionBar} />
+        <div className={mergeClasses(styles.bannerRow, styles.attentionRow)}>
+          <div className={mergeClasses(styles.bannerText, styles.bannerTextTop)}>
+            <AlertUrgent20Regular className={styles.attentionIcon} aria-hidden />
+            <div className={styles.stack}>
+              <Body1Strong>{`${who} to continue “${job?.title ?? 'this job'}”`}</Body1Strong>
+              <Body1 className={styles.secondary}>{state.message} Xomoni continues by itself once you’re done.</Body1>
             </div>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className={styles.actions}>
             <Button
               size="sm"
               variant="primary"
-              icon={<ExternalLink size={13} />}
+              icon={<Open16Regular />}
               onClick={() => void workerTab.focus().catch((e: unknown) => toast(errorMessage(e), 'critical'))}
             >
               Open X window
             </Button>
-            <Button size="sm" icon={<Pause size={13} />} onClick={() => runner.pause()}>
+            <Button size="sm" icon={<Pause16Regular />} onClick={() => runner.pause()}>
               Pause
             </Button>
           </div>
@@ -264,43 +454,47 @@ function RunnerBanner() {
     );
   }
   return (
-    <div className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-8 py-2.5">
-        <div className="flex min-w-0 items-center gap-2.5 text-sm">
-          <Activity size={15} className="shrink-0 text-accent" />
-          <span className="shrink-0 font-medium">{job?.title ?? 'Job running'}</span>
-          <span className="truncate text-ink-2">· Keep this tab and the X worker window open (not minimized).</span>
+    <section aria-label="Running job" className={styles.banner}>
+      <div className={styles.bannerRow}>
+        <div className={styles.bannerText}>
+          <Pulse20Regular className={styles.bannerIcon} aria-hidden />
+          <Body1Strong className={styles.noShrink}>{job?.title ?? 'Job running'}</Body1Strong>
+          <Body1 className={mergeClasses(styles.truncate, styles.secondary)}>
+            · Keep this tab and the X worker window open (not minimized).
+          </Body1>
         </div>
         <Button
           size="sm"
-          icon={<Pause size={13} />}
+          icon={<Pause16Regular />}
           onClick={() => runner.pause()}
           disabled={state.status === 'stopping'}
         >
           {state.status === 'stopping' ? 'Stopping…' : 'Pause'}
         </Button>
       </div>
-    </div>
+    </section>
   );
 }
 
+/** The toasts, newest last, in the bottom-right corner; a polite live region, so screen readers read them out. */
 function Toasts() {
+  const styles = useStyles();
   const list = useToasts();
   return (
-    <div className="pointer-events-none fixed right-5 bottom-5 z-50 flex w-80 flex-col gap-2">
-      {list.map((t) => (
-        <div
-          key={t.id}
-          className="pointer-events-auto flex items-start gap-2.5 rounded-lg border border-line bg-surface px-3.5 py-3 text-sm shadow-lg"
-        >
-          {t.tone === 'critical' ? (
-            <TriangleAlert size={15} className="mt-0.5 shrink-0 text-critical" />
-          ) : (
-            <CircleCheck size={15} className="mt-0.5 shrink-0 text-good" />
-          )}
-          <span className="text-ink">{t.text}</span>
-        </div>
-      ))}
+    <div className={styles.toasts} aria-live="polite">
+      <MessageBarGroup animate="both" className={styles.toastGroup}>
+        {list.map((t) => (
+          <MessageBar
+            key={t.id}
+            intent={TOAST_INTENT[t.tone]}
+            layout="multiline"
+            className={mergeClasses(styles.toast, t.tone === 'neutral' && styles.toastNeutral)}
+            data-tone={t.tone}
+          >
+            <MessageBarBody>{t.text}</MessageBarBody>
+          </MessageBar>
+        ))}
+      </MessageBarGroup>
     </div>
   );
 }

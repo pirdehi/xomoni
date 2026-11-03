@@ -43,6 +43,9 @@ const answers =
   notifications: { create: answers(''), clear: answers(true) },
   storage: {
     session: { get: answers({ workerTab: 1 }), set: answers(undefined), remove: answers(undefined) },
+    // The xomoni.com card reads its connection here: not connected in the preview.
+    local: { get: answers({}), set: answers(undefined), remove: answers(undefined) },
+    onChanged: { addListener() {}, removeListener() {} },
   },
 };
 

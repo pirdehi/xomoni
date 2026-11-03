@@ -1,5 +1,6 @@
+import { makeStyles, tokens } from '@fluentui/react-components';
+import { Braces20Regular, DocumentTable20Regular, History20Regular } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { FileJson, FileSpreadsheet, History } from 'lucide-react';
 import { useState } from 'react';
 import { activityCsv, activityJson } from '../../shared/activity-log';
 import { db } from '../../shared/db';
@@ -11,6 +12,17 @@ import { downloadFile, toDateInput } from '../format';
 
 type Level = 'all' | 'success' | 'problems';
 
+const useStyles = makeStyles({
+  filter: { marginBottom: tokens.spacingVerticalL },
+  list: { padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXL}` },
+  more: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+});
+
 const matches = (level: Level) => (e: LogEntry) =>
   level === 'all' ? true : level === 'success' ? e.level === 'success' : e.level === 'warn' || e.level === 'error';
 
@@ -20,6 +32,7 @@ const matches = (level: Level) => (e: LogEntry) =>
  * whatever the filter, so a person can audit what was deleted or skipped (#34).
  */
 export function ActivityPage({ account }: PageProps) {
+  const styles = useStyles();
   const [level, setLevel] = useState<Level>('all');
   const [limit, setLimit] = useState(100);
   const entries = useLiveQuery(
@@ -48,16 +61,16 @@ export function ActivityPage({ account }: PageProps) {
         description="Every action, skip and safety stop, with the post it touched."
         actions={
           <>
-            <Button icon={<FileSpreadsheet size={14} />} onClick={() => void exportLog('csv')}>
+            <Button icon={<DocumentTable20Regular />} onClick={() => void exportLog('csv')}>
               Export CSV
             </Button>
-            <Button icon={<FileJson size={14} />} onClick={() => void exportLog('json')}>
+            <Button icon={<Braces20Regular />} onClick={() => void exportLog('json')}>
               Export JSON
             </Button>
           </>
         }
       />
-      <div className="mb-4">
+      <div className={styles.filter}>
         <Segmented
           value={level}
           onChange={setLevel}
@@ -71,17 +84,17 @@ export function ActivityPage({ account }: PageProps) {
       <Card padded={false}>
         {entries && !entries.length ? (
           <EmptyState
-            icon={<History size={18} />}
+            icon={<History20Regular />}
             title="No activity"
             body="Actions appear here as soon as a job runs."
           />
         ) : (
-          <div className="px-5 py-1">
+          <div className={styles.list}>
             <LogList entries={entries ?? []} absolute />
           </div>
         )}
         {entries && entries.length >= limit && (
-          <div className="border-t border-line px-5 py-3 text-center">
+          <div className={styles.more}>
             <Button size="sm" variant="ghost" onClick={() => setLimit(limit + 200)}>
               Load more
             </Button>

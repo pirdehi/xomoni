@@ -149,7 +149,10 @@ describe('Archive page', () => {
     fireEvent.change(from(), { target: { value: '2019-01-01' } });
     fireEvent.change(to(), { target: { value: '2018-01-01' } });
 
-    expect(await screen.findByText('Pick a start date on or before the end date.')).toBeInTheDocument();
+    expect(await screen.findByText('Pick a start date on or before the end date.')).toHaveAttribute(
+      'data-tone',
+      'critical',
+    );
     expect(await screen.findByText('0 items from — to —')).toBeInTheDocument();
     expect(readButton()).toBeDisabled();
     expect(htmlButton()).toBeDisabled();

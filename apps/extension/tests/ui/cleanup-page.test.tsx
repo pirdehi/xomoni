@@ -183,6 +183,9 @@ describe('Cleanup page', () => {
       expect(within(modal).getByText(title)).toBeInTheDocument();
       expect(modal).toHaveTextContent('3 known items match, plus any the sweep finds on X.');
       await waitFor(() => expect(confirmInput()).toHaveFocus());
+      // The browser never fills in or corrects the word: the person types it.
+      expect(confirmInput()).toHaveAttribute('autocomplete', 'off');
+      expect(confirmInput()).toHaveAttribute('spellcheck', 'false');
       expect(confirmButton()).toBeDisabled();
 
       await userEvent.type(confirmInput(), 'DELET');
@@ -338,6 +341,25 @@ describe('Cleanup page', () => {
   });
 
   describe('the filter', () => {
+    it('shows exactly one chosen target, Posts at first, and moves the choice with a click', async () => {
+      await renderWithArchive();
+      const target = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) });
+      const chosen = () =>
+        ['Posts', 'Replies', 'Reposts', 'Likes'].filter((name) => target(name).getAttribute('aria-pressed') === 'true');
+
+      expect(screen.getByRole('button', { name: /^Posts/, pressed: true })).toBeInTheDocument();
+      expect(chosen()).toEqual(['Posts']);
+
+      await userEvent.click(target('Likes'));
+      expect(screen.getByRole('button', { name: /^Likes/, pressed: true })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Posts/, pressed: false })).toBeInTheDocument();
+      expect(chosen()).toEqual(['Likes']);
+
+      // Choosing the chosen target again keeps it chosen.
+      await userEvent.click(target('Likes'));
+      expect(chosen()).toEqual(['Likes']);
+    });
+
     it('keeps posts by likes, keywords and ids, and passes the keep rules to the job', async () => {
       const props = await renderWithArchive();
 

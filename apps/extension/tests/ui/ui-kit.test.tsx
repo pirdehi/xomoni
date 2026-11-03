@@ -16,16 +16,8 @@ import {
   Segmented,
   StatTile,
   Toggle,
-  cx,
   useNow,
 } from '../../src/ui/components/ui';
-
-describe('cx', () => {
-  it('joins the truthy class names and drops the rest', () => {
-    expect(cx('a', false, null, undefined, '', 'b')).toBe('a b');
-    expect(cx()).toBe('');
-  });
-});
 
 describe('Card', () => {
   it('shows the title, subtitle, actions and content', () => {
@@ -94,6 +86,40 @@ describe('Button', () => {
     expect(start.firstElementChild).toContainElement(screen.getByTestId('icon'));
     expect(screen.getByRole('button', { name: 'Later' })).toHaveAttribute('data-variant', 'ghost');
     expect(screen.getByRole('button', { name: 'Delete' })).toHaveAttribute('data-variant', 'danger');
+  });
+
+  it('keeps the disabled look on a disabled danger button, so it never looks clickable', () => {
+    render(
+      <>
+        <Button variant="danger">Delete</Button>
+        <Button variant="danger" disabled>
+          Delete later
+        </Button>
+      </>,
+    );
+    // Disabled, a danger button is styled exactly like a disabled primary one; enabled, it is not.
+    render(
+      <>
+        <Button variant="primary">Go</Button>
+        <Button variant="primary" disabled>
+          Go later
+        </Button>
+      </>,
+    );
+    const className = (name: string) => screen.getByRole('button', { name }).className;
+    expect(className('Delete later')).toBe(className('Go later'));
+    expect(className('Delete')).not.toBe(className('Go'));
+    expect(screen.getByRole('button', { name: 'Delete later' })).toBeDisabled();
+  });
+
+  it('puts the icon after the label when asked', () => {
+    render(
+      <Button iconPosition="after" icon={<svg data-testid="chevron" />}>
+        Next
+      </Button>,
+    );
+    const next = screen.getByRole('button', { name: 'Next' });
+    expect(next.lastElementChild).toContainElement(screen.getByTestId('chevron'));
   });
 
   it('lets `type` be overridden and does not fire when disabled', async () => {

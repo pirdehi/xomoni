@@ -16,12 +16,14 @@ describe('Logo', () => {
 });
 
 describe('GithubMark', () => {
-  it('is hidden from screen readers and takes its size from the class', () => {
-    const { container } = render(<GithubMark className="size-4" />);
+  it('is hidden from screen readers and sized like an icon, one em square', () => {
+    const { container } = render(<GithubMark className="mark" />);
 
     const svg = container.querySelector('svg');
     expect(svg).toHaveAttribute('aria-hidden', 'true');
-    expect(svg).toHaveClass('size-4');
+    expect(svg).toHaveAttribute('width', '1em');
+    expect(svg).toHaveAttribute('height', '1em');
+    expect(svg).toHaveClass('mark');
   });
 });
 
@@ -36,6 +38,10 @@ describe('SiteHeader', () => {
     expect(within(banner).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/#privacy');
     expect(within(banner).getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', GITHUB_URL);
     expect(within(banner).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    // Sign-in is the one call to action; the section links are quiet.
+    expect(within(banner).getByRole('link', { name: 'Sign in' })).toHaveAttribute('data-appearance', 'primary');
+    expect(within(banner).getByRole('link', { name: 'Safety' })).toHaveAttribute('data-appearance', 'subtle');
+    expect(within(banner).getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
 
   it('replaces the default navigation with its children', () => {
@@ -67,5 +73,6 @@ describe('SiteFooter', () => {
     expect(within(footer).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
     expect(within(footer).getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
     expect(within(footer).getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', GITHUB_URL);
+    expect(within(footer).getByRole('navigation', { name: 'Legal' })).toBeInTheDocument();
   });
 });

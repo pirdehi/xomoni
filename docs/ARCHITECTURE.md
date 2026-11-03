@@ -107,6 +107,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/web`](../apps/web/README.md) | xomoni.com: landing and legal pages, sign-in, the live dashboard. |
 | [`apps/web/src/modules/auth`](../apps/web/src/modules/auth/README.md) | Identity: sign-up with email confirmation, sign-in (password or Google), password reset, email and password changes, sessions, account deletion. |
 | [`apps/web/src/modules/dashboard`](../apps/web/src/modules/dashboard/README.md) | Devices and live job status. |
+| [`apps/web/src/modules/landing`](../apps/web/src/modules/landing/README.md) | The landing page at `/`: no data, so only a `ui/` layer. |
 | [`apps/web/src/shared`](../apps/web/src/shared/README.md) | Site config, Supabase clients, layout components shared by every module. |
 | [`packages/db`](../packages/db/README.md) | The typed contract of the database, generated from the migrations. |
 | [`packages/consent`](../packages/consent/README.md) | The informed-consent text shown before an X account's first job: one source for the extension, `/risks` and the README. |

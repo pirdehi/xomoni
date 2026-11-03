@@ -28,6 +28,7 @@ src/
   modules/
     auth/         identity: sign-up and email confirmation, sign-in, password reset, account settings, sessions
     dashboard/    devices and live job status
+    landing/      the landing page at /
   shared/
     config/       public site constants, the site URL and the security headers
     supabase/     Supabase client factories (server, browser, proxy)

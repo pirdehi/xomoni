@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
-import { act, render, screen, within, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as PlatformModule from '../../src/engine/platform';
@@ -164,6 +164,8 @@ describe('JobCard', () => {
     await resetDb();
   });
   afterEach(() => {
+    // Unmount first: a component's pending effect must not run against removed stubs or mocks.
+    cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });

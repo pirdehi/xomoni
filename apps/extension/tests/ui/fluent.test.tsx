@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { Button, useFluent } from '@fluentui/react-components';
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProgressRing } from '../../src/ui/components/ProgressRing';
 import { XOMONI_BRAND } from '@xomoni/fluent-theme';
@@ -37,6 +37,8 @@ beforeEach(() => {
   localStorage.clear();
 });
 afterEach(() => {
+  // Unmount first: a component's pending effect must not run against removed stubs or mocks.
+  cleanup();
   vi.unstubAllGlobals();
 });
 

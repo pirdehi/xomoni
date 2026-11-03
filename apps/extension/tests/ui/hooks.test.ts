@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
 import { CONSENT_VERSION } from '@xomoni/consent';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCleanupJob } from '../../src/engine/runner';
 import { runner } from '../../src/engine/platform';
@@ -44,6 +44,8 @@ beforeEach(async () => {
   await resetDb();
 });
 afterEach(() => {
+  // Unmount first: a component's pending effect must not run against removed stubs or mocks.
+  cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();

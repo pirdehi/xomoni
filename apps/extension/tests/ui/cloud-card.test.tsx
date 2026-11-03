@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getConnection, saveConnection } from '../../src/cloud/connection';
@@ -21,6 +21,8 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     await resetDb();
   });
   afterEach(() => {
+    // Unmount first: a component's pending effect must not run against removed stubs or mocks.
+    cleanup();
     vi.unstubAllGlobals();
   });
 

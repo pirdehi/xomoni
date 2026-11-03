@@ -1,5 +1,6 @@
 'use client';
 
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { browserAuth } from '../client/auth';
@@ -9,6 +10,10 @@ import { AuthCard, AuthLink } from './auth-card';
 import { SubmitButton } from './fields';
 import { FormAlert } from './form-alert';
 import { useSignedInNavigation } from './navigation';
+
+const useStyles = makeStyles({
+  stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+});
 
 /** What the confirmation page says for each kind of email link Supabase sends. */
 interface Copy {
@@ -53,6 +58,7 @@ function copyFor(type: string | null): Copy {
  * mail scanners open links on their own and would otherwise use up the one-time token.
  */
 export function ConfirmEmailLink() {
+  const s = useStyles();
   const params = useSearchParams();
   const query = { token_hash: params.get('token_hash'), type: params.get('type'), next: params.get('next') };
   const copy = copyFor(query.type);
@@ -79,17 +85,19 @@ export function ConfirmEmailLink() {
         </>
       }
     >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          confirm();
-        }}
-      >
-        <SubmitButton pending={pending} disabled={!!error}>
-          {copy.action}
-        </SubmitButton>
-      </form>
-      {error && <FormAlert message={error} />}
+      <div className={s.stack}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            confirm();
+          }}
+        >
+          <SubmitButton pending={pending} disabled={!!error}>
+            {copy.action}
+          </SubmitButton>
+        </form>
+        {error && <FormAlert message={error} />}
+      </div>
     </AuthCard>
   );
 }

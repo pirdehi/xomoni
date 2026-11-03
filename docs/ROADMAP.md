@@ -117,7 +117,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Test standard: backend and frontend tests for every feature, enforced ([ADR-0017](adr/0017-test-standard.md), [testing](TESTING.md)) | [#102](https://github.com/pirdehi/xomoni/issues/102) | [#106](https://github.com/pirdehi/xomoni/pull/106) |
 | ✅ | Extension core behind ports; layer rules enforced in CI | [#11](https://github.com/pirdehi/xomoni/issues/11) | [#115](https://github.com/pirdehi/xomoni/pull/115) |
 
-## Phase 8 · Fluent UI everywhere 🔄
+## Phase 8 · Fluent UI everywhere ✅
 
 Every interface on Fluent UI React v9, and no Tailwind ([ADR-0019](adr/0019-fluent-ui-everywhere.md)).
 
@@ -127,7 +127,7 @@ Every interface on Fluent UI React v9, and no Tailwind ([ADR-0019](adr/0019-flue
 | ✅ | The rest of the extension dashboard on Fluent; Tailwind removed from the extension | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#126](https://github.com/pirdehi/xomoni/pull/126) |
 | ✅ | xomoni.com: Fluent with server-rendered styles in Next.js; Xomoni's themes shared by both apps (`@xomoni/fluent-theme`) | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#127](https://github.com/pirdehi/xomoni/pull/127) |
 | ✅ | xomoni.com: redesign the home page and every public page with Fluent | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#128](https://github.com/pirdehi/xomoni/pull/128) |
-| ⬜ | xomoni.com: sign-in, account and dashboard pages on Fluent; Tailwind removed from the website | [#123](https://github.com/pirdehi/xomoni/issues/123) | |
+| ✅ | xomoni.com: sign-in, account and dashboard pages on Fluent; Tailwind removed from the website | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#129](https://github.com/pirdehi/xomoni/pull/129) |
 
 ## Dropped
 

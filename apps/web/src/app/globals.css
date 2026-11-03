@@ -1,79 +1,93 @@
-@import 'tailwindcss';
+/*
+  xomoni.com's only global CSS (ADR-0019): components are styled by Fluent UI (Griffel). This sets the page itself:
+  the background and text colors before Fluent's styles arrive (equal to the themes' `colorNeutralBackground3` and
+  `colorNeutralForeground1`, `@xomoni/fluent-theme`), and a small base reset.
+*/
 
-/* Same tokens as the extension dashboard (src/ui/styles.css). */
-@theme inline {
-  --font-sans: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --color-page: var(--page);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-muted: var(--muted);
-  --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-soft: var(--accent-soft);
-  --color-good: var(--good);
-  --color-good-ink: var(--good-ink);
-  --color-warn: var(--warn);
-  --color-warn-ink: var(--warn-ink);
-  --color-serious: var(--serious);
-  --color-critical: var(--critical);
-}
+/*
+  The base rules the pages were designed on (the subset of Tailwind's preflight they rely on). In a layer, so any
+  Fluent class outranks them, as before.
+*/
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
 
-:root {
-  color-scheme: light;
-  --page: #f4f4f1;
-  --surface: #fcfcfb;
-  --surface-2: #f0efec;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --muted: #6f6d68;
-  --line: rgba(11, 11, 11, 0.1);
-  --accent: #2a78d6;
-  --accent-hover: #256abf;
-  --accent-soft: #e6f0fc;
-  --good: #0ca30c;
-  --good-ink: #006300;
-  --warn: #fab219;
-  --warn-ink: #8a5a00;
-  --serious: #ec835a;
-  --critical: #d03b3b;
-}
+  html {
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    tab-size: 4;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #242423;
-    --ink: #f0efec;
-    --ink-2: #c3c2b7;
-    --muted: #96948d;
-    --line: rgba(255, 255, 255, 0.1);
-    --accent: #3987e5;
-    --accent-hover: #5598e7;
-    --accent-soft: rgba(57, 135, 229, 0.16);
-    --good-ink: #0ca30c;
-    --warn-ink: #fab219;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  b,
+  strong {
+    font-weight: bolder;
+  }
+
+  code,
+  kbd,
+  pre {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 1em;
+  }
+
+  ol,
+  ul {
+    list-style: none;
+  }
+
+  img,
+  svg,
+  video {
+    display: block;
+    vertical-align: middle;
+  }
+
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+  }
+
+  [hidden]:where(:not([hidden='until-found'])) {
+    display: none !important;
   }
 }
 
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #242423;
-  --ink: #f0efec;
-  --ink-2: #c3c2b7;
-  --muted: #96948d;
-  --line: rgba(255, 255, 255, 0.1);
-  --accent: #3987e5;
-  --accent-hover: #5598e7;
-  --accent-soft: rgba(57, 135, 229, 0.16);
-  --good-ink: #0ca30c;
-  --warn-ink: #fab219;
+:root {
+  color-scheme: light dark;
 }
 
 html {
@@ -81,103 +95,26 @@ html {
 }
 
 body {
-  background: var(--page);
-  color: var(--ink);
-  font-family: var(--font-sans);
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: #f4f4f1;
+  color: #0b0b0b;
+  font-family:
+    var(--font-geist-sans),
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Arial,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@layer components {
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    border-radius: 0.625rem;
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1.25rem;
-    transition:
-      background-color 120ms,
-      border-color 120ms,
-      color 120ms;
-    white-space: nowrap;
-  }
-
-  .btn:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
-  .btn-primary {
-    background: var(--ink);
-    color: var(--page);
-  }
-
-  .btn-primary:hover {
-    background: color-mix(in oklab, var(--ink) 85%, var(--page));
-  }
-
-  .btn-secondary {
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--ink);
-  }
-
-  .btn-secondary:hover {
-    background: var(--surface-2);
-  }
-
-  .btn-danger {
-    background: var(--critical);
-    color: #fff;
-  }
-
-  .btn-danger:hover {
-    background: color-mix(in oklab, var(--critical) 88%, black);
-  }
-
-  .btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-
-  .field {
-    width: 100%;
-    border: 1px solid var(--line);
-    border-radius: 0.625rem;
-    background: var(--page);
-    padding: 0.625rem 0.75rem;
-    color: var(--ink);
-    font-size: 0.9375rem;
-    line-height: 1.375rem;
-    transition:
-      border-color 120ms,
-      box-shadow 120ms;
-  }
-
-  .field::placeholder {
-    color: var(--muted);
-  }
-
-  .field:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
-
-  .field[aria-invalid='true'] {
-    border-color: var(--critical);
-  }
-
-  .card {
-    border: 1px solid var(--line);
-    background: var(--surface);
-    border-radius: 1rem;
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #0d0d0d;
+    color: #f0efec;
   }
 }

@@ -24,12 +24,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     // npm workspaces hoist dependencies to the monorepo root.
     root: path.join(__dirname, '..', '..'),
-    rules: {
-      '*.css': {
-        loaders: ['@tailwindcss/turbopack'],
-        as: '*.css',
-      },
-    },
   },
 };
 

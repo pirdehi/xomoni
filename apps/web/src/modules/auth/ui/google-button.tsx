@@ -1,14 +1,21 @@
 'use client';
 
+import { Button, Spinner, makeStyles, tokens } from '@fluentui/react-components';
 import { useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { LoaderCircle } from 'lucide-react';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES } from '../domain/auth-error';
 import { FormAlert } from './form-alert';
 
+const useStyles = makeStyles({
+  stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+  button: { width: '100%' },
+  callback: { marginBottom: tokens.spacingVerticalL },
+});
+
 /** "Continue with Google": starts the OAuth flow from the browser and keeps `?next=` for the return trip. */
 export function GoogleButton({ label = 'Continue with Google' }: { label?: string }) {
+  const s = useStyles();
   const next = useSearchParams().get('next');
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -23,25 +30,35 @@ export function GoogleButton({ label = 'Continue with Google' }: { label?: strin
   }
 
   return (
-    <>
-      <button type="button" onClick={signIn} disabled={pending} className="btn btn-secondary w-full py-3 text-base">
-        {pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <GoogleMark />}
+    <div className={s.stack}>
+      <Button
+        size="large"
+        className={s.button}
+        onClick={signIn}
+        disabled={pending}
+        icon={pending ? <Spinner size="tiny" aria-hidden /> : <GoogleMark />}
+      >
         {label}
-      </button>
+      </Button>
       {error && <FormAlert message={error} />}
-    </>
+    </div>
   );
 }
 
 /** Shows the error that `/auth/callback` passed back in `?error=`. */
 export function CallbackError() {
+  const s = useStyles();
   const message = useSearchParams().get('error');
-  return message ? <FormAlert message={message} /> : null;
+  return message ? (
+    <div className={s.callback}>
+      <FormAlert message={message} />
+    </div>
+  ) : null;
 }
 
 function GoogleMark() {
   return (
-    <svg viewBox="0 0 48 48" className="size-5" aria-hidden>
+    <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden>
       <path
         fill="#FFC107"
         d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"

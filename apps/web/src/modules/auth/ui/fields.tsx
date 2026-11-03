@@ -1,10 +1,78 @@
 'use client';
+// The auth forms' fields and submit button on Fluent UI (ADR-0019). Labels, errors and hints are wired by hand
+// rather than through Fluent's Field, so screen readers read the error first and then the password checklist.
 
-import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react';
-import { Check, Eye, EyeOff, LoaderCircle } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Label,
+  Spinner,
+  makeStyles,
+  mergeClasses,
+  tokens,
+  type InputProps as FluentInputProps,
+} from '@fluentui/react-components';
+import {
+  CheckmarkCircle16Filled,
+  Circle16Regular,
+  ErrorCircle16Filled,
+  Eye20Regular,
+  EyeOff20Regular,
+} from '@fluentui/react-icons';
+import { useId, useState, type ReactNode } from 'react';
 import { PASSWORD_REQUIREMENTS, passwordIssues, type PasswordIssue } from '../domain/credentials';
 
-type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'className'>;
+const useStyles = makeStyles({
+  field: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
+  label: { fontWeight: tokens.fontWeightSemibold },
+  input: { width: '100%' },
+  note: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalXS,
+    margin: 0,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+  },
+  error: { color: tokens.colorStatusDangerForeground1 },
+  hint: { color: tokens.colorNeutralForeground3 },
+  noteIcon: { flexShrink: 0, marginTop: '1px' },
+  policy: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
+    margin: `${tokens.spacingVerticalXS} 0 0`,
+    padding: 0,
+    listStyleType: 'none',
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+  },
+  rule: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    color: tokens.colorNeutralForeground3,
+  },
+  met: { color: tokens.colorStatusSuccessForeground1 },
+  visuallyHidden: {
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    margin: '-1px',
+    padding: 0,
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap',
+    border: 0,
+  },
+  submit: { width: '100%' },
+});
+
+/** The native input attributes a field passes through; the field owns its id, look and slots. */
+type InputProps = Omit<
+  FluentInputProps,
+  'id' | 'className' | 'size' | 'appearance' | 'onChange' | 'root' | 'input' | 'contentBefore' | 'contentAfter'
+>;
 
 /** A labelled input with an optional hint and an inline error tied to it for screen readers. */
 export function TextField({
@@ -13,16 +81,18 @@ export function TextField({
   hint,
   ...input
 }: { label: string; error?: string; hint?: ReactNode } & InputProps) {
+  const s = useStyles();
   const id = useId();
   const described = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+    <div className={s.field}>
+      <Label htmlFor={id} className={s.label}>
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={id}
-        className="field"
+        size="large"
+        className={s.input}
         aria-invalid={error ? true : undefined}
         aria-describedby={described}
         {...input}
@@ -42,6 +112,7 @@ export function PasswordField({
   policy = false,
   ...input
 }: { label: string; error?: string; policy?: boolean } & InputProps) {
+  const s = useStyles();
   const id = useId();
   const [visible, setVisible] = useState(false);
   const [value, setValue] = useState('');
@@ -54,39 +125,40 @@ export function PasswordField({
   ];
 
   return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+    <div className={s.field}>
+      <Label htmlFor={id} className={s.label}>
         {label}
-      </label>
-      <div className="relative">
-        <input
-          id={id}
-          type={visible ? 'text' : 'password'}
-          className="field pr-11"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={[error && `${id}-error`, policy && `${id}-policy`].filter(Boolean).join(' ') || undefined}
-          onInput={(e) => setValue(e.currentTarget.value)}
-          {...input}
-        />
-        <button
-          type="button"
-          onClick={() => setVisible((v) => !v)}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[0.625rem] text-muted hover:text-ink"
-          aria-label={visible ? 'Hide password' : 'Show password'}
-          aria-pressed={visible}
-        >
-          {visible ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
-        </button>
-      </div>
+      </Label>
+      <Input
+        id={id}
+        size="large"
+        className={s.input}
+        type={visible ? 'text' : 'password'}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={[error && `${id}-error`, policy && `${id}-policy`].filter(Boolean).join(' ') || undefined}
+        onInput={(e) => setValue(e.currentTarget.value)}
+        contentAfter={
+          <Button
+            appearance="transparent"
+            size="small"
+            icon={visible ? <EyeOff20Regular /> : <Eye20Regular />}
+            onClick={() => setVisible((v) => !v)}
+            aria-label={visible ? 'Hide password' : 'Show password'}
+            aria-pressed={visible}
+          />
+        }
+        {...input}
+      />
       {policy && (
-        <ul id={`${id}-policy`} className="mt-2 space-y-1 text-xs" aria-label="Password requirements">
+        <ul id={`${id}-policy`} className={s.policy} aria-label="Password requirements">
           {shown.map((issue) => {
             const met = value.length > 0 && !issues.has(issue);
+            const Icon = met ? CheckmarkCircle16Filled : Circle16Regular;
             return (
-              <li key={issue} className={`flex items-center gap-1.5 ${met ? 'text-good-ink' : 'text-muted'}`}>
-                <Check className={`size-3.5 ${met ? '' : 'opacity-30'}`} aria-hidden />
+              <li key={issue} className={mergeClasses(s.rule, met && s.met)} data-met={met}>
+                <Icon aria-hidden />
                 {PASSWORD_REQUIREMENTS[issue]}
-                <span className="sr-only">{met ? '(met)' : '(not met yet)'}</span>
+                <span className={s.visuallyHidden}>{met ? '(met)' : '(not met yet)'}</span>
               </li>
             );
           })}
@@ -98,15 +170,17 @@ export function PasswordField({
 }
 
 function FieldNote({ id, error, hint }: { id: string; error?: string; hint?: ReactNode }) {
+  const s = useStyles();
   if (error)
     return (
-      <p id={`${id}-error`} className="mt-1.5 text-sm text-critical">
+      <p id={`${id}-error`} className={mergeClasses(s.note, s.error)}>
+        <ErrorCircle16Filled className={s.noteIcon} aria-hidden />
         {error}
       </p>
     );
   if (hint)
     return (
-      <p id={`${id}-hint`} className="mt-1.5 text-xs text-muted">
+      <p id={`${id}-hint`} className={mergeClasses(s.note, s.hint)}>
         {hint}
       </p>
     );
@@ -123,10 +197,17 @@ export function SubmitButton({
   disabled?: boolean;
   children: ReactNode;
 }) {
+  const s = useStyles();
   return (
-    <button type="submit" disabled={pending || disabled} className="btn btn-primary w-full py-3 text-base">
-      {pending && <LoaderCircle className="size-5 animate-spin" aria-hidden />}
+    <Button
+      type="submit"
+      appearance="primary"
+      size="large"
+      className={s.submit}
+      disabled={pending || disabled}
+      icon={pending ? <Spinner size="tiny" aria-hidden /> : undefined}
+    >
       {children}
-    </button>
+    </Button>
   );
 }

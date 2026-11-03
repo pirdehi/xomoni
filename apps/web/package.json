@@ -19,7 +19,6 @@
     "@xomoni/consent": "*",
     "@xomoni/db": "*",
     "@xomoni/fluent-theme": "*",
-    "lucide-react": "^1.64.0",
     "next": "16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -28,7 +27,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
-    "@tailwindcss/turbopack": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -38,7 +36,6 @@
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^5.0.5",
     "happy-dom": "^21.0.4",
-    "tailwindcss": "^4",
     "typescript": "~5.9.3",
     "vitest": "^5.0.5"
   },

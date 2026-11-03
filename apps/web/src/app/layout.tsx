@@ -35,8 +35,8 @@ export const viewport: Viewport = {
 /** Root layout: fonts, theme color, Fluent UI with server-rendered styles (ADR-0019) and the page shell. */
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-      <body className="flex min-h-dvh flex-col">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>
         <SiteFluentProvider>{children}</SiteFluentProvider>
       </body>
     </html>

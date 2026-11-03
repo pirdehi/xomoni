@@ -1,18 +1,26 @@
 'use client';
 
+import { Button, makeStyles, tokens } from '@fluentui/react-components';
 import { useState, useTransition, type SubmitEvent } from 'react';
-import { MailCheck } from 'lucide-react';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES, type AuthFailure } from '../domain/auth-error';
 import { CaptchaStatus, useCaptcha } from './captcha';
 import { PasswordField, SubmitButton, TextField } from './fields';
-import { FormAlert } from './form-alert';
+import { CheckInbox, FormAlert } from './form-alert';
+
+const useStyles = makeStyles({
+  form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+  sent: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
+  muted: { margin: 0, color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase300 },
+  wide: { width: '100%' },
+});
 
 /**
  * Creates an account with email and password, then asks the person to confirm their address.
  * The success screen is the same whether or not the address already had an account.
  */
 export function SignUpForm() {
+  const s = useStyles();
   const captcha = useCaptcha('sign_up');
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<AuthFailure | null>(null);
@@ -48,25 +56,18 @@ export function SignUpForm() {
 
   if (sentTo) {
     return (
-      <div role="status">
-        <div className="flex items-center gap-2 text-accent">
-          <MailCheck className="size-5" aria-hidden />
-          <p className="font-medium">Check your inbox</p>
+      <div role="status" className={s.sent}>
+        <div>
+          <CheckInbox>
+            We sent a confirmation link to <strong>{sentTo}</strong>. Open it to finish creating your account. It
+            expires in 1 hour.
+          </CheckInbox>
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-ink-2">
-          We sent a confirmation link to <strong className="font-medium text-ink">{sentTo}</strong>. Open it to finish
-          creating your account. It expires in 1 hour.
-        </p>
-        <p className="mt-4 text-sm text-muted">Didn’t get it? Check spam, or send it again.</p>
+        <p className={s.muted}>Didn’t get it? Check spam, or send it again.</p>
         {captcha.widget}
-        <button
-          type="button"
-          onClick={resend}
-          disabled={pending || !captcha.token || resent}
-          className="btn btn-secondary mt-3 w-full"
-        >
+        <Button className={s.wide} onClick={resend} disabled={pending || !captcha.token || resent}>
           {resent ? 'Sent again' : 'Send the link again'}
-        </button>
+        </Button>
         {!resent && <CaptchaStatus captcha={captcha} />}
         {failure && <FormAlert message={AUTH_ERROR_MESSAGES[failure.code]} />}
       </div>
@@ -74,7 +75,7 @@ export function SignUpForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className={s.form}>
       <TextField
         label="Name (optional)"
         name="name"

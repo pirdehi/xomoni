@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { requireViewer } from '@/modules/auth/server/session';
 import { loadDashboardSnapshot } from '@/modules/dashboard/server/load';
 import { Dashboard } from '@/modules/dashboard/ui/dashboard';
+import { DashboardMain, DashboardSkeleton } from '@/modules/dashboard/ui/dashboard-shell';
+import { ButtonLink } from '@/shared/ui/links';
 import { SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
 
 export const metadata: Metadata = { title: 'Dashboard' };
@@ -13,15 +14,15 @@ export default function DashboardPage() {
   return (
     <>
       <SiteHeader>
-        <Link href="/account" className="rounded-md px-3 py-2 text-ink-2 hover:text-ink">
+        <ButtonLink href="/account" appearance="subtle">
           Account
-        </Link>
+        </ButtonLink>
       </SiteHeader>
-      <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
+      <DashboardMain>
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
         </Suspense>
-      </main>
+      </DashboardMain>
       <SiteFooter />
     </>
   );
@@ -31,14 +32,4 @@ async function DashboardContent() {
   const viewer = await requireViewer('/dashboard');
   const snapshot = await loadDashboardSnapshot();
   return <Dashboard viewer={viewer} initial={snapshot} />;
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="animate-pulse space-y-6" aria-busy aria-label="Loading your dashboard">
-      <div className="h-14 rounded-2xl bg-surface-2" />
-      <div className="h-48 rounded-2xl bg-surface-2" />
-      <div className="h-32 rounded-2xl bg-surface-2" />
-    </div>
-  );
 }

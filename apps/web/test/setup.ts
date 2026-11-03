@@ -13,6 +13,11 @@ configure({ asyncUtilTimeout: 5000 });
 // about a third slower, enough to push them past their waits on a busy machine (ADR-0019).
 if (typeof CSSStyleSheet !== 'undefined') CSSStyleSheet.prototype.insertRule = () => 0;
 
+// happy-dom's Web Animations are partial: cancelling one rejects its `finished` promise with nothing to catch it,
+// which Fluent UI's motion does whenever an accordion panel or dialog closes. Without `animate`, Fluent skips its
+// animations, as it does in browsers without the API (ADR-0019).
+if (typeof Element !== 'undefined') Reflect.deleteProperty(Element.prototype, 'animate');
+
 afterEach(async () => {
   if (typeof document === 'undefined') return;
   const { cleanup } = await import('@testing-library/react');

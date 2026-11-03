@@ -18,4 +18,28 @@ describe('LegalPage', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
+
+  it('styles the plain text the route writes: headings, lists, links and code stay what they are', () => {
+    render(
+      <LegalPage title="Risks" updated="November 1, 2026">
+        <h2>Deletions are permanent</h2>
+        <ul>
+          <li>
+            Type <code>I UNDERSTAND</code> first.
+          </li>
+        </ul>
+        <a href="/terms">Terms of Use</a>
+      </LegalPage>,
+    );
+
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('heading', { level: 2, name: 'Deletions are permanent' })).toBeInTheDocument();
+    expect(within(main).getByRole('listitem')).toHaveTextContent('Type I UNDERSTAND first.');
+    expect(within(main).getByRole('link', { name: 'Terms of Use' })).toHaveAttribute('href', '/terms');
+    // The calendar icon beside the date is decoration.
+    expect(within(main).getByText('Last updated November 1, 2026').querySelector('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+  });
 });

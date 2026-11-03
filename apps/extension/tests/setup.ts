@@ -8,6 +8,11 @@ import { afterEach } from 'vitest';
 // hundreds of rows can take more than the default second under that load.
 configure({ asyncUtilTimeout: 5000 });
 
+// happy-dom's Web Animations are partial: cancelling one rejects its `finished` promise with nothing to catch it,
+// which Fluent UI's motion does whenever a dialog or tooltip closes. Without `animate`, Fluent skips its
+// animations, as it does in browsers without the API (ADR-0019).
+if (typeof Element !== 'undefined') Reflect.deleteProperty(Element.prototype, 'animate');
+
 afterEach(async () => {
   if (typeof document === 'undefined') return;
   const { cleanup } = await import('@testing-library/react');

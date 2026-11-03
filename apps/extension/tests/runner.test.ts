@@ -79,6 +79,7 @@ const IDLE: RunnerState = {
   status: 'idle',
   message: '',
   waitUntil: null,
+  waitFrom: null,
   need: null,
   busyElsewhere: false,
 };
@@ -238,15 +239,22 @@ describe('runner: a run that ends by itself', () => {
     expect(busyDuring).toBe(true);
     expect(states).toContainEqual(expect.objectContaining({ jobId: job.id, status: 'running', message: 'Starting…' }));
     expect(states).toContainEqual(
-      expect.objectContaining({ jobId: job.id, status: 'running', message: 'Deleting: “hello”', waitUntil: null }),
-    );
-    expect(states).toContainEqual(
       expect.objectContaining({
-        status: 'waiting',
-        message: 'X rate limit — waiting for the window to reset',
-        waitUntil: NOW + 5 * MINUTE,
+        jobId: job.id,
+        status: 'running',
+        message: 'Deleting: “hello”',
+        waitUntil: null,
+        waitFrom: null,
       }),
     );
+    // A wait also says when it began, so the dashboard can fill a bar toward its end.
+    const wait = states.find((s) => s.status === 'waiting');
+    expect(wait).toMatchObject({
+      message: 'X rate limit — waiting for the window to reset',
+      waitUntil: NOW + 5 * MINUTE,
+    });
+    expect(wait?.waitFrom).toBeGreaterThanOrEqual(NOW);
+    expect(wait?.waitFrom).toBeLessThan(NOW + 5 * MINUTE);
     expect(runner.getState()).toEqual(IDLE);
     expect(runner.busy).toBe(false);
     expect(locks.held.size).toBe(0);

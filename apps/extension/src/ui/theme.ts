@@ -3,6 +3,9 @@ export type ThemeChoice = 'system' | 'light' | 'dark';
 
 const KEY = 'xomoni.theme';
 
+/** The window event `setTheme` dispatches after a change, so Fluent's provider follows it (ADR-0019). */
+export const THEME_EVENT = 'xomoni-theme';
+
 /** The saved theme from `localStorage`; `system` when nothing is saved or storage is unavailable. */
 export function getStoredTheme(): ThemeChoice {
   try {
@@ -22,6 +25,13 @@ export function setTheme(choice: ThemeChoice) {
     /* storage unavailable; the choice still applies to this page */
   }
   applyTheme(choice);
+  window.dispatchEvent(new Event(THEME_EVENT));
+}
+
+/** The mode a choice shows: `system` resolves to the operating system's current setting. */
+export function resolveTheme(choice: ThemeChoice): 'light' | 'dark' {
+  if (choice !== 'system') return choice;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function applyTheme(choice: ThemeChoice) {

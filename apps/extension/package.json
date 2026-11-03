@@ -13,6 +13,8 @@
     "preview:ui": "vite --open /preview.html"
   },
   "dependencies": {
+    "@fluentui/react-components": "^9.75.1",
+    "@fluentui/react-icons": "^2.0.345",
     "@xomoni/consent": "*",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",

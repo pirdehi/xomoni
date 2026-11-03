@@ -34,6 +34,20 @@ export function fmtDuration(ms: number) {
   return `${s}s`;
 }
 
+/**
+ * When something that takes `ms` from `now` should end, on this computer's clock: `around 18:40` today,
+ * `around 05:00 tomorrow`, or the date further out (`around Nov 6, 09:15`).
+ */
+export function fmtFinish(ms: number, now = Date.now()) {
+  const end = new Date(now + Math.max(0, ms));
+  const time = end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOfDay(end) - startOfDay(new Date(now))) / 86_400_000);
+  if (days === 0) return `around ${time}`;
+  if (days === 1) return `around ${time} tomorrow`;
+  return `around ${end.toLocaleDateString('en', { month: 'short', day: 'numeric' })}, ${time}`;
+}
+
 /** Relative time for a past timestamp (`just now`, `5m ago`, `3h ago`); after 24 hours, the date. */
 export function fmtAgo(ms: number, now = Date.now()) {
   const diff = Math.max(0, now - ms);

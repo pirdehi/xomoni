@@ -21,6 +21,8 @@ export interface RunnerState {
   message: string;
   /** When the current wait ends (epoch ms), while `status` is `waiting`. */
   waitUntil: number | null;
+  /** When the current wait began (epoch ms), so the dashboard can show how much of it has passed. */
+  waitFrom: number | null;
   /** What X needs from the person, while `status` is `attention`. */
   need: Need | null;
   /** The last start failed because another dashboard tab holds the runner lock. */
@@ -32,6 +34,7 @@ const IDLE: RunnerState = {
   status: 'idle',
   message: '',
   waitUntil: null,
+  waitFrom: null,
   need: null,
   busyElsewhere: false,
 };
@@ -60,7 +63,16 @@ export class Runner {
   getState = () => this.state;
 
   private set(patch: Partial<RunnerState>) {
-    this.state = { ...this.state, ...patch };
+    // A new end time starts a new wait; the same one keeps its start.
+    const waitFrom =
+      patch.waitUntil === undefined
+        ? this.state.waitFrom
+        : patch.waitUntil === null
+          ? null
+          : patch.waitUntil === this.state.waitUntil
+            ? this.state.waitFrom
+            : Date.now();
+    this.state = { ...this.state, ...patch, waitFrom };
     this.listeners.forEach((l) => l());
   }
 

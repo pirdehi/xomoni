@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { applyStoredTheme, getStoredTheme, setTheme } from '../../src/ui/theme';
+import { THEME_EVENT, applyStoredTheme, getStoredTheme, resolveTheme, setTheme } from '../../src/ui/theme';
 
 const KEY = 'xomoni.theme';
 
@@ -48,6 +48,24 @@ describe('theme', () => {
     expect(getStoredTheme()).toBe('system');
     applyStoredTheme();
     expect(document.documentElement).not.toHaveAttribute('data-theme');
+  });
+
+  it('announces every change, so Fluent’s provider follows it (ADR-0019)', () => {
+    const heard = vi.fn();
+    window.addEventListener(THEME_EVENT, heard);
+    setTheme('dark');
+    setTheme('system');
+    window.removeEventListener(THEME_EVENT, heard);
+    expect(heard).toHaveBeenCalledTimes(2);
+  });
+
+  it('resolves “system” to the operating system’s mode, and keeps a fixed choice', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    expect(resolveTheme('system')).toBe('dark');
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    expect(resolveTheme('system')).toBe('light');
+    expect(resolveTheme('dark')).toBe('dark');
+    expect(resolveTheme('light')).toBe('light');
   });
 
   it('falls back to system when storage cannot be read', () => {

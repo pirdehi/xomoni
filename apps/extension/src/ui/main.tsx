@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { recoverInterruptedJobs } from '../engine/runner';
 import { App } from './App';
+import { FluentRoot } from './fluent';
 import { applyStoredTheme } from './theme';
 import './styles.css';
 
@@ -13,6 +14,8 @@ if (!root) throw new Error('dashboard.html has no #root element');
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <FluentRoot>
+      <App />
+    </FluentRoot>
   </StrictMode>,
 );

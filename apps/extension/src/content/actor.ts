@@ -20,6 +20,7 @@ import {
   SEL,
   articleInfo,
   click,
+  clickTarget,
   closeMenus,
   describeDialog,
   describeLayers,
@@ -246,9 +247,10 @@ async function activate<T>(
   timeoutMs: number,
   stepWaitMs = 1500,
 ): Promise<{ result: T; via: Via } | null> {
+  // Clicks and presses land where a pointer at the center would, and bubble up through `el`.
   const steps: [Via, () => void, number][] = [
-    ['click', () => click(el), stepWaitMs],
-    ['press', () => pressPointer(el), stepWaitMs],
+    ['click', () => click(clickTarget(el)), stepWaitMs],
+    ['press', () => pressPointer(clickTarget(el)), stepWaitMs],
     ['enter', () => pressEnter(el), timeoutMs],
   ];
   for (const [via, run, waitMs] of steps) {

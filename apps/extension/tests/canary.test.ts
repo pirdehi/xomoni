@@ -11,8 +11,11 @@ interface Page {
   escapeCloses?: boolean;
   liked?: boolean | null;
   reposted?: boolean | null;
-  /** What X's Delete option and its confirm button answer: a click, only a full press, only Enter, or nothing (#121). */
-  answers?: 'click' | 'press' | 'enter' | 'nothing';
+  /**
+   * What X's Delete option and its confirm button answer: a click, a click on their label only (a handler inside
+   * them), only a full press, only Enter, or nothing (#121).
+   */
+  answers?: 'click' | 'label' | 'press' | 'enter' | 'nothing';
 }
 
 /** Every click on a menu option, which a canary must never make. */
@@ -57,6 +60,9 @@ function renderX({
         optionClicks.push(item.textContent);
         if (item.textContent === 'Delete' && answers === 'click') openSheet(el);
       });
+      item.querySelector('span')?.addEventListener('click', () => {
+        if (item.textContent === 'Delete' && answers === 'label') openSheet(el);
+      });
       item.addEventListener('pointerup', () => {
         if (item.textContent === 'Delete' && answers === 'press') openSheet(el);
       });
@@ -77,8 +83,9 @@ function renderX({
     menuEl.remove();
     const sheet = document.createElement('div');
     sheet.setAttribute('role', 'alertdialog');
-    sheet.innerHTML = '<button data-testid="confirmationSheetConfirm">Delete</button>';
+    sheet.innerHTML = '<button data-testid="confirmationSheetConfirm"><span>Delete</span></button>';
     const confirm = sheet.querySelector('button')!;
+    confirm.querySelector('span')!.addEventListener('click', () => answers === 'label' && deleted());
     const deleted = () => {
       sheet.remove();
       handleCapture({
@@ -160,6 +167,14 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
   it('deletes with clicks when X takes them, saying nothing about Enter', async () => {
     document.cookie = 'twid=u%3D1';
     renderX();
+    expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({ outcome: 'done', http: 200 });
+    expect(optionClicks).toEqual(['Delete']);
+    document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  });
+
+  it('clicks where a pointer would land, so handlers on the label hear it (#121)', async () => {
+    document.cookie = 'twid=u%3D1';
+    renderX({ answers: 'label' });
     expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({ outcome: 'done', http: 200 });
     expect(optionClicks).toEqual(['Delete']);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';

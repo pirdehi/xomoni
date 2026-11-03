@@ -147,6 +147,27 @@ export function closeMenus() {
 }
 
 /**
+ * The element a click at the center of `el` would land on: what the page shows there when it is inside `el`,
+ * otherwise (no layout, or something else on top) the deepest element that holds all of `el`'s text, as its
+ * label does. A real click starts there and bubbles up through `el`, so handlers on the label hear it too (#121).
+ */
+export function clickTarget(el: HTMLElement): HTMLElement {
+  const box = el.getBoundingClientRect();
+  const hit =
+    box.width && box.height ? document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) : null;
+  if (hit instanceof HTMLElement && el.contains(hit)) return hit;
+  const text = el.textContent.trim();
+  let node = el;
+  for (;;) {
+    const child = [...node.children].find(
+      (c): c is HTMLElement => c instanceof HTMLElement && c.textContent.trim() === text,
+    );
+    if (!child || !text) return node;
+    node = child;
+  }
+}
+
+/**
  * Presses `el` the way a mouse button does, at its center: pointerdown, mousedown, pointerup, mouseup, then click.
  * Some controls act on the press, not on a lone `click()` (#121). No path, no hover: just the press, and the
  * events are synthetic like every Xomoni event (PLAYBOOK B3), so a page that wants real input still refuses.

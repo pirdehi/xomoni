@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   articleInfo,
+  clickTarget,
   closeMenus,
   describeDialog,
   describeLayers,
@@ -87,6 +88,17 @@ describe('menus, pop-ups and notices', () => {
     closeMenus();
     expect(maskClick).toHaveBeenCalledOnce();
     expect(escape).toHaveBeenCalledWith('Escape');
+  });
+
+  it('aims a click at the label a pointer would land on, not the outer element (#121)', () => {
+    document.body.innerHTML =
+      '<div role="menuitem"><div><svg></svg></div><div><div dir="ltr"><span>Delete</span></div></div></div>';
+    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!;
+    expect(clickTarget(item)).toBe(document.querySelector('span'));
+    // An element without text is its own target.
+    document.body.innerHTML = '<button data-testid="caret"><svg></svg></button>';
+    const caret = document.querySelector<HTMLElement>('button')!;
+    expect(clickTarget(caret)).toBe(caret);
   });
 
   it('presses an element like a mouse button, at its center, with nothing before the press (#121)', () => {

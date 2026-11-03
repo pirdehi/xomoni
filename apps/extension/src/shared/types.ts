@@ -330,4 +330,9 @@ export interface Settings {
   maxConsecutiveFailures: number;
   /** Desktop notifications when X needs you and when a job ends. */
   notifications: boolean;
+  /**
+   * Keep going while the person is away: the display stays on while a job runs, and after two minutes without
+   * keyboard or mouse a covered X window is brought forward so the job continues.
+   */
+  whileAway: boolean;
 }

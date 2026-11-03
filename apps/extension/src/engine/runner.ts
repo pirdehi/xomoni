@@ -170,6 +170,8 @@ export class Runner {
     try {
       await ctx.save();
       await ctx.init();
+      // The display stays on while the job runs, so the X window stays on screen when the person steps away.
+      if (ctx.settings.whileAway) this.ports.presence.keepDisplayOn(true);
       await ctx.log('info', 'system', `Started “${job.title}”`);
       await runSteps(ctx);
       // Completed, but with what the person should know, such as posts Xomoni couldn't see. If they pressed
@@ -232,6 +234,7 @@ export class Runner {
         );
       }
     } finally {
+      this.ports.presence.keepDisplayOn(false);
       this.controller = null;
       this.stopRequest = null;
       this.set(IDLE);

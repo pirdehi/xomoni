@@ -171,7 +171,11 @@ describe('runner: a run that ends by itself', () => {
     // A test double: the same fakes as the worker tab, standing in for any other XTab adapter.
     const tab = { ...worker, current } as unknown as XTab;
     const notifier = { notify: vi.fn(() => Promise.resolve()), clear: vi.fn() };
-    const other = new Runner({ xTab: tab, notifier });
+    const presence = {
+      away: vi.fn<(seconds: number) => Promise<boolean>>(() => Promise.resolve(false)),
+      keepDisplayOn: vi.fn<(on: boolean) => void>(),
+    };
+    const other = new Runner({ xTab: tab, notifier, presence });
     const job = await newCleanup();
     let seen: unknown;
     runCleanup.mockImplementation(async (ctx) => {
@@ -189,6 +193,7 @@ describe('runner: a run that ends by itself', () => {
     );
     // The Chrome adapters behind the dashboard's own runner were not touched.
     expect(notify).not.toHaveBeenCalled();
+    expect(presence.keepDisplayOn.mock.calls).toEqual([[true], [false]]);
   });
 
   it('completes a cleanup job, logs a summary and the health report, and notifies', async () => {
@@ -820,5 +825,54 @@ describe('createCleanupJob and createScanJob', () => {
     expect(await stored(archive.id)).toMatchObject({ kind: 'scan', scan: 'range', range, title: 'Archive 2025' });
     expect(posts.id).not.toBe(archive.id);
     expect(runScan).not.toHaveBeenCalled();
+  });
+});
+
+describe('runner: keeps the display on while a job runs (keep going while away)', () => {
+  /** A runner on fake ports, and the calls it made to keep the display on. */
+  function runnerWithPresence() {
+    const presence = {
+      away: vi.fn<(seconds: number) => Promise<boolean>>(() => Promise.resolve(false)),
+      keepDisplayOn: vi.fn<(on: boolean) => void>(),
+    };
+    const notifier = { notify: vi.fn(() => Promise.resolve()), clear: vi.fn() };
+    const own = new Runner({ xTab: worker as unknown as XTab, notifier, presence });
+    return { own, displayOn: () => presence.keepDisplayOn.mock.calls.map(([on]) => on) };
+  }
+
+  it('holds the display on from the start and lets it go when the job ends', async () => {
+    const { own, displayOn } = runnerWithPresence();
+    const job = await newCleanup();
+    let during: boolean[] = [];
+    runCleanup.mockImplementation(async () => {
+      during = displayOn();
+    });
+
+    await own.start(job.id);
+
+    expect(during).toEqual([true]);
+    expect(displayOn()).toEqual([true, false]);
+  });
+
+  it('lets the display go when the job fails, too', async () => {
+    const { own, displayOn } = runnerWithPresence();
+    const job = await newCleanup();
+    runCleanup.mockRejectedValue(new Error('boom'));
+
+    await own.start(job.id);
+
+    expect((await db.jobs.get(job.id))?.state).toBe('failed');
+    expect(displayOn()).toEqual([true, false]);
+  });
+
+  it('never holds the display when “Keep going while I’m away” is off', async () => {
+    await kvSet('settings', { whileAway: false });
+    const { own, displayOn } = runnerWithPresence();
+    const job = await newCleanup();
+    runCleanup.mockResolvedValue();
+
+    await own.start(job.id);
+
+    expect(displayOn()).toEqual([false]);
   });
 });

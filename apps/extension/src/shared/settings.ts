@@ -37,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   activeHours: { enabled: true, start: 8, end: 23 },
   maxConsecutiveFailures: 2,
   notifications: true,
+  whileAway: true,
 };
 
 /**

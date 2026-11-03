@@ -11,7 +11,10 @@ import { DEFAULT_SETTINGS } from '../src/shared/settings';
 import type { Job } from '../src/shared/types';
 import { ACCOUNT, page } from './support/engine';
 
-const { worker } = vi.hoisted(() => ({ worker: { ping: vi.fn(), send: vi.fn(), navigate: vi.fn() } }));
+const { worker, presence } = vi.hoisted(() => ({
+  worker: { ping: vi.fn(), send: vi.fn(), navigate: vi.fn(), focus: vi.fn() },
+  presence: { away: vi.fn(), keepDisplayOn: vi.fn() },
+}));
 
 // The real sleep runs on a Web Worker, which tests don't have; the worker tab needs Chrome.
 vi.mock('../src/engine/timers', async (importOriginal) => ({
@@ -22,6 +25,7 @@ vi.mock('../src/engine/worker-tab', async (importOriginal) => ({
   ...(await importOriginal<typeof WorkerTabModule>()),
   workerTab: worker,
 }));
+vi.mock('../src/engine/presence', () => ({ presence }));
 
 const MINUTE = 60_000;
 
@@ -147,12 +151,80 @@ describe('waitForYou: a hidden window (#118)', () => {
     await expect(ctx.waitForYou(login())).rejects.toThrow(/X keeps asking for the same thing/);
   });
 
-  it('pauses the job after an hour with the window still hidden', async () => {
+  it('waits a day for a hidden window, not an hour, then pauses the job', async () => {
     const { ctx } = setup();
     pingsTaking(20 * MINUTE, page({ hidden: true }));
+    const started = Date.now();
     const err = await ctx.waitForYou(hidden()).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(Stop);
     expect((err as Stop).state).toBe('paused');
-    expect((err as Stop).message).toMatch(/^Waited an hour for you\. The Xomoni window is hidden/);
+    expect((err as Stop).message).toMatch(/^Waited a day for you\. The Xomoni window is hidden/);
+    expect(Date.now() - started).toBeGreaterThan(23 * 60 * MINUTE);
+  });
+});
+
+describe('waitForYou: keep going while the person is away', () => {
+  const hidden = () => new NeedsYou('hidden', needMessage('hidden', 'me'));
+
+  beforeEach(() => {
+    worker.focus.mockResolvedValue(undefined);
+  });
+
+  it('brings the covered X window forward once the person is away, then continues', async () => {
+    const { ctx, job } = setup();
+    presence.away.mockResolvedValue(true);
+    pingsTaking(1500, page({ hidden: true }), page());
+
+    await ctx.waitForYou(hidden());
+
+    expect(presence.away).toHaveBeenCalledWith(120);
+    expect(worker.focus).toHaveBeenCalledOnce();
+    expect(job.state).toBe('running');
+    expect(await messages()).toContain('You’re away: brought the X window forward to continue');
+  });
+
+  it('leaves the window alone while the person is at the computer', async () => {
+    const { ctx } = setup();
+    presence.away.mockResolvedValue(false);
+    pingsTaking(1500, page({ hidden: true }), page({ hidden: true }), page());
+
+    await ctx.waitForYou(hidden());
+
+    expect(presence.away).toHaveBeenCalled();
+    expect(worker.focus).not.toHaveBeenCalled();
+  });
+
+  it('brings it forward at most every five minutes when something keeps covering it', async () => {
+    const { ctx } = setup();
+    presence.away.mockResolvedValue(true);
+    // A ping a minute: covered for seven minutes, then on screen.
+    pingsTaking(MINUTE, ...Array.from({ length: 7 }, () => page({ hidden: true })), page());
+
+    await ctx.waitForYou(hidden());
+
+    expect(worker.focus).toHaveBeenCalledTimes(2);
+  });
+
+  it('does nothing of the kind when “Keep going while I’m away” is off', async () => {
+    const { ctx } = setup();
+    ctx.settings = { ...DEFAULT_SETTINGS, whileAway: false };
+    presence.away.mockResolvedValue(true);
+    pingsTaking(1500, page({ hidden: true }), page());
+
+    await ctx.waitForYou(hidden());
+
+    expect(presence.away).not.toHaveBeenCalled();
+    expect(worker.focus).not.toHaveBeenCalled();
+  });
+
+  it('never brings the window forward for what X asks of the person, such as a login', async () => {
+    const { ctx } = setup();
+    presence.away.mockResolvedValue(true);
+    pingsTaking(1500, page());
+
+    await ctx.waitForYou(new NeedsYou('login', needMessage('login', 'me')));
+
+    expect(presence.away).not.toHaveBeenCalled();
+    expect(worker.focus).not.toHaveBeenCalled();
   });
 });

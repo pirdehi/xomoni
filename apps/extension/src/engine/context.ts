@@ -10,10 +10,19 @@ import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } fro
 import { BUDGETS, type BudgetId, quotaHit, readBudgetFor, unexplainedRefusal } from '../shared/x-limits';
 import { Limiter } from './limiter';
 import { Aborted, randomBetween, sleep } from './timers';
-import { type EnginePorts, NotReady, WorkerGone, type XTab } from './ports';
+import { type EnginePorts, NotReady, type Presence, WorkerGone, type XTab } from './ports';
 
 /** How long a job waits for the person before pausing. */
 const WAIT_FOR_YOU_MS = HOUR;
+/**
+ * How long it waits for a hidden X window. Longer: waiting is no risk with X, and with "keep going while I'm away"
+ * the window comes forward by itself once the person steps away, so the job shouldn't pause before that.
+ */
+const WAIT_FOR_WINDOW_MS = DAY;
+/** No keyboard or mouse this long counts as away. */
+const AWAY_SECONDS = 120;
+/** Brings the X window forward at most this often, so a window something else keeps covering isn't raised in a loop. */
+const RAISE_EVERY_MS = 5 * 60_000;
 /** The page must look right this long before continuing (X redirects mid-login). */
 const SETTLED_MS = 5000;
 /** The same check this many times with no progress in between means waiting won't help. */
@@ -143,6 +152,8 @@ export class JobContext {
 
   /** The X tab this run drives (a port; the dashboard's adapter is `worker-tab.ts`). */
   readonly xTab: XTab;
+  /** Whether the person is away (a port; the dashboard's adapter is `presence.ts`). */
+  private readonly presence: Presence;
 
   constructor(
     public job: Job,
@@ -151,6 +162,7 @@ export class JobContext {
     ports: EnginePorts,
   ) {
     this.xTab = ports.xTab;
+    this.presence = ports.presence;
   }
 
   /**
@@ -307,13 +319,25 @@ export class JobContext {
     // An error code alone doesn't put X's prompt on screen; a fresh load does.
     if (request.fromAction) await this.xTab.navigate('https://x.com/home', this.signal).catch(rethrowIfStopped);
 
-    const deadline = Date.now() + WAIT_FOR_YOU_MS;
+    const hidden = request.need === 'hidden';
+    const deadline = Date.now() + (hidden ? WAIT_FOR_WINDOW_MS : WAIT_FOR_YOU_MS);
     let settledSince = 0;
+    let raisedAt = 0;
     while (!settledSince || Date.now() - settledSince < SETTLED_MS) {
       if (Date.now() > deadline) {
-        throw new Stop('paused', `Waited an hour for you. ${request.message} Then resume the job.`);
+        throw new Stop(
+          'paused',
+          `Waited ${hidden ? 'a day' : 'an hour'} for you. ${request.message} Then resume the job.`,
+        );
       }
       await sleep(1500, this.signal);
+      if (hidden && this.settings.whileAway && Date.now() - raisedAt >= RAISE_EVERY_MS) {
+        if (await this.presence.away(AWAY_SECONDS)) {
+          raisedAt = Date.now();
+          await this.xTab.focus().catch(() => {});
+          await this.log('info', 'system', 'You’re away: brought the X window forward to continue');
+        }
+      }
       const info = await this.xTab.ping();
       settledSince = info && !pageNeed(info, this.job.accountId) ? settledSince || Date.now() : 0;
     }

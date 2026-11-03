@@ -16,6 +16,7 @@
     "@fluentui/react-components": "^9.75.1",
     "@fluentui/react-icons": "^2.0.345",
     "@xomoni/consent": "*",
+    "@xomoni/fluent-theme": "*",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "react": "^19.3.1",

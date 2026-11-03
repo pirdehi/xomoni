@@ -25,11 +25,24 @@ export function setLocation(path: string, query = '') {
 export function resetNavigation() {
   for (const fn of Object.values(router)) fn.mockReset();
   setLocation('/');
+  insertedHTML = [];
 }
 
 export const useRouter = () => router;
 export const useSearchParams = () => params;
 export const usePathname = () => pathname;
+
+let insertedHTML: (() => unknown)[] = [];
+
+/** Records what a component would insert into the server-rendered page; `serverInsertedHTML` runs it. */
+export const useServerInsertedHTML = (callback: () => unknown) => {
+  insertedHTML.push(callback);
+};
+
+/** Runs every recorded `useServerInsertedHTML` callback, as Next.js does while streaming, and returns what they gave. */
+export function serverInsertedHTML(): unknown[] {
+  return insertedHTML.map((callback) => callback());
+}
 
 /** What `redirect` and `notFound` throw, so a test can assert the destination. */
 export class NavigationThrow extends Error {

@@ -85,8 +85,10 @@ async function renderWithArchive(count = 3) {
   return props;
 }
 
+/** Opens the confirmation and waits until its DELETE field has the focus, as it does for the person. */
 async function openConfirm() {
   await userEvent.click(startButton());
+  await waitFor(() => expect(confirmInput()).toHaveFocus());
   return dialog();
 }
 

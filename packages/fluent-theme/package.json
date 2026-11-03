@@ -1,0 +1,23 @@
+{
+  "name": "@xomoni/fluent-theme",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Xomoni's Fluent UI themes (ADR-0019): the brand ramp from Xomoni's blue and the light and dark themes, shared by the extension and xomoni.com.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage --coverage.include='src/**/*.ts' --coverage.thresholds.100 --coverage.reporter=text-summary"
+  },
+  "peerDependencies": {
+    "@fluentui/react-components": "^9.75.1"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.5",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

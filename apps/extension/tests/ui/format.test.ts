@@ -12,6 +12,7 @@ import {
   fmtDate,
   fmtDateTime,
   fmtDuration,
+  fmtFinish,
   fmtNumber,
   fromDateInput,
   postUrl,
@@ -155,5 +156,20 @@ describe('downloadFile', () => {
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1000);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-1');
+  });
+});
+
+describe('fmtFinish: when a job should end, on this computer’s clock', () => {
+  // 14:30 local time on Nov 3, 2026.
+  const NOW = new Date(2026, 10, 3, 14, 30).getTime();
+
+  it('gives the time today, tomorrow, or the date further out', () => {
+    expect(fmtFinish(2 * HOUR + 10 * MINUTE, NOW)).toBe('around 16:40');
+    expect(fmtFinish(14 * HOUR, NOW)).toBe('around 04:30 tomorrow');
+    expect(fmtFinish(3 * DAY, NOW)).toBe('around Nov 6, 14:30');
+  });
+
+  it('never ends before now', () => {
+    expect(fmtFinish(-HOUR, NOW)).toBe('around 14:30');
   });
 });

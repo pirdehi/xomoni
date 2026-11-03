@@ -37,6 +37,7 @@ vi.mock('../../src/ui/hooks', async (importOriginal) => {
       status: mocks.runStatus.current,
       message: '',
       waitUntil: null,
+      waitFrom: null,
       need: null,
       busyElsewhere: false,
     }),

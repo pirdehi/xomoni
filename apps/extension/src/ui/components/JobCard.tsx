@@ -1,28 +1,182 @@
+import {
+  Badge,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Field,
+  Input,
+  ProgressBar,
+  Text,
+  Tooltip,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import {
+  ArrowRedo16Regular,
+  CheckmarkCircle16Regular,
+  Clock16Regular,
+  Delete16Regular,
+  DocumentSearch20Regular,
+  ErrorCircle16Regular,
+  HourglassHalf16Regular,
+  Open16Regular,
+  Pause16Regular,
+  Play16Regular,
+  Prohibited16Regular,
+  ShieldCheckmark16Regular,
+  ShieldError16Regular,
+  Warning16Regular,
+} from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Ban, Clock, Play, Pause, ScanSearch, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { runner } from '../../engine/platform';
 import { workerTab } from '../../engine/worker-tab';
 import { db, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration } from '../../shared/filter';
 import type { JobHealth } from '../../shared/health';
-import type { Job } from '../../shared/types';
-import { JOB_STATE, errorMessage, fmtAgo, fmtDuration, fmtNumber } from '../format';
-import { resumeAnyway, startJob, toast, usePace, useRisk, useRunner } from '../hooks';
-import { scaleRule } from '../../shared/x-limits';
 import { RISK_LABELS } from '../../shared/risk';
-import { Badge, Button, Modal, cx, useNow } from './ui';
+import type { Job } from '../../shared/types';
+import { scaleRule } from '../../shared/x-limits';
+import { JOB_STATE, errorMessage, fmtAgo, fmtDuration, fmtFinish, fmtNumber } from '../format';
+import { resumeAnyway, startJob, toast, usePace, useRisk, useRunner } from '../hooks';
+import { ProgressRing } from './ProgressRing';
+import { type Tone, useNow } from './ui';
 
 const RESUMABLE = new Set(['queued', 'paused', 'blocked', 'failed']);
 const TERMINAL = new Set(['completed', 'cancelled']);
 
+/** Fluent's badge color for each of the dashboard's tones. */
+const BADGE_COLOR = {
+  neutral: 'informative',
+  accent: 'brand',
+  good: 'success',
+  warn: 'warning',
+  serious: 'severe',
+  critical: 'danger',
+} as const satisfies Record<Tone, string>;
+
+const useStyles = makeStyles({
+  card: {
+    padding: tokens.spacingHorizontalL,
+    rowGap: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusXLarge,
+    boxShadow: tokens.shadow4,
+  },
+  compact: { padding: tokens.spacingHorizontalM },
+  header: { display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalM },
+  kindIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '40px',
+    height: '40px',
+    flexShrink: 0,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+  },
+  heading: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalXXS, minWidth: 0, flexGrow: 1 },
+  titleRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalS },
+  title: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' },
+  meta: { color: tokens.colorNeutralForeground3 },
+  eta: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    columnGap: tokens.spacingHorizontalXS,
+    color: tokens.colorNeutralForeground2,
+  },
+  controls: { display: 'flex', flexShrink: 0, gap: tokens.spacingHorizontalS },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
+  chip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    paddingBlock: tokens.spacingVerticalXXS,
+    paddingInline: tokens.spacingHorizontalS,
+    borderRadius: tokens.borderRadiusCircular,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+    fontVariantNumeric: 'tabular-nums',
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+  },
+  good: { backgroundColor: tokens.colorStatusSuccessBackground1, color: tokens.colorStatusSuccessForeground1 },
+  critical: { backgroundColor: tokens.colorStatusDangerBackground1, color: tokens.colorStatusDangerForeground1 },
+  strong: { fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1 },
+  status: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalXS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  attention: {
+    backgroundColor: tokens.colorStatusWarningBackground1,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorStatusWarningBorder1}`,
+  },
+  statusRow: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, minWidth: 0 },
+  statusText: {
+    flexGrow: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase200,
+  },
+  countdown: {
+    flexShrink: 0,
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase200,
+  },
+  reason: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground2, margin: 0 },
+  reasonCritical: { color: tokens.colorStatusDangerForeground1 },
+  health: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    borderRadius: tokens.borderRadiusLarge,
+    fontSize: tokens.fontSizeBase200,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+  },
+  healthWarn: { backgroundColor: tokens.colorStatusWarningBackground1 },
+  healthSerious: { backgroundColor: tokens.colorStatusDangerBackground1 },
+  healthIcon: { flexShrink: 0, marginTop: '1px', color: tokens.colorStatusSuccessForeground1 },
+  healthIconWarn: { color: tokens.colorStatusWarningForeground1 },
+  healthIconSerious: { color: tokens.colorStatusDangerForeground1 },
+  dialogText: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalM },
+  pulse: {
+    animationName: { '0%': { opacity: 1 }, '50%': { opacity: 0.45 }, '100%': { opacity: 1 } },
+    animationDuration: '1.6s',
+    animationIterationCount: 'infinite',
+    '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
+  },
+});
+
 /**
- * One job with its state, progress, time estimate and controls. While the runner in this tab is
- * executing the job, its live status replaces the stored state. While the risk ladder holds the account back
- * (a resume lock or a full stop), Resume waits and only a typed "Resume anyway" goes ahead. After a run, it
- * shows the account health report from the end of that run.
+ * One job with its state, progress, time estimate and controls, drawn with Fluent UI (ADR-0019). Cleanups show a
+ * progress ring, the counts as colored chips and when the job should end; scans show how many posts were looked at.
+ * While the runner in this tab is executing the job, its live status replaces the stored state, with a countdown
+ * while it waits. While the risk ladder holds the account back (a resume lock or a full stop), Resume waits and only
+ * a typed "Resume anyway" goes ahead. After a run, it shows the account health report from the end of that run.
  */
 export function JobCard({ job, compact = false }: { job: Job; compact?: boolean }) {
+  const styles = useStyles();
   const run = useRunner();
   const now = useNow(1000);
   const active = run.jobId === job.id && run.status !== 'idle';
@@ -43,7 +197,7 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
 
   const { matched, done, skipped, failed, scanned } = job.stats;
   const settled = done + skipped + failed;
-  const pct = job.kind === 'cleanup' && matched > 0 ? Math.min(100, (settled / matched) * 100) : null;
+  const pct = job.kind === 'cleanup' && matched > 0 ? Math.min(100, (settled / matched) * 100) : 0;
   const remaining = Math.max(0, matched - settled);
   const eta =
     job.kind === 'cleanup' && job.filter && settings && remaining > 0
@@ -55,124 +209,158 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
       : null;
 
   return (
-    <div className={cx('rounded-xl border border-line bg-surface', compact ? 'p-4' : 'p-5')}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-ink-2">
-            {job.kind === 'scan' ? <ScanSearch size={15} /> : <Sparkles size={15} />}
+    <Card className={mergeClasses(styles.card, compact && styles.compact)}>
+      <div className={styles.header}>
+        {job.kind === 'cleanup' ? (
+          <ProgressRing value={pct} label={`${fmtNumber(settled)} of ${fmtNumber(matched)} settled`} />
+        ) : (
+          <div className={styles.kindIcon}>
+            <DocumentSearch20Regular />
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-sm font-semibold">{job.title}</span>
-              <Badge tone={state.tone}>{state.label}</Badge>
-            </div>
-            <div className="mt-0.5 text-xs text-muted">
-              Created {fmtAgo(job.createdAt, now)}
-              {job.phase && ` · phase: ${job.phase}`}
-            </div>
+        )}
+        <div className={styles.heading}>
+          <div className={styles.titleRow}>
+            <Body1Strong className={styles.title}>{job.title}</Body1Strong>
+            <Badge
+              appearance="tint"
+              color={BADGE_COLOR[state.tone]}
+              className={active && run.status === 'running' ? styles.pulse : undefined}
+              data-status=""
+            >
+              {state.label}
+            </Badge>
           </div>
+          <Caption1 className={styles.meta}>
+            Created {fmtAgo(job.createdAt, now)}
+            {job.phase && ` · phase: ${job.phase}`}
+          </Caption1>
+          {eta != null && !TERMINAL.has(job.state) && (
+            <Caption1 className={styles.eta}>
+              <Clock16Regular aria-hidden />
+              <span>≈ {fmtDuration(eta)} at the current pace</span>
+              <span>· ends {fmtFinish(eta, now)}</span>
+            </Caption1>
+          )}
         </div>
         <JobControls job={job} active={active} />
       </div>
 
       {job.kind === 'cleanup' ? (
-        <div className="mt-4">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-accent-soft">
-            <div
-              className="h-full rounded-full bg-accent transition-[width] duration-500"
-              style={{ width: `${pct ?? 0}%` }}
-            />
-          </div>
-          <div className="tabular mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-2">
-            <span>
-              <span className="font-semibold text-ink">{fmtNumber(done)}</span> removed
-            </span>
-            <span>
-              {fmtNumber(skipped)} skipped
-              {!!job.stats.unavailable && (
-                <span title="Reposts and likes of posts X no longer shows: deleted, or from a suspended or protected account">
-                  {' '}
-                  ({fmtNumber(job.stats.unavailable)} unavailable on X)
-                </span>
-              )}
-            </span>
-            {failed > 0 && <span className="text-critical">{fmtNumber(failed)} failed</span>}
-            <span>{fmtNumber(remaining)} remaining</span>
-            {eta != null && !TERMINAL.has(job.state) && (
-              <span className="inline-flex items-center gap-1">
-                <Clock size={11} /> ≈ {fmtDuration(eta)} at the current pace
-              </span>
+        <div className={styles.chips}>
+          <span className={mergeClasses(styles.chip, done > 0 && styles.good)}>
+            <CheckmarkCircle16Regular aria-hidden />
+            <span className={styles.strong}>{fmtNumber(done)}</span> removed
+          </span>
+          <span className={styles.chip}>
+            <ArrowRedo16Regular aria-hidden />
+            {fmtNumber(skipped)} skipped
+            {!!job.stats.unavailable && (
+              <Tooltip
+                relationship="description"
+                content="Reposts and likes of posts X no longer shows: deleted, or from a suspended or protected account"
+              >
+                <span> ({fmtNumber(job.stats.unavailable)} unavailable on X)</span>
+              </Tooltip>
             )}
-          </div>
+          </span>
+          {failed > 0 && (
+            <span className={mergeClasses(styles.chip, styles.critical)} data-tone="critical">
+              <ErrorCircle16Regular aria-hidden />
+              {fmtNumber(failed)} failed
+            </span>
+          )}
+          <span className={styles.chip}>
+            <HourglassHalf16Regular aria-hidden />
+            {fmtNumber(remaining)} remaining
+          </span>
         </div>
       ) : (
-        <div className="tabular mt-3 text-xs text-ink-2">
-          <span className="font-semibold text-ink">{fmtNumber(scanned)}</span> posts looked at
-        </div>
+        <Caption1>
+          <span className={styles.strong}>{fmtNumber(scanned)}</span> posts looked at
+        </Caption1>
       )}
 
-      {active && run.message && (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-xs text-ink-2">
-          <span className="truncate">{run.message}</span>
-          {run.waitUntil && (
-            <span className="tabular shrink-0 font-medium text-ink">{fmtDuration(run.waitUntil - now)}</span>
-          )}
-          {run.status === 'attention' && (
-            <button
-              type="button"
-              className="shrink-0 font-medium text-accent hover:underline"
-              onClick={() => void workerTab.focus()}
-            >
-              Open X window
-            </button>
-          )}
-        </div>
-      )}
+      {active && run.message && <LiveStatus now={now} />}
       {!active && job.stateReason && (
         <p
-          className={cx(
-            'mt-3 text-xs',
-            job.state === 'blocked' || job.state === 'failed' ? 'text-critical' : 'text-ink-2',
+          className={mergeClasses(
+            styles.reason,
+            (job.state === 'blocked' || job.state === 'failed') && styles.reasonCritical,
           )}
+          data-tone={job.state === 'blocked' || job.state === 'failed' ? 'critical' : 'neutral'}
         >
           {job.stateReason}
         </p>
       )}
       {!active && job.health && <HealthNote health={job.health} />}
+    </Card>
+  );
+}
+
+/**
+ * The runner's live line for the job it is executing: what it is doing, and while it waits, a countdown with a bar
+ * that fills toward the end of the wait. When X needs the person, it offers the way to the X window.
+ */
+function LiveStatus({ now }: { now: number }) {
+  const styles = useStyles();
+  const run = useRunner();
+  const wait = run.waitUntil ? { until: run.waitUntil, from: run.waitFrom ?? now } : null;
+  const attention = run.status === 'attention';
+  return (
+    <div className={mergeClasses(styles.status, attention && styles.attention)}>
+      <div className={styles.statusRow}>
+        {attention ? <Warning16Regular aria-hidden /> : <Clock16Regular aria-hidden />}
+        <span className={styles.statusText} title={run.message}>
+          {run.message}
+        </span>
+        {wait && <span className={styles.countdown}>{fmtDuration(wait.until - now)}</span>}
+        {attention && (
+          <Button size="small" appearance="primary" icon={<Open16Regular />} onClick={() => void workerTab.focus()}>
+            Open X window
+          </Button>
+        )}
+      </div>
+      {wait && (
+        <ProgressBar
+          thickness="medium"
+          shape="rounded"
+          value={Math.min(1, Math.max(0, (now - wait.from) / Math.max(1, wait.until - wait.from)))}
+          aria-label="Time left in this wait"
+        />
+      )}
     </div>
   );
 }
 
 /** The account health report from the end of the job's last run (#25): quiet when healthy, colored otherwise. */
 function HealthNote({ health }: { health: JobHealth }) {
+  const styles = useStyles();
   const healthy = health.level === 0 && !health.notice && Object.keys(health.signals).length === 0;
   const serious = health.level >= 3 || !!health.notice;
   return (
     <div
       role="status"
-      className={cx(
-        'mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs',
-        healthy
-          ? 'border-line bg-surface-2'
-          : serious
-            ? 'border-critical/40 bg-critical/10'
-            : 'border-warn/40 bg-warn/10',
-      )}
+      className={mergeClasses(styles.health, !healthy && (serious ? styles.healthSerious : styles.healthWarn))}
+      data-tone={healthy ? 'good' : serious ? 'critical' : 'warn'}
     >
       {healthy ? (
-        <ShieldCheck size={14} className="mt-px shrink-0 text-good" aria-hidden />
+        <ShieldCheckmark16Regular className={styles.healthIcon} aria-hidden />
       ) : (
-        <ShieldAlert size={14} className={cx('mt-px shrink-0', serious ? 'text-critical' : 'text-warn')} aria-hidden />
+        <ShieldError16Regular
+          className={mergeClasses(styles.healthIcon, serious ? styles.healthIconSerious : styles.healthIconWarn)}
+          aria-hidden
+        />
       )}
-      <p className="text-ink-2">
-        <span className="font-medium text-ink">Account health: </span>
+      <Text size={200}>
+        <span className={styles.strong}>Account health: </span>
         {health.summary}
-      </p>
+      </Text>
     </div>
   );
 }
 
 function JobControls({ job, active }: { job: Job; active: boolean }) {
+  const styles = useStyles();
   const run = useRunner();
   const risk = useRisk(job.accountId);
   const now = useNow(1000);
@@ -181,19 +369,19 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
   const held = !!risk && (risk.fullStop || heldUntil != null);
   if (active) {
     return (
-      <div className="flex shrink-0 gap-2">
+      <div className={styles.controls}>
         <Button
-          size="sm"
-          icon={<Pause size={13} />}
+          size="small"
+          icon={<Pause16Regular />}
           onClick={() => runner.pause()}
           disabled={run.status === 'stopping'}
         >
           Pause
         </Button>
         <Button
-          size="sm"
-          variant="ghost"
-          icon={<Ban size={13} />}
+          size="small"
+          appearance="subtle"
+          icon={<Prohibited16Regular />}
           onClick={() => runner.cancel()}
           disabled={run.status === 'stopping'}
         >
@@ -203,12 +391,12 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
     );
   }
   return (
-    <div className="flex shrink-0 gap-2">
+    <div className={styles.controls}>
       {RESUMABLE.has(job.state) && !held && (
         <Button
-          size="sm"
-          variant="primary"
-          icon={<Play size={13} />}
+          size="small"
+          appearance="primary"
+          icon={<Play16Regular />}
           onClick={() => void startJob(job.id)}
           disabled={run.status !== 'idle'}
         >
@@ -217,21 +405,20 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
       )}
       {RESUMABLE.has(job.state) && held && (
         <>
-          <Button size="sm" variant="primary" icon={<Clock size={13} />} disabled>
+          <Button size="small" appearance="primary" icon={<Clock16Regular />} disabled>
             {heldUntil ? `Resume in ${fmtDuration(heldUntil - now)}` : 'Stopped for safety'}
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={<ShieldAlert size={14} />}
-            onClick={() => setConfirming(true)}
-            aria-label="Resume anyway…"
-            title="Resume anyway…"
-          />
+          <Tooltip content="Resume anyway…" relationship="label">
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<ShieldError16Regular />}
+              onClick={() => setConfirming(true)}
+            />
+          </Tooltip>
           {/* Mounted only while open, so the confirmation starts empty every time. */}
           {confirming && (
-            <ResumeAnywayModal
-              open
+            <ResumeAnywayDialog
               onClose={() => setConfirming(false)}
               onConfirm={() => {
                 setConfirming(false);
@@ -246,9 +433,9 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
       )}
       {!TERMINAL.has(job.state) && job.state !== 'running' && job.state !== 'waiting' && (
         <Button
-          size="sm"
-          variant="ghost"
-          icon={<Ban size={13} />}
+          size="small"
+          appearance="subtle"
+          icon={<Prohibited16Regular />}
           onClick={() => void db.jobs.update(job.id, { state: 'cancelled', finishedAt: Date.now() })}
         >
           Cancel
@@ -256,9 +443,9 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
       )}
       {TERMINAL.has(job.state) && (
         <Button
-          size="sm"
-          variant="ghost"
-          icon={<Trash2 size={13} />}
+          size="small"
+          appearance="subtle"
+          icon={<Delete16Regular />}
           onClick={() => void db.jobs.delete(job.id)}
           title="Remove from the list (the activity log is kept)"
         >
@@ -273,60 +460,51 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
  * Asks the person to type RESUME before going past the risk ladder. Going ahead records an `override` event;
  * the pace then stays at a quarter of Xomoni's share for 48 hours.
  */
-function ResumeAnywayModal({
-  open,
+function ResumeAnywayDialog({
   onClose,
   onConfirm,
   level,
   reason,
   fullStop,
 }: {
-  open: boolean;
   onClose: () => void;
   onConfirm: () => void;
   level: keyof typeof RISK_LABELS;
   reason: string;
   fullStop: boolean;
-}) {
+}): ReactNode {
+  const styles = useStyles();
   const [typed, setTyped] = useState('');
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={`Risk level ${level}: ${RISK_LABELS[level]}`}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Keep waiting
-          </Button>
-          <Button variant="danger" disabled={typed.trim() !== 'RESUME'} onClick={onConfirm}>
-            Resume anyway
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-3 text-sm text-ink-2">
-        <p>
-          <span className="font-medium text-ink">Why Xomoni is holding back:</span> {reason}.
-        </p>
-        <p>
-          {fullStop
-            ? 'This is a full stop. X has escalated against this account, and continuing now risks a suspension.'
-            : 'X is likely watching this account more closely right now. Waiting is the safer choice.'}{' '}
-          If you resume anyway, Xomoni runs at a quarter of its usual share for the next 48 hours, and any new warning
-          from X stops it again.
-        </p>
-        <label className="block">
-          <span className="text-xs text-muted">Type RESUME to continue at your own risk</span>
-          <input
-            className="field mt-1"
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
-      </div>
-    </Modal>
+    <Dialog open onOpenChange={(_, data) => !data.open && onClose()}>
+      <DialogSurface>
+        <DialogBody>
+          <DialogTitle>{`Risk level ${level}: ${RISK_LABELS[level]}`}</DialogTitle>
+          <DialogContent className={styles.dialogText}>
+            <Text>
+              <span className={styles.strong}>Why Xomoni is holding back:</span> {reason}.
+            </Text>
+            <Text>
+              {fullStop
+                ? 'This is a full stop. X has escalated against this account, and continuing now risks a suspension.'
+                : 'X is likely watching this account more closely right now. Waiting is the safer choice.'}{' '}
+              If you resume anyway, Xomoni runs at a quarter of its usual share for the next 48 hours, and any new
+              warning from X stops it again.
+            </Text>
+            <Field label="Type RESUME to continue at your own risk">
+              <Input value={typed} onChange={(_, data) => setTyped(data.value)} autoComplete="off" spellCheck={false} />
+            </Field>
+          </DialogContent>
+          <DialogActions>
+            <Button appearance="secondary" onClick={onClose}>
+              Keep waiting
+            </Button>
+            <Button appearance="primary" disabled={typed.trim() !== 'RESUME'} onClick={onConfirm}>
+              Resume anyway
+            </Button>
+          </DialogActions>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
   );
 }

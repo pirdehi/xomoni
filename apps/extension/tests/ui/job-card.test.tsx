@@ -30,6 +30,7 @@ const fake = vi.hoisted(() => {
     status: 'idle',
     message: '',
     waitUntil: null,
+    waitFrom: null,
     need: null,
     busyElsewhere: false,
   };
@@ -151,8 +152,9 @@ async function show(j: Job, compact?: boolean) {
 }
 
 const risk = (kind: RiskEventKind, ago: number) => db.risk.add({ accountId: ME, kind, at: Date.now() - ago });
-const badge = (label: string) => screen.findByText(label, { selector: 'span.rounded-full' });
-const progressBar = (container: HTMLElement) => container.querySelector<HTMLElement>('.bg-accent-soft > div');
+const badge = (label: string) => screen.findByText(label, { selector: '[data-status]' });
+/** The job's progress ring, a `progressbar` named "… settled"; null for a scan. */
+const ring = () => screen.queryByRole('progressbar', { name: /settled$/ });
 
 describe('JobCard', () => {
   beforeEach(async () => {
@@ -187,7 +189,7 @@ describe('JobCard', () => {
       await show(job({ state: 'paused', stateReason: 'Paused by you.' }));
       expect(await badge('Paused')).toBeInTheDocument();
       expect(await screen.findByRole('button', { name: 'Resume' })).toBeEnabled();
-      expect(screen.getByText('Paused by you.')).not.toHaveClass('text-critical');
+      expect(screen.getByText('Paused by you.')).toHaveAttribute('data-tone', 'neutral');
     });
 
     it.each(['blocked', 'failed'] as const)(
@@ -195,7 +197,7 @@ describe('JobCard', () => {
       async (state) => {
         await show(job({ state, stateReason: 'X refused the action.' }));
         expect(await badge(state === 'blocked' ? 'Stopped for safety' : 'Failed')).toBeInTheDocument();
-        expect(screen.getByText('X refused the action.')).toHaveClass('text-critical');
+        expect(screen.getByText('X refused the action.')).toHaveAttribute('data-tone', 'critical');
         expect(await screen.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
       },
     );
@@ -248,17 +250,17 @@ describe('JobCard', () => {
 
   describe('progress', () => {
     it('shows removed, skipped and remaining counts, the bar and the time left at the current pace', async () => {
-      const { container } = await show(
-        job({ state: 'paused', stats: { matched: 10, done: 4, skipped: 1, failed: 0, scanned: 0 } }),
-      );
+      await show(job({ state: 'paused', stats: { matched: 10, done: 4, skipped: 1, failed: 0, scanned: 0 } }));
       // A new account is on day one of the warm-up: a quarter of the one-fifth caps.
       const eta = estimateDuration(5, scaleRule(PRESETS.careful.delete, 0.25));
       expect(await screen.findByText(`≈ ${fmtDuration(eta)} at the current pace`)).toBeInTheDocument();
+      // And when that is, on this computer's clock.
+      expect(screen.getByText(/^· ends around \d\d:\d\d/)).toBeInTheDocument();
       expect(screen.getByText('removed')).toHaveTextContent('4 removed');
       expect(screen.getByText('1 skipped')).toBeInTheDocument();
       expect(screen.getByText('5 remaining')).toBeInTheDocument();
       expect(screen.queryByText(/failed/)).not.toBeInTheDocument();
-      expect(progressBar(container)).toHaveStyle({ width: '50%' });
+      expect(ring()).toHaveAttribute('aria-valuenow', '50');
     });
 
     it('says how many of the skipped items X no longer shows (PLAYBOOK E6, #32)', async () => {
@@ -281,20 +283,18 @@ describe('JobCard', () => {
     });
 
     it('shows failures and never fills the bar past 100%', async () => {
-      const { container } = await show(
-        job({ state: 'paused', stats: { matched: 5, done: 4, skipped: 1, failed: 2, scanned: 0 } }),
-      );
-      expect(await screen.findByText('2 failed')).toHaveClass('text-critical');
+      await show(job({ state: 'paused', stats: { matched: 5, done: 4, skipped: 1, failed: 2, scanned: 0 } }));
+      expect(await screen.findByText('2 failed')).toHaveAttribute('data-tone', 'critical');
       expect(screen.getByText('0 remaining')).toBeInTheDocument();
       expect(screen.queryByText(/at the current pace/)).not.toBeInTheDocument();
-      expect(progressBar(container)).toHaveStyle({ width: '100%' });
+      expect(ring()).toHaveAttribute('aria-valuenow', '100');
     });
 
     it('leaves the bar empty and gives no estimate before anything matched', async () => {
-      const { container } = await show(job());
+      await show(job());
       expect(await screen.findByText('0 remaining')).toBeInTheDocument();
       expect(screen.queryByText(/at the current pace/)).not.toBeInTheDocument();
-      expect(progressBar(container)).toHaveStyle({ width: '0%' });
+      expect(ring()).toHaveAttribute('aria-valuenow', '0');
     });
 
     it('gives no estimate for a finished job', async () => {
@@ -309,7 +309,7 @@ describe('JobCard', () => {
     });
 
     it('shows how many posts a scan looked at, without a progress bar', async () => {
-      const { container } = await show(
+      await show(
         job({
           kind: 'scan',
           title: 'Scan: replies',
@@ -321,7 +321,7 @@ describe('JobCard', () => {
       );
       expect(await screen.findByText('posts looked at')).toHaveTextContent('1,234 posts looked at');
       expect(screen.queryByText(/removed/)).not.toBeInTheDocument();
-      expect(progressBar(container)).toBeNull();
+      expect(ring()).toBeNull();
     });
   });
 
@@ -414,6 +414,21 @@ describe('JobCard', () => {
       expect(await badge('Waiting')).toBeInTheDocument();
       expect(screen.getByText('Pacing')).toBeInTheDocument();
       expect(screen.getByText(/^(5m 0s|4m 59s)$/)).toBeInTheDocument();
+    });
+
+    it('fills a bar toward the end of the wait, from when it began', async () => {
+      const now = Date.now();
+      fake.set({
+        jobId: 'job-1',
+        status: 'waiting',
+        message: 'Pacing',
+        waitFrom: now - 3 * MINUTE,
+        waitUntil: now + MINUTE,
+      });
+      await show(job({ state: 'running' }));
+      const bar = await screen.findByRole('progressbar', { name: 'Time left in this wait' });
+      // Three of four minutes have passed.
+      expect(Number(bar.getAttribute('aria-valuenow'))).toBeCloseTo(0.75, 1);
     });
 
     it('disables Pause and Cancel while stopping', async () => {
@@ -555,7 +570,7 @@ describe('JobCard', () => {
       await show(job({ state: 'completed', health: health() }));
       const note = await screen.findByRole('status');
       expect(note).toHaveTextContent('Account health: Healthy: no warnings from X.');
-      expect(note).toHaveClass('border-line');
+      expect(note).toHaveAttribute('data-tone', 'good');
     });
 
     it('warns about signals from X', async () => {
@@ -567,12 +582,12 @@ describe('JobCard', () => {
       );
       const note = await screen.findByRole('status');
       expect(note).toHaveTextContent('During this run X sent one rate limit.');
-      expect(note).toHaveClass('border-warn/40');
+      expect(note).toHaveAttribute('data-tone', 'warn');
     });
 
     it('marks signals at level 0 as a warning, not healthy', async () => {
       await show(job({ state: 'paused', health: health({ signals: { rate_limited: 1 } }) }));
-      expect(await screen.findByRole('status')).toHaveClass('border-warn/40');
+      expect(await screen.findByRole('status')).toHaveAttribute('data-tone', 'warn');
     });
 
     it.each([
@@ -580,7 +595,7 @@ describe('JobCard', () => {
       ['a notice from X', health({ notice: 'Your account is temporarily limited.', summary: 'X showed a notice.' })],
     ])('is serious for %s', async (_, report) => {
       await show(job({ state: 'blocked', health: report }));
-      expect(await screen.findByRole('status')).toHaveClass('border-critical/40');
+      expect(await screen.findByRole('status')).toHaveAttribute('data-tone', 'critical');
     });
   });
 });

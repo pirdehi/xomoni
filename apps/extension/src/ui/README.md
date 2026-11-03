@@ -15,9 +15,11 @@ The React dashboard (`dashboard.html`), which runs as an extension page in a nor
 | `importArchive.ts`             | Imports `account.js`, `tweets.js` and `like.js` from an unzipped X archive, after checking that it belongs to the connected account.                                                                                   |
 | `theme.ts`                     | System, light or dark theme, stored in `localStorage` and applied as `data-theme` on `<html>`.                                                                                                                         |
 | `styles.css`                   | Tailwind CSS entry: light and dark color tokens, base page styles, and the `.field` and `.tabular` classes.                                                                                                            |
+| `fluent.tsx`                   | Fluent UI themes (ADR-0019): Xomoni's blue as the brand ramp on the dashboard's neutrals, light and dark, and `FluentRoot`, the provider that follows the theme chosen in Settings. |
 | `components/ui.tsx`            | Shared building blocks: `Card`, `Button`, `Badge`, `StatTile`, `Meter`, `Field`, `Toggle`, `Segmented`, `Modal`, `EmptyState`, `Callout`, `PageHeader`, `useNow`, `cx`.                                                |
 | `components/ConsentDialog.tsx` | The informed-consent dialog (#24): the text from `@xomoni/consent`, a typed `I UNDERSTAND`, stored per X account.                                                                                                      |
-| `components/JobCard.tsx`       | One job with live progress, time estimate, start, resume, pause, cancel and remove controls, the risk ladder's hold on Resume, and the account health report after a run.                                              |
+| `components/JobCard.tsx`       | One job on Fluent UI: a progress ring, colored counts, the time left and when it should end, the runner's live line with a bar that fills toward the end of each wait, start, resume, pause, cancel and remove controls, the risk ladder's hold on Resume, and the account health report after a run. |
+| `components/ProgressRing.tsx`  | A round progress indicator with the percentage in its middle, exposed as a named `progressbar`. |
 | `components/LogList.tsx`       | Activity log rows, each with a link to the post on X when there is one.                                                                                                                                                |
 | `components/LimitsPanel.tsx`   | Usage against Xomoni's own caps, and the 15-minute quotas X reported.                                                                                                                                                  |
 | `components/ActivityChart.tsx` | Stacked per-year chart, or table, of the items still on the account.                                                                                                                                                   |
@@ -33,7 +35,7 @@ The React dashboard (`dashboard.html`), which runs as an extension page in a nor
 
 - `../shared/` for the IndexedDB tables and helpers (`db.ts`), types (`types.ts`), cleanup filters, action choice and time estimates (`filter.ts`), pacing presets and labels (`settings.ts`), archive parsing (`archive.ts`), desktop notifications (`notify.ts`), time constants (`time.ts`) and the worker's `PageInfo` (`messages.ts`).
 - `../engine/` for the job runner (`runner.ts`: `runner`, `createCleanupJob`, `createScanJob`, `recoverInterruptedJobs`) and the worker tab (`worker-tab.ts`: `workerTab`, `WorkerGone`).
-- npm packages: `react` and `react-dom`, `dexie-react-hooks` for live queries, `lucide-react` for icons, and Tailwind CSS through `@tailwindcss/vite` for `styles.css`.
+- npm packages: `react` and `react-dom`, `dexie-react-hooks` for live queries, Fluent UI (`@fluentui/react-components`, `@fluentui/react-icons`) for components that have moved (ADR-0019), and, until the migration ends (#123), `lucide-react` icons and Tailwind CSS through `@tailwindcss/vite` for `styles.css`.
 
 ## Used by
 

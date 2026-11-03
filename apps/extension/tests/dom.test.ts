@@ -12,6 +12,7 @@ import {
   noticeText,
   openDialog,
   pressEnter,
+  pressPointer,
   viewerHandle,
   viewerIdFromCookie,
   waitFor,
@@ -86,6 +87,16 @@ describe('menus, pop-ups and notices', () => {
     closeMenus();
     expect(maskClick).toHaveBeenCalledOnce();
     expect(escape).toHaveBeenCalledWith('Escape');
+  });
+
+  it('presses an element like a mouse button, at its center, with nothing before the press (#121)', () => {
+    document.body.innerHTML = '<div role="menuitem">Delete</div>';
+    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!;
+    const seen: string[] = [];
+    for (const type of ['pointerover', 'pointermove', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'])
+      item.addEventListener(type, (e) => seen.push(`${e.type}${e.isTrusted ? ' trusted' : ''}`));
+    pressPointer(item);
+    expect(seen).toEqual(['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']);
   });
 
   it('presses Enter on an element: focus, then keydown and keyup with key code 13, no click (#121)', () => {

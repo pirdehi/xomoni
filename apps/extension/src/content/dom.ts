@@ -147,6 +147,22 @@ export function closeMenus() {
 }
 
 /**
+ * Presses `el` the way a mouse button does, at its center: pointerdown, mousedown, pointerup, mouseup, then click.
+ * Some controls act on the press, not on a lone `click()` (#121). No path, no hover: just the press, and the
+ * events are synthetic like every Xomoni event (PLAYBOOK B3), so a page that wants real input still refuses.
+ */
+export function pressPointer(el: HTMLElement) {
+  const box = el.getBoundingClientRect();
+  const at = { clientX: box.left + box.width / 2, clientY: box.top + box.height / 2, bubbles: true, cancelable: true };
+  const pointer = { ...at, pointerId: 1, pointerType: 'mouse', isPrimary: true };
+  el.dispatchEvent(new PointerEvent('pointerdown', { ...pointer, button: 0, buttons: 1 }));
+  el.dispatchEvent(new MouseEvent('mousedown', { ...at, button: 0, buttons: 1 }));
+  el.dispatchEvent(new PointerEvent('pointerup', { ...pointer, button: 0, buttons: 0 }));
+  el.dispatchEvent(new MouseEvent('mouseup', { ...at, button: 0, buttons: 0 }));
+  el.dispatchEvent(new MouseEvent('click', { ...at, button: 0, buttons: 0 }));
+}
+
+/**
  * Activates `el` the way a keyboard does: focuses it, then sends Enter (keydown and keyup). Some of X's controls
  * answer Enter but ignore `click()` (#121). The keys are synthetic like every Xomoni event (PLAYBOOK B3).
  */

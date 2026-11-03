@@ -11,8 +11,8 @@ interface Page {
   escapeCloses?: boolean;
   liked?: boolean | null;
   reposted?: boolean | null;
-  /** What X's Delete option and its confirm button answer: a click, only Enter, or nothing (#121). */
-  answers?: 'click' | 'enter' | 'nothing';
+  /** What X's Delete option and its confirm button answer: a click, only a full press, only Enter, or nothing (#121). */
+  answers?: 'click' | 'press' | 'enter' | 'nothing';
 }
 
 /** Every click on a menu option, which a canary must never make. */
@@ -57,6 +57,9 @@ function renderX({
         optionClicks.push(item.textContent);
         if (item.textContent === 'Delete' && answers === 'click') openSheet(el);
       });
+      item.addEventListener('pointerup', () => {
+        if (item.textContent === 'Delete' && answers === 'press') openSheet(el);
+      });
       item.addEventListener('keydown', (event) => {
         if (item.textContent === 'Delete' && answers === 'enter' && (event as KeyboardEvent).key === 'Enter')
           openSheet(el);
@@ -88,6 +91,7 @@ function renderX({
       });
     };
     confirm.addEventListener('click', () => answers === 'click' && deleted());
+    confirm.addEventListener('pointerup', () => answers === 'press' && deleted());
     confirm.addEventListener('keydown', (event) => answers === 'enter' && event.key === 'Enter' && deleted());
     document.getElementById('layers')!.append(sheet);
   };
@@ -161,6 +165,19 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
+  it('presses the Delete option and the confirm button like a mouse button when X ignores click() (#121)', async () => {
+    document.cookie = 'twid=u%3D1';
+    renderX({ answers: 'press' });
+    expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({
+      outcome: 'done',
+      http: 200,
+      message: 'X took a full press, not a click',
+    });
+    // The click that X ignored, then the press's own click: only ever on the Delete option.
+    expect(optionClicks).toEqual(['Delete', 'Delete']);
+    document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  });
+
   it('presses Enter on the Delete option and the confirm button when X ignores the clicks (#121)', async () => {
     document.cookie = 'twid=u%3D1';
     renderX({ answers: 'enter' });
@@ -169,21 +186,21 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
       http: 200,
       message: 'X took Enter, not a click',
     });
-    // Only the Delete option was ever activated in the menu.
-    expect(optionClicks).toEqual(['Delete']);
+    // Only the Delete option was ever activated in the menu: the ignored click, and the press's own click.
+    expect(optionClicks).toEqual(['Delete', 'Delete']);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
   it('a Delete that opens no confirmation fails, saying what was open instead (#121)', async () => {
     document.cookie = 'twid=u%3D1';
     renderX({ answers: 'nothing' });
-    // The simulated Delete option ignores both the click and Enter.
+    // The simulated Delete option ignores the click, the full press and Enter.
     const result = (await runCommand({ cmd: 'delete', id: '1' })) as { outcome: string; message: string };
     expect(result.outcome).toBe('failed');
     expect(result.message).toBe(
       'Delete confirmation did not appear for this post (menus open: 1, pop-ups: none, buttons: none)',
     );
-    expect(optionClicks).toEqual(['Delete']);
+    expect(optionClicks).toEqual(['Delete', 'Delete']);
     expect(menuOpen()).toBe(false);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });

@@ -30,6 +30,7 @@ import {
   noticeText,
   openDialog,
   pressEnter,
+  pressPointer,
   sleep,
   viewerHandle,
   viewerIdFromCookie,
@@ -226,28 +227,37 @@ async function deletePost(id: string): Promise<ActionResult> {
   // X closes its sheet, or answers, once the confirm button takes the press.
   const confirmed = await activate(confirm, () => answered || !confirm.isConnected, 1500, 3000);
   const result = classify(await response, 'DeleteTweet');
-  const via = [opened, confirmed].some((step) => step?.via === 'enter');
-  return result.outcome === 'done' && via ? { ...result, message: 'X took Enter, not a click' } : result;
+  const via = [opened, confirmed].map((step) => step?.via).find((v) => v && v !== 'click');
+  if (result.outcome !== 'done' || !via) return result;
+  return { ...result, message: via === 'enter' ? 'X took Enter, not a click' : 'X took a full press, not a click' };
 }
 
+/** How X took an activation: a lone click, a full mouse press, or Enter (#121). */
+type Via = 'click' | 'press' | 'enter';
+
 /**
- * Clicks `el`; if `took` isn't true after `clickWaitMs` and `el` is still on the page (so the click was ignored),
- * presses Enter on it instead (#121). Resolves with what `took` found and how, or null if neither worked within
- * `timeoutMs`. An element the click removed is never pressed again.
+ * Activates `el`: a click; if `took` isn't true after `stepWaitMs` while `el` is still on the page (so the click
+ * was ignored), a full mouse press; then Enter (#121). Resolves with what `took` found and how, or null if none
+ * worked, the last after `timeoutMs`. An element an earlier step removed is never pressed again.
  */
 async function activate<T>(
   el: HTMLElement,
   took: () => T | null | false | undefined,
   timeoutMs: number,
-  clickWaitMs = 1500,
-): Promise<{ result: T; via: 'click' | 'enter' } | null> {
-  click(el);
-  const clicked = await waitFor(took, clickWaitMs);
-  if (clicked) return { result: clicked, via: 'click' };
-  if (!el.isConnected) return null;
-  pressEnter(el);
-  const entered = await waitFor(took, timeoutMs);
-  return entered ? { result: entered, via: 'enter' } : null;
+  stepWaitMs = 1500,
+): Promise<{ result: T; via: Via } | null> {
+  const steps: [Via, () => void, number][] = [
+    ['click', () => click(el), stepWaitMs],
+    ['press', () => pressPointer(el), stepWaitMs],
+    ['enter', () => pressEnter(el), timeoutMs],
+  ];
+  for (const [via, run, waitMs] of steps) {
+    if (!el.isConnected) return null;
+    run();
+    const result = await waitFor(took, waitMs);
+    if (result) return { result, via };
+  }
+  return null;
 }
 
 async function unlike(id: string): Promise<ActionResult> {

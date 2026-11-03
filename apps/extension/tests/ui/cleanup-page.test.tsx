@@ -138,6 +138,16 @@ describe('Cleanup page', () => {
       expect(props.navigate).toHaveBeenCalledWith('inventory');
     });
 
+    it('says where to keep the X window before the job starts (#120)', async () => {
+      await renderPage();
+      await userEvent.click(await screen.findByRole('switch', { name: /Continue without it/ }));
+      await openConfirm();
+
+      expect(screen.getByRole('dialog')).toHaveTextContent(
+        'Keep this tab open, and part of the X window on screen: not minimized or fully covered.',
+      );
+    });
+
     it('creates the job once acknowledged and confirmed', async () => {
       await renderPage();
       await userEvent.click(await screen.findByRole('switch', { name: /Continue without it/ }));

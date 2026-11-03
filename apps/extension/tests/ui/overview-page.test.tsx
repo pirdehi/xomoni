@@ -69,7 +69,7 @@ describe('Overview onboarding (no account yet)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Open X worker' }));
     await waitFor(() => {
       expect(chrome.windows.create).toHaveBeenCalledWith(
-        expect.objectContaining({ url: 'https://x.com/home', focused: false }),
+        expect.objectContaining({ url: 'https://x.com/home', focused: true }),
       );
     });
     expect(chrome.storage.session.set).toHaveBeenCalledWith({ workerTab: WORKER_TAB.id });

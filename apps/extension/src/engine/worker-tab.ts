@@ -35,11 +35,15 @@ export class WorkerTab implements XTab {
     }
   }
 
-  /** Opens the worker window without focusing it, or returns the worker tab that is already open. */
+  /**
+   * Opens the worker window in front, or returns the worker tab that is already open. In front, because a
+   * window that opens behind a maximized one is fully covered, and macOS keeps it hidden (Chrome pauses its
+   * page) until it has been on screen once, even after it is moved into view (#120).
+   */
   async open(url = 'https://x.com/home'): Promise<number> {
     const existing = await this.current();
     if (existing != null) return existing;
-    const win = await chrome.windows.create({ url, focused: false, width: 1100, height: 900, type: 'normal' });
+    const win = await chrome.windows.create({ url, focused: true, width: 1100, height: 900, type: 'normal' });
     const tabId = win?.tabs?.[0]?.id;
     if (tabId == null) throw new Error('Could not open the X worker window');
     this.tabId = tabId;

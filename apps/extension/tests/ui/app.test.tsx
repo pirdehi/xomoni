@@ -206,7 +206,7 @@ describe('App job banner', () => {
   it('shows no banner while idle', async () => {
     render(<App />);
     await pageHeading('Overview');
-    expect(screen.queryByText(/Keep this tab and the X worker window open/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Keep this tab open/)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -217,7 +217,8 @@ describe('App job banner', () => {
     render(<App />);
 
     expect(await screen.findByText('Scan: your posts')).toBeInTheDocument();
-    expect(screen.getByText(/Keep this tab and the X worker window open \(not minimized\)/)).toBeInTheDocument();
+    // Where to keep the X window (#120): Chrome pauses a page it doesn't show.
+    expect(screen.getByText(/part of the X window on screen: not minimized or fully covered/)).toBeInTheDocument();
     const banner = screen.getByRole('region', { name: 'Running job' });
     expect(banner).toHaveTextContent('Scan: your posts');
     await userEvent.click(within(banner).getByRole('button', { name: 'Pause' }));

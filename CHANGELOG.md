@@ -17,6 +17,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Changed
 
 - The job card is redesigned with Fluent UI: a progress ring, colored counts, when the job should end, and a bar that fills toward the end of each wait. Xomoni's interfaces move from Tailwind to Fluent UI (ADR-0019).
+- The whole extension dashboard is on Fluent UI, in light and dark: a Fluent navigation, toasts and dialogs, tables, inputs, switches and a chart in colors color-blind readers can tell apart. Tailwind is gone from the extension.
 - Custom pacing can never be faster than Careful.
 - A safety stop that arrives as you pause still records its warning and ends the job as stopped for safety.
 

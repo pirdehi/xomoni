@@ -48,20 +48,10 @@ import { scaleRule } from '../../shared/x-limits';
 import { JOB_STATE, errorMessage, fmtAgo, fmtDuration, fmtFinish, fmtNumber } from '../format';
 import { resumeAnyway, startJob, toast, usePace, useRisk, useRunner } from '../hooks';
 import { ProgressRing } from './ProgressRing';
-import { type Tone, useNow } from './ui';
+import { BADGE_COLOR, useNow } from './ui';
 
 const RESUMABLE = new Set(['queued', 'paused', 'blocked', 'failed']);
 const TERMINAL = new Set(['completed', 'cancelled']);
-
-/** Fluent's badge color for each of the dashboard's tones. */
-const BADGE_COLOR = {
-  neutral: 'informative',
-  accent: 'brand',
-  good: 'success',
-  warn: 'warning',
-  serious: 'severe',
-  critical: 'danger',
-} as const satisfies Record<Tone, string>;
 
 const useStyles = makeStyles({
   card: {

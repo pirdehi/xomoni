@@ -201,7 +201,7 @@ describe('LimitsPanel', () => {
     expect(note).toHaveTextContent('X rate-limited Xomoni in the last hour.');
     expect(note).not.toHaveTextContent('Resume opens');
     expect(note).not.toHaveTextContent('Slower pace');
-    expect(note).toHaveClass('border-warn/40');
+    expect(note).toHaveAttribute('data-tone', 'warn');
   });
 
   it('explains a retreat: when resuming opens and how long the slower pace lasts', async () => {
@@ -214,6 +214,7 @@ describe('LimitsPanel', () => {
     expect(note).toHaveTextContent('X flagged the activity as automated (226).');
     expect(note).toHaveTextContent('Resume opens in 5h 0m.');
     expect(note).toHaveTextContent('Slower pace for 6d 23h more.');
+    expect(note).toHaveAttribute('data-tone', 'warn');
     // The 226 also drops the warm-up back a step: day 3 of 4 (75%) at half pace.
     expect(
       screen.getByText("Preset: Careful · at most ⅕ of X's limits · warm-up day 3 of 4 · running at 38% of that"),
@@ -230,7 +231,7 @@ describe('LimitsPanel', () => {
     const note = await screen.findByRole('status');
     expect(note).toHaveTextContent('Risk level 3: Defensive');
     expect(note).toHaveTextContent('X locked this account.');
-    expect(note).toHaveClass('border-critical/40');
+    expect(note).toHaveAttribute('data-tone', 'critical');
   });
 
   it('says a full stop does not resume on its own', async () => {
@@ -241,6 +242,7 @@ describe('LimitsPanel', () => {
     expect(note).toHaveTextContent('Risk level 4: Full stop');
     expect(note).toHaveTextContent('X suspended this account. Xomoni won’t resume on its own.');
     expect(note).not.toHaveTextContent('Slower pace');
+    expect(note).toHaveAttribute('data-tone', 'critical');
   });
 
   it('says nothing was observed when X reported no limits in the last 2 hours', async () => {
@@ -274,14 +276,14 @@ describe('LimitsPanel', () => {
     const [del, search, unknown, timeline] = rows.map((r) => r.lastElementChild!);
 
     expect(del).toHaveTextContent('5 used · stops at 10 of 50resets in 10m 0s');
-    expect(del).not.toHaveClass('text-critical');
+    expect(del).toHaveAttribute('data-tone', 'neutral');
     // 200 of 500 used is past one fifth (100): Xomoni waits for the reset.
     expect(timeline).toHaveTextContent('200 used · stops at 100 of 500');
-    expect(timeline).toHaveClass('text-critical');
+    expect(timeline).toHaveAttribute('data-tone', 'critical');
     expect(search).toHaveTextContent('limitedresets in 4m 0s');
-    expect(search).toHaveClass('text-critical');
+    expect(search).toHaveAttribute('data-tone', 'critical');
     // No numbers from X, and a reset in the past is not shown.
     expect(unknown).toHaveTextContent(/^no live limit reported$/);
-    expect(unknown).not.toHaveClass('text-critical');
+    expect(unknown).toHaveAttribute('data-tone', 'neutral');
   });
 });

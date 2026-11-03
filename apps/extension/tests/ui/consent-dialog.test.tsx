@@ -159,7 +159,8 @@ describe('ConsentDialog', () => {
     render(<ConsentDialog />);
     const { start, started } = await askFor();
 
-    fireEvent.mouseDown(screen.getByRole('dialog').parentElement!);
+    // Fluent's dialog closes on a click on its backdrop, a sibling of the surface (ADR-0019).
+    fireEvent.click(document.querySelector<HTMLElement>('.fui-DialogSurface__backdrop')!);
     await started;
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCleanupJob, createScanJob } from '../../src/engine/runner';
@@ -9,6 +9,7 @@ import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
 import { JobsPage } from '../../src/ui/pages/Jobs';
 import { stubChrome } from '../support/chrome';
 import { ME, pageProps, resetDb } from '../support/fixtures';
+import { logEntry } from '../support/shell';
 
 const FILTER: CleanupFilter = {
   target: 'post',
@@ -51,6 +52,42 @@ describe('Jobs page', () => {
     expect(screen.getByRole('button', { name: 'Open', pressed: true })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'All', pressed: false }));
     expect(await screen.findByText('Scan: replies')).toBeInTheDocument();
+  });
+
+  it('shows a job’s log on demand, newest first, and hides it again', async () => {
+    const job = await createCleanupJob(ME, 'Delete posts older than Jan 1, 2018', FILTER, OPTIONS);
+    await db.logs.bulkAdd([
+      logEntry({ jobId: job.id, ts: Date.UTC(2024, 4, 1, 10), message: 'Job started' }),
+      logEntry({ jobId: job.id, ts: Date.UTC(2024, 4, 1, 11), level: 'success', message: 'Deleted a post' }),
+      logEntry({ jobId: 'another-job', message: 'Not this job' }),
+    ]);
+    render(<JobsPage {...await pageProps()} />);
+    await screen.findByText('Delete posts older than Jan 1, 2018');
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: 'Show log' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(toggle);
+
+    const list = await screen.findByRole('list');
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('Deleted a post');
+    expect(rows[1]).toHaveTextContent('Job started');
+    expect(screen.queryByText('Not this job')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide log' })).toHaveAttribute('aria-expanded', 'true');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide log' }));
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show log' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('says when a job’s log has no entries yet', async () => {
+    await createCleanupJob(ME, 'Delete posts older than Jan 1, 2018', FILTER, OPTIONS);
+    render(<JobsPage {...await pageProps()} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Show log' }));
+    expect(await screen.findByText('No entries yet.')).toBeInTheDocument();
   });
 
   it('shows only this account’s jobs', async () => {

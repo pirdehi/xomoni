@@ -33,7 +33,7 @@ src/
     scan.ts               profile, replies, likes, full-history and date-range scans
     worker-tab.ts         the x.com worker window
   shared/                 types, Dexie database, parsers, rules, settings, notifications
-  ui/                     React 19 dashboard, moving from Tailwind CSS 4 to Fluent UI v9 (ADR-0019)
+  ui/                     React 19 dashboard on Fluent UI v9 (ADR-0019)
   dev/                    UI preview with demo data (not shipped)
 ```
 

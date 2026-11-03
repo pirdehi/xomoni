@@ -1,16 +1,38 @@
-import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  CalendarClock,
-  Download,
-  Heart,
-  Info,
-  MessageSquareReply,
-  Repeat2,
-  ShieldCheck,
-  SquarePen,
-  Trash2,
-  TriangleAlert,
-} from 'lucide-react';
+  Body1,
+  Body1Strong,
+  Caption1,
+  Input,
+  Text,
+  Textarea,
+  createFocusOutlineStyle,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import {
+  ArrowDownload16Regular,
+  ArrowRepeatAll20Filled,
+  ArrowRepeatAll20Regular,
+  ArrowReply20Filled,
+  ArrowReply20Regular,
+  CalendarClock16Regular,
+  CheckmarkCircle20Filled,
+  Circle20Regular,
+  Clock16Regular,
+  Compose20Filled,
+  Compose20Regular,
+  Delete16Regular,
+  Delete20Regular,
+  ErrorCircle16Regular,
+  Gauge16Regular,
+  Heart20Filled,
+  Heart20Regular,
+  Info16Regular,
+  ShieldCheckmark16Regular,
+  Warning16Regular,
+} from '@fluentui/react-icons';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { type ReactNode, useMemo, useState } from 'react';
 import { createCleanupJob } from '../../engine/runner';
 import { archiveImported, getSettings } from '../../shared/db';
@@ -18,7 +40,7 @@ import { actionFor, estimateDuration, findCandidates, normalizeKeywords, parseId
 import { DAY } from '../../shared/time';
 import type { CleanupFilter, CleanupOptions, CleanupTarget } from '../../shared/types';
 import type { PageProps } from '../navigation';
-import { Button, Callout, Card, Field, Modal, PageHeader, Segmented, Toggle, cx } from '../components/ui';
+import { Button, Callout, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
 import {
   TARGET_PLURAL,
   downloadFile,
@@ -46,11 +68,12 @@ const AGES: { value: Age; label: string }[] = [
 /** How far back each preset age reaches, in days. */
 const AGE_DAYS: Record<Exclude<Age, 'custom'>, number> = { '30d': 30, '90d': 90, '6m': 182, '1y': 365, '2y': 730 };
 
-const TARGETS: { value: CleanupTarget; label: string; icon: ReactNode }[] = [
-  { value: 'post', label: 'Posts', icon: <SquarePen size={16} /> },
-  { value: 'reply', label: 'Replies', icon: <MessageSquareReply size={16} /> },
-  { value: 'repost', label: 'Reposts', icon: <Repeat2 size={16} /> },
-  { value: 'like', label: 'Likes', icon: <Heart size={16} /> },
+/** The four things a cleanup can remove, each with its outline icon and the filled one it shows while chosen. */
+const TARGETS: { value: CleanupTarget; label: string; icon: ReactNode; chosenIcon: ReactNode }[] = [
+  { value: 'post', label: 'Posts', icon: <Compose20Regular />, chosenIcon: <Compose20Filled /> },
+  { value: 'reply', label: 'Replies', icon: <ArrowReply20Regular />, chosenIcon: <ArrowReply20Filled /> },
+  { value: 'repost', label: 'Reposts', icon: <ArrowRepeatAll20Regular />, chosenIcon: <ArrowRepeatAll20Filled /> },
+  { value: 'like', label: 'Likes', icon: <Heart20Regular />, chosenIcon: <Heart20Filled /> },
 ];
 
 /** The verb a job title uses for each target. */
@@ -58,14 +81,221 @@ const VERB: Record<CleanupTarget, string> = { post: 'Delete', reply: 'Delete', r
 
 const startOfToday = () => new Date(new Date().setHours(0, 0, 0, 0)).getTime();
 
+/** Two columns from this width up (Tailwind's former `sm`). */
+const SM = '@media (min-width: 640px)';
+/** The form and the review side by side from this width up (Tailwind's former `lg`). */
+const LG = '@media (min-width: 1024px)';
+
+const useStyles = makeStyles({
+  notice: { marginBottom: tokens.spacingVerticalL },
+  noticeText: { margin: 0 },
+  noticeActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalL,
+    marginTop: tokens.spacingVerticalM,
+  },
+  layout: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gap: tokens.spacingHorizontalL,
+    [LG]: { gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', alignItems: 'start' },
+  },
+  form: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalL, minWidth: 0 },
+  aside: { minWidth: 0, [LG]: { position: 'sticky', top: tokens.spacingVerticalXXL } },
+  targets: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    [SM]: { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' },
+  },
+  target: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    rowGap: tokens.spacingVerticalXXS,
+    margin: 0,
+    padding: tokens.spacingHorizontalM,
+    textAlign: 'start',
+    fontFamily: 'inherit',
+    color: tokens.colorNeutralForeground1,
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusXLarge,
+    cursor: 'pointer',
+    transitionProperty: 'background-color, border-color, box-shadow',
+    transitionDuration: tokens.durationFaster,
+    transitionTimingFunction: tokens.curveEasyEase,
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+      border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1Hover}`,
+    },
+    ':active': { backgroundColor: tokens.colorNeutralBackground1Pressed },
+    '@media (prefers-reduced-motion: reduce)': { transitionDuration: '0.01ms' },
+    ...createFocusOutlineStyle(),
+  },
+  targetChosen: {
+    backgroundColor: tokens.colorBrandBackground2,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorBrandStroke1}`,
+    boxShadow: `inset 0 0 0 ${tokens.strokeWidthThin} ${tokens.colorBrandStroke1}`,
+    ':hover': {
+      backgroundColor: tokens.colorBrandBackground2Hover,
+      border: `${tokens.strokeWidthThin} solid ${tokens.colorBrandStroke1}`,
+    },
+    ':active': { backgroundColor: tokens.colorBrandBackground2Pressed },
+  },
+  targetHead: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  targetIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '36px',
+    height: '36px',
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+  },
+  targetIconChosen: { backgroundColor: tokens.colorBrandBackground, color: tokens.colorNeutralForegroundOnBrand },
+  targetMark: { display: 'inline-flex', color: tokens.colorNeutralForeground4 },
+  targetMarkChosen: { color: tokens.colorBrandForeground1 },
+  targetCount: { color: tokens.colorNeutralForeground2, fontVariantNumeric: 'tabular-nums' },
+  fieldGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gap: tokens.spacingHorizontalL,
+    [SM]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
+  },
+  spaced: { marginTop: tokens.spacingVerticalL },
+  control: { width: '100%' },
+  before: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    alignSelf: 'start',
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+  },
+  beforeIcon: { flexShrink: 0, color: tokens.colorNeutralForeground3 },
+  strong: { fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1 },
+  problem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    margin: `${tokens.spacingVerticalM} 0 0`,
+    color: tokens.colorStatusDangerForeground1,
+  },
+  problemIcon: { flexShrink: 0 },
+  stack: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalM },
+  roomy: { rowGap: tokens.spacingVerticalL },
+  rangeField: { maxWidth: '20rem', paddingLeft: '48px' },
+  reviewLabel: { display: 'block', fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground2 },
+  reviewCount: {
+    marginTop: tokens.spacingVerticalXS,
+    fontSize: tokens.fontSizeHero800,
+    lineHeight: tokens.lineHeightHero800,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  reviewScope: { margin: `${tokens.spacingVerticalXS} 0 0`, color: tokens.colorNeutralForeground2 },
+  preview: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalS,
+    listStyleType: 'none',
+    margin: `${tokens.spacingVerticalL} 0 0`,
+    padding: `${tokens.spacingVerticalM} 0 0`,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  previewDate: { display: 'block', color: tokens.colorNeutralForeground3, fontVariantNumeric: 'tabular-nums' },
+  // At most two lines of each post (Caption1's line height), cut off below.
+  previewText: {
+    display: 'block',
+    maxHeight: `calc(2 * ${tokens.lineHeightBase200})`,
+    overflow: 'hidden',
+    margin: 0,
+    color: tokens.colorNeutralForeground1,
+    overflowWrap: 'anywhere',
+  },
+  muted: { color: tokens.colorNeutralForeground3 },
+  estimate: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalXS,
+    marginTop: tokens.spacingVerticalL,
+    padding: tokens.spacingHorizontalM,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: tokens.lineHeightBase200,
+  },
+  estimateRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalS,
+  },
+  estimateLabel: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
+  estimateValue: {
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    fontVariantNumeric: 'tabular-nums',
+    textAlign: 'end',
+  },
+  estimateNote: { margin: `${tokens.spacingVerticalXS} 0 0`, color: tokens.colorNeutralForeground3 },
+  actions: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalL,
+  },
+  fullWidth: { width: '100%' },
+  busy: { margin: 0, textAlign: 'center', color: tokens.colorNeutralForeground3 },
+  safety: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalXS,
+    margin: `${tokens.spacingVerticalL} 0 0`,
+    color: tokens.colorNeutralForeground3,
+  },
+  safetyIcon: { flexShrink: 0, color: tokens.colorStatusSuccessForeground1 },
+  paragraph: { margin: 0 },
+  summary: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorStatusDangerBorder1}`,
+  },
+  summaryIcon: { flexShrink: 0, marginTop: '1px', color: tokens.colorStatusDangerForeground1 },
+  summaryTitle: { margin: 0, color: tokens.colorNeutralForeground1 },
+  code: {
+    fontFamily: tokens.fontFamilyMonospace,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+});
+
 /**
  * Builds a cleanup filter (what, older than when, what to keep, how to find it), previews the
  * matching inventory items with a time estimate from the current pacing, and offers a JSON backup.
  * Without an imported archive it warns that old posts can be missed (PLAYBOOK E2) and starts only once the
  * person acknowledges it. The job is created and started only after the user types DELETE in the
- * confirmation dialog.
+ * confirmation dialog. Drawn with Fluent UI (ADR-0019): the targets are selectable cards (`aria-pressed`).
  */
 export function CleanupPage({ account, navigate }: PageProps) {
+  const styles = useStyles();
   const counts = useKindCounts(account.id);
   const settings = useLiveQuery(getSettings, []);
   const run = useRunner();
@@ -157,18 +387,14 @@ export function CleanupPage({ account, navigate }: PageProps) {
         description="Choose what to remove, preview exactly what matches, then let Xomoni work through it at a safe pace."
       />
       {needsArchive && (
-        <div className="mb-4">
-          <Callout
-            tone="critical"
-            icon={<TriangleAlert size={14} />}
-            title="No archive imported: old posts can be missed"
-          >
-            <p>
+        <div className={styles.notice}>
+          <Callout tone="critical" icon={<Warning16Regular />} title="No archive imported: old posts can be missed">
+            <p className={styles.noticeText}>
               X search doesn’t show posts older than about a week that have no likes, and your profile shows only your
               newest ~3,200 posts. Without your X archive, this cleanup can miss many old posts, replies and likes, and
               report fewer than you have. Download your archive from X and import it first.
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-4">
+            <div className={styles.noticeActions}>
               <Button size="sm" variant="primary" onClick={() => navigate('inventory')}>
                 Import your archive
               </Button>
@@ -181,54 +407,65 @@ export function CleanupPage({ account, navigate }: PageProps) {
           </Callout>
         </div>
       )}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className={styles.layout}>
+        <div className={styles.form}>
           <Card title="1 · What to clean up">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {TARGETS.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setTarget(t.value)}
-                  className={cx(
-                    'rounded-xl border p-3.5 text-left transition-colors',
-                    target === t.value ? 'border-accent bg-accent-soft' : 'border-line hover:bg-surface-2',
-                  )}
-                >
-                  <span className={cx(target === t.value ? 'text-accent' : 'text-ink-2')}>{t.icon}</span>
-                  <div className="mt-2 text-sm font-medium text-ink">{t.label}</div>
-                  <div className="tabular text-xs text-ink-2">{fmtNumber(counts?.[t.value].present ?? 0)} known</div>
-                </button>
-              ))}
+            <div className={styles.targets}>
+              {TARGETS.map((t) => {
+                const chosen = target === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    aria-pressed={chosen}
+                    onClick={() => setTarget(t.value)}
+                    className={mergeClasses(styles.target, chosen && styles.targetChosen)}
+                  >
+                    <span className={styles.targetHead}>
+                      <span className={mergeClasses(styles.targetIcon, chosen && styles.targetIconChosen)}>
+                        {chosen ? t.chosenIcon : t.icon}
+                      </span>
+                      <span className={mergeClasses(styles.targetMark, chosen && styles.targetMarkChosen)}>
+                        {chosen ? <CheckmarkCircle20Filled /> : <Circle20Regular />}
+                      </span>
+                    </span>
+                    <Body1Strong>{t.label}</Body1Strong>
+                    <Caption1 className={styles.targetCount}>
+                      {fmtNumber(counts?.[t.value].present ?? 0)} known
+                    </Caption1>
+                  </button>
+                );
+              })}
             </div>
           </Card>
 
           <Card title="2 · Older than">
             <Segmented value={age} onChange={setAge} options={AGES.map((a) => ({ value: a.value, label: a.label }))} />
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className={mergeClasses(styles.fieldGrid, styles.spaced)}>
               {age === 'custom' ? (
                 <Field label="Remove everything before">
-                  <input
+                  <Input
                     type="date"
-                    className="field"
+                    className={styles.control}
                     value={customDate}
                     max={today}
-                    onChange={(e) => setCustomDate(e.target.value)}
+                    onChange={(_, data) => setCustomDate(data.value)}
                   />
                 </Field>
               ) : (
-                <div className="flex items-center gap-2 text-sm text-ink-2">
-                  <CalendarClock size={15} className="text-muted" /> Before{' '}
-                  <span className="font-medium text-ink">{fmtDate(before)}</span>
-                </div>
+                <Body1 className={styles.before}>
+                  <CalendarClock16Regular className={styles.beforeIcon} /> Before{' '}
+                  <span className={styles.strong}>{fmtDate(before)}</span>
+                </Body1>
               )}
             </div>
             {dateProblem && (
-              <p role="alert" className="mt-3 text-xs text-critical">
+              <Caption1 as="p" role="alert" className={styles.problem}>
+                <ErrorCircle16Regular className={styles.problemIcon} />
                 {dateProblem}
-              </p>
+              </Caption1>
             )}
-            <div className="mt-4 space-y-3">
+            <div className={mergeClasses(styles.stack, styles.spaced)}>
               <Toggle
                 checked={useAfter}
                 onChange={setUseAfter}
@@ -236,21 +473,21 @@ export function CleanupPage({ account, navigate }: PageProps) {
                 description="Leave anything older than a start date untouched."
               />
               {useAfter && (
-                <div className="max-w-xs pl-12">
+                <div className={styles.rangeField}>
                   <Field label="Start date (inclusive)">
-                    <input
+                    <Input
                       type="date"
-                      className="field"
+                      className={styles.control}
                       value={afterDate}
-                      onChange={(e) => setAfterDate(e.target.value)}
+                      onChange={(_, data) => setAfterDate(data.value)}
                     />
                   </Field>
                 </div>
               )}
             </div>
             {target === 'like' && (
-              <div className="mt-4">
-                <Callout tone="accent" icon={<Info size={14} />} title="How like dates work">
+              <div className={styles.spaced}>
+                <Callout tone="accent" icon={<Info16Regular />} title="How like dates work">
                   X doesn’t record when you liked something. Xomoni uses the like time when it can be derived from your
                   Likes page, otherwise the liked post’s own date — so a recent like on an old post may also match.
                 </Callout>
@@ -259,39 +496,41 @@ export function CleanupPage({ account, navigate }: PageProps) {
           </Card>
 
           <Card title="3 · Keep" subtitle="Anything matching these rules is never touched.">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className={styles.fieldGrid}>
               {(target === 'post' || target === 'reply') && (
                 <Field label="Keep if it has at least … likes" hint="Leave empty to ignore">
-                  <input
-                    className="field"
+                  <Input
+                    className={styles.control}
                     inputMode="numeric"
                     placeholder="e.g. 50"
                     value={minLikes}
-                    onChange={(e) => setMinLikes(e.target.value.replace(/\D/g, ''))}
+                    onChange={(_, data) => setMinLikes(data.value.replace(/\D/g, ''))}
                   />
                 </Field>
               )}
               <Field label="Keep if the text contains" hint="Comma or line separated, case-insensitive">
-                <textarea
-                  className="field min-h-[38px]"
+                <Textarea
+                  className={styles.control}
+                  resize="vertical"
                   rows={2}
                   placeholder="launch, #mytag"
                   value={keywords}
-                  onChange={(e) => setKeywords(e.target.value)}
+                  onChange={(_, data) => setKeywords(data.value)}
                 />
               </Field>
               <Field label="Always keep these posts" hint="Paste post links or ids">
-                <textarea
-                  className="field min-h-[38px]"
+                <Textarea
+                  className={styles.control}
+                  resize="vertical"
                   rows={2}
                   placeholder="https://x.com/you/status/…"
                   value={ids}
-                  onChange={(e) => setIds(e.target.value)}
+                  onChange={(_, data) => setIds(data.value)}
                 />
               </Field>
             </div>
             {target === 'reply' && (
-              <div className="mt-4">
+              <div className={styles.spaced}>
                 <Toggle
                   checked={skipSelfReplies}
                   onChange={setSkipSelfReplies}
@@ -303,7 +542,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
           </Card>
 
           <Card title="4 · How to find them">
-            <div className="space-y-4">
+            <div className={mergeClasses(styles.stack, styles.roomy)}>
               <Toggle
                 checked={options.sweep}
                 onChange={(sweep) => setOptions({ ...options, sweep })}
@@ -335,7 +574,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
                     description="Old likes X no longer displays can only be removed by liking again, then unliking."
                   />
                   {options.ghostLikes && (
-                    <Callout tone="warn" icon={<TriangleAlert size={14} />} title="Authors may be notified">
+                    <Callout tone="warn" icon={<Warning16Regular />} title="Authors may be notified">
                       Re-liking can send a like notification to the author before it’s removed, and it uses your daily
                       like budget. Xomoni paces this much more slowly.
                     </Callout>
@@ -346,72 +585,87 @@ export function CleanupPage({ account, navigate }: PageProps) {
           </Card>
         </div>
 
-        <div className="lg:sticky lg:top-6 lg:self-start">
+        <div className={styles.aside}>
           <Card title="Review">
-            <div className="text-xs font-medium text-ink-2">Matching in your inventory</div>
-            <div className="tabular mt-1 text-4xl font-semibold tracking-tight">
-              {candidates ? fmtNumber(candidates.length) : '…'}
-            </div>
-            <p className="mt-1 text-xs text-ink-2">
+            <Caption1 className={styles.reviewLabel}>Matching in your inventory</Caption1>
+            <div className={styles.reviewCount}>{candidates ? fmtNumber(candidates.length) : '…'}</div>
+            <Caption1 as="p" className={styles.reviewScope}>
               {TARGET_PLURAL[target]} before {fmtDate(before)}
               {options.sweep && ' · the sweep may find more that aren’t in your inventory yet'}
-            </p>
+            </Caption1>
 
             {!!candidates?.length && (
-              <ul className="mt-4 space-y-2 border-t border-line pt-3">
+              <ul className={styles.preview}>
                 {candidates.slice(0, 4).map((c) => (
-                  <li key={c.key} className="text-xs">
-                    <span className="tabular text-muted">{fmtDate(c.createdAt)}</span>
-                    <p className="line-clamp-2 text-ink">{c.text || <span className="text-muted">(no text)</span>}</p>
+                  <li key={c.key}>
+                    <Caption1 className={styles.previewDate}>{fmtDate(c.createdAt)}</Caption1>
+                    <Caption1 as="p" className={styles.previewText}>
+                      {c.text || <span className={styles.muted}>(no text)</span>}
+                    </Caption1>
                   </li>
                 ))}
                 {candidates.length > 4 && (
-                  <li className="text-xs text-muted">and {fmtNumber(candidates.length - 4)} more</li>
+                  <li>
+                    <Caption1 className={styles.muted}>and {fmtNumber(candidates.length - 4)} more</Caption1>
+                  </li>
                 )}
               </ul>
             )}
 
             {rule && (
-              <div className="mt-4 rounded-lg bg-surface-2 p-3 text-xs text-ink-2">
-                <div className="flex items-center justify-between">
-                  <span>Estimated time</span>
-                  <span className="font-medium text-ink">≈ {fmtDuration(eta)}</span>
+              <div className={styles.estimate}>
+                <div className={styles.estimateRow}>
+                  <span className={styles.estimateLabel}>
+                    <Clock16Regular />
+                    Estimated time
+                  </span>
+                  <span className={styles.estimateValue}>≈ {fmtDuration(eta)}</span>
                 </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <span>Pacing</span>
-                  <span className="text-ink">
+                <div className={styles.estimateRow}>
+                  <span className={styles.estimateLabel}>
+                    <Gauge16Regular />
+                    Pacing
+                  </span>
+                  <span className={styles.estimateValue}>
                     {rule.minDelay}–{rule.maxDelay}s · max {fmtNumber(rule.dailyCap)}/day
                   </span>
                 </div>
                 {days > 1 && (
-                  <p className="mt-2 text-muted">
+                  <p className={styles.estimateNote}>
                     Spread over about {days} days by the daily cap. Xomoni waits and continues automatically.
                   </p>
                 )}
               </div>
             )}
 
-            <div className="mt-4 space-y-2">
-              <Button className="w-full" icon={<Download size={14} />} onClick={backup} disabled={!candidates?.length}>
+            <div className={styles.actions}>
+              <Button
+                className={styles.fullWidth}
+                icon={<ArrowDownload16Regular />}
+                onClick={backup}
+                disabled={!candidates?.length}
+              >
                 Download backup (JSON)
               </Button>
               <Button
-                className="w-full"
+                className={styles.fullWidth}
                 variant="danger"
-                icon={<Trash2 size={14} />}
+                icon={<Delete16Regular />}
                 onClick={() => setConfirming(true)}
                 disabled={!canStart}
               >
                 Start cleanup
               </Button>
               {run.status !== 'idle' && (
-                <p className="text-center text-xs text-muted">Another job is running. Pause it first.</p>
+                <Caption1 as="p" className={styles.busy}>
+                  Another job is running. Pause it first.
+                </Caption1>
               )}
             </div>
-            <p className="mt-4 flex items-start gap-1.5 text-[11px] text-muted">
-              <ShieldCheck size={12} className="mt-px shrink-0" /> Stops automatically if X rate-limits, flags, or locks
-              the account.
-            </p>
+            <Caption1 as="p" className={styles.safety}>
+              <ShieldCheckmark16Regular className={styles.safetyIcon} />
+              <span>Stops automatically if X rate-limits, flags, or locks the account.</span>
+            </Caption1>
           </Card>
         </div>
       </div>
@@ -428,6 +682,11 @@ export function CleanupPage({ account, navigate }: PageProps) {
   );
 }
 
+/**
+ * The last step before a cleanup starts: names the job, says how many known items match and that removals can't be
+ * undone, and enables Start only once DELETE is typed (any case, spaces around it ignored). The typed word is
+ * forgotten whenever the dialog closes, so it never stays armed for the next opening.
+ */
 function ConfirmStart({
   open,
   onClose,
@@ -443,6 +702,7 @@ function ConfirmStart({
   count: number;
   sweep: boolean;
 }) {
+  const styles = useStyles();
   const [typed, setTyped] = useState('');
   const close = () => {
     setTyped('');
@@ -471,23 +731,35 @@ function ConfirmStart({
         </>
       }
     >
-      <p className="font-medium text-ink">{title}</p>
-      <p className="mt-2">
+      <div className={styles.summary} data-tone="critical">
+        <Delete20Regular className={styles.summaryIcon} />
+        <Body1Strong as="p" className={styles.summaryTitle}>
+          {title}
+        </Body1Strong>
+      </div>
+      <Text as="p" className={styles.paragraph}>
         {fmtNumber(count)} known items match{sweep ? ', plus any the sweep finds on X' : ''}. Removed posts and likes
         cannot be restored by Xomoni or X.
-      </p>
-      <p className="mt-2">Keep this tab and the X worker window open. You can pause at any time and resume later.</p>
-      <div className="mt-4">
-        <Field
-          label={
-            <>
-              Type <span className="font-mono font-semibold text-ink">DELETE</span> to confirm
-            </>
-          }
-        >
-          <input className="field" value={typed} autoFocus onChange={(e) => setTyped(e.target.value)} />
-        </Field>
-      </div>
+      </Text>
+      <Text as="p" className={styles.paragraph}>
+        Keep this tab and the X worker window open. You can pause at any time and resume later.
+      </Text>
+      <Field
+        label={
+          <>
+            Type <span className={styles.code}>DELETE</span> to confirm
+          </>
+        }
+      >
+        <Input
+          className={styles.control}
+          value={typed}
+          data-autofocus
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(_, data) => setTyped(data.value)}
+        />
+      </Field>
     </Modal>
   );
 }

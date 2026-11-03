@@ -16,16 +16,8 @@ import {
   Segmented,
   StatTile,
   Toggle,
-  cx,
   useNow,
 } from '../../src/ui/components/ui';
-
-describe('cx', () => {
-  it('joins the truthy class names and drops the rest', () => {
-    expect(cx('a', false, null, undefined, '', 'b')).toBe('a b');
-    expect(cx()).toBe('');
-  });
-});
 
 describe('Card', () => {
   it('shows the title, subtitle, actions and content', () => {
@@ -37,7 +29,7 @@ describe('Card', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Limits' })).toBeInTheDocument();
     expect(screen.getByText('Per hour')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    expect(screen.getByText('Body text')).toHaveClass('p-5', 'pt-4');
+    expect(screen.getByText('Body text')).toHaveAttribute('data-padded', 'below-header');
   });
 
   it('has no header without a title or actions, and no padding when `padded` is false', () => {
@@ -48,14 +40,13 @@ describe('Card', () => {
     );
     expect(container.querySelector('header')).toBeNull();
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
-    expect(screen.getByText('Table')).not.toHaveClass('p-5');
+    expect(screen.getByText('Table')).toHaveAttribute('data-padded', 'none');
     expect(container.querySelector('section')).toHaveClass('extra');
   });
 
   it('pads the content fully when there is no header', () => {
     render(<Card>Plain</Card>);
-    expect(screen.getByText('Plain')).toHaveClass('p-5');
-    expect(screen.getByText('Plain')).not.toHaveClass('pt-4');
+    expect(screen.getByText('Plain')).toHaveAttribute('data-padded', 'full');
   });
 
   it('shows a header for actions alone', () => {
@@ -71,7 +62,8 @@ describe('Button', () => {
     render(<Button onClick={onClick}>Save</Button>);
     const button = screen.getByRole('button', { name: 'Save' });
     expect(button).toHaveAttribute('type', 'button');
-    expect(button).toHaveClass('border-line', 'h-9');
+    expect(button).toHaveAttribute('data-variant', 'secondary');
+    expect(button).toHaveAttribute('data-size', 'md');
     await userEvent.click(button);
     expect(onClick).toHaveBeenCalledOnce();
   });
@@ -87,10 +79,47 @@ describe('Button', () => {
       </>,
     );
     const start = screen.getByRole('button', { name: 'Start' });
-    expect(start).toHaveClass('bg-accent', 'h-8', 'mine');
-    expect(start.firstChild).toBe(screen.getByTestId('icon'));
-    expect(screen.getByRole('button', { name: 'Later' })).toHaveClass('text-ink-2');
-    expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass('bg-critical');
+    expect(start).toHaveAttribute('data-variant', 'primary');
+    expect(start).toHaveAttribute('data-size', 'sm');
+    expect(start).toHaveClass('mine');
+    // Fluent puts the icon in its own slot, before the label.
+    expect(start.firstElementChild).toContainElement(screen.getByTestId('icon'));
+    expect(screen.getByRole('button', { name: 'Later' })).toHaveAttribute('data-variant', 'ghost');
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveAttribute('data-variant', 'danger');
+  });
+
+  it('keeps the disabled look on a disabled danger button, so it never looks clickable', () => {
+    render(
+      <>
+        <Button variant="danger">Delete</Button>
+        <Button variant="danger" disabled>
+          Delete later
+        </Button>
+      </>,
+    );
+    // Disabled, a danger button is styled exactly like a disabled primary one; enabled, it is not.
+    render(
+      <>
+        <Button variant="primary">Go</Button>
+        <Button variant="primary" disabled>
+          Go later
+        </Button>
+      </>,
+    );
+    const className = (name: string) => screen.getByRole('button', { name }).className;
+    expect(className('Delete later')).toBe(className('Go later'));
+    expect(className('Delete')).not.toBe(className('Go'));
+    expect(screen.getByRole('button', { name: 'Delete later' })).toBeDisabled();
+  });
+
+  it('puts the icon after the label when asked', () => {
+    render(
+      <Button iconPosition="after" icon={<svg data-testid="chevron" />}>
+        Next
+      </Button>,
+    );
+    const next = screen.getByRole('button', { name: 'Next' });
+    expect(next.lastElementChild).toContainElement(screen.getByTestId('chevron'));
   });
 
   it('lets `type` be overridden and does not fire when disabled', async () => {
@@ -109,21 +138,20 @@ describe('Button', () => {
 });
 
 describe('Badge', () => {
-  it('pairs a tone dot with its label', () => {
-    const { container } = render(<Badge tone="critical">Failed</Badge>);
-    expect(screen.getByText('Failed')).toBeInTheDocument();
-    expect(container.querySelector('.bg-critical')).not.toBeNull();
+  it('pairs a tone with its label', () => {
+    render(<Badge tone="critical">Failed</Badge>);
+    expect(screen.getByText('Failed')).toHaveAttribute('data-tone', 'critical');
   });
 
-  it('uses the neutral dot by default and an icon instead of the dot when given one', () => {
-    const { container } = render(
+  it('is neutral by default and shows an icon when given one', () => {
+    render(
       <>
         <Badge>Ready</Badge>
         <Badge icon={<svg data-testid="badge-icon" />}>Done</Badge>
       </>,
     );
-    expect(container.querySelectorAll('.bg-muted')).toHaveLength(1);
-    expect(screen.getByTestId('badge-icon')).toBeInTheDocument();
+    expect(screen.getByText('Ready')).toHaveAttribute('data-tone', 'neutral');
+    expect(screen.getByText('Done')).toContainElement(screen.getByTestId('badge-icon'));
   });
 });
 
@@ -148,7 +176,7 @@ describe('Meter', () => {
     expect(meter).toHaveAttribute('aria-valuenow', '5');
     expect(meter).toHaveAttribute('aria-valuemax', '20');
     expect(fill('Deletes today')).toHaveStyle({ width: '25%' });
-    expect(fill('Deletes today')).toHaveClass('bg-accent');
+    expect(fill('Deletes today')).toHaveAttribute('data-tone', 'accent');
   });
 
   it('turns to warn at 80% and to critical when full, never past 100%', () => {
@@ -158,15 +186,15 @@ describe('Meter', () => {
         <Meter value={15} max={10} label="Over" />
       </>,
     );
-    expect(fill('Near')).toHaveClass('bg-warn');
-    expect(fill('Over')).toHaveClass('bg-critical');
+    expect(fill('Near')).toHaveAttribute('data-tone', 'warn');
+    expect(fill('Over')).toHaveAttribute('data-tone', 'critical');
     expect(fill('Over')).toHaveStyle({ width: '100%' });
   });
 
   it('stays empty when the maximum is zero', () => {
     render(<Meter value={3} max={0} label="None" />);
     expect(fill('None')).toHaveStyle({ width: '0%' });
-    expect(fill('None')).toHaveClass('bg-accent');
+    expect(fill('None')).toHaveAttribute('data-tone', 'accent');
   });
 });
 
@@ -212,16 +240,16 @@ describe('Toggle', () => {
     const onChange = vi.fn();
     render(<Controlled onChange={onChange} />);
     const toggle = screen.getByRole('switch', { name: /Notifications/ });
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(toggle).not.toBeChecked();
     expect(screen.getByText('When a job needs you')).toBeInTheDocument();
 
     await userEvent.click(toggle);
     expect(onChange).toHaveBeenLastCalledWith(true);
-    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(toggle).toBeChecked();
 
     await userEvent.click(toggle);
     expect(onChange).toHaveBeenLastCalledWith(false);
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(toggle).not.toBeChecked();
   });
 
   it('does nothing while disabled', async () => {
@@ -231,12 +259,12 @@ describe('Toggle', () => {
     expect(toggle).toBeDisabled();
     await userEvent.click(toggle);
     expect(onChange).not.toHaveBeenCalled();
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(toggle).not.toBeChecked();
   });
 
   it('has no description line without a description', () => {
     render(<Toggle checked onChange={vi.fn()} label="Active hours" />);
-    expect(screen.getByRole('switch', { name: 'Active hours' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Active hours' })).toBeChecked();
   });
 });
 
@@ -319,7 +347,8 @@ describe('Modal', () => {
     await userEvent.click(dialog);
     expect(onClose).not.toHaveBeenCalled();
 
-    await userEvent.click(dialog.parentElement!);
+    // Fluent's backdrop is a sibling of the dialog surface.
+    await userEvent.click(document.querySelector<HTMLElement>('.fui-DialogSurface__backdrop')!);
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -379,7 +408,7 @@ describe('Callout', () => {
     );
     expect(screen.getByText('Heads up')).toBeInTheDocument();
     expect(screen.getByText('X may limit you.')).toBeInTheDocument();
-    expect(container.querySelector('.bg-warn')).not.toBeNull();
+    expect(container.firstElementChild).toHaveAttribute('data-tone', 'warn');
   });
 
   it.each(['neutral', 'accent', 'good', 'serious', 'critical'] as const)('colors the bar for the %s tone', (tone) => {
@@ -388,7 +417,7 @@ describe('Callout', () => {
         Note
       </Callout>,
     );
-    expect(container.querySelector(`.bg-${tone === 'neutral' ? 'muted' : tone}`)).not.toBeNull();
+    expect(container.firstElementChild).toHaveAttribute('data-tone', tone);
     expect(container.querySelector('p')).toBeNull();
   });
 });

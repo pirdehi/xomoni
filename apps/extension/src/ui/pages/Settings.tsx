@@ -1,5 +1,20 @@
+import {
+  Caption1,
+  Input,
+  Link,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import { ArrowDownload20Regular, Delete20Regular, ShieldCheckmark16Regular } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Download, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { db, getSettings, kvSet } from '../../shared/db';
 import { FINISHED_ID, notify } from '../../shared/notify';
@@ -8,7 +23,7 @@ import { DAY } from '../../shared/time';
 import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/types';
 import { X_PUBLISHED_LIMITS, capCeilings, share } from '../../shared/x-limits';
 import type { PageProps } from '../navigation';
-import { Button, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
+import { Button, Callout, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
 import { downloadFile, errorMessage, toDateInput } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
@@ -25,6 +40,86 @@ const COLUMNS: { key: keyof PacingRule; label: string; unit?: string }[] = [
   { key: 'dailyCap', label: 'Per day' },
 ];
 
+const useStyles = makeStyles({
+  stack: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalL },
+  columns: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gap: tokens.spacingVerticalL,
+    '@media (min-width: 1024px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
+  },
+  scroll: { overflowX: 'auto' },
+  // Fluent's tables share the width out evenly; these size their columns to their content.
+  table: { tableLayout: 'auto', fontVariantNumeric: 'tabular-nums' },
+  headCell: {
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground3,
+    whiteSpace: 'nowrap',
+  },
+  actionCell: {
+    whiteSpace: 'nowrap',
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+  numberField: { width: '5.5rem' },
+  number: { fontVariantNumeric: 'tabular-nums' },
+  unit: { fontSize: tokens.fontSizeBase100 },
+  note: { margin: `${tokens.spacingVerticalM} 0 0`, color: tokens.colorNeutralForeground3 },
+  limits: {
+    marginTop: tokens.spacingVerticalL,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusLarge,
+  },
+  summary: {
+    cursor: 'pointer',
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    borderRadius: tokens.borderRadiusMedium,
+    ':focus-visible': { outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}` },
+  },
+  limitsTable: { marginTop: tokens.spacingVerticalS, fontSize: tokens.fontSizeBase200 },
+  muted: { color: tokens.colorNeutralForeground3 },
+  secondary: { color: tokens.colorNeutralForeground2 },
+  strong: { fontWeight: tokens.fontWeightSemibold },
+  limitsNote: { margin: `${tokens.spacingVerticalS} 0 0`, color: tokens.colorNeutralForeground3 },
+  // Lines up with the text of the active-hours switch above it, as the kit's Toggle does for its description.
+  hours: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    paddingLeft: '48px',
+  },
+  toggleRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+  },
+  noShrink: { flexShrink: 0 },
+  failures: { width: '6rem' },
+  goodIcon: { color: tokens.colorStatusSuccessForeground1 },
+  rules: {
+    margin: 0,
+    paddingLeft: tokens.spacingHorizontalL,
+    listStyleType: 'disc',
+    '& > li + li': { marginTop: tokens.spacingVerticalXXS },
+  },
+  data: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalXL,
+    paddingTop: tokens.spacingVerticalL,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  dataNote: { margin: 0, color: tokens.colorNeutralForeground2 },
+  buttons: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
+});
+
 // Every save goes through the safety rules: custom values are clamped to one fifth of X's limits.
 /** Saves settings brought back inside the safety rules; a failed save shows a toast. */
 const save = (s: Settings) => {
@@ -33,10 +128,12 @@ const save = (s: Settings) => {
 
 /**
  * Pacing presets and per-action rules, active hours, notifications, the failure limit, theme, and
- * export or wipe of local data. Each change is saved to the `kv` table at once; a running job keeps
- * the settings it read when it started.
+ * export or wipe of local data, drawn with Fluent UI (ADR-0019). Each change is saved to the `kv` table at once; a
+ * running job keeps the settings it read when it started. Each pacing field is named by its action and column
+ * (such as "Unlike, Per hour") for screen readers.
  */
 export function SettingsPage(_props: PageProps) {
+  const styles = useStyles();
   const settings = useLiveQuery(getSettings, []);
   const run = useRunner();
   const [theme, setThemeState] = useState<ThemeChoice>(getStoredTheme);
@@ -84,7 +181,7 @@ export function SettingsPage(_props: PageProps) {
         title="Settings"
         description="Pacing, safety and your local data. A running job keeps its settings until it is paused and resumed."
       />
-      <div className="space-y-4">
+      <div className={styles.stack}>
         <Card
           title="Pacing"
           subtitle="Xomoni uses at most one fifth of every limit X publishes, and of the live limits X reports. Custom values can be slower, never faster."
@@ -99,62 +196,57 @@ export function SettingsPage(_props: PageProps) {
             />
           }
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted">
-                  <th className="pb-2 font-medium">Action</th>
+          <div className={styles.scroll}>
+            <Table size="small" className={styles.table}>
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell className={styles.headCell}>Action</TableHeaderCell>
                   {COLUMNS.map((c) => (
-                    <th key={c.key} className="pb-2 pl-2 font-medium">
+                    <TableHeaderCell key={c.key} className={styles.headCell}>
                       {c.label}
-                    </th>
+                    </TableHeaderCell>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {ACTIONS.map((action) => (
-                  <tr key={action} className="border-t border-line">
-                    <td className="py-2 pr-3 text-xs font-medium whitespace-nowrap text-ink">
-                      {ACTION_LABELS[action]}
-                    </td>
+                  <TableRow key={action}>
+                    <TableCell className={styles.actionCell}>{ACTION_LABELS[action]}</TableCell>
                     {COLUMNS.map((c) => (
-                      <td key={c.key} className="py-2 pl-2">
-                        <div className="relative w-20">
-                          <input
-                            className="field tabular py-1 pr-5 text-xs"
-                            type="number"
-                            min={c.unit ? 0 : 1}
-                            max={c.key === 'hourlyCap' || c.key === 'dailyCap' ? capCeilings(action)[c.key] : undefined}
-                            step={c.unit ? 0.5 : 1}
-                            value={settings.pacing[action][c.key]}
-                            onChange={(e) =>
-                              setRule(action, c.key, Math.max(c.unit ? 0 : 1, Number(e.target.value) || 0))
-                            }
-                          />
-                          {c.unit && (
-                            <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[10px] text-muted">
-                              {c.unit}
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                      <TableCell key={c.key}>
+                        <Input
+                          size="small"
+                          type="number"
+                          className={styles.numberField}
+                          input={{ className: styles.number }}
+                          aria-label={`${ACTION_LABELS[action]}, ${c.label}${c.unit ? ' (seconds)' : ''}`}
+                          min={c.unit ? 0 : 1}
+                          max={c.key === 'hourlyCap' || c.key === 'dailyCap' ? capCeilings(action)[c.key] : undefined}
+                          step={c.unit ? 0.5 : 1}
+                          value={String(settings.pacing[action][c.key])}
+                          contentAfter={c.unit ? <span className={styles.unit}>{c.unit}</span> : undefined}
+                          onChange={(_, data) =>
+                            setRule(action, c.key, Math.max(c.unit ? 0 : 1, Number(data.value) || 0))
+                          }
+                        />
+                      </TableCell>
                     ))}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
-          <p className="mt-3 text-xs text-muted">
+          <Caption1 as="p" block className={styles.note}>
             Delays vary around the middle of min–max, with an occasional longer pause. After each batch Xomoni takes a
             longer break, and after every 25–50 minutes of work it rests 10–30 minutes. Caps use rolling 1-hour and
             24-hour windows and can't be set above one fifth of X's limits.
-          </p>
+          </Caption1>
           <XLimitsTable />
         </Card>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className={styles.columns}>
           <Card title="Schedule & safety">
-            <div className="space-y-4">
+            <div className={styles.stack}>
               <Toggle
                 checked={settings.activeHours.enabled}
                 onChange={(enabled) => save({ ...settings, activeHours: { ...settings.activeHours, enabled } })}
@@ -162,14 +254,13 @@ export function SettingsPage(_props: PageProps) {
                 description="Pauses outside these hours, so work is spread over the day and never runs all night."
               />
               {settings.activeHours.enabled && (
-                <div className="grid grid-cols-2 gap-3 pl-12">
+                <div className={styles.hours}>
                   {(['start', 'end'] as const).map((k) => (
                     <Field key={k} label={k === 'start' ? 'From' : 'Until'}>
-                      <select
-                        className="field"
-                        value={settings.activeHours[k]}
-                        onChange={(e) =>
-                          save({ ...settings, activeHours: { ...settings.activeHours, [k]: Number(e.target.value) } })
+                      <Select
+                        value={String(settings.activeHours[k])}
+                        onChange={(_, data) =>
+                          save({ ...settings, activeHours: { ...settings.activeHours, [k]: Number(data.value) } })
                         }
                       >
                         {Array.from({ length: 24 }, (_, h) => (
@@ -177,12 +268,12 @@ export function SettingsPage(_props: PageProps) {
                             {String(h).padStart(2, '0')}:00
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </Field>
                   ))}
                 </div>
               )}
-              <div className="flex items-start justify-between gap-3">
+              <div className={styles.toggleRow}>
                 <Toggle
                   checked={settings.notifications}
                   onChange={(notifications) => save({ ...settings, notifications })}
@@ -193,7 +284,7 @@ export function SettingsPage(_props: PageProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="shrink-0"
+                    className={styles.noShrink}
                     onClick={() =>
                       void notify(
                         FINISHED_ID,
@@ -207,29 +298,27 @@ export function SettingsPage(_props: PageProps) {
                 )}
               </div>
               <Field label="Pause after this many failures in a row">
-                <input
-                  className="field tabular w-24"
+                <Input
                   type="number"
+                  className={styles.failures}
+                  input={{ className: styles.number }}
                   min={1}
                   max={3}
-                  value={settings.maxConsecutiveFailures}
-                  onChange={(e) =>
-                    save({ ...settings, maxConsecutiveFailures: Math.max(1, Number(e.target.value) || 1) })
+                  value={String(settings.maxConsecutiveFailures)}
+                  onChange={(_, data) =>
+                    save({ ...settings, maxConsecutiveFailures: Math.max(1, Number(data.value) || 1) })
                   }
                 />
               </Field>
-              <div className="rounded-lg bg-surface-2 p-3 text-xs text-ink-2">
-                <div className="mb-1.5 flex items-center gap-1.5 font-medium text-ink">
-                  <ShieldCheck size={13} className="text-good" /> Always on
-                </div>
-                <ul className="list-disc space-y-0.5 pl-4">
+              <Callout tone="good" icon={<ShieldCheckmark16Regular className={styles.goodIcon} />} title="Always on">
+                <ul className={styles.rules}>
                   <li>Waits out X rate limits (HTTP 429 / code 88) and daily limits</li>
                   <li>Stops on “looks automated” (code 226)</li>
                   <li>Waits for you on logins, 2FA and X’s checks, then continues by itself</li>
                   <li>Never solves captchas, never touches your password or cookies</li>
                   <li>Counts an action only when X confirms it</li>
                 </ul>
-              </div>
+              </Callout>
             </div>
           </Card>
 
@@ -250,15 +339,17 @@ export function SettingsPage(_props: PageProps) {
                 ]}
               />
             </Field>
-            <div className="mt-5 space-y-2 border-t border-line pt-4">
-              <p className="text-xs text-ink-2">Your inventory, jobs and log live only in this browser profile.</p>
-              <div className="flex flex-wrap gap-2">
-                <Button icon={<Download size={14} />} onClick={() => void exportAll()}>
+            <div className={styles.data}>
+              <Caption1 as="p" block className={styles.dataNote}>
+                Your inventory, jobs and log live only in this browser profile.
+              </Caption1>
+              <div className={styles.buttons}>
+                <Button icon={<ArrowDownload20Regular />} onClick={() => void exportAll()}>
                   Export everything
                 </Button>
                 <Button
                   variant="ghost"
-                  icon={<Trash2 size={14} />}
+                  icon={<Delete20Regular />}
                   onClick={() => setWiping(true)}
                   disabled={run.status !== 'idle'}
                 >
@@ -293,47 +384,48 @@ export function SettingsPage(_props: PageProps) {
 
 /** X's published limits next to the share Xomoni allows itself, with links to where X publishes them. */
 function XLimitsTable() {
+  const styles = useStyles();
   return (
-    <details className="mt-4 rounded-lg border border-line px-3 py-2">
-      <summary className="cursor-pointer text-xs font-medium text-ink">X's published limits and Xomoni's share</summary>
-      <div className="overflow-x-auto">
-        <table className="mt-2 w-full text-xs">
-          <thead>
-            <tr className="text-left text-muted">
-              <th className="pb-1 font-medium">Limit</th>
-              <th className="pb-1 pl-3 font-medium">X allows</th>
-              <th className="pb-1 pl-3 font-medium">Xomoni uses at most</th>
-              <th className="pb-1 pl-3 font-medium">Source</th>
-            </tr>
-          </thead>
-          <tbody>
+    <details className={styles.limits}>
+      <summary className={styles.summary}>X's published limits and Xomoni's share</summary>
+      <div className={styles.scroll}>
+        <Table size="small" className={mergeClasses(styles.table, styles.limitsTable)}>
+          <TableHeader>
+            <TableRow>
+              <TableHeaderCell className={styles.headCell}>Limit</TableHeaderCell>
+              <TableHeaderCell className={styles.headCell}>X allows</TableHeaderCell>
+              <TableHeaderCell className={styles.headCell}>Xomoni uses at most</TableHeaderCell>
+              <TableHeaderCell className={styles.headCell}>Source</TableHeaderCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {Object.entries(X_PUBLISHED_LIMITS).map(([id, l]) => {
               const per = l.windowMs >= DAY ? 'day' : '15 min';
               return (
-                <tr key={id} className="tabular border-t border-line">
-                  <td className="py-1 pr-3 text-ink">{l.label}</td>
-                  <td className="py-1 pl-3 text-ink-2">
+                <TableRow key={id}>
+                  <TableCell>{l.label}</TableCell>
+                  <TableCell className={styles.secondary}>
                     {l.limit} per {per}
-                  </td>
-                  <td className="py-1 pl-3 font-medium text-ink">
+                  </TableCell>
+                  <TableCell className={styles.strong}>
                     {'neverUsed' in l ? 'none: Xomoni never posts' : `${share(l.limit)} per ${per}`}
-                  </td>
-                  <td className="py-1 pl-3">
-                    <a className="text-accent underline" href={l.source} target="_blank" rel="noreferrer">
+                  </TableCell>
+                  <TableCell>
+                    <Link href={l.source} target="_blank" rel="noreferrer">
                       {new URL(l.source).hostname}
-                    </a>{' '}
-                    <span className="text-muted">({l.checked})</span>
-                  </td>
-                </tr>
+                    </Link>{' '}
+                    <span className={styles.muted}>({l.checked})</span>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
-      <p className="mt-2 text-xs text-muted">
+      <Caption1 as="p" block className={styles.limitsNote}>
         Posting limits are listed for completeness. While a job runs, Xomoni also stops at one fifth of the live limit X
         reports for each request and waits for X's window to reset.
-      </p>
+      </Caption1>
     </details>
   );
 }

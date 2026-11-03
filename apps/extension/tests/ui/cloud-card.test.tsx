@@ -53,7 +53,9 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     await userEvent.type(await screen.findByLabelText('Code'), 'AAAAAAAAAA');
     await userEvent.click(screen.getByRole('button', { name: 'Connect' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('This code is not valid. Get a new one on xomoni.com.');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('This code is not valid. Get a new one on xomoni.com.');
+    expect(alert).toHaveAttribute('data-tone', 'critical');
     expect(await getConnection()).toBeNull();
   });
 

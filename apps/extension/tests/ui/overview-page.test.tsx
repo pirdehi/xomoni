@@ -47,6 +47,9 @@ function steps() {
 /** A step shows its number until it is done, then a check mark. */
 const isDone = (step: HTMLElement, n: number) => !within(step).queryByText(String(n));
 
+/** The tone of a step's round marker: `good` when done, `accent` while in progress, else `neutral`. */
+const markerTone = (step: HTMLElement) => step.querySelector('[data-tone]')?.getAttribute('data-tone');
+
 describe('Overview onboarding (no account yet)', () => {
   it('starts with the worker window to open', async () => {
     render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
@@ -57,6 +60,7 @@ describe('Overview onboarding (no account yet)', () => {
     expect(isDone(open!, 1)).toBe(false);
     expect(isDone(login!, 2)).toBe(false);
     expect(isDone(detect!, 3)).toBe(false);
+    expect([open!, login!, detect!].map(markerTone)).toEqual(['neutral', 'neutral', 'neutral']);
     expect(within(detect!).getByText('Your dashboard appears here as soon as you are signed in.')).toBeInTheDocument();
     expect(screen.getByText('No servers. Your data stays in this browser.')).toBeInTheDocument();
 
@@ -77,6 +81,7 @@ describe('Overview onboarding (no account yet)', () => {
     expect(isDone(open!, 1)).toBe(true);
     expect(isDone(login!, 2)).toBe(false);
     expect(isDone(detect!, 3)).toBe(false);
+    expect([open!, login!, detect!].map(markerTone)).toEqual(['good', 'neutral', 'neutral']);
 
     await userEvent.click(screen.getByRole('button', { name: 'Show X worker' }));
     await waitFor(() => {
@@ -93,6 +98,8 @@ describe('Overview onboarding (no account yet)', () => {
     expect(isDone(open!, 1)).toBe(true);
     expect(isDone(login!, 2)).toBe(true);
     expect(isDone(detect!, 3)).toBe(false);
+    // The last step is the one in progress, while Xomoni reads the profile.
+    expect([open!, login!, detect!].map(markerTone)).toEqual(['good', 'good', 'accent']);
     expect(within(detect!).getByText('Reading your profile…')).toBeInTheDocument();
   });
 

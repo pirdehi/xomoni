@@ -124,6 +124,44 @@ describe('ActivityChart', () => {
     expect(svg.querySelectorAll('path')).toHaveLength(2);
   });
 
+  it('stacks each year’s series bottom-up in legend order, each swatch naming its series', async () => {
+    await seed();
+    render(<ActivityChart accountId={ME} />);
+    const svg = await chart();
+
+    const columns = Array.from(svg.querySelectorAll('g[opacity]'));
+    const stacked = (column: Element) =>
+      Array.from(column.querySelectorAll('[data-series]')).map((mark) => [
+        mark.tagName,
+        mark.getAttribute('data-series'),
+      ]);
+    // 2019: posts then reposts (no replies); 2020: nothing; 2021: all three. The top segment is the rounded path.
+    expect(columns.map(stacked)).toEqual([
+      [
+        ['rect', 'post'],
+        ['path', 'repost'],
+      ],
+      [],
+      [
+        ['rect', 'post'],
+        ['rect', 'reply'],
+        ['path', 'repost'],
+      ],
+    ]);
+    const [post, reply, repost] = columns[2]!.querySelectorAll('[data-series]');
+    // Bottom-up: each segment sits above the one before it.
+    expect(Number(reply!.getAttribute('y'))).toBeLessThan(Number(post!.getAttribute('y')));
+    expect(repost!.getAttribute('d')).toMatch(/^M[\d.]+,[\d.]+V/);
+
+    for (const [label, kind] of [
+      ['Posts', 'post'],
+      ['Replies', 'reply'],
+      ['Reposts', 'repost'],
+    ] as const) {
+      expect(screen.getByText(label).querySelector('[data-series]')).toHaveAttribute('data-series', kind);
+    }
+  });
+
   it('labels the axis in quarters of the tallest column, rounded up', async () => {
     await seed();
     render(<ActivityChart accountId={ME} />);

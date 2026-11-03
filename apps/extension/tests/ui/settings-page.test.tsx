@@ -84,6 +84,23 @@ describe('Settings page', () => {
       }
     });
 
+    it('names each pacing field by its action and column, with the unit of delays', async () => {
+      await renderPage();
+
+      expect(screen.getByRole('spinbutton', { name: `${ACTION_LABELS.unlike}, Per hour` })).toBe(
+        cell('unlike', 'hourlyCap'),
+      );
+      expect(screen.getByRole('spinbutton', { name: `${ACTION_LABELS.delete}, Min delay (seconds)` })).toBe(
+        cell('delete', 'minDelay'),
+      );
+      expect(screen.getByRole('spinbutton', { name: `${ACTION_LABELS.read}, Break max (seconds)` })).toBe(
+        cell('read', 'batchPauseMax'),
+      );
+      // No two fields share a name, so a screen reader can tell every one apart.
+      const names = ACTIONS.flatMap((action) => COLUMNS.map((key) => cell(action, key).getAttribute('aria-label')));
+      expect(new Set(names).size).toBe(ACTIONS.length * COLUMNS.length);
+    });
+
     it('saves an edited value at once and switches to Custom', async () => {
       await renderPage();
 

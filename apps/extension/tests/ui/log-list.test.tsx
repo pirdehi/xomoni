@@ -44,10 +44,11 @@ describe('LogList', () => {
   it('shows an icon colored by level', () => {
     const levels = ['success', 'info', 'warn', 'error'] as const;
     render(<LogList entries={levels.map((level) => entry({ level, message: level }))} />);
-    const color = { success: 'text-good', info: 'text-muted', warn: 'text-serious', error: 'text-critical' };
+    const tone = { success: 'good', info: 'neutral', warn: 'warn', error: 'critical' };
     for (const level of levels) {
       const row = screen.getByText(level).closest('li')!;
-      expect(row.querySelector(`svg.${color[level]}`)).not.toBeNull();
+      expect(row.querySelector(`[data-tone="${tone[level]}"] svg`)).not.toBeNull();
+      expect(row.querySelectorAll('[data-tone]')).toHaveLength(1);
     }
   });
 

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerState } from '../../src/engine/runner';
@@ -96,6 +96,8 @@ describe('Archive page', () => {
     await seed([draft({ id: '21', createdAt: day(2016, 3, 6), text: 'Someone else’s post' })], 'scan', 'other');
   });
   afterEach(() => {
+    // Unmount first: a component's pending effect must not run against removed stubs or mocks.
+    cleanup();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();

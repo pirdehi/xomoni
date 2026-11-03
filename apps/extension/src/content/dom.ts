@@ -146,54 +146,8 @@ export function closeMenus() {
   }
 }
 
-/**
- * The element a click at the center of `el` would land on: what the page shows there when it is inside `el`,
- * otherwise (no layout, or something else on top) the deepest element that holds all of `el`'s text, as its
- * label does. A real click starts there and bubbles up through `el`, so handlers on the label hear it too (#121).
- */
-export function clickTarget(el: HTMLElement): HTMLElement {
-  const box = el.getBoundingClientRect();
-  const hit =
-    box.width && box.height ? document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) : null;
-  if (hit instanceof HTMLElement && el.contains(hit)) return hit;
-  const text = el.textContent.trim();
-  let node = el;
-  for (;;) {
-    const child = [...node.children].find(
-      (c): c is HTMLElement => c instanceof HTMLElement && c.textContent.trim() === text,
-    );
-    if (!child || !text) return node;
-    node = child;
-  }
-}
-
-/**
- * Presses `el` the way a mouse button does, at its center: pointerdown, mousedown, pointerup, mouseup, then click.
- * Some controls act on the press, not on a lone `click()` (#121). No path, no hover: just the press, and the
- * events are synthetic like every Xomoni event (PLAYBOOK B3), so a page that wants real input still refuses.
- */
-export function pressPointer(el: HTMLElement) {
-  const box = el.getBoundingClientRect();
-  const at = { clientX: box.left + box.width / 2, clientY: box.top + box.height / 2, bubbles: true, cancelable: true };
-  const pointer = { ...at, pointerId: 1, pointerType: 'mouse', isPrimary: true };
-  el.dispatchEvent(new PointerEvent('pointerdown', { ...pointer, button: 0, buttons: 1 }));
-  el.dispatchEvent(new MouseEvent('mousedown', { ...at, button: 0, buttons: 1 }));
-  el.dispatchEvent(new PointerEvent('pointerup', { ...pointer, button: 0, buttons: 0 }));
-  el.dispatchEvent(new MouseEvent('mouseup', { ...at, button: 0, buttons: 0 }));
-  el.dispatchEvent(new MouseEvent('click', { ...at, button: 0, buttons: 0 }));
-}
-
-/**
- * Activates `el` the way a keyboard does: focuses it, then sends Enter (keydown and keyup). Some of X's controls
- * answer Enter but ignore `click()` (#121). The keys are synthetic like every Xomoni event (PLAYBOOK B3).
- */
-export function pressEnter(el: HTMLElement) {
-  el.focus();
-  for (const type of ['keydown', 'keyup'] as const) el.dispatchEvent(keyEvent(type, 'Enter', 13));
-}
-
 /** A key event that bubbles, with the legacy `keyCode` and `which` that the constructor leaves at 0. */
-function keyEvent(type: 'keydown' | 'keyup', key: 'Escape' | 'Enter', legacyCode: number): KeyboardEvent {
+function keyEvent(type: 'keydown' | 'keyup', key: 'Escape', legacyCode: number): KeyboardEvent {
   const event = new KeyboardEvent(type, { key, code: key, bubbles: true, cancelable: true });
   Object.defineProperty(event, 'keyCode', { get: () => legacyCode });
   Object.defineProperty(event, 'which', { get: () => legacyCode });

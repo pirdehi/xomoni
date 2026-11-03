@@ -20,7 +20,6 @@ import {
   SEL,
   articleInfo,
   click,
-  clickTarget,
   closeMenus,
   describeDialog,
   describeLayers,
@@ -30,8 +29,6 @@ import {
   jitter,
   noticeText,
   openDialog,
-  pressEnter,
-  pressPointer,
   sleep,
   viewerHandle,
   viewerIdFromCookie,
@@ -205,61 +202,35 @@ async function deletePost(id: string): Promise<ActionResult> {
   // The Delete option must come from the menu this click opens, never a leftover one.
   if (!(await noMenuOpen())) return { outcome: 'failed', message: 'Another menu is open on the X page' };
   click(caret);
-  const item = await waitFor(() => $$(SEL.menu).length === 1 && findDeleteMenuItem(), 4000);
-  if (!item) {
+  const deleteOption = () => ($$(SEL.menu).length === 1 ? findDeleteMenuItem() : null);
+  if (!(await waitFor(deleteOption, 4000))) {
     closeMenus();
     return { outcome: 'failed', message: 'No "Delete" option — not your post, or X changed its menu' };
   }
   await sleep(jitter(150, 400));
-  const opened = await activate(item, () => $(SEL.confirm), 4000);
-  const confirm = opened?.result ?? null;
+  clickCurrent(deleteOption);
+  const confirm = await waitFor(() => $(SEL.confirm), 4000);
   if (!confirm || !findArticle(id)) {
-    // What was open instead, for the log: tells an ignored click from a changed sheet (#121).
+    // What was open instead, for the log (#121).
     const seen = confirm ? 'the post left the page' : describeLayers();
     closeMenus();
     return { outcome: 'failed', message: `Delete confirmation did not appear for this post (${seen})` };
   }
-  let answered = false;
-  const response = waitForNet(['DeleteTweet'], (v) => v.tweet_id === id).then((ev) => {
-    answered = true;
-    return ev;
-  });
+  const response = waitForNet(['DeleteTweet'], (v) => v.tweet_id === id);
   await sleep(jitter(150, 400));
-  // X closes its sheet, or answers, once the confirm button takes the press.
-  const confirmed = await activate(confirm, () => answered || !confirm.isConnected, 1500, 3000);
-  const result = classify(await response, 'DeleteTweet');
-  const via = [opened, confirmed].map((step) => step?.via).find((v) => v && v !== 'click');
-  if (result.outcome !== 'done' || !via) return result;
-  return { ...result, message: via === 'enter' ? 'X took Enter, not a click' : 'X took a full press, not a click' };
+  clickCurrent(() => $(SEL.confirm));
+  return classify(await response, 'DeleteTweet');
 }
 
-/** How X took an activation: a lone click, a full mouse press, or Enter (#121). */
-type Via = 'click' | 'press' | 'enter';
-
 /**
- * Activates `el`: a click; if `took` isn't true after `stepWaitMs` while `el` is still on the page (so the click
- * was ignored), a full mouse press; then Enter (#121). Resolves with what `took` found and how, or null if none
- * worked, the last after `timeoutMs`. An element an earlier step removed is never pressed again.
+ * Clicks the element `find` returns now. X's Dropdown builds a menu's items once, then again once it has
+ * positioned the menu, so an element found a moment earlier may already be off the page, and a click on it
+ * reaches nothing (#121). Elements in X's menus and sheets are therefore looked up right before each click, never
+ * kept across a wait.
  */
-async function activate<T>(
-  el: HTMLElement,
-  took: () => T | null | false | undefined,
-  timeoutMs: number,
-  stepWaitMs = 1500,
-): Promise<{ result: T; via: Via } | null> {
-  // Clicks and presses land where a pointer at the center would, and bubble up through `el`.
-  const steps: [Via, () => void, number][] = [
-    ['click', () => click(clickTarget(el)), stepWaitMs],
-    ['press', () => pressPointer(clickTarget(el)), stepWaitMs],
-    ['enter', () => pressEnter(el), timeoutMs],
-  ];
-  for (const [via, run, waitMs] of steps) {
-    if (!el.isConnected) return null;
-    run();
-    const result = await waitFor(took, waitMs);
-    if (result) return { result, via };
-  }
-  return null;
+function clickCurrent(find: () => HTMLElement | null) {
+  const el = find();
+  if (el) click(el);
 }
 
 async function unlike(id: string): Promise<ActionResult> {
@@ -330,7 +301,7 @@ async function unretweet(id: string): Promise<ActionResult> {
   }
   const response = waitForNet(['DeleteRetweet'], (v) => !sourceId || v.source_tweet_id === sourceId);
   await sleep(jitter(150, 400));
-  click(confirm);
+  clickCurrent(() => $(SEL.unretweetConfirm));
   return classify(await response, 'DeleteRetweet');
 }
 

@@ -11,11 +11,13 @@ interface Page {
   escapeCloses?: boolean;
   liked?: boolean | null;
   reposted?: boolean | null;
+  /** Whether X's Delete and Undo repost options and the confirm button act on a click. */
+  answers?: boolean;
   /**
-   * What X's Delete option and its confirm button answer: a click, a click on their label only (a handler inside
-   * them), only a full press, only Enter, or nothing (#121).
+   * When X builds an open menu's items again (ms after opening; null: never). X's Dropdown does this once it has
+   * positioned the menu, so an item found right after opening is soon off the page (#121).
    */
-  answers?: 'click' | 'label' | 'press' | 'enter' | 'nothing';
+  rebuildAfterMs?: number | null;
 }
 
 /** Every click on a menu option, which a canary must never make. */
@@ -28,13 +30,17 @@ document.body.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') bodyEscapes++;
 });
 
-/** Renders a simulated x.com timeline with one of the person's posts (id 1) and X's menu behavior. */
+/**
+ * Renders a simulated x.com timeline with one of the person's posts (id 1) and X's menu behavior. Like React, the
+ * menus' handlers sit on one container (`#layers`), so a click on an element that has left the page reaches none.
+ */
 function renderX({
   menu = ['Pin to your profile', 'Delete'],
   escapeCloses = true,
   liked = true,
   reposted = true,
-  answers = 'click',
+  answers = true,
+  rebuildAfterMs = 20,
 }: Page = {}) {
   optionClicks = [];
   bodyEscapes = 0;
@@ -45,63 +51,61 @@ function renderX({
       ${menu ? button('caret') : ''}
       ${liked == null ? '' : button(liked ? 'unlike' : 'like')}
       ${reposted == null ? '' : button(reposted ? 'unretweet' : 'retweet')}
-    </article>`;
+    </article>
+    <div id="layers"></div>`;
+  const layers = document.getElementById('layers')!;
 
-  // Like X: the menu opens in #layers, takes focus, and only its own (React) handler closes it on Escape.
+  // X's answer to a mutation, as the interceptor passes it on.
+  const answer = (op: string, variables: Record<string, string>, data: object) =>
+    handleCapture({
+      op,
+      url: `https://x.com/i/api/graphql/q/${op}`,
+      status: 200,
+      reqBody: JSON.stringify({ variables }),
+      headers: {},
+      body: JSON.stringify({ data }),
+    });
+
+  // The menu opens in #layers and takes focus; X builds its items again once it has positioned it.
   const openMenu = (items: string) => {
-    const layers = document.getElementById('layers') ?? document.body.appendChild(document.createElement('div'));
-    layers.id = 'layers';
     const el = document.createElement('div');
     el.setAttribute('role', 'menu');
     el.tabIndex = -1;
     el.innerHTML = items;
-    el.querySelectorAll('[role="menuitem"]').forEach((item) => {
-      item.addEventListener('click', () => {
-        optionClicks.push(item.textContent);
-        if (item.textContent === 'Delete' && answers === 'click') openSheet(el);
-      });
-      item.querySelector('span')?.addEventListener('click', () => {
-        if (item.textContent === 'Delete' && answers === 'label') openSheet(el);
-      });
-      item.addEventListener('pointerup', () => {
-        if (item.textContent === 'Delete' && answers === 'press') openSheet(el);
-      });
-      item.addEventListener('keydown', (event) => {
-        if (item.textContent === 'Delete' && answers === 'enter' && (event as KeyboardEvent).key === 'Enter')
-          openSheet(el);
-      });
-    });
-    el.addEventListener('keydown', (event) => {
-      // Older handlers, like some of X's, check the legacy key code.
-      if (escapeCloses && event.key === 'Escape' && Reflect.get(event, 'keyCode') === 27) el.remove();
-    });
     layers.append(el);
     el.focus();
+    if (rebuildAfterMs != null) setTimeout(() => el.isConnected && (el.innerHTML = items), rebuildAfterMs);
   };
-  // X's "Delete post?" sheet; confirming sends DeleteTweet, whose answer the interceptor passes on.
-  const openSheet = (menuEl: HTMLElement) => {
-    menuEl.remove();
+  // X's "Delete post?" sheet, which replaces the menu.
+  const openSheet = () => {
+    layers.querySelector('[role="menu"]')?.remove();
     const sheet = document.createElement('div');
     sheet.setAttribute('role', 'alertdialog');
     sheet.innerHTML = '<button data-testid="confirmationSheetConfirm"><span>Delete</span></button>';
-    const confirm = sheet.querySelector('button')!;
-    confirm.querySelector('span')!.addEventListener('click', () => answers === 'label' && deleted());
-    const deleted = () => {
-      sheet.remove();
-      handleCapture({
-        op: 'DeleteTweet',
-        url: 'https://x.com/i/api/graphql/q/DeleteTweet',
-        status: 200,
-        reqBody: JSON.stringify({ variables: { tweet_id: '1' } }),
-        headers: {},
-        body: JSON.stringify({ data: { delete_tweet: { tweet_results: {} } } }),
-      });
-    };
-    confirm.addEventListener('click', () => answers === 'click' && deleted());
-    confirm.addEventListener('pointerup', () => answers === 'press' && deleted());
-    confirm.addEventListener('keydown', (event) => answers === 'enter' && event.key === 'Enter' && deleted());
-    document.getElementById('layers')!.append(sheet);
+    layers.append(sheet);
   };
+
+  layers.addEventListener('click', (event) => {
+    const target = event.target as Element;
+    const item = target.closest('[role="menuitem"]');
+    if (item) {
+      optionClicks.push(item.textContent);
+      if (!answers) return;
+      if (item.textContent === 'Delete') openSheet();
+      if (item.getAttribute('data-testid') === 'unretweetConfirm') {
+        layers.querySelector('[role="menu"]')?.remove();
+        answer('DeleteRetweet', { source_tweet_id: '1' }, { unretweet: { source_tweet_results: {} } });
+      }
+    } else if (answers && target.closest('[data-testid="confirmationSheetConfirm"]')) {
+      layers.querySelector('[role="alertdialog"]')?.remove();
+      answer('DeleteTweet', { tweet_id: '1' }, { delete_tweet: { tweet_results: {} } });
+    }
+  });
+  layers.addEventListener('keydown', (event) => {
+    // Older handlers, like some of X's, check the legacy key code.
+    if (escapeCloses && event.key === 'Escape' && Reflect.get(event, 'keyCode') === 27)
+      layers.querySelector('[role="menu"]')?.remove();
+  });
   document
     .querySelector('[data-testid="caret"]')
     ?.addEventListener('click', () =>
@@ -164,58 +168,42 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     expect(optionClicks).toEqual([]);
   });
 
-  it('deletes with clicks when X takes them, saying nothing about Enter', async () => {
+  it('deletes, clicking the Delete option X shows at that moment, not the one it replaced (#121)', async () => {
     document.cookie = 'twid=u%3D1';
+    // X builds the menu's items again 20 ms after opening it, before Xomoni clicks.
     renderX();
     expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({ outcome: 'done', http: 200 });
     expect(optionClicks).toEqual(['Delete']);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
-  it('clicks where a pointer would land, so handlers on the label hear it (#121)', async () => {
+  it('deletes when X builds the menu again only after the click, or never', async () => {
     document.cookie = 'twid=u%3D1';
-    renderX({ answers: 'label' });
-    expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({ outcome: 'done', http: 200 });
-    expect(optionClicks).toEqual(['Delete']);
+    for (const rebuildAfterMs of [1_000, null]) {
+      renderX({ rebuildAfterMs });
+      expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({ outcome: 'done', http: 200 });
+    }
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
-  it('presses the Delete option and the confirm button like a mouse button when X ignores click() (#121)', async () => {
+  it('undoes a repost, clicking the Undo repost option X shows at that moment (#121)', async () => {
     document.cookie = 'twid=u%3D1';
-    renderX({ answers: 'press' });
-    expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({
-      outcome: 'done',
-      http: 200,
-      message: 'X took a full press, not a click',
-    });
-    // The click that X ignored, then the press's own click: only ever on the Delete option.
-    expect(optionClicks).toEqual(['Delete', 'Delete']);
-    document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  });
-
-  it('presses Enter on the Delete option and the confirm button when X ignores the clicks (#121)', async () => {
-    document.cookie = 'twid=u%3D1';
-    renderX({ answers: 'enter' });
-    expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({
-      outcome: 'done',
-      http: 200,
-      message: 'X took Enter, not a click',
-    });
-    // Only the Delete option was ever activated in the menu: the ignored click, and the press's own click.
-    expect(optionClicks).toEqual(['Delete', 'Delete']);
+    renderX();
+    expect(await runCommand({ cmd: 'unretweet', id: '1' })).toEqual({ outcome: 'done', http: 200 });
+    expect(optionClicks).toEqual(['Undo repost']);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
   it('a Delete that opens no confirmation fails, saying what was open instead (#121)', async () => {
     document.cookie = 'twid=u%3D1';
-    renderX({ answers: 'nothing' });
-    // The simulated Delete option ignores the click, the full press and Enter.
+    renderX({ answers: false });
     const result = (await runCommand({ cmd: 'delete', id: '1' })) as { outcome: string; message: string };
     expect(result.outcome).toBe('failed');
     expect(result.message).toBe(
       'Delete confirmation did not appear for this post (menus open: 1, pop-ups: none, buttons: none)',
     );
-    expect(optionClicks).toEqual(['Delete', 'Delete']);
+    // One click, on the Delete option only, and the menu closed again.
+    expect(optionClicks).toEqual(['Delete']);
     expect(menuOpen()).toBe(false);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });

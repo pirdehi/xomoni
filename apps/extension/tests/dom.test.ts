@@ -3,7 +3,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   articleInfo,
-  clickTarget,
   closeMenus,
   describeDialog,
   describeLayers,
@@ -12,8 +11,6 @@ import {
   findDeleteMenuItem,
   noticeText,
   openDialog,
-  pressEnter,
-  pressPointer,
   viewerHandle,
   viewerIdFromCookie,
   waitFor,
@@ -88,41 +85,6 @@ describe('menus, pop-ups and notices', () => {
     closeMenus();
     expect(maskClick).toHaveBeenCalledOnce();
     expect(escape).toHaveBeenCalledWith('Escape');
-  });
-
-  it('aims a click at the label a pointer would land on, not the outer element (#121)', () => {
-    document.body.innerHTML =
-      '<div role="menuitem"><div><svg></svg></div><div><div dir="ltr"><span>Delete</span></div></div></div>';
-    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!;
-    expect(clickTarget(item)).toBe(document.querySelector('span'));
-    // An element without text is its own target.
-    document.body.innerHTML = '<button data-testid="caret"><svg></svg></button>';
-    const caret = document.querySelector<HTMLElement>('button')!;
-    expect(clickTarget(caret)).toBe(caret);
-  });
-
-  it('presses an element like a mouse button, at its center, with nothing before the press (#121)', () => {
-    document.body.innerHTML = '<div role="menuitem">Delete</div>';
-    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!;
-    const seen: string[] = [];
-    for (const type of ['pointerover', 'pointermove', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'])
-      item.addEventListener(type, (e) => seen.push(`${e.type}${e.isTrusted ? ' trusted' : ''}`));
-    pressPointer(item);
-    expect(seen).toEqual(['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']);
-  });
-
-  it('presses Enter on an element: focus, then keydown and keyup with key code 13, no click (#121)', () => {
-    document.body.innerHTML = '<div role="menuitem" tabindex="0">Delete</div>';
-    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!;
-    const seen: string[] = [];
-    item.addEventListener('keydown', (e) => seen.push(`${e.type} ${e.key} ${Reflect.get(e, 'keyCode')}`));
-    item.addEventListener('keyup', (e) => seen.push(`${e.type} ${e.key}`));
-    const clicks = vi.fn();
-    item.addEventListener('click', clicks);
-    pressEnter(item);
-    expect(document.activeElement).toBe(item);
-    expect(seen).toEqual(['keydown Enter 13', 'keyup Enter']);
-    expect(clicks).not.toHaveBeenCalled();
   });
 
   it('presses Escape from inside an open menu, where X’s React handlers hear it (#121)', () => {

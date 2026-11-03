@@ -22,6 +22,7 @@ import {
   click,
   closeMenus,
   describeDialog,
+  describeOpenMenu,
   findArticle,
   findDeleteMenuItem,
   jitter,
@@ -348,7 +349,7 @@ async function menuCheck(
   await sleep(jitter(200, 500));
   const closed = await noMenuOpen();
   if (!found) return verdict('changed', `${menu} opened without ${option}`);
-  if (!closed) return verdict('changed', 'Escape no longer closes X’s menu');
+  if (!closed) return verdict('changed', `Escape no longer closes X’s menu (${describeOpenMenu()})`);
   return verdict('ok', `${option} is where Xomoni expects it`);
 }
 

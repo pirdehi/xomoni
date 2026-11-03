@@ -22,6 +22,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - An open redirect after sign-out and Google sign-in.
+- X's menus and pop-ups never closed with Escape, so every cleanup stopped before its first delete as "X changed its page". Escape is now pressed from inside the open menu, where X hears it.
 - A job stopped as "X changed its page" when its X window was hidden, for example fully covered by another window. It now waits for the window to be on screen and continues by itself, without counting a failure.
 - The Cleanup page could start before it knew whether an archive was imported, and treated a cleared date as today.
 

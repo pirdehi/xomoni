@@ -5,6 +5,7 @@ import {
   articleInfo,
   closeMenus,
   describeDialog,
+  describeOpenMenu,
   findArticle,
   findDeleteMenuItem,
   noticeText,
@@ -83,6 +84,60 @@ describe('menus, pop-ups and notices', () => {
     closeMenus();
     expect(maskClick).toHaveBeenCalledOnce();
     expect(escape).toHaveBeenCalledWith('Escape');
+  });
+
+  it('presses Escape from inside an open menu, where X’s React handlers hear it (#121)', () => {
+    document.body.innerHTML =
+      '<div id="layers"><div role="menu"><div role="menuitem" tabindex="0">Delete</div></div></div>';
+    const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
+    const seen: string[] = [];
+    // The legacy codes, read without the deprecated typings.
+    const legacy = (e: KeyboardEvent) => `${Reflect.get(e, 'keyCode')} ${Reflect.get(e, 'which')}`;
+    menu.addEventListener('keydown', (e) => seen.push(`menu ${e.type} ${e.key} ${legacy(e)}`));
+    menu.addEventListener('keyup', (e) => seen.push(`menu ${e.type} ${e.key}`));
+    const clicks = vi.fn();
+    menu.addEventListener('click', clicks);
+    closeMenus();
+    expect(seen).toEqual(['menu keydown Escape 27 27', 'menu keyup Escape']);
+    expect(clicks).not.toHaveBeenCalled();
+  });
+
+  it('starts the Escape at the focused element when it is inside the menu', () => {
+    document.body.innerHTML =
+      '<div id="layers"><div role="menu"><div role="menuitem" tabindex="0">Pin</div></div></div>';
+    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!;
+    item.focus();
+    const targets: string[] = [];
+    document.addEventListener('keydown', (e) => targets.push((e.target as Element).getAttribute('role') ?? 'body'));
+    closeMenus();
+    // The focused item, then the body; the menu itself is reached by bubbling, not sent a second Escape.
+    expect(targets).toEqual(['menuitem', 'body']);
+  });
+
+  it('presses Escape inside an open pop-up too, and skips what the mask already closed', () => {
+    document.body.innerHTML =
+      '<div data-testid="mask"></div><div id="layers"><div role="dialog" aria-modal="true">Unlock more</div><div role="menu">m</div></div>';
+    const dialog = document.querySelector('[role="dialog"]')!;
+    const menu = document.querySelector('[role="menu"]')!;
+    const dialogKeys = vi.fn();
+    const menuKeys = vi.fn();
+    dialog.addEventListener('keydown', dialogKeys);
+    menu.addEventListener('keydown', menuKeys);
+    // The mask closes the menu, as X's overlay does.
+    document.querySelector('[data-testid="mask"]')!.addEventListener('click', () => menu.remove());
+    closeMenus();
+    expect(dialogKeys).toHaveBeenCalledOnce();
+    expect(menuKeys).not.toHaveBeenCalled();
+  });
+
+  it('describes where an open menu sits by structure, never by its text', () => {
+    expect(describeOpenMenu()).toBe('no menu open');
+    document.body.innerHTML =
+      '<div data-testid="mask"></div><div id="layers"><div role="menu" data-testid="Dropdown"><div role="menuitem" tabindex="0">Delete my secret post</div></div></div>';
+    document.querySelector<HTMLElement>('[role="menuitem"]')!.focus();
+    expect(describeOpenMenu()).toBe('focus: div role=menuitem (in the menu), menu in #layers, mask shown');
+    document.body.innerHTML = '<div role="menu"></div>';
+    expect(describeOpenMenu()).toBe('focus: body, menu outside #layers, no mask');
   });
 
   it('finds a pop-up in X’s layers but not a menu, and describes it by label or first line', () => {

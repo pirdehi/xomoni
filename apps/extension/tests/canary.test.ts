@@ -14,12 +14,12 @@ interface Page {
 
 /** Every click on a menu option, which a canary must never make. */
 let optionClicks: string[] = [];
-/** Whether Escape closes an open menu on the simulated page. */
-let escapeWorks = true;
+/** Escapes that reached `document.body`, where X's React handlers never hear them (#121). */
+let bodyEscapes = 0;
 
-// One listener for the whole file: `body` outlives each rendered page.
+// One listener for the whole file: `body` outlives each rendered page. It only counts: on X nothing there closes menus.
 document.body.addEventListener('keydown', (event) => {
-  if (escapeWorks && event.key === 'Escape') document.querySelectorAll('[role="menu"]').forEach((m) => m.remove());
+  if (event.key === 'Escape') bodyEscapes++;
 });
 
 /** Renders a simulated x.com timeline with one of the person's posts (id 1) and X's menu behavior. */
@@ -30,7 +30,7 @@ function renderX({
   reposted = true,
 }: Page = {}) {
   optionClicks = [];
-  escapeWorks = escapeCloses;
+  bodyEscapes = 0;
   const button = (testid: string) => `<button data-testid="${testid}"></button>`;
   document.body.innerHTML = `
     <article data-testid="tweet">
@@ -40,14 +40,23 @@ function renderX({
       ${reposted == null ? '' : button(reposted ? 'unretweet' : 'retweet')}
     </article>`;
 
+  // Like X: the menu opens in #layers, takes focus, and only its own (React) handler closes it on Escape.
   const openMenu = (items: string) => {
+    const layers = document.getElementById('layers') ?? document.body.appendChild(document.createElement('div'));
+    layers.id = 'layers';
     const el = document.createElement('div');
     el.setAttribute('role', 'menu');
+    el.tabIndex = -1;
     el.innerHTML = items;
     el.querySelectorAll('[role="menuitem"]').forEach((item) =>
       item.addEventListener('click', () => optionClicks.push(item.textContent)),
     );
-    document.body.append(el);
+    el.addEventListener('keydown', (event) => {
+      // Older handlers, like some of X's, check the legacy key code.
+      if (escapeCloses && event.key === 'Escape' && Reflect.get(event, 'keyCode') === 27) el.remove();
+    });
+    layers.append(el);
+    el.focus();
   };
   document
     .querySelector('[data-testid="caret"]')
@@ -66,7 +75,6 @@ const canary = (action: 'delete' | 'unlike' | 'relike' | 'unretweet', id = '1') 
 const menuOpen = () => !!document.querySelector('[role="menu"]');
 
 afterEach(() => {
-  escapeWorks = true;
   document.body.innerHTML = '';
 });
 
@@ -76,6 +84,14 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     renderX();
     expect(await canary('delete')).toEqual({ verdict: 'ok', message: 'a Delete option is where Xomoni expects it' });
     expect(optionClicks).toEqual([]);
+    expect(menuOpen()).toBe(false);
+  });
+
+  it('closes X’s menu with an Escape from inside it, as X only hears it there (#121)', async () => {
+    renderX();
+    expect(await canary('delete')).toMatchObject({ verdict: 'ok' });
+    // An Escape on the body alone, as before #121, would have left X's menu open.
+    expect(bodyEscapes).toBeGreaterThan(0);
     expect(menuOpen()).toBe(false);
   });
 
@@ -97,7 +113,10 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     renderX({ escapeCloses: false });
     const result = await canary('delete');
     expect(result.verdict).toBe('changed');
-    expect(result.message).toMatch(/Escape/);
+    // Where the menu sat, for the log: never its text.
+    expect(result.message).toBe(
+      'Escape no longer closes X’s menu (focus: div role=menu (in the menu), menu in #layers, no mask)',
+    );
     expect(optionClicks).toEqual([]);
   });
 

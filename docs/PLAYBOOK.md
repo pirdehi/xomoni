@@ -305,6 +305,8 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - **Nothing inside a menu is ever clicked, and nothing is deleted.**
   - If the button, the option or Escape no longer works, the job stops as Stopped for safety **before the action**: "X changed its page". A post that can't tell (not on the page, or no longer liked) leaves the check to the next one.
 
+- **How Escape is pressed (#121):** X is a React app, and React only hears events that pass through its root or a portal. An Escape sent to `document.body` never reaches X's handlers: the pilot's first cleanups stopped as "Escape no longer closes X's menu" for that reason. `closeMenus()` presses Escape (keydown and keyup, with the legacy key code 27) from inside each open menu or pop-up, at the focused element when it is inside, and then on the body. If a menu still stays open, the log says where it sat (focus, `#layers`, mask), never its text.
+
 ### F2. X interface language · 📘 · ✅
 - **Scenario:** The Delete label is recognized in 22 languages, 23 spellings (including Persian), and the red color of the delete option is also checked as a second method. English is still the recommendation.
 

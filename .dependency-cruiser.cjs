@@ -139,9 +139,9 @@ module.exports = {
       name: 'ext-engine-core-uses-ports',
       severity: 'error',
       comment:
-        "The engine's core reaches the X tab and notifications only through its ports (engine/ports.ts, #11); the Chrome adapters are wired in engine/platform.ts.",
-      from: { path: `${EXT}/engine/`, pathNot: `${EXT}/engine/(platform|worker-tab)\\.ts$` },
-      to: { path: [`${EXT}/engine/worker-tab\\.ts$`, `${EXT}/shared/notify\\.ts$`] },
+        "The engine's core reaches the X tab, notifications and the person's presence only through its ports (engine/ports.ts, #11); the Chrome adapters are wired in engine/platform.ts.",
+      from: { path: `${EXT}/engine/`, pathNot: `${EXT}/engine/(platform|worker-tab|presence)\\.ts$` },
+      to: { path: [`${EXT}/engine/(worker-tab|presence)\\.ts$`, `${EXT}/shared/notify\\.ts$`] },
     },
     {
       name: 'ext-content-is-isolated',

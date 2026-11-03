@@ -297,6 +297,12 @@ export function SettingsPage(_props: PageProps) {
                   </Button>
                 )}
               </div>
+              <Toggle
+                checked={settings.whileAway}
+                onChange={(whileAway) => save({ ...settings, whileAway })}
+                label="Keep going while I’m away"
+                description="Keeps the display on while a job runs. After two minutes without keyboard or mouse, a covered X window comes forward and the job continues. On a locked screen it waits."
+              />
               <Field label="Pause after this many failures in a row">
                 <Input
                   type="number"

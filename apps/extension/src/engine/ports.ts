@@ -1,6 +1,7 @@
 // The engine's ports (#11, ADR-0015): what the job runner needs from the platform, as interfaces. The engine's
 // core (runner, context, cleanup, scan, samples, limiter) depends on these, never on `chrome.*`. The adapters are
-// `worker-tab.ts` (the X tab) and `../shared/notify.ts` (desktop notifications), wired in `platform.ts`.
+// `worker-tab.ts` (the X tab), `../shared/notify.ts` (desktop notifications) and `presence.ts` (the person and the
+// display), wired in `platform.ts`.
 import type {
   ActionResult,
   ActorCommand,
@@ -50,8 +51,10 @@ export class PageError extends Error {}
 export interface XTab {
   /** The live tab's id, or null when none is open. */
   current(): Promise<number | null>;
-  /** Opens the tab (without focusing it), or returns the one already open. */
+  /** Opens the tab in a window in front (#120), or returns the one already open. */
   open(): Promise<number>;
+  /** Brings the tab's window to the front, restoring it if minimized. */
+  focus(): Promise<void>;
   /** Asks the browser not to discard the tab while a job runs. */
   keepLoaded(): Promise<void>;
   /** Whether the browser discarded the tab to save memory. */
@@ -74,8 +77,20 @@ export interface Notifier {
   clear(id: string): void;
 }
 
+/**
+ * The person at the computer and the display, so a job can keep going while the person is away; the adapter is
+ * `presence.ts` (Chrome's `idle` and `power` APIs).
+ */
+export interface Presence {
+  /** Whether keyboard and mouse have been untouched for `seconds` (at least 15) on an unlocked screen. Never throws. */
+  away(seconds: number): Promise<boolean>;
+  /** Keeps the display from sleeping while a job runs (`true`), or lets it sleep again (`false`). Never throws. */
+  keepDisplayOn(on: boolean): void;
+}
+
 /** Everything the engine needs from the platform, handed in by a composition root. */
 export interface EnginePorts {
   xTab: XTab;
   notifier: Notifier;
+  presence: Presence;
 }

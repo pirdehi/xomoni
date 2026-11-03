@@ -194,7 +194,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | x.com tab, isolated world | `content/` | DOM of x.com, `chrome.runtime` messaging |
 | x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), a `MessagePort` to the content script |
 
-`shared/` is the kernel every area may use. The other areas don't import each other, with two exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), and `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open. The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The engine's core depends on ports, not on Chrome (#11): `engine/ports.ts` defines `XTab` (the worker tab) and `Notifier`, `engine/platform.ts` is the composition root that wires the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`) and creates the dashboard's `runner`, and `JobContext` and `Runner` receive the ports. Rule `ext-engine-core-uses-ports` and an ESLint rule against `chrome` in the core keep it that way; tests run the engine on fake ports.
+`shared/` is the kernel every area may use. The other areas don't import each other, with two exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), and `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open. The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The engine's core depends on ports, not on Chrome (#11): `engine/ports.ts` defines `XTab` (the worker tab), `Notifier` and `Presence` (whether the person is away, and keeping the display on), `engine/platform.ts` is the composition root that wires the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`, `presence.ts`) and creates the dashboard's `runner`, and `JobContext` and `Runner` receive the ports. Rule `ext-engine-core-uses-ports` and an ESLint rule against `chrome` in the core keep it that way; tests run the engine on fake ports.
 
 ## 6. Data
 
@@ -228,7 +228,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | `web-server-code-is-server-only` | A `server/` file without the `server-only` guard. |
 | `ext-shared-is-the-kernel` | `shared/` depending on any other extension area. |
 | `ext-engine-is-headless` | The engine importing UI, page scripts or the service worker. |
-| `ext-engine-core-uses-ports` | The engine's core importing the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`) instead of its ports; ESLint also forbids `chrome` in the core. |
+| `ext-engine-core-uses-ports` | The engine's core importing the Chrome adapters (`worker-tab.ts`, `presence.ts`, `shared/notify.ts`) instead of its ports; ESLint also forbids `chrome` in the core. |
 | `ext-content-is-isolated` | The content script importing anything but `shared/`. |
 | `ext-inject-is-isolated` | The page-world script importing anything but `shared/`. |
 | `ext-background-is-thin` | The service worker importing UI or page scripts. |

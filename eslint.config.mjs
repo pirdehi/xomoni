@@ -67,7 +67,11 @@ export default defineConfig(
   {
     // The engine's core uses its ports, never `chrome.*` (#11, ADR-0015); only the adapters touch Chrome.
     files: ['apps/extension/src/engine/**/*.ts'],
-    ignores: ['apps/extension/src/engine/worker-tab.ts', 'apps/extension/src/engine/platform.ts'],
+    ignores: [
+      'apps/extension/src/engine/worker-tab.ts',
+      'apps/extension/src/engine/presence.ts',
+      'apps/extension/src/engine/platform.ts',
+    ],
     rules: {
       'no-restricted-globals': [
         'error',

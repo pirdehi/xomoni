@@ -314,6 +314,19 @@ describe('Settings page', () => {
       });
     });
 
+    it('keeps going while the person is away by default, and saves turning it off', async () => {
+      await renderPage();
+      const away = screen.getByRole('switch', { name: /Keep going while I’m away/ });
+      expect(away).toBeChecked();
+      expect(away).toHaveAccessibleDescription(/a covered X window comes forward and the job continues/);
+
+      await userEvent.click(away);
+
+      await waitForStored((s) => {
+        expect(s.whileAway).toBe(false);
+      });
+    });
+
     it('keeps the failure limit between 1 and 3', async () => {
       await renderPage();
       const field = screen.getByRole('spinbutton', { name: 'Pause after this many failures in a row' });

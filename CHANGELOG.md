@@ -6,6 +6,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- An install guide at xomoni.com/install: download the latest release, load it in Chrome, Edge or Brave, and connect it with a code. The site's install buttons lead there.
 - Connect the extension to a xomoni.com account with a one-time code, and follow its jobs live on the dashboard. Only job status is sent (ADR-0018).
 - Learn each account's daily view cap from X's refusals, and stop below it (PLAYBOOK A4).
 - Half the page loads for accounts not known to be Premium (PLAYBOOK A6).

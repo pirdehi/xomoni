@@ -87,7 +87,8 @@ async function renderWithArchive(count = 3) {
 
 /** Opens the confirmation and waits until its DELETE field has the focus, as it does for the person. */
 async function openConfirm() {
-  await userEvent.click(startButton());
+  // Found, not got: right after a modal dialog closes, Fluent keeps the page aria-hidden for a moment.
+  await userEvent.click(await screen.findByRole('button', { name: 'Start cleanup' }));
   await waitFor(() => expect(confirmInput()).toHaveFocus());
   return dialog();
 }

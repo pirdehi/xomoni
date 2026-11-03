@@ -527,7 +527,8 @@ describe('JobCard', () => {
       await userEvent.click(within(first).getByRole('button', { name: 'Keep waiting' }));
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
-      await userEvent.click(screen.getByRole('button', { name: 'Resume anyway…' }));
+      // Fluent keeps the page aria-hidden for a moment after a modal dialog closes; wait until the button is back.
+      await userEvent.click(await screen.findByRole('button', { name: 'Resume anyway…' }));
       const dialog = await screen.findByRole('dialog');
       expect(within(dialog).getByRole('textbox', { name: /Type RESUME/ })).toHaveValue('');
       expect(within(dialog).getByRole('button', { name: 'Resume anyway' })).toBeDisabled();

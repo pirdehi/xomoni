@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TEST_TOKEN, resetTurnstile, turnstile } from '@test/fakes/turnstile';
@@ -68,6 +68,7 @@ describe('ForgotPasswordForm', () => {
     await submit();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(AUTH_ERROR_MESSAGES.captcha_failed);
-    expect(screen.getByRole('button', { name: 'Send reset link' })).toBeEnabled();
+    // The alert shows as soon as the action fails; the button re-enables when the action has finished, a commit later.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send reset link' })).toBeEnabled());
   });
 });

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TEST_TOKEN, resetTurnstile, turnstile } from '@test/fakes/turnstile';
@@ -87,7 +87,8 @@ describe('SignUpForm', () => {
     await fillAndSubmit({ name: '' });
 
     expect(await screen.findByRole('alert')).toHaveTextContent(AUTH_ERROR_MESSAGES.signup_disabled);
-    expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
+    // The alert shows as soon as the action fails; the button re-enables when the action has finished, a commit later.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled());
     expect(signUp).toHaveBeenCalledWith(expect.objectContaining({ name: '' }));
   });
 
@@ -113,7 +114,7 @@ describe('SignUpForm', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Send the link again' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(AUTH_ERROR_MESSAGES.rate_limited);
-    expect(screen.getByRole('button', { name: 'Send the link again' })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send the link again' })).toBeEnabled());
   });
 
   it('waits for the security check before sending the link again', async () => {

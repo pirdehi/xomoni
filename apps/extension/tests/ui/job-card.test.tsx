@@ -520,11 +520,13 @@ describe('JobCard', () => {
       await risk('automation_flag', HOUR);
       await show(job({ state: 'paused' }));
       await userEvent.click(await screen.findByRole('button', { name: 'Resume anyway…' }));
-      await userEvent.type(within(screen.getByRole('dialog')).getByRole('textbox', { name: /Type RESUME/ }), 'RESUME');
-      await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Keep waiting' }));
+      const first = await screen.findByRole('dialog');
+      await userEvent.type(within(first).getByRole('textbox', { name: /Type RESUME/ }), 'RESUME');
+      await userEvent.click(within(first).getByRole('button', { name: 'Keep waiting' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
       await userEvent.click(screen.getByRole('button', { name: 'Resume anyway…' }));
-      const dialog = screen.getByRole('dialog');
+      const dialog = await screen.findByRole('dialog');
       expect(within(dialog).getByRole('textbox', { name: /Type RESUME/ })).toHaveValue('');
       expect(within(dialog).getByRole('button', { name: 'Resume anyway' })).toBeDisabled();
     });

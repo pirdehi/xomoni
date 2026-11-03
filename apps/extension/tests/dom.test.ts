@@ -11,6 +11,7 @@ import {
   findDeleteMenuItem,
   noticeText,
   openDialog,
+  pressEnter,
   viewerHandle,
   viewerIdFromCookie,
   waitFor,
@@ -85,6 +86,20 @@ describe('menus, pop-ups and notices', () => {
     closeMenus();
     expect(maskClick).toHaveBeenCalledOnce();
     expect(escape).toHaveBeenCalledWith('Escape');
+  });
+
+  it('presses Enter on an element: focus, then keydown and keyup with key code 13, no click (#121)', () => {
+    document.body.innerHTML = '<div role="menuitem" tabindex="0">Delete</div>';
+    const item = document.querySelector<HTMLElement>('[role="menuitem"]')!;
+    const seen: string[] = [];
+    item.addEventListener('keydown', (e) => seen.push(`${e.type} ${e.key} ${Reflect.get(e, 'keyCode')}`));
+    item.addEventListener('keyup', (e) => seen.push(`${e.type} ${e.key}`));
+    const clicks = vi.fn();
+    item.addEventListener('click', clicks);
+    pressEnter(item);
+    expect(document.activeElement).toBe(item);
+    expect(seen).toEqual(['keydown Enter 13', 'keyup Enter']);
+    expect(clicks).not.toHaveBeenCalled();
   });
 
   it('presses Escape from inside an open menu, where X’s React handlers hear it (#121)', () => {

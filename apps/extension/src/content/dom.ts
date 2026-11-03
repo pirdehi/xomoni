@@ -142,15 +142,24 @@ export function closeMenus() {
   if (mask) click(mask);
   for (const target of targets) {
     if (!target.isConnected) continue;
-    for (const type of ['keydown', 'keyup'] as const) target.dispatchEvent(escapeKey(type));
+    for (const type of ['keydown', 'keyup'] as const) target.dispatchEvent(keyEvent(type, 'Escape', 27));
   }
 }
 
-/** An Escape key event that bubbles, with the legacy `keyCode` and `which` (27) that the constructor leaves at 0. */
-function escapeKey(type: 'keydown' | 'keyup'): KeyboardEvent {
-  const event = new KeyboardEvent(type, { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true });
-  Object.defineProperty(event, 'keyCode', { get: () => 27 });
-  Object.defineProperty(event, 'which', { get: () => 27 });
+/**
+ * Activates `el` the way a keyboard does: focuses it, then sends Enter (keydown and keyup). Some of X's controls
+ * answer Enter but ignore `click()` (#121). The keys are synthetic like every Xomoni event (PLAYBOOK B3).
+ */
+export function pressEnter(el: HTMLElement) {
+  el.focus();
+  for (const type of ['keydown', 'keyup'] as const) el.dispatchEvent(keyEvent(type, 'Enter', 13));
+}
+
+/** A key event that bubbles, with the legacy `keyCode` and `which` that the constructor leaves at 0. */
+function keyEvent(type: 'keydown' | 'keyup', key: 'Escape' | 'Enter', legacyCode: number): KeyboardEvent {
+  const event = new KeyboardEvent(type, { key, code: key, bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'keyCode', { get: () => legacyCode });
+  Object.defineProperty(event, 'which', { get: () => legacyCode });
   return event;
 }
 

@@ -29,6 +29,7 @@ import {
   jitter,
   noticeText,
   openDialog,
+  pressEnter,
   sleep,
   viewerHandle,
   viewerIdFromCookie,
@@ -208,18 +209,45 @@ async function deletePost(id: string): Promise<ActionResult> {
     return { outcome: 'failed', message: 'No "Delete" option — not your post, or X changed its menu' };
   }
   await sleep(jitter(150, 400));
-  click(item);
-  const confirm = await waitFor(() => $(SEL.confirm), 4000);
+  const opened = await activate(item, () => $(SEL.confirm), 4000);
+  const confirm = opened?.result ?? null;
   if (!confirm || !findArticle(id)) {
     // What was open instead, for the log: tells an ignored click from a changed sheet (#121).
     const seen = confirm ? 'the post left the page' : describeLayers();
     closeMenus();
     return { outcome: 'failed', message: `Delete confirmation did not appear for this post (${seen})` };
   }
-  const response = waitForNet(['DeleteTweet'], (v) => v.tweet_id === id);
+  let answered = false;
+  const response = waitForNet(['DeleteTweet'], (v) => v.tweet_id === id).then((ev) => {
+    answered = true;
+    return ev;
+  });
   await sleep(jitter(150, 400));
-  click(confirm);
-  return classify(await response, 'DeleteTweet');
+  // X closes its sheet, or answers, once the confirm button takes the press.
+  const confirmed = await activate(confirm, () => answered || !confirm.isConnected, 1500, 3000);
+  const result = classify(await response, 'DeleteTweet');
+  const via = [opened, confirmed].some((step) => step?.via === 'enter');
+  return result.outcome === 'done' && via ? { ...result, message: 'X took Enter, not a click' } : result;
+}
+
+/**
+ * Clicks `el`; if `took` isn't true after `clickWaitMs` and `el` is still on the page (so the click was ignored),
+ * presses Enter on it instead (#121). Resolves with what `took` found and how, or null if neither worked within
+ * `timeoutMs`. An element the click removed is never pressed again.
+ */
+async function activate<T>(
+  el: HTMLElement,
+  took: () => T | null | false | undefined,
+  timeoutMs: number,
+  clickWaitMs = 1500,
+): Promise<{ result: T; via: 'click' | 'enter' } | null> {
+  click(el);
+  const clicked = await waitFor(took, clickWaitMs);
+  if (clicked) return { result: clicked, via: 'click' };
+  if (!el.isConnected) return null;
+  pressEnter(el);
+  const entered = await waitFor(took, timeoutMs);
+  return entered ? { result: entered, via: 'enter' } : null;
 }
 
 async function unlike(id: string): Promise<ActionResult> {

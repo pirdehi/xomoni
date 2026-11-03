@@ -70,7 +70,9 @@ describe('public links', () => {
     const site = await load();
 
     expect(site.GITHUB_URL).toBe('https://github.com/pirdehi/xomoni');
-    expect(site.INSTALL_URL).toBe('https://github.com/pirdehi/xomoni#install');
+    expect(site.INSTALL_URL).toBe('/install');
+    expect(site.RELEASES_URL).toBe('https://github.com/pirdehi/xomoni/releases');
+    expect(site.DOWNLOAD_URL).toBe('https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip');
     expect(site.ISSUES_URL).toBe('https://github.com/pirdehi/xomoni/issues');
     expect(site.CONTACT_EMAIL).toBe('privacy@xomoni.com');
   });

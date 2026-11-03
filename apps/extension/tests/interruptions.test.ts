@@ -90,6 +90,15 @@ describe('settle: X outages and dropped connections are not failed posts (PLAYBO
     expect((err as Interrupted).kind).toBe('offline');
   });
 
+  it('logs how X took a done action when the result says so (#121)', async () => {
+    const { ctx, job } = setup();
+    expect(await ctx.settle('delete', item, { outcome: 'done', http: 200, message: 'X took Enter, not a click' })).toBe(
+      true,
+    );
+    expect(job.stats.done).toBe(1);
+    expect((await db.logs.toArray()).map((l) => l.message)).toEqual(['Deleted (X took Enter, not a click)']);
+  });
+
   it('still counts other failures, which stop the job after two in a row', async () => {
     const { ctx, job } = setup();
     expect(await ctx.settle('delete', item, { outcome: 'failed', http: 400 })).toBe(true);

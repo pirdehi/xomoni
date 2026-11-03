@@ -497,7 +497,13 @@ export class JobContext {
         this.consecutiveFailures = 0;
         this.job.stats.done++;
         await markTried({ status: 'deleted', statusAt: Date.now() });
-        await this.log('success', action, VERB[action], target, outcome);
+        await this.log(
+          'success',
+          action,
+          result.message ? `${VERB[action]} (${result.message})` : VERB[action],
+          target,
+          outcome,
+        );
         await this.save();
         return true;
 

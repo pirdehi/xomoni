@@ -22,6 +22,8 @@ import {
   click,
   closeMenus,
   describeDialog,
+  describeLayers,
+  describeOpenMenu,
   findArticle,
   findDeleteMenuItem,
   jitter,
@@ -200,22 +202,35 @@ async function deletePost(id: string): Promise<ActionResult> {
   // The Delete option must come from the menu this click opens, never a leftover one.
   if (!(await noMenuOpen())) return { outcome: 'failed', message: 'Another menu is open on the X page' };
   click(caret);
-  const item = await waitFor(() => $$(SEL.menu).length === 1 && findDeleteMenuItem(), 4000);
-  if (!item) {
+  const deleteOption = () => ($$(SEL.menu).length === 1 ? findDeleteMenuItem() : null);
+  if (!(await waitFor(deleteOption, 4000))) {
     closeMenus();
     return { outcome: 'failed', message: 'No "Delete" option — not your post, or X changed its menu' };
   }
   await sleep(jitter(150, 400));
-  click(item);
+  clickCurrent(deleteOption);
   const confirm = await waitFor(() => $(SEL.confirm), 4000);
   if (!confirm || !findArticle(id)) {
+    // What was open instead, for the log (#121).
+    const seen = confirm ? 'the post left the page' : describeLayers();
     closeMenus();
-    return { outcome: 'failed', message: 'Delete confirmation did not appear for this post' };
+    return { outcome: 'failed', message: `Delete confirmation did not appear for this post (${seen})` };
   }
   const response = waitForNet(['DeleteTweet'], (v) => v.tweet_id === id);
   await sleep(jitter(150, 400));
-  click(confirm);
+  clickCurrent(() => $(SEL.confirm));
   return classify(await response, 'DeleteTweet');
+}
+
+/**
+ * Clicks the element `find` returns now. X's Dropdown builds a menu's items once, then again once it has
+ * positioned the menu, so an element found a moment earlier may already be off the page, and a click on it
+ * reaches nothing (#121). Elements in X's menus and sheets are therefore looked up right before each click, never
+ * kept across a wait.
+ */
+function clickCurrent(find: () => HTMLElement | null) {
+  const el = find();
+  if (el) click(el);
 }
 
 async function unlike(id: string): Promise<ActionResult> {
@@ -286,7 +301,7 @@ async function unretweet(id: string): Promise<ActionResult> {
   }
   const response = waitForNet(['DeleteRetweet'], (v) => !sourceId || v.source_tweet_id === sourceId);
   await sleep(jitter(150, 400));
-  click(confirm);
+  clickCurrent(() => $(SEL.unretweetConfirm));
   return classify(await response, 'DeleteRetweet');
 }
 
@@ -348,7 +363,7 @@ async function menuCheck(
   await sleep(jitter(200, 500));
   const closed = await noMenuOpen();
   if (!found) return verdict('changed', `${menu} opened without ${option}`);
-  if (!closed) return verdict('changed', 'Escape no longer closes X’s menu');
+  if (!closed) return verdict('changed', `Escape no longer closes X’s menu (${describeOpenMenu()})`);
   return verdict('ok', `${option} is where Xomoni expects it`);
 }
 

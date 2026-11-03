@@ -305,6 +305,9 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
   - **Nothing inside a menu is ever clicked, and nothing is deleted.**
   - If the button, the option or Escape no longer works, the job stops as Stopped for safety **before the action**: "X changed its page". A post that can't tell (not on the page, or no longer liked) leaves the check to the next one.
 
+- **How Escape is pressed (#121):** X is a React app, and React only hears events that pass through its root or a portal. An Escape sent to `document.body` never reaches X's handlers: the pilot's first cleanups stopped as "Escape no longer closes X's menu" for that reason. `closeMenus()` presses Escape (keydown and keyup, with the legacy key code 27) from inside each open menu or pop-up, at the focused element when it is inside, and then on the body. If a menu still stays open, the log says where it sat (focus, `#layers`, mask), never its text.
+- **Elements are looked up right before each click (#121):** X's Dropdown builds a menu's items once, then builds them again once it has positioned the menu (a frame later). An option found right after opening is therefore soon off the page, and a click on it reaches nothing: React only hears events from elements on the page. Every cleanup in the pilot failed this way ("Delete confirmation did not appear", with the menu still open) until Xomoni stopped keeping elements across a wait: the Delete option, the confirm button and the Undo repost option are found again just before they are clicked. The test page builds its menus again after opening them, as X does, and handles clicks on one container, as React does.
+
 ### F2. X interface language · 📘 · ✅
 - **Scenario:** The Delete label is recognized in 22 languages, 23 spellings (including Persian), and the red color of the delete option is also checked as a second method. English is still the recommendation.
 

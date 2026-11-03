@@ -125,13 +125,73 @@ export function click(el: Element) {
   (el as HTMLElement).click();
 }
 
-/** Closes open X menus and sheets: clicks the overlay mask if there is one, then sends Escape to `document.body`. */
+/**
+ * Closes open X menus and sheets: clicks the overlay mask if there is one, then presses Escape from inside each
+ * open menu or pop-up, and on `document.body` last. X is a React app, and React only hears events that pass
+ * through its root or a portal: an Escape sent to `document.body` alone never reaches X's handlers (#121). So
+ * each Escape starts at the focused element when it is inside what is open, otherwise at the menu or pop-up
+ * itself, and bubbles up through every handler around it. Nothing inside is clicked, and the keys are
+ * synthetic like every Xomoni event (PLAYBOOK B3).
+ */
 export function closeMenus() {
+  const focused = document.activeElement;
+  const layers = [...$$(SEL.menu), openDialog()].filter((el): el is HTMLElement => el != null);
+  const targets = new Set<Element>(layers.map((layer) => (focused && layer.contains(focused) ? focused : layer)));
+  targets.add(document.body);
   const mask = $(SEL.mask);
   if (mask) click(mask);
-  document.body.dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }),
-  );
+  for (const target of targets) {
+    if (!target.isConnected) continue;
+    for (const type of ['keydown', 'keyup'] as const) target.dispatchEvent(keyEvent(type, 'Escape', 27));
+  }
+}
+
+/** A key event that bubbles, with the legacy `keyCode` and `which` that the constructor leaves at 0. */
+function keyEvent(type: 'keydown' | 'keyup', key: 'Escape', legacyCode: number): KeyboardEvent {
+  const event = new KeyboardEvent(type, { key, code: key, bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'keyCode', { get: () => legacyCode });
+  Object.defineProperty(event, 'which', { get: () => legacyCode });
+  return event;
+}
+
+/** Names an element for the activity log by tag, role and test id, never by its text. */
+function elementName(el: Element | null): string {
+  if (!el) return 'nothing';
+  const role = el.getAttribute('role');
+  const testid = el.getAttribute('data-testid');
+  return [el.tagName.toLowerCase(), role && `role=${role}`, testid && `testid=${testid}`].filter(Boolean).join(' ');
+}
+
+/**
+ * What is open over X's page, for the activity log when an expected sheet doesn't appear: how many menus, each
+ * pop-up and the test ids of the buttons in X's `#layers`. Structure only, never text.
+ */
+export function describeLayers(): string {
+  const menus = $$(SEL.menu).length;
+  const dialogs = $$(SEL.dialog).map(elementName);
+  const buttons = $$('#layers [data-testid]')
+    .filter((el) => el.matches('button, [role="button"]'))
+    .map((el) => el.getAttribute('data-testid'));
+  return [
+    `menus open: ${menus}`,
+    `pop-ups: ${dialogs.length ? dialogs.join('; ') : 'none'}`,
+    `buttons: ${buttons.length ? buttons.join(', ') : 'none'}`,
+  ].join(', ');
+}
+
+/**
+ * Where an open menu sits, for the activity log when it won't close: what has focus, whether the menu is in
+ * X's `#layers` and whether a mask covers the page. Names elements by tag, role and test id, never by text.
+ */
+export function describeOpenMenu(): string {
+  const menu = $(SEL.menu);
+  if (!menu) return 'no menu open';
+  const focused = document.activeElement;
+  return [
+    `focus: ${elementName(focused)}${focused && menu.contains(focused) ? ' (in the menu)' : ''}`,
+    menu.closest('#layers') ? 'menu in #layers' : 'menu outside #layers',
+    $(SEL.mask) ? 'mask shown' : 'no mask',
+  ].join(', ');
 }
 
 /** Resolves with the first truthy result of `probe`, re-checked on DOM changes. */

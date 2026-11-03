@@ -1,12 +1,207 @@
-import { X } from 'lucide-react';
-import { type ButtonHTMLAttributes, type ReactNode, useEffect, useState } from 'react';
+// The dashboard's small component kit on Fluent UI (ADR-0019): the same props as before the move, so pages keep
+// their shape, with Fluent's components, tokens and status colors underneath.
+import {
+  Badge as FluentBadge,
+  Body1,
+  Button as FluentButton,
+  type ButtonProps as FluentButtonProps,
+  Caption1,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Switch,
+  Title3,
+  ToggleButton,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import { Dismiss20Regular } from '@fluentui/react-icons';
+import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
-/** Joins the truthy class names with spaces, so conditional Tailwind classes can be written inline. */
+/** Joins the truthy class names with spaces, so conditional classes can be written inline. */
 export function cx(...parts: (string | false | null | undefined)[]) {
   return parts.filter(Boolean).join(' ');
 }
 
-/** A bordered section with an optional header (title, subtitle, actions). Pass `padded={false}` for edge-to-edge content such as tables. */
+const useStyles = makeStyles({
+  card: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusXLarge,
+    boxShadow: tokens.shadow2,
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalL,
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL} 0`,
+  },
+  cardTitle: {
+    margin: 0,
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+  cardSubtitle: { margin: `${tokens.spacingVerticalXXS} 0 0`, color: tokens.colorNeutralForeground2 },
+  row: { display: 'flex', flexShrink: 0, alignItems: 'center', gap: tokens.spacingHorizontalS },
+  minW0: { minWidth: 0 },
+  padded: { padding: tokens.spacingHorizontalXL },
+  paddedBelowHeader: { paddingTop: tokens.spacingVerticalL },
+  danger: {
+    backgroundColor: tokens.colorStatusDangerBackground3,
+    color: tokens.colorNeutralForegroundOnBrand,
+    ':hover': { backgroundColor: tokens.colorStatusDangerForeground1, color: tokens.colorNeutralForegroundOnBrand },
+    ':hover:active': { backgroundColor: tokens.colorStatusDangerForeground1 },
+  },
+  stat: {
+    padding: tokens.spacingHorizontalL,
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusXLarge,
+  },
+  statLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  statIcon: { color: tokens.colorNeutralForeground3, display: 'inline-flex' },
+  statValue: {
+    marginTop: tokens.spacingVerticalS,
+    fontSize: tokens.fontSizeHero700,
+    lineHeight: tokens.lineHeightHero700,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  statSub: {
+    marginTop: tokens.spacingVerticalXS,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+  },
+  meter: {
+    height: '6px',
+    width: '100%',
+    overflow: 'hidden',
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  meterFill: {
+    height: '100%',
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorBrandBackground,
+    transitionProperty: 'width',
+    transitionDuration: tokens.durationSlow,
+  },
+  meterWarn: { backgroundColor: tokens.colorStatusWarningForeground1 },
+  meterCritical: { backgroundColor: tokens.colorStatusDangerForeground1 },
+  field: { display: 'block' },
+  fieldLabel: {
+    display: 'block',
+    marginBottom: tokens.spacingVerticalXS,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground2,
+  },
+  fieldHint: {
+    display: 'block',
+    marginTop: tokens.spacingVerticalXS,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
+  toggle: { display: 'flex', flexDirection: 'column' },
+  toggleDescription: { marginTop: `calc(-1 * ${tokens.spacingVerticalXS})`, paddingLeft: '48px' },
+  segmented: {
+    display: 'inline-flex',
+    gap: tokens.spacingHorizontalXXS,
+    padding: tokens.spacingHorizontalXXS,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  segment: { minWidth: 'auto' },
+  dialogText: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalM },
+  dialogBody: { position: 'relative' },
+  dialogTitle: { paddingRight: '40px' },
+  dialogClose: { position: 'absolute', top: `calc(-1 * ${tokens.spacingVerticalXS})`, right: 0 },
+  empty: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    padding: `${tokens.spacingVerticalXXXL} ${tokens.spacingHorizontalXXL}`,
+  },
+  emptyIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '40px',
+    height: '40px',
+    marginBottom: tokens.spacingVerticalM,
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+  },
+  emptyTitle: { margin: 0, fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1 },
+  emptyBody: { margin: `${tokens.spacingVerticalXS} 0 0`, maxWidth: '24rem', color: tokens.colorNeutralForeground2 },
+  emptyAction: { marginTop: tokens.spacingVerticalL },
+  callout: {
+    position: 'relative',
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    overflow: 'hidden',
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalL} ${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`,
+    borderRadius: tokens.borderRadiusLarge,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+  },
+  calloutBar: { position: 'absolute', insetBlock: 0, left: 0, width: '4px' },
+  calloutIcon: { flexShrink: 0, marginTop: '1px', color: tokens.colorNeutralForeground1, display: 'inline-flex' },
+  calloutTitle: {
+    margin: `0 0 ${tokens.spacingVerticalXXS}`,
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+  pageHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalL,
+    marginBottom: tokens.spacingVerticalXXL,
+  },
+  pageTitle: { margin: 0, color: tokens.colorNeutralForeground1 },
+  pageDescription: {
+    margin: `${tokens.spacingVerticalXS} 0 0`,
+    maxWidth: '42rem',
+    color: tokens.colorNeutralForeground2,
+  },
+});
+
+/** The color behind each tone, for dots, bars and meters. */
+const useToneStyles = makeStyles({
+  neutral: { backgroundColor: tokens.colorNeutralForeground3 },
+  accent: { backgroundColor: tokens.colorBrandBackground },
+  good: { backgroundColor: tokens.colorStatusSuccessForeground1 },
+  warn: { backgroundColor: tokens.colorStatusWarningForeground1 },
+  serious: { backgroundColor: tokens.colorPaletteDarkOrangeForeground1 },
+  critical: { backgroundColor: tokens.colorStatusDangerForeground1 },
+});
+
+/**
+ * A bordered section with an optional header (title, subtitle, actions). Pass `padded={false}` for edge-to-edge
+ * content such as tables. The content says how it is padded in `data-padded`: `full`, `below-header` or `none`.
+ */
 export function Card({
   title,
   subtitle,
@@ -22,27 +217,46 @@ export function Card({
   className?: string;
   padded?: boolean;
 }) {
+  const styles = useStyles();
+  const header = !!(title || actions);
   return (
-    <section className={cx('rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)]', className)}>
-      {(title || actions) && (
-        <header className="flex items-start justify-between gap-4 px-5 pt-4">
-          <div className="min-w-0">
-            {title && <h2 className="text-sm font-semibold text-ink">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-xs text-ink-2">{subtitle}</p>}
+    <section className={mergeClasses(styles.card, className)}>
+      {header && (
+        <header className={styles.cardHeader}>
+          <div className={styles.minW0}>
+            {title && <h2 className={styles.cardTitle}>{title}</h2>}
+            {subtitle && (
+              <Caption1 as="p" className={styles.cardSubtitle}>
+                {subtitle}
+              </Caption1>
+            )}
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+          {actions && <div className={styles.row}>{actions}</div>}
         </header>
       )}
-      <div className={cx(padded && 'p-5', padded && !!(title || actions) && 'pt-4')}>{children}</div>
+      <div
+        className={mergeClasses(padded && styles.padded, padded && header && styles.paddedBelowHeader)}
+        data-padded={!padded ? 'none' : header ? 'below-header' : 'full'}
+      >
+        {children}
+      </div>
     </section>
   );
 }
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
+const APPEARANCE = {
+  primary: 'primary',
+  secondary: 'secondary',
+  ghost: 'subtle',
+  danger: 'primary',
+} as const satisfies Record<ButtonVariant, FluentButtonProps['appearance']>;
+
 /**
- * The dashboard's button: `secondary` variant and `type="button"` by default (both can be
- * overridden). Use `danger` only for actions that remove data.
+ * The dashboard's button, a Fluent `Button`: `secondary` and `type="button"` by default (both can be
+ * overridden); `ghost` is Fluent's subtle appearance. Use `danger` only for actions that remove data. The
+ * variant and size are in `data-variant` and `data-size`.
  */
 export function Button({
   variant = 'secondary',
@@ -50,48 +264,49 @@ export function Button({
   icon,
   className,
   children,
+  type = 'button',
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: 'sm' | 'md'; icon?: ReactNode }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: 'sm' | 'md';
+  icon?: ReactNode;
+}) {
+  const styles = useStyles();
   return (
-    <button
-      type="button"
-      className={cx(
-        'inline-flex select-none items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors',
-        'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-45',
-        size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3.5 text-sm',
-        variant === 'primary' && 'bg-accent text-white hover:bg-accent-hover',
-        variant === 'secondary' && 'border border-line bg-surface text-ink hover:bg-surface-2',
-        variant === 'ghost' && 'text-ink-2 hover:bg-surface-2 hover:text-ink',
-        variant === 'danger' && 'bg-critical text-white hover:brightness-110',
-        className,
-      )}
+    <FluentButton
       {...rest}
+      type={type}
+      appearance={APPEARANCE[variant]}
+      size={size === 'sm' ? 'small' : 'medium'}
+      icon={icon ? <>{icon}</> : undefined}
+      className={mergeClasses(variant === 'danger' && styles.danger, className)}
+      data-variant={variant}
+      data-size={size}
     >
-      {icon}
       {children}
-    </button>
+    </FluentButton>
   );
 }
 
-/** Semantic status colors shared by badges, callouts and job states; each maps to a color token in `styles.css`. */
+/** Semantic status colors shared by badges, callouts and job states, each on a Fluent status token. */
 export type Tone = 'neutral' | 'accent' | 'good' | 'warn' | 'serious' | 'critical';
 
-const TONE_DOT: Record<Tone, string> = {
-  neutral: 'bg-muted',
-  accent: 'bg-accent',
-  good: 'bg-good',
-  warn: 'bg-warn',
-  serious: 'bg-serious',
-  critical: 'bg-critical',
-};
+/** Fluent's badge color for each tone. */
+export const BADGE_COLOR = {
+  neutral: 'informative',
+  accent: 'brand',
+  good: 'success',
+  warn: 'warning',
+  serious: 'severe',
+  critical: 'danger',
+} as const satisfies Record<Tone, string>;
 
-/** Status always pairs color with a label (and optionally an icon). */
+/** A status badge: color always paired with a label, and an optional icon. The tone is in `data-tone`. */
 export function Badge({ tone = 'neutral', icon, children }: { tone?: Tone; icon?: ReactNode; children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-2">
-      {icon ?? <span className={cx('size-1.5 rounded-full', TONE_DOT[tone])} />}
+    <FluentBadge appearance="tint" color={BADGE_COLOR[tone]} icon={icon ? <>{icon}</> : undefined} data-tone={tone}>
       {children}
-    </span>
+    </FluentBadge>
   );
 }
 
@@ -107,33 +322,37 @@ export function StatTile({
   sub?: ReactNode;
   icon?: ReactNode;
 }) {
+  const styles = useStyles();
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <div className="flex items-center justify-between text-xs font-medium text-ink-2">
+    <div className={styles.stat}>
+      <div className={styles.statLabel}>
         {label}
-        <span className="text-muted">{icon}</span>
+        <span className={styles.statIcon}>{icon}</span>
       </div>
-      <div className="mt-2 text-2xl font-semibold tracking-tight text-ink">{value}</div>
-      {sub && <div className="mt-1 text-xs text-ink-2">{sub}</div>}
+      <div className={styles.statValue}>{value}</div>
+      {sub && <div className={styles.statSub}>{sub}</div>}
     </div>
   );
 }
 
-/** Meter: fill carries severity; the track is a lighter step of the same family. */
+/**
+ * A slim meter: the fill carries severity (`accent`, `warn` from 80%, `critical` when full, in `data-tone`) and never
+ * passes 100%; the track is a lighter step of the brand color.
+ */
 export function Meter({ value, max, label }: { value: number; max: number; label?: string }) {
+  const styles = useStyles();
   const ratio = max > 0 ? Math.min(1, value / max) : 0;
-  const fill = ratio >= 1 ? 'bg-critical' : ratio >= 0.8 ? 'bg-warn' : 'bg-accent';
+  const tone = ratio >= 1 ? 'critical' : ratio >= 0.8 ? 'warn' : 'accent';
   return (
-    <div
-      className="h-1.5 w-full overflow-hidden rounded-full bg-accent-soft"
-      role="meter"
-      aria-valuenow={value}
-      aria-valuemax={max}
-      aria-label={label}
-    >
+    <div className={styles.meter} role="meter" aria-valuenow={value} aria-valuemax={max} aria-label={label}>
       <div
-        className={cx('h-full rounded-full transition-[width] duration-500', fill)}
-        style={{ width: `${ratio * 100}%` }}
+        className={mergeClasses(
+          styles.meterFill,
+          tone === 'warn' && styles.meterWarn,
+          tone === 'critical' && styles.meterCritical,
+        )}
+        style={{ width: `${String(ratio * 100)}%` }}
+        data-tone={tone}
       />
     </div>
   );
@@ -141,16 +360,20 @@ export function Meter({ value, max, label }: { value: number; max: number; label
 
 /** Wraps a form control in a `<label>`, with a caption above it and an optional hint below. */
 export function Field({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children: ReactNode }) {
+  const styles = useStyles();
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-medium text-ink-2">{label}</span>
+    <label className={styles.field}>
+      <span className={styles.fieldLabel}>{label}</span>
       {children}
-      {hint && <span className="mt-1.5 block text-xs text-muted">{hint}</span>}
+      {hint && <span className={styles.fieldHint}>{hint}</span>}
     </label>
   );
 }
 
-/** An on/off switch (`role="switch"`) with a label and an optional description. */
+/**
+ * An on/off switch (Fluent `Switch`, `role="switch"`) with a label and an optional description, which is the
+ * switch's accessible description (`aria-describedby`).
+ */
 export function Toggle({
   checked,
   onChange,
@@ -164,35 +387,27 @@ export function Toggle({
   description?: ReactNode;
   disabled?: boolean;
 }) {
+  const styles = useStyles();
+  const descriptionId = useId();
   return (
-    <label className={cx('flex cursor-pointer items-start gap-3', disabled && 'cursor-not-allowed opacity-50')}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
+    <div className={styles.toggle}>
+      <Switch
+        checked={checked}
         disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={cx(
-          'relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-soft',
-          checked ? 'bg-accent' : 'bg-axis',
-        )}
-      >
-        <span
-          className={cx(
-            'absolute top-0.5 size-4 rounded-full bg-white shadow transition-[left]',
-            checked ? 'left-[18px]' : 'left-0.5',
-          )}
-        />
-      </button>
-      <span>
-        <span className="block text-sm font-medium text-ink">{label}</span>
-        {description && <span className="mt-0.5 block text-xs text-ink-2">{description}</span>}
-      </span>
-    </label>
+        aria-describedby={description ? descriptionId : undefined}
+        label={<>{label}</>}
+        onChange={(_, data) => onChange(data.checked)}
+      />
+      {description && (
+        <Caption1 id={descriptionId} className={styles.toggleDescription}>
+          {description}
+        </Caption1>
+      )}
+    </div>
   );
 }
 
-/** A row of buttons of which exactly one is selected; controlled through `value` and `onChange`. */
+/** A row of toggle buttons of which exactly one is pressed (`aria-pressed`); controlled through `value` and `onChange`. */
 export function Segmented<T extends string>({
   value,
   onChange,
@@ -202,29 +417,30 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
   options: { value: T; label: ReactNode }[];
 }) {
+  const styles = useStyles();
   return (
-    <div className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5">
+    <div className={styles.segmented}>
       {options.map((o) => (
-        <button
+        <ToggleButton
           key={o.value}
-          type="button"
-          aria-pressed={value === o.value}
+          size="small"
+          appearance={value === o.value ? 'secondary' : 'subtle'}
+          checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={cx(
-            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-            value === o.value ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'text-ink-2 hover:text-ink',
-          )}
+          className={styles.segment}
         >
           {o.label}
-        </button>
+        </ToggleButton>
       ))}
     </div>
   );
 }
 
 /**
- * A centered dialog over a dimmed backdrop. It renders nothing while `open` is false; Escape and
- * a click on the backdrop both call `onClose`.
+ * A modal Fluent `Dialog` with a title, content, an optional footer and a Close button in the top corner. It renders
+ * nothing while `open` is false; Escape, the Close button and a click on the backdrop all call `onClose`. The Close
+ * button comes last in the page order, so Fluent focuses the dialog's first field or action when it opens; an element
+ * marked `data-autofocus` takes the focus instead, once Fluent has placed it.
  */
 export function Modal({
   open,
@@ -239,39 +455,32 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const styles = useStyles();
+  const surface = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+    // After Fluent's own first-focus step, which runs in the dialog's effects.
+    const timer = setTimeout(() => surface.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus());
+    return () => clearTimeout(timer);
+  }, [open]);
   if (!open) return null;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
-      onMouseDown={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-lg rounded-2xl border border-line bg-surface shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-ink"
+    <Dialog open onOpenChange={(_, data) => !data.open && onClose()}>
+      <DialogSurface ref={surface}>
+        <DialogBody className={styles.dialogBody}>
+          <DialogTitle className={styles.dialogTitle}>{title}</DialogTitle>
+          <DialogContent className={styles.dialogText}>{children}</DialogContent>
+          {footer && <DialogActions>{footer}</DialogActions>}
+          <FluentButton
+            appearance="subtle"
             aria-label="Close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="px-5 py-4 text-sm text-ink-2">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
-      </div>
-    </div>
+            icon={<Dismiss20Regular />}
+            onClick={onClose}
+            className={styles.dialogClose}
+          />
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
   );
 }
 
@@ -287,17 +496,22 @@ export function EmptyState({
   body: ReactNode;
   action?: ReactNode;
 }) {
+  const styles = useStyles();
   return (
-    <div className="flex flex-col items-center px-6 py-10 text-center">
-      <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-surface-2 text-ink-2">{icon}</div>
-      <p className="text-sm font-medium text-ink">{title}</p>
-      <p className="mt-1 max-w-sm text-xs text-ink-2">{body}</p>
-      {action && <div className="mt-4">{action}</div>}
+    <div className={styles.empty}>
+      <div className={styles.emptyIcon}>{icon}</div>
+      <Body1 as="p" className={styles.emptyTitle}>
+        {title}
+      </Body1>
+      <Caption1 as="p" className={styles.emptyBody}>
+        {body}
+      </Caption1>
+      {action && <div className={styles.emptyAction}>{action}</div>}
     </div>
   );
 }
 
-/** An inline notice with a colored bar on the left; the color comes from `tone` (default `warn`). */
+/** An inline notice with a colored bar on the left; the color comes from `tone` (default `warn`, in `data-tone`). */
 export function Callout({
   tone = 'warn',
   icon,
@@ -309,20 +523,14 @@ export function Callout({
   title?: ReactNode;
   children: ReactNode;
 }) {
-  const bar = {
-    neutral: 'bg-muted',
-    accent: 'bg-accent',
-    good: 'bg-good',
-    warn: 'bg-warn',
-    serious: 'bg-serious',
-    critical: 'bg-critical',
-  }[tone];
+  const styles = useStyles();
+  const toneStyles = useToneStyles();
   return (
-    <div className="relative flex gap-3 overflow-hidden rounded-lg border border-line bg-surface-2 py-3 pr-4 pl-5 text-xs text-ink-2">
-      <span className={cx('absolute inset-y-0 left-0 w-1', bar)} />
-      <span className="mt-px shrink-0 text-ink">{icon}</span>
+    <div className={styles.callout} data-tone={tone}>
+      <span className={mergeClasses(styles.calloutBar, toneStyles[tone])} />
+      <span className={styles.calloutIcon}>{icon}</span>
       <div>
-        {title && <p className="mb-0.5 text-sm font-medium text-ink">{title}</p>}
+        {title && <p className={styles.calloutTitle}>{title}</p>}
         {children}
       </div>
     </div>
@@ -349,13 +557,20 @@ export function PageHeader({
   description?: ReactNode;
   actions?: ReactNode;
 }) {
+  const styles = useStyles();
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className={styles.pageHeader}>
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
-        {description && <p className="mt-1 max-w-2xl text-sm text-ink-2">{description}</p>}
+        <Title3 as="h1" className={styles.pageTitle}>
+          {title}
+        </Title3>
+        {description && (
+          <Body1 as="p" className={styles.pageDescription}>
+            {description}
+          </Body1>
+        )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className={styles.row}>{actions}</div>}
     </div>
   );
 }

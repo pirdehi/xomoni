@@ -485,7 +485,7 @@ function ConfirmStart({
             </>
           }
         >
-          <input className="field" value={typed} autoFocus onChange={(e) => setTyped(e.target.value)} />
+          <input className="field" value={typed} data-autofocus onChange={(e) => setTyped(e.target.value)} />
         </Field>
       </div>
     </Modal>

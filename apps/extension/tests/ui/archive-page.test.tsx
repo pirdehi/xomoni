@@ -122,9 +122,9 @@ describe('Archive page', () => {
   it('counts this account’s posts, replies and reposts in the range, deleted ones included, likes never', async () => {
     render(<ArchivePage {...await pageProps()} />);
 
-    await waitFor(() => expect(kindSwitch('Posts').closest('label')).toHaveTextContent('2 in this range so far'));
-    expect(kindSwitch('Replies').closest('label')).toHaveTextContent('1 in this range so far');
-    expect(kindSwitch('Reposts').closest('label')).toHaveTextContent('1 in this range so far');
+    await waitFor(() => expect(kindSwitch('Posts')).toHaveAccessibleDescription('2 in this range so far'));
+    expect(kindSwitch('Replies')).toHaveAccessibleDescription('1 in this range so far');
+    expect(kindSwitch('Reposts')).toHaveAccessibleDescription('1 in this range so far');
     expect(screen.queryByRole('switch', { name: /^Likes/ })).not.toBeInTheDocument();
     expect(
       screen.getByText(`4 items from ${fmtDate(account().createdAt)} to ${fmtDate(new Date().setHours(0, 0, 0, 0))}`),
@@ -137,7 +137,7 @@ describe('Archive page', () => {
     fireEvent.change(to(), { target: { value: '2018-02-02' } });
 
     expect(await screen.findByText('2 items from Jan 1, 2017 to Feb 2, 2018')).toBeInTheDocument();
-    expect(kindSwitch('Posts').closest('label')).toHaveTextContent('0 in this range so far');
+    expect(kindSwitch('Posts')).toHaveAccessibleDescription('0 in this range so far');
     expect(to()).toHaveAttribute('min', '2017-01-01');
     expect(from()).toHaveAttribute('max', '2018-02-02');
   });
@@ -243,7 +243,7 @@ describe('Archive page', () => {
     await screen.findByText(/^4 items from/);
 
     await userEvent.click(kindSwitch('Reposts'));
-    expect(kindSwitch('Reposts')).toHaveAttribute('aria-checked', 'false');
+    expect(kindSwitch('Reposts')).not.toBeChecked();
     expect(await screen.findByText(/^3 items from/)).toBeInTheDocument();
     await userEvent.click(jsonButton());
     expect(downloadedJson().items.map((i) => i.kind)).toEqual(['post', 'reply', 'post']);

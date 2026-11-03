@@ -117,9 +117,9 @@ describe('Cleanup page', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
       const acknowledge = screen.getByRole('switch', { name: /Continue without it/ });
-      expect(acknowledge).toHaveAttribute('aria-checked', 'false');
+      expect(acknowledge).not.toBeChecked();
       await userEvent.click(acknowledge);
-      expect(acknowledge).toHaveAttribute('aria-checked', 'true');
+      expect(acknowledge).toBeChecked();
       expect(startButton()).toBeEnabled();
 
       await userEvent.click(acknowledge);
@@ -182,7 +182,7 @@ describe('Cleanup page', () => {
       expect(within(modal).getByText('Start this cleanup?')).toBeInTheDocument();
       expect(within(modal).getByText(title)).toBeInTheDocument();
       expect(modal).toHaveTextContent('3 known items match, plus any the sweep finds on X.');
-      expect(confirmInput()).toHaveFocus();
+      await waitFor(() => expect(confirmInput()).toHaveFocus());
       expect(confirmButton()).toBeDisabled();
 
       await userEvent.type(confirmInput(), 'DELET');
@@ -452,7 +452,7 @@ describe('Cleanup page', () => {
       expect(screen.getByRole('button', { name: /^Replies/ })).toHaveTextContent('2 known');
       await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
       const keepThreads = screen.getByRole('switch', { name: /^Keep replies in my own threads/ });
-      expect(keepThreads).toHaveAttribute('aria-checked', 'true');
+      expect(keepThreads).toBeChecked();
 
       await userEvent.click(keepThreads);
       await waitFor(() => expect(matching()).toHaveTextContent(/^2$/));

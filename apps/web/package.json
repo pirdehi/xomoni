@@ -19,7 +19,7 @@
     "@xomoni/consent": "*",
     "@xomoni/db": "*",
     "@xomoni/fluent-theme": "*",
-    "lucide-react": "^1.64.0",
+    "lucide-react": "^1.66.0",
     "next": "16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

@@ -460,7 +460,7 @@ function RunnerBanner() {
           <Pulse20Regular className={styles.bannerIcon} aria-hidden />
           <Body1Strong className={styles.noShrink}>{job?.title ?? 'Job running'}</Body1Strong>
           <Body1 className={mergeClasses(styles.truncate, styles.secondary)}>
-            · Keep this tab and the X worker window open (not minimized).
+            · Keep this tab open, and part of the X window on screen: not minimized or fully covered.
           </Body1>
         </div>
         <Button

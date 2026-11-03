@@ -87,14 +87,15 @@ describe('WorkerTab.open', () => {
     expect(chrome.windows.create).not.toHaveBeenCalled();
   });
 
-  it('opens x.com in its own unfocused window, remembers it and keeps Chrome from unloading it', async () => {
+  it('opens x.com in its own window in front, remembers it and keeps Chrome from unloading it', async () => {
     chrome.tabs.get.mockResolvedValue(WORKER_TAB);
 
     expect(await worker.open()).toBe(TAB_ID);
 
+    // In front: a window that opens behind a maximized one stays hidden on macOS until it is shown once (#120).
     expect(chrome.windows.create).toHaveBeenCalledWith({
       url: 'https://x.com/home',
-      focused: false,
+      focused: true,
       width: 1100,
       height: 900,
       type: 'normal',

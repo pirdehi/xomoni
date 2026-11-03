@@ -87,7 +87,8 @@ async function renderWithArchive(count = 3) {
 
 /** Opens the confirmation and waits until its DELETE field has the focus, as it does for the person. */
 async function openConfirm() {
-  await userEvent.click(startButton());
+  // Found, not got: right after a modal dialog closes, Fluent keeps the page aria-hidden for a moment.
+  await userEvent.click(await screen.findByRole('button', { name: 'Start cleanup' }));
   await waitFor(() => expect(confirmInput()).toHaveFocus());
   return dialog();
 }
@@ -136,6 +137,16 @@ describe('Cleanup page', () => {
       const props = await renderPage();
       await userEvent.click(await screen.findByRole('button', { name: 'Import your archive' }));
       expect(props.navigate).toHaveBeenCalledWith('inventory');
+    });
+
+    it('says where to keep the X window before the job starts (#120)', async () => {
+      await renderPage();
+      await userEvent.click(await screen.findByRole('switch', { name: /Continue without it/ }));
+      await openConfirm();
+
+      expect(screen.getByRole('dialog')).toHaveTextContent(
+        'Keep this tab open, and part of the X window on screen: not minimized or fully covered.',
+      );
     });
 
     it('creates the job once acknowledged and confirmed', async () => {

@@ -89,7 +89,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Small extension fixes from the documentation pass | [#61](https://github.com/pirdehi/xomoni/issues/61) | [#108](https://github.com/pirdehi/xomoni/pull/108) |
 | ✅ | Wait for a hidden X window instead of stopping as "X changed its page" (found in the pilot) | [#118](https://github.com/pirdehi/xomoni/issues/118) | [#119](https://github.com/pirdehi/xomoni/pull/119) |
 | ✅ | Close X's menus with Escape from inside them, and click the options X shows now, not ones it replaced (found in the pilot) | [#121](https://github.com/pirdehi/xomoni/issues/121) | [#122](https://github.com/pirdehi/xomoni/pull/122) |
-| ⬜ | Open the X worker window on screen, not hidden behind the dashboard | [#120](https://github.com/pirdehi/xomoni/issues/120) | |
+| ✅ | Open the X worker window on screen, not hidden behind the dashboard | [#120](https://github.com/pirdehi/xomoni/issues/120) | [#133](https://github.com/pirdehi/xomoni/pull/133) |
 
 ## Phase 5 · Extension: cloud sync ✅
 

@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   // Workspace packages ship TypeScript source.
-  transpilePackages: ['@xomoni/consent', '@xomoni/db'],
+  transpilePackages: ['@xomoni/consent', '@xomoni/db', '@xomoni/fluent-theme'],
   // CSP, HSTS, framing and the rest, on every response (ADR-0014).
   headers() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

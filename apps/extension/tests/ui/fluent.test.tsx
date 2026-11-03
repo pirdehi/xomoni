@@ -3,7 +3,8 @@ import { Button, useFluent } from '@fluentui/react-components';
 import { act, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProgressRing } from '../../src/ui/components/ProgressRing';
-import { FluentRoot, XOMONI_BRAND, useThemeMode, xomoniDark, xomoniLight } from '../../src/ui/fluent';
+import { XOMONI_BRAND } from '@xomoni/fluent-theme';
+import { FluentRoot, useThemeMode, xomoniDark, xomoniLight } from '../../src/ui/fluent';
 import { setTheme } from '../../src/ui/theme';
 
 /** A `matchMedia` whose dark-mode answer the test sets, with listeners it can fire. */

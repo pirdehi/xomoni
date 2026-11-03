@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { SiteFluentProvider } from '@/shared/ui/fluent-provider';
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -31,11 +32,13 @@ export const viewport: Viewport = {
   ],
 };
 
-/** Root layout: fonts, theme color and the page shell. */
+/** Root layout: fonts, theme color, Fluent UI with server-rendered styles (ADR-0019) and the page shell. */
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-      <body className="flex min-h-dvh flex-col">{children}</body>
+      <body className="flex min-h-dvh flex-col">
+        <SiteFluentProvider>{children}</SiteFluentProvider>
+      </body>
     </html>
   );
 }

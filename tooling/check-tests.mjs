@@ -16,6 +16,7 @@ const WORKSPACES = [
   { dir: 'apps/extension', sources: ['src'], skip: ['src/dev/'], aliases: {} },
   { dir: 'apps/web', sources: ['src/modules', 'src/shared', 'src/proxy.ts'], skip: [], aliases: { '@/': 'src/' } },
   { dir: 'packages/consent', sources: ['src'], skip: [], aliases: {} },
+  { dir: 'packages/fluent-theme', sources: ['src'], skip: [], aliases: {} },
   { dir: 'packages/db', sources: ['src'], skip: [], aliases: {} },
 ];
 

@@ -111,7 +111,13 @@ If you go ahead, you do so for this X account, knowing these risks and accepting
 
 ## Install
 
-Xomoni isn't on the Chrome Web Store yet. Build it from source:
+Xomoni isn't on the Chrome Web Store yet. The [install guide on xomoni.com](https://xomoni.com/install) walks through it:
+
+1. Download [`xomoni-extension.zip`](https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip) from the [latest release](https://github.com/pirdehi/xomoni/releases/latest) (each release lists its SHA-256 checksums) and unzip it into a folder you keep.
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and select that folder.
+3. Click the Xomoni icon in the toolbar to open the dashboard.
+
+### Or build it from source
 
 **Requirements:** Node.js 20.19+ and Chrome, Edge or Brave version 116 or later.
 

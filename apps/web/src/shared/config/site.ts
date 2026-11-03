@@ -3,8 +3,14 @@
 /** The public source repository. */
 export const GITHUB_URL = 'https://github.com/pirdehi/xomoni';
 
-/** Install instructions for the extension (README section). */
-export const INSTALL_URL = `${GITHUB_URL}#install`;
+/** The install guide on this site (#44). */
+export const INSTALL_URL = '/install';
+
+/** Every release of the extension, with its checksums (docs/RELEASING.md). */
+export const RELEASES_URL = `${GITHUB_URL}/releases`;
+
+/** The newest release's zip: every release attaches it under this same name, so this link always serves the latest. */
+export const DOWNLOAD_URL = `${RELEASES_URL}/latest/download/xomoni-extension.zip`;
 
 /** Where people report bugs and ask questions. */
 export const ISSUES_URL = `${GITHUB_URL}/issues`;

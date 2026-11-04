@@ -189,7 +189,8 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 - **X mechanism:** Posting, reposting and liking are blocked, but browsing works. The reported duration is 12 hours to 7 days, and the exact error code on the web is unknown.
 - **Scenario (implemented, #18):**
   - HTTP 403 on any write action (delete, unlike, etc.) or codes 87, 261 or 220 → outcome `restricted`: **the job stops at the first one** and never retries.
-  - X's "temporarily limited" or "restricted" notice on the page (alerts and the top of the main column) stops the job before any action. The match is deliberately broad; a false match only stops the job.
+  - X's "temporarily limited" or "restricted" notice on the page (alerts, pop-ups and the top of the main column) stops the job before any action. The match is deliberately broad; a false match only stops the job.
+  - Posts, names and bios are never read for it (#146): anyone could otherwise stop a job, and raise the risk level, by replying with X's wording. The job, its log and notifications get Xomoni's own words for the notice, never the page's text.
   - Unknown failures in a row pause the job after **2** (the setting is capped at 3, was 5).
   - Not done: reading X's countdown from the banner.
 

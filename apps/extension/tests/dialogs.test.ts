@@ -99,6 +99,13 @@ describe('pop-ups over X’s page (#29, PLAYBOOK F3)', { timeout: 15_000 }, () =
     expect(dialogs()).toBe(1); // Escape was never pressed
   });
 
+  it('doesn’t let a post with X’s wording pass for X’s notice (#146)', async () => {
+    renderX();
+    document.querySelector('[data-testid="primaryColumn"]')!.innerHTML =
+      '<article data-testid="tweet"><div data-testid="tweetText">Your account is suspended</div></article>';
+    expect((await ping()).restriction).toBeNull();
+  });
+
   it('reads a restriction notice shown in a pop-up', async () => {
     renderX([{ label: 'Notice', text: 'Your account is temporarily limited' }]);
     expect((await ping()).restriction).toMatch(/temporarily limited/);

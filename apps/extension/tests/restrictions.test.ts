@@ -63,6 +63,15 @@ describe('suspension and restriction (#18, PLAYBOOK C3, C4)', () => {
     expect(restrictionNotice('What is happening?!\nFor you\nFollowing')).toBeNull();
   });
 
+  it('reports a notice in Xomoni’s own words, never the page’s text (#146)', () => {
+    expect(restrictionNotice('Your account is suspended. Appeal at https://evil.example now')).toBe(
+      'Your account is suspended',
+    );
+    expect(restrictionNotice('This ACCOUNT IS IN READ-ONLY MODE until review')).toBe(
+      'Your account is in read-only mode',
+    );
+  });
+
   it('pauses after at most 3 unknown failures in a row (default 2)', () => {
     expect(normalizeSettings(null).maxConsecutiveFailures).toBe(2);
     expect(normalizeSettings({ maxConsecutiveFailures: 10 }).maxConsecutiveFailures).toBe(3);

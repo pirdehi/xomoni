@@ -170,6 +170,24 @@ describe('menus, pop-ups and notices', () => {
     expect(describeDialog(openDialog()!)).toBe('a pop-up');
   });
 
+  it('never reads a notice from posts, names or bios, which anyone can write (#146)', () => {
+    const post = (text: string) =>
+      `<article data-testid="tweet"><div data-testid="UserName">Mallory</div><div data-testid="tweetText">${text}</div></article>`;
+    document.body.innerHTML = `<div data-testid="primaryColumn">
+      <div data-testid="UserDescription">Your account is suspended (my bio)</div>
+      ${post('Your account is suspended lol')}
+      ${post('read-only mode, again')}</div>
+      <div id="layers"><div role="dialog">${post('account is temporarily limited')}</div></div>`;
+    const text = noticeText();
+    expect(text).not.toMatch(/suspended|read-only|temporarily limited/);
+
+    // X's own banner above the timeline still counts.
+    document
+      .querySelector('[data-testid="primaryColumn"]')!
+      .insertAdjacentHTML('afterbegin', '<div>Some of your account features are temporarily limited</div>');
+    expect(noticeText()).toContain('Some of your account features are temporarily limited');
+  });
+
   it('reads notices from alerts, pop-ups and the top of the main column only', () => {
     document.body.innerHTML = `<div role="alert">Rate limit</div>
       <div id="layers"><div role="dialog">Your account is temporarily limited</div></div>

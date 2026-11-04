@@ -1,5 +1,6 @@
 # The merge gate for main. Branch protection requires every job below to pass.
-# `verify` is the same command the pre-push hook runs locally (tooling/verify.mjs).
+# `verify` is the same command the pre-push hook runs locally (tooling/verify.mjs). Actions are pinned by commit
+# SHA (#142); Dependabot keeps them current.
 name: CI
 
 on:
@@ -25,8 +26,10 @@ jobs:
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm
@@ -52,13 +55,15 @@ jobs:
       # Pull Supabase images from Docker Hub: AWS ECR Public often answers "Data limit exceeded" to CI runners.
       SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
         with:
           # Keep in step with the CLI used to generate packages/db (see CONTRIBUTING.md).
           version: 2.116.0
@@ -86,13 +91,15 @@ jobs:
       # Pull Supabase images from Docker Hub: AWS ECR Public often answers "Data limit exceeded" to CI runners.
       SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
         with:
           version: 2.116.0
       - name: Start Supabase (Auth, Postgres, Realtime, Mailpit)
@@ -103,7 +110,7 @@ jobs:
       - name: Auth end-to-end tests (sign-up, confirmation, sign-in, reset, account)
         working-directory: apps/web
         run: npx playwright test
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
           name: playwright-report

@@ -27,6 +27,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Fixed
 
+- The display stayed on after the dashboard was closed in the middle of a job. It is let go when the dashboard closes.
 - The X window opened behind the dashboard, where macOS kept it hidden and the job waited until it was brought forward. It now opens in front, and the dashboard says where to keep it: partly on screen, not minimized or fully covered.
 - An open redirect after sign-out and Google sign-in.
 - No cleanup ever deleted a post. X's menus never closed with Escape, so every cleanup stopped as "X changed its page"; once that was fixed, Xomoni clicked a Delete option X had already replaced, so nothing happened. Escape is now pressed from inside the open menu, and menu options and confirm buttons are looked up right before they are clicked.

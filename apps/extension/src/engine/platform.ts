@@ -16,3 +16,8 @@ export const chromePorts: EnginePorts = {
 
 /** The runner of this dashboard tab, wired to Chrome. */
 export const runner = new Runner(chromePorts);
+
+// Closing the dashboard ends its run without reaching the runner's `finally`, and Chrome keeps an extension's
+// keep-awake request until it is released: without this, the display stayed on for hours after the tab closed
+// (#136).
+if (typeof window !== 'undefined') window.addEventListener('pagehide', () => chromePorts.presence.keepDisplayOn(false));

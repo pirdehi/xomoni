@@ -1,6 +1,14 @@
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Timers from '../src/engine/timers';
-import { NotReady, PageError, WorkerGone, WorkerTab, workerTab } from '../src/engine/worker-tab';
+import {
+  NotReady,
+  PageError,
+  WORKER_SIZE,
+  WorkerGone,
+  WorkerTab,
+  workerBounds,
+  workerTab,
+} from '../src/engine/worker-tab';
 import { WORKER_TAB, stubChrome } from './support/chrome';
 import { page } from './support/engine';
 
@@ -87,18 +95,19 @@ describe('WorkerTab.open', () => {
     expect(chrome.windows.create).not.toHaveBeenCalled();
   });
 
-  it('opens x.com in its own window in front, remembers it and keeps Chrome from unloading it', async () => {
+  it('opens x.com in its own small window in front, remembers it and keeps Chrome from unloading it', async () => {
     chrome.tabs.get.mockResolvedValue(WORKER_TAB);
 
     expect(await worker.open()).toBe(TAB_ID);
 
     // In front: a window that opens behind a maximized one stays hidden on macOS until it is shown once (#120).
+    // A small popup without tabs, so the person's own tabs never land in it (#138).
     expect(chrome.windows.create).toHaveBeenCalledWith({
       url: 'https://x.com/home',
       focused: true,
-      width: 1100,
-      height: 900,
-      type: 'normal',
+      type: 'popup',
+      width: 500,
+      height: 760,
     });
     expect(chrome.storage.session.set).toHaveBeenCalledWith({ workerTab: TAB_ID });
     expect(chrome.tabs.update).toHaveBeenCalledWith(TAB_ID, { autoDiscardable: false });
@@ -362,5 +371,48 @@ describe('worker errors and the shared handle', () => {
 
   it('shares one worker handle between the engine and the dashboard', () => {
     expect(workerTab).toBeInstanceOf(WorkerTab);
+  });
+});
+
+describe('workerBounds: where the X window opens (#138)', () => {
+  it('docks it to the bottom-right corner of the screen the dashboard is on', () => {
+    expect(workerBounds({ availLeft: 0, availTop: 25, availWidth: 1470, availHeight: 931 })).toEqual({
+      width: 500,
+      height: 760,
+      left: 970,
+      top: 196,
+    });
+  });
+
+  it('follows a second screen, wherever it sits', () => {
+    expect(workerBounds({ availLeft: -1920, availTop: 0, availWidth: 1920, availHeight: 1080 })).toEqual({
+      width: 500,
+      height: 760,
+      left: -500,
+      top: 320,
+    });
+  });
+
+  it('shrinks to fit a screen smaller than the window', () => {
+    expect(workerBounds({ availLeft: 0, availTop: 0, availWidth: 480, availHeight: 600 })).toEqual({
+      width: 480,
+      height: 600,
+      left: 0,
+      top: 0,
+    });
+  });
+
+  it('gives only the size when the screen is unknown', () => {
+    expect(workerBounds(undefined)).toEqual(WORKER_SIZE);
+    expect(workerBounds({ availWidth: 0, availHeight: 0 })).toEqual(WORKER_SIZE);
+  });
+
+  it('treats a screen without availLeft or availTop as starting at the corner', () => {
+    expect(workerBounds({ availWidth: 1000, availHeight: 800 })).toEqual({
+      width: 500,
+      height: 760,
+      left: 500,
+      top: 40,
+    });
   });
 });

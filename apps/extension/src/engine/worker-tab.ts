@@ -1,4 +1,4 @@
-// The "worker" is a normal x.com tab in its own window, signed in with the
+// The "worker" is an x.com tab in its own small window, signed in with the
 // user's own session. The dashboard drives it one command at a time.
 import type { ActorCommand, PageInfo } from '../shared/messages';
 import { NotReady, PageError, type Reply, WorkerGone, type XTab } from './ports';
@@ -14,7 +14,37 @@ async function storedTabId(): Promise<number | null> {
 }
 
 /**
- * Handle to the worker: a normal x.com tab in its own window, driven one command at a time. Its tab id is
+ * The worker window's size: X keeps its desktop layout down to 500 px wide (below that its menus change), and
+ * 760 px shows a post with its actions.
+ */
+export const WORKER_SIZE = { width: 500, height: 760 } as const;
+
+/** The part of a screen windows may use, as `window.screen` reports it in Chrome (`availLeft`/`availTop` included). */
+export interface ScreenArea {
+  availLeft?: number;
+  availTop?: number;
+  availWidth: number;
+  availHeight: number;
+}
+
+/**
+ * Where the worker window opens: `WORKER_SIZE`, in the bottom-right corner of the screen the dashboard is on, or
+ * just the size when the screen isn't known.
+ */
+export function workerBounds(area = globalThis.screen as ScreenArea | undefined) {
+  if (!area?.availWidth || !area.availHeight) return { ...WORKER_SIZE };
+  const width = Math.min(WORKER_SIZE.width, area.availWidth);
+  const height = Math.min(WORKER_SIZE.height, area.availHeight);
+  return {
+    width,
+    height,
+    left: Math.round((area.availLeft ?? 0) + area.availWidth - width),
+    top: Math.round((area.availTop ?? 0) + area.availHeight - height),
+  };
+}
+
+/**
+ * Handle to the worker: an x.com tab in its own small popup window, driven one command at a time. Its tab id is
  * kept in `chrome.storage.session` under `workerTab`, where the service worker reads it too.
  */
 export class WorkerTab implements XTab {
@@ -38,12 +68,14 @@ export class WorkerTab implements XTab {
   /**
    * Opens the worker window in front, or returns the worker tab that is already open. In front, because a
    * window that opens behind a maximized one is fully covered, and macOS keeps it hidden (Chrome pauses its
-   * page) until it has been on screen once, even after it is moved into view (#120).
+   * page) until it has been on screen once, even after it is moved into view (#120). Small and docked to a
+   * corner, as a popup without tabs, so it stays out of the person's way and their own tabs never land in it
+   * (#138).
    */
   async open(url = 'https://x.com/home'): Promise<number> {
     const existing = await this.current();
     if (existing != null) return existing;
-    const win = await chrome.windows.create({ url, focused: true, width: 1100, height: 900, type: 'normal' });
+    const win = await chrome.windows.create({ url, focused: true, type: 'popup', ...workerBounds() });
     const tabId = win?.tabs?.[0]?.id;
     if (tabId == null) throw new Error('Could not open the X worker window');
     this.tabId = tabId;

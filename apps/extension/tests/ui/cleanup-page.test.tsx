@@ -145,7 +145,7 @@ describe('Cleanup page', () => {
       await openConfirm();
 
       expect(screen.getByRole('dialog')).toHaveTextContent(
-        'Keep this tab open, and part of the X window on screen: not minimized or fully covered.',
+        'Keep this tab open (minimizing it is fine), and part of the X window on screen: not minimized or fully covered.',
       );
     });
 

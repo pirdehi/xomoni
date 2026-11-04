@@ -742,8 +742,8 @@ function ConfirmStart({
         cannot be restored by Xomoni or X.
       </Text>
       <Text as="p" className={styles.paragraph}>
-        Keep this tab open, and part of the X window on screen: not minimized or fully covered. You can pause at any
-        time and resume later.
+        Keep this tab open (minimizing it is fine), and part of the X window on screen: not minimized or fully covered.
+        You can pause at any time and resume later.
       </Text>
       <Field
         label={

@@ -91,6 +91,8 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Close X's menus with Escape from inside them, and click the options X shows now, not ones it replaced (found in the pilot) | [#121](https://github.com/pirdehi/xomoni/issues/121) | [#122](https://github.com/pirdehi/xomoni/pull/122) |
 | ✅ | Open the X worker window on screen, not hidden behind the dashboard | [#120](https://github.com/pirdehi/xomoni/issues/120) | [#133](https://github.com/pirdehi/xomoni/pull/133) |
 | ✅ | Keep a job going while the person is away: display kept on, a covered X window brought forward when idle | [#134](https://github.com/pirdehi/xomoni/issues/134) | [#135](https://github.com/pirdehi/xomoni/pull/135) |
+| ✅ | Let the display sleep when the dashboard closes in the middle of a job | [#136](https://github.com/pirdehi/xomoni/issues/136) | [#137](https://github.com/pirdehi/xomoni/pull/137) |
+| ✅ | Open the X window small, in a corner, as a window without tabs | [#138](https://github.com/pirdehi/xomoni/issues/138) | [#139](https://github.com/pirdehi/xomoni/pull/139) |
 
 ## Phase 5 · Extension: cloud sync ✅
 

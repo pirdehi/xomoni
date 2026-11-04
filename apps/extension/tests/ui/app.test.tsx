@@ -217,8 +217,10 @@ describe('App job banner', () => {
     render(<App />);
 
     expect(await screen.findByText('Scan: your posts')).toBeInTheDocument();
-    // Where to keep the X window (#120): Chrome pauses a page it doesn't show.
-    expect(screen.getByText(/part of the X window on screen: not minimized or fully covered/)).toBeInTheDocument();
+    // Where to keep the X window (#120): Chrome pauses a page it doesn't show; the dashboard may be minimized (#138).
+    expect(
+      screen.getByText(/minimizing it is fine\), and part of the X window on screen: not minimized or fully covered/),
+    ).toBeInTheDocument();
     const banner = screen.getByRole('region', { name: 'Running job' });
     expect(banner).toHaveTextContent('Scan: your posts');
     await userEvent.click(within(banner).getByRole('button', { name: 'Pause' }));

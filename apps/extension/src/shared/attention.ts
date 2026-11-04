@@ -57,29 +57,28 @@ export function needMessage(need: Need, handle: string): string {
 }
 
 /**
- * Phrases X shows when it has suspended or limited an account (PLAYBOOK C3, C4), lowercase. Matching is
- * deliberately broad: a false match only stops the job, which is the safe direction.
+ * Phrases X shows when it has suspended or limited an account (PLAYBOOK C3, C4), lowercase, each with what
+ * Xomoni reports for it. Matching is deliberately broad: a false match only stops the job, which is the safe
+ * direction.
  */
-const RESTRICTION_PHRASES = [
-  'your account is suspended',
-  'account has been suspended',
-  'account is temporarily limited',
-  'features are temporarily limited',
-  'temporarily restricted',
-  'your account is restricted',
-  'read-only mode',
+const RESTRICTIONS: readonly (readonly [phrase: string, notice: string])[] = [
+  ['your account is suspended', 'Your account is suspended'],
+  ['account has been suspended', 'Your account is suspended'],
+  ['account is temporarily limited', 'Your account is temporarily limited'],
+  ['features are temporarily limited', 'Some of your account features are temporarily limited'],
+  ['temporarily restricted', 'Your account is temporarily restricted'],
+  ['your account is restricted', 'Your account is restricted'],
+  ['read-only mode', 'Your account is in read-only mode'],
 ];
 
 /**
- * The line of page text that says X suspended or limited the account, or null. Waiting for the person can't
- * fix these, so the job stops instead of retrying.
+ * What X's notice in `text` says, in Xomoni's own words, when X suspended or limited the account; else null.
+ * Waiting for the person can't fix these, so the job stops instead of retrying. The page's own text never goes
+ * into the job, its log or a notification (#146).
  */
 export function restrictionNotice(text: string): string | null {
-  for (const line of text.split(/\n+/)) {
-    const lower = line.toLowerCase();
-    if (RESTRICTION_PHRASES.some((p) => lower.includes(p))) return line.trim().slice(0, 200);
-  }
-  return null;
+  const lower = text.toLowerCase();
+  return RESTRICTIONS.find(([phrase]) => lower.includes(phrase))?.[1] ?? null;
 }
 
 /** Short title per need, used in notification titles. */

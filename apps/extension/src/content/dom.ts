@@ -240,14 +240,32 @@ export function viewerIdFromCookie(): string | null {
 }
 
 /**
+ * What anyone on X can write: posts (with their quotes and replies), post text, names and bios. X's notices are
+ * never inside these (#146).
+ */
+const USER_CONTENT = `${SEL.article}, [data-testid="tweetText"], [data-testid="UserName"], [data-testid="UserDescription"]`;
+
+/** The rendered text of `el` without the text of what anyone can write inside it. */
+function textWithoutUserContent(el: HTMLElement): string {
+  let text = el.innerText;
+  for (const part of $$(USER_CONTENT, el)) {
+    if (part.parentElement?.closest(USER_CONTENT)) continue;
+    const written = part.innerText;
+    if (written) text = text.replace(written, '');
+  }
+  return text;
+}
+
+/**
  * Text where X puts account notices: alerts, pop-ups and the top of the main column (where the "temporarily
- * limited" banner appears). Capped so a long timeline is not scanned; posts further down can't trigger a match.
+ * limited" banner appears), without posts, names or bios. Anyone could otherwise stop a job by replying with
+ * X's wording (#146). Capped so a long page is not scanned.
  */
 export function noticeText(): string {
-  const alerts = $$('[role="alert"]').map((el) => el.innerText);
-  const dialogs = $$(SEL.dialog).map((el) => el.innerText.slice(0, 1500));
-  const column = $('[data-testid="primaryColumn"]')?.innerText.slice(0, 1500) ?? '';
-  return [...alerts, ...dialogs, column].join('\n');
+  const alerts = $$('[role="alert"]').map(textWithoutUserContent);
+  const dialogs = $$(SEL.dialog).map((el) => textWithoutUserContent(el).slice(0, 1500));
+  const column = $('[data-testid="primaryColumn"]');
+  return [...alerts, ...dialogs, column ? textWithoutUserContent(column).slice(0, 1500) : ''].join('\n');
 }
 
 /** The first pop-up covering X's page (PLAYBOOK F3), or null. Between actions Xomoni has none open itself. */

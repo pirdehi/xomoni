@@ -30,6 +30,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - A delete now checks that the page shows the post by your own account. Anyone else's post, or one whose author can't be read, is left alone without its menu being opened. Post ids that aren't X ids are dropped from archives and X's responses and never acted on. Such posts count as skipped, not failed.
+- A reply or a bio that quoted X's "account suspended" or "temporarily limited" wording could stop a job and raise the risk level. Only X's own banners, alerts and pop-ups count now, and Xomoni reports the notice in its own words.
 - The display stayed on after the dashboard was closed in the middle of a job. It is let go when the dashboard closes.
 - The X window opened behind the dashboard, where macOS kept it hidden and the job waited until it was brought forward. It now opens in front, and the dashboard says where to keep it: partly on screen, not minimized or fully covered.
 - An open redirect after sign-out and Google sign-in.

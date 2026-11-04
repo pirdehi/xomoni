@@ -18,6 +18,10 @@ interface Page {
    * positioned the menu, so an item found right after opening is soon off the page (#121).
    */
   rebuildAfterMs?: number | null;
+  /** Who X shows as the post's author (#144). */
+  author?: string;
+  /** The handle in the sidebar's Profile link; null: X hasn't rendered it. */
+  profile?: string | null;
 }
 
 /** Every click on a menu option, which a canary must never make. */
@@ -41,13 +45,16 @@ function renderX({
   reposted = true,
   answers = true,
   rebuildAfterMs = 20,
+  author = 'me',
+  profile = null,
 }: Page = {}) {
   optionClicks = [];
   bodyEscapes = 0;
   const button = (testid: string) => `<button data-testid="${testid}"></button>`;
   document.body.innerHTML = `
+    ${profile == null ? '' : `<a data-testid="AppTabBar_Profile_Link" href="/${profile}">Profile</a>`}
     <article data-testid="tweet">
-      <a href="/me/status/1"><time datetime="2024-01-01T00:00:00.000Z"></time></a>
+      <a href="/${author}/status/1"><time datetime="2024-01-01T00:00:00.000Z"></time></a>
       ${menu ? button('caret') : ''}
       ${liked == null ? '' : button(liked ? 'unlike' : 'like')}
       ${reposted == null ? '' : button(reposted ? 'unretweet' : 'retweet')}
@@ -119,7 +126,7 @@ function renderX({
 }
 
 const canary = (action: 'delete' | 'unlike' | 'relike' | 'unretweet', id = '1') =>
-  runCommand({ cmd: 'canary', action, id }) as Promise<CanaryResult>;
+  runCommand({ cmd: 'canary', action, id, handle: 'me' }) as Promise<CanaryResult>;
 const menuOpen = () => !!document.querySelector('[role="menu"]');
 
 afterEach(() => {
@@ -172,7 +179,7 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     document.cookie = 'twid=u%3D1';
     // X builds the menu's items again 20 ms after opening it, before Xomoni clicks.
     renderX();
-    expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({ outcome: 'done', http: 200 });
+    expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me' })).toEqual({ outcome: 'done', http: 200 });
     expect(optionClicks).toEqual(['Delete']);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
@@ -181,7 +188,7 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     document.cookie = 'twid=u%3D1';
     for (const rebuildAfterMs of [1_000, null]) {
       renderX({ rebuildAfterMs });
-      expect(await runCommand({ cmd: 'delete', id: '1' })).toEqual({ outcome: 'done', http: 200 });
+      expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me' })).toEqual({ outcome: 'done', http: 200 });
     }
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
@@ -197,7 +204,7 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
   it('a Delete that opens no confirmation fails, saying what was open instead (#121)', async () => {
     document.cookie = 'twid=u%3D1';
     renderX({ answers: false });
-    const result = (await runCommand({ cmd: 'delete', id: '1' })) as { outcome: string; message: string };
+    const result = (await runCommand({ cmd: 'delete', id: '1', handle: 'me' })) as { outcome: string; message: string };
     expect(result.outcome).toBe('failed');
     expect(result.message).toBe(
       'Delete confirmation did not appear for this post (menus open: 1, pop-ups: none, buttons: none)',
@@ -230,5 +237,74 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     expect(menuOpen()).toBe(false);
     renderX({ reposted: null });
     expect(await canary('unretweet')).toMatchObject({ verdict: 'changed' });
+  });
+});
+
+describe('only the person’s own posts (#144)', { timeout: 15_000 }, () => {
+  const signedIn = () => (document.cookie = 'twid=u%3D1');
+  const signedOut = () => (document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT');
+  const deleteAs = (handle: string, id = '1') => runCommand({ cmd: 'delete', id, handle });
+
+  it('leaves someone else’s post alone, without even opening its menu', async () => {
+    signedIn();
+    renderX({ author: 'someone', menu: ['Block @someone', 'Report post'] });
+    expect(await deleteAs('me')).toEqual({ outcome: 'skipped', message: 'not your post: X shows it by @someone' });
+    expect(menuOpen()).toBe(false);
+    expect(optionClicks).toEqual([]);
+    signedOut();
+  });
+
+  it('matches the handle whatever its case, as X does', async () => {
+    signedIn();
+    renderX({ author: 'Me' });
+    expect(await deleteAs('me')).toEqual({ outcome: 'done', http: 200 });
+    signedOut();
+  });
+
+  it('falls back to the page’s own profile link, and with neither deletes nothing', async () => {
+    signedIn();
+    renderX({ profile: 'me' });
+    expect(await deleteAs('')).toEqual({ outcome: 'done', http: 200 });
+    renderX({ profile: null });
+    expect(await deleteAs('')).toEqual({ outcome: 'skipped', message: 'could not confirm that the post is yours' });
+    expect(optionClicks).toEqual([]);
+    signedOut();
+  });
+
+  it('refuses every write for an id that isn’t an X id, before looking at the page', async () => {
+    signedIn();
+    renderX();
+    for (const command of [
+      { cmd: 'delete', id: '1/../../settings', handle: 'me' },
+      { cmd: 'delete', id: '', handle: 'me' },
+      { cmd: 'unretweet', id: '' },
+      { cmd: 'unlike', id: 'abc' },
+      { cmd: 'relikeUnlike', id: '1'.repeat(21) },
+    ] as const) {
+      expect(await runCommand(command)).toMatchObject({
+        outcome: 'skipped',
+        message: expect.stringMatching(/is not an X post id$/),
+      });
+    }
+    expect(optionClicks).toEqual([]);
+    expect(menuOpen()).toBe(false);
+    signedOut();
+  });
+
+  it('never undoes a repost by guessing which post is meant', async () => {
+    signedIn();
+    renderX({ reposted: true });
+    expect(await runCommand({ cmd: 'unretweet', id: '' })).toMatchObject({ outcome: 'skipped' });
+    expect(optionClicks).toEqual([]);
+    signedOut();
+  });
+
+  it('checks before deleting only on the person’s own post', async () => {
+    renderX({ author: 'someone' });
+    expect(await canary('delete')).toEqual({ verdict: 'unknown', message: 'not your post: X shows it by @someone' });
+    expect(menuOpen()).toBe(false);
+    // Unlike and undo repost act on other people's posts by nature.
+    expect(await canary('unlike')).toMatchObject({ verdict: 'ok' });
+    expect(await canary('delete', 'x1')).toMatchObject({ verdict: 'unknown', message: 'the post is not on the page' });
   });
 });

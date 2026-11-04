@@ -141,7 +141,7 @@ From the security review of 2026-11-04 of the extension, xomoni.com, the databas
 | --- | --- | --- | --- |
 | ⬜ | Release integrity: read-only build job, pinned actions, provenance, protected tags, reproducible zip (before the first tag) | [#142](https://github.com/pirdehi/xomoni/issues/142) | |
 | ⬜ | Extension CSP and manifest: network only to Xomoni's API, no incognito, no outside messages | [#143](https://github.com/pirdehi/xomoni/issues/143) | |
-| ⬜ | Never act on someone else's post: author checked before Delete, every id validated | [#144](https://github.com/pirdehi/xomoni/issues/144) | |
+| ✅ | Never act on someone else's post: author checked before Delete, every id validated | [#144](https://github.com/pirdehi/xomoni/issues/144) | [#153](https://github.com/pirdehi/xomoni/pull/153) |
 | ⬜ | Trust only Xomoni's own messages: sender checks, payload validation, a sealed page-world channel | [#145](https://github.com/pirdehi/xomoni/issues/145) | |
 | ⬜ | Read X's restriction notices only from X's own banners, not from post text | [#146](https://github.com/pirdehi/xomoni/issues/146) | |
 | ⬜ | xomoni.com: Trusted Types, CSP reports, tighter images, CORP, Origin check on sign-out | [#147](https://github.com/pirdehi/xomoni/issues/147) | |

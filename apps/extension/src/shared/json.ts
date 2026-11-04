@@ -1,6 +1,7 @@
 // Safe reading of JSON whose shape Xomoni does not control: X's GraphQL responses and the files of X's data
 // archive. X changes these often, so every read checks the type it gets and falls back to `undefined`
 // instead of trusting a field to exist (ADR-0016: no `any` in product code).
+import { isXId } from './ids';
 
 /** A parsed JSON object about whose fields nothing is known yet. */
 export type JsonObject = Record<string, unknown>;
@@ -30,6 +31,15 @@ export function asNumber(value: unknown): number | undefined {
 export function asId(value: unknown): string | undefined {
   if (typeof value === 'string') return value || undefined;
   return typeof value === 'number' && Number.isInteger(value) ? String(value) : undefined;
+}
+
+/**
+ * A post id: digits only, as a string or a whole number; else undefined. Post ids end up in URLs and in the
+ * commands that act on X, so anything else is dropped where it is read (#144).
+ */
+export function asPostId(value: unknown): string | undefined {
+  const id = asId(value);
+  return id && isXId(id) ? id : undefined;
 }
 
 /** The value at `path` inside `value`, or undefined as soon as a step is missing or not an object. */

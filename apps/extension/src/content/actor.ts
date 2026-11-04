@@ -3,6 +3,7 @@
 // headers); success is only reported once X's response confirms it.
 import { isCheckPath, isLoginPath, restrictionNotice } from '../shared/attention';
 import { extractErrors } from '../shared/graphql';
+import { isXId, sameHandle } from '../shared/ids';
 import { at } from '../shared/json';
 import type {
   ActionResult,
@@ -40,9 +41,9 @@ const bootId = Math.random().toString(36).slice(2);
 
 /**
  * Runs one dashboard command on this x.com page and returns its reply; the reply type for each
- * `cmd` is mapped in `engine/worker-tab.ts`. Write commands are refused while the account is
- * locked or logged out, click only X's own buttons, and report `done` only once X's response
- * to that request confirms it.
+ * `cmd` is mapped in `engine/worker-tab.ts`. Write commands are refused for an id that isn't an X id and
+ * while the account is locked or logged out, click only X's own buttons, and report `done` only once X's
+ * response to that request confirms it. A post is deleted only when the page shows it by the person (#144).
  */
 export async function runCommand(command: ActorCommand): Promise<unknown> {
   switch (command.cmd) {
@@ -55,15 +56,15 @@ export async function runCommand(command: ActorCommand): Promise<unknown> {
     case 'scroll':
       return scrollMore();
     case 'delete':
-      return guarded(() => deletePost(command.id));
+      return guarded(command.id, () => deletePost(command.id, command.handle));
     case 'unlike':
-      return guarded(() => unlike(command.id));
+      return guarded(command.id, () => unlike(command.id));
     case 'relikeUnlike':
-      return guarded(() => relikeUnlike(command.id));
+      return guarded(command.id, () => relikeUnlike(command.id));
     case 'unretweet':
-      return guarded(() => unretweet(command.id));
+      return guarded(command.id, () => unretweet(command.id));
     case 'canary':
-      return canary(command.action, command.id);
+      return canary(command.action, command.id, command.handle);
     case 'clearPage':
       return clearPage();
   }
@@ -88,7 +89,9 @@ function pageInfo(): PageInfo {
   };
 }
 
-async function guarded(action: () => Promise<ActionResult>): Promise<ActionResult> {
+async function guarded(id: string, action: () => Promise<ActionResult>): Promise<ActionResult> {
+  // A malformed id means the inventory is wrong: act on nothing (#144).
+  if (!isXId(id)) return { outcome: 'skipped', message: `“${id.slice(0, 24)}” is not an X post id` };
   const info = pageInfo();
   if (info.locked) return { outcome: 'locked', message: 'X is asking you to unlock the account' };
   if (info.restriction) return { outcome: 'restricted', message: `X shows: ${info.restriction}` };
@@ -193,9 +196,23 @@ async function focus(article: HTMLElement) {
   await sleep(jitter(250, 600));
 }
 
-async function deletePost(id: string): Promise<ActionResult> {
+/**
+ * Why `article` must be left alone, or null when the page shows it by the signed-in account (`handle`, else the
+ * page's own profile link). "If in doubt, don't delete": a post by anyone else, or one whose author can't be
+ * read, is never acted on, so no other option in its menu can be clicked by mistake (#144).
+ */
+function notMine(article: HTMLElement, handle: string): string | null {
+  const me = handle || viewerHandle() || '';
+  const author = articleInfo(article)?.handle ?? '';
+  if (!me || !author) return 'could not confirm that the post is yours';
+  return sameHandle(author, me) ? null : `not your post: X shows it by @${author}`;
+}
+
+async function deletePost(id: string, handle: string): Promise<ActionResult> {
   const article = findArticle(id);
   if (!article) return { outcome: 'not_found', message: 'Post is not on the page' };
+  const refusal = notMine(article, handle);
+  if (refusal) return { outcome: 'skipped', message: refusal };
   await focus(article);
   const caret = $(SEL.caret, article);
   if (!caret) return { outcome: 'failed', message: 'Post menu button not found' };
@@ -278,12 +295,11 @@ async function relikeUnlike(id: string): Promise<ActionResult> {
 }
 
 /**
- * Undo a repost of `id` (the original post). With an empty id (archive reposts
- * don't name their original) it acts only if exactly one post on the page is reposted.
+ * Undo a repost of `id` (the original post). An archive repost that doesn't name its original never gets here:
+ * the engine leaves it alone, and an empty id is refused (#144).
  */
 async function unretweet(id: string): Promise<ActionResult> {
-  const reposted = id ? [] : $$(SEL.article).filter((a) => $(SEL.unretweet, a));
-  const article = id ? findArticle(id) : reposted.length === 1 ? reposted[0] : null;
+  const article = findArticle(id);
   if (!article) return orUnavailable(id, { outcome: 'not_found', message: 'Post is not on the page' });
   await focus(article);
   const button = $(SEL.unretweet, article);
@@ -292,14 +308,13 @@ async function unretweet(id: string): Promise<ActionResult> {
       ? { outcome: 'already', message: 'Not reposted anymore' }
       : orUnavailable(id, { outcome: 'failed', message: 'Repost button not found' });
   }
-  const sourceId = id || articleInfo(article)?.id || '';
   click(button);
   const confirm = await waitFor(() => $(SEL.unretweetConfirm), 4000);
   if (!confirm) {
     closeMenus();
     return { outcome: 'failed', message: 'Undo-repost option did not appear' };
   }
-  const response = waitForNet(['DeleteRetweet'], (v) => !sourceId || v.source_tweet_id === sourceId);
+  const response = waitForNet(['DeleteRetweet'], (v) => v.source_tweet_id === id);
   await sleep(jitter(150, 400));
   clickCurrent(() => $(SEL.unretweetConfirm));
   return classify(await response, 'DeleteRetweet');
@@ -309,13 +324,15 @@ const verdict = (v: CanaryResult['verdict'], message: string): CanaryResult => (
 
 /**
  * Checks, on post `id`, that X's page still has what `action` needs, without acting (PLAYBOOK F1). Delete:
- * the "…" menu opens with a Delete option and closes again with Escape. Undo repost: the repost menu likewise,
- * with its Undo repost option. Unlike: the unlike button (or, for a ghost like, the like button). Nothing
- * inside a menu is ever clicked.
+ * on the person's own post only (`handle`, #144), the "…" menu opens with a Delete option and closes again with
+ * Escape. Undo repost: the repost menu likewise, with its Undo repost option. Unlike: the unlike button (or, for
+ * a ghost like, the like button). Nothing inside a menu is ever clicked.
  */
-async function canary(action: CanaryAction, id: string): Promise<CanaryResult> {
-  const article = id ? findArticle(id) : null;
+async function canary(action: CanaryAction, id: string, handle: string): Promise<CanaryResult> {
+  const article = isXId(id) ? findArticle(id) : null;
   if (!article) return verdict('unknown', 'the post is not on the page');
+  const refusal = action === 'delete' ? notMine(article, handle) : null;
+  if (refusal) return verdict('unknown', refusal);
   await focus(article);
   switch (action) {
     case 'delete':

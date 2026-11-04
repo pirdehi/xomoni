@@ -1,6 +1,7 @@
 // Shared state and safety policy for one job run.
 import { type Need, needMessage, pageNeed } from '../shared/attention';
 import { addLog, db, getSettings, hasConsent, recordRisk, riskEvents } from '../shared/db';
+import { isHandle } from '../shared/ids';
 import { type JobHealth, type SampleTally, healthReport } from '../shared/health';
 import type { ActionResult, PageInfo } from '../shared/messages';
 import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from '../shared/risk';
@@ -267,7 +268,8 @@ export class JobContext {
     this.handle ||= account?.handle ?? '';
     const info = await this.clearAndAssert(await this.xTab.waitReady(this.signal));
     this.handle = info.handle || this.handle;
-    if (!this.handle)
+    // The handle goes into post URLs and decides which posts are the person's own (#144).
+    if (!isHandle(this.handle))
       throw new Stop(
         'blocked',
         'Could not determine your @handle from X. Open your profile once in the worker window.',
@@ -540,6 +542,14 @@ export class JobContext {
         // An "already" unlike is a ghost like: still in X's history, just not shown.
         await markTried(outcome === 'not_found' || action !== 'unlike' ? { status: 'gone', statusAt: Date.now() } : {});
         await this.log('info', action, `Skipped${detail}`, target, outcome);
+        await this.save();
+        return true;
+
+      case 'skipped':
+        // Xomoni refused to act itself: not the person's post, or not an X id (#144). Left alone, never failed.
+        this.job.stats.skipped++;
+        await markTried();
+        await this.log('warn', action, `Left alone${detail}`, target, outcome);
         await this.save();
         return true;
 

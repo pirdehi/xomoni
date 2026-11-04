@@ -106,7 +106,8 @@ export function findArticle(id: string): HTMLElement | null {
 /**
  * The "Delete" item of an open post menu: matched by label in the languages of `DELETE_LABELS`,
  * then by X's red danger color for other languages (PLAYBOOK F2). It searches every open menu,
- * so callers must make sure only the menu they opened is on the page.
+ * so callers must make sure only the menu they opened is on the page, and that the post is the
+ * person's own: on anyone else's post the red item could be Block (#144).
  */
 export function findDeleteMenuItem(): HTMLElement | null {
   const items = $$(SEL.menuItem);

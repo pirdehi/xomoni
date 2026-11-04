@@ -1,6 +1,6 @@
 // Parsing of the official X data archive ("Download an archive of your data").
 // Files look like `window.YTD.tweets.part0 = [ { "tweet": { ... } } ]`.
-import { asId, asNumber, asObject, asString, at } from './json';
+import { asId, asNumber, asObject, asPostId, asString, at } from './json';
 import { parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
 
@@ -51,12 +51,12 @@ export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, 
   const drafts: ItemDraft[] = [];
   for (const row of rows) {
     const t = asObject(at(row, 'tweet')) ?? asObject(row);
-    const id = asId(t?.id_str) ?? asId(t?.id);
+    const id = asPostId(t?.id_str) ?? asPostId(t?.id);
     if (!t || !id) continue;
     const text = asString(t.full_text) ?? asString(t.text) ?? '';
     const createdAt = parseTwitterDate(t.created_at) ?? snowflakeTime(id) ?? 0;
     const repost = text.match(/^RT @(\w+):/);
-    const inReplyToId = asId(t.in_reply_to_status_id_str) ?? null;
+    const inReplyToId = asPostId(t.in_reply_to_status_id_str) ?? null;
     drafts.push({
       kind: repost ? 'repost' : inReplyToId ? 'reply' : 'post',
       id,
@@ -84,7 +84,7 @@ export function archiveLikeDrafts(rows: readonly unknown[]): ItemDraft[] {
   const drafts: ItemDraft[] = [];
   for (const row of rows) {
     const l = asObject(at(row, 'like')) ?? asObject(row);
-    const id = asId(l?.tweetId);
+    const id = asPostId(l?.tweetId);
     if (!l || !id) continue;
     drafts.push({
       kind: 'like',

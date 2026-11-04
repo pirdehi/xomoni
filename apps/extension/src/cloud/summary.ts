@@ -1,5 +1,6 @@
 // What one job's status looks like on the website (ADR-0004, ADR-0018): Xomoni's own title, state, phase and
 // counters, the timestamps and the account's risk level. Never post text, never X's notices.
+import { isHandle } from '../shared/ids';
 import type { Job } from '../shared/types';
 
 /** One job as `device_report` stores it. Field names follow the `jobs` table. */
@@ -22,7 +23,6 @@ export interface JobReport {
   finished_at: string | null;
 }
 
-const HANDLE = /^[A-Za-z0-9_]{1,15}$/;
 const iso = (ms: number | null) => (ms == null ? null : new Date(ms).toISOString());
 
 /**
@@ -30,7 +30,7 @@ const iso = (ms: number | null) => (ms == null ? null : new Date(ms).toISOString
  * one X allows (the account was never seen with its handle), since the website groups jobs by handle.
  */
 export function jobReport(job: Job, handle: string, riskLevel: number | null): JobReport | null {
-  if (!HANDLE.test(handle)) return null;
+  if (!isHandle(handle)) return null;
   const { matched, done, skipped, failed, scanned } = job.stats;
   return {
     local_id: job.id,

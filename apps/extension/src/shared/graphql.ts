@@ -1,7 +1,7 @@
 // Parsing of X's internal GraphQL responses, as observed from the web app's own
 // traffic. The walker is deliberately schema-agnostic: X reshuffles timeline
 // payloads often, but tweets are always reachable through `tweet_results`.
-import { type JsonObject, asArray, asId, asNumber, asObject, asString, at } from './json';
+import { type JsonObject, asArray, asId, asNumber, asObject, asPostId, asString, at } from './json';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
 
@@ -99,19 +99,19 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
   const t = unwrap(result);
   const legacy = asObject(t?.legacy);
   if (!t || !legacy) return null;
-  const id = asString(t.rest_id) ?? asString(legacy.id_str);
+  const id = asPostId(t.rest_id) ?? asPostId(legacy.id_str);
   if (!id) return null;
   const user = at(t, 'core', 'user_results', 'result');
   const sourceResult = at(legacy, 'retweeted_status_result', 'result');
   const favorited = legacy.favorited;
   return {
     id,
-    authorId: asString(legacy.user_id_str) ?? asString(at(user, 'rest_id')) ?? '',
+    authorId: asId(legacy.user_id_str) ?? asId(at(user, 'rest_id')) ?? '',
     authorHandle: asString(at(user, 'core', 'screen_name')) ?? asString(at(user, 'legacy', 'screen_name')) ?? '',
     createdAt: parseTwitterDate(legacy.created_at) ?? snowflakeTime(id) ?? 0,
     text: asString(at(t, 'note_tweet', 'note_tweet_results', 'result', 'text')) ?? asString(legacy.full_text) ?? '',
-    inReplyToId: asString(legacy.in_reply_to_status_id_str) ?? null,
-    inReplyToUserId: asString(legacy.in_reply_to_user_id_str) ?? null,
+    inReplyToId: asPostId(legacy.in_reply_to_status_id_str) ?? null,
+    inReplyToUserId: asId(legacy.in_reply_to_user_id_str) ?? null,
     likes: asNumber(legacy.favorite_count) ?? 0,
     reposts: asNumber(legacy.retweet_count) ?? 0,
     replies: asNumber(legacy.reply_count) ?? 0,
@@ -173,7 +173,7 @@ export function unavailableTweetIds(json: unknown): string[] {
     const results = asObject(obj.tweet_results);
     if (results) {
       const type = asString(at(results, 'result', '__typename'));
-      const id = asString(at(results, 'result', 'rest_id')) ?? entry;
+      const id = asPostId(at(results, 'result', 'rest_id')) ?? entry;
       if (type && UNAVAILABLE_TYPES.has(type) && id) out.add(id);
       return;
     }
@@ -189,7 +189,7 @@ export function unavailableTweetIds(json: unknown): string[] {
  */
 export function extractProfile(json: unknown): ParsedProfile | null {
   const u = asObject(at(json, 'data', 'user', 'result'));
-  const id = asString(u?.rest_id);
+  const id = asId(u?.rest_id);
   if (!u || !id) return null;
   const legacy = asObject(u.legacy) ?? {};
   return {

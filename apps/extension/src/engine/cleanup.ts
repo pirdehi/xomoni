@@ -13,6 +13,7 @@ import { needMessage } from '../shared/attention';
 import { PROFILE_TIMELINE_LIMIT, unseenPosts, worthWarning } from '../shared/coverage';
 import { db, itemKey } from '../shared/db';
 import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
+import { isXId } from '../shared/ids';
 import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../shared/messages';
 import { DAY, searchDate } from '../shared/time';
 import type { Account, ActionKind, CleanupFilter, CleanupOptions, Item, ItemKind } from '../shared/types';
@@ -313,7 +314,8 @@ async function pickTargets(
 
 type ActionCommand = Extract<ActorCommand, { cmd: 'delete' | 'unlike' | 'relikeUnlike' | 'unretweet' }>;
 
-function commandFor(action: ActionKind, item: Item): ActionCommand {
+/** The command for `action` on `item`. A delete names the account's `handle`, so only its own posts go (#144). */
+function commandFor(action: ActionKind, item: Item, handle: string): ActionCommand {
   switch (action) {
     case 'unretweet':
       return { cmd: 'unretweet', id: item.targetId };
@@ -322,7 +324,7 @@ function commandFor(action: ActionKind, item: Item): ActionCommand {
     case 'relike':
       return { cmd: 'relikeUnlike', id: item.id };
     default:
-      return { cmd: 'delete', id: item.id };
+      return { cmd: 'delete', id: item.id, handle };
   }
 }
 
@@ -357,7 +359,7 @@ async function handOffSafe(ctx: JobContext, unsettled: Item[], run: () => Promis
 async function preflight(ctx: JobContext, action: ActionKind, command: ActionCommand) {
   if (action === 'read' || ctx.preflighted.has(action)) return;
   ctx.status('Checking X’s page before acting…');
-  const result = await ctx.xTab.send({ cmd: 'canary', action, id: command.id });
+  const result = await ctx.xTab.send({ cmd: 'canary', action, id: command.id, handle: ctx.handle });
   if (result.verdict === 'changed') {
     // A menu that won't close in a hidden window is Chrome pausing the page, not X changing it (#118).
     if ((await ctx.xTab.ping())?.hidden) throw new NeedsYou('hidden', needMessage('hidden', ctx.handle));
@@ -374,7 +376,7 @@ async function preflight(ctx: JobContext, action: ActionKind, command: ActionCom
 }
 
 async function act(ctx: JobContext, item: Item, action: ActionKind) {
-  const command = commandFor(action, item);
+  const command = commandFor(action, item, ctx.handle);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     await ctx.limiter.before(action);
     await ctx.verifyPage();
@@ -390,9 +392,12 @@ async function act(ctx: JobContext, item: Item, action: ActionKind) {
   await ctx.settle(action, item, { outcome: 'failed', message: `Gave up after ${MAX_ATTEMPTS} attempts` });
 }
 
+/** The id the deep clean opens for `item`: the original post of a repost, else the item itself. */
+const deepId = (item: Item) => (item.kind === 'repost' ? item.targetId : item.id);
+
 function deepUrl(item: Item, handle: string) {
   if (item.kind === 'post' || item.kind === 'reply') return `https://x.com/${handle}/status/${item.id}`;
-  return `https://x.com/i/web/status/${item.kind === 'repost' ? item.targetId : item.id}`;
+  return `https://x.com/i/web/status/${deepId(item)}`;
 }
 
 async function deepClean(ctx: JobContext) {
@@ -424,6 +429,11 @@ async function deepClean(ctx: JobContext) {
         continue;
       }
       if ((await liveRepost(ctx.job.accountId, item.targetId))?.key !== item.key) continue;
+    }
+    // Ids go into the URL and the command; an inventory row with anything else is wrong (#144).
+    if (!isXId(deepId(item))) {
+      await ctx.leaveAlone(item, 'its id isn’t an X post id');
+      continue;
     }
     await runDueChecks(ctx);
     ctx.attempted.add(item.id);

@@ -31,6 +31,7 @@ The content script that Chrome injects into every `https://x.com/*` tab at `docu
   - B3 (accepted risk): clicks are synthetic (`HTMLElement.click()`) and are not disguised as trusted input.
   - A2, A3, B1, C2, D1, E5: `classify()` in `actor.ts` maps codes 429/88, 185/344, 226, 326, 32/89/215/353 and 34/144 to the outcomes the engine acts on. Code 64 is still mapped to `locked` (see C4).
   - B6, E4: `relikeUnlike` likes again only when X shows the post as not liked, and retries the unlike up to 3 times so no like is left behind.
+  - F2 (#144): `deletePost` and the delete `canary` act only on a post the page shows by the signed-in account (`notMine`), so the red-color fallback can't pick another option on someone else's post; every write command refuses an id that isn't an X id, with the `skipped` outcome.
   - D3, D4, D5: write commands are refused while logged out or locked; `ping` reports the signed-in user's id from `twid` so the engine can detect an account switch; nothing is typed on login pages and no cookie is written.
   - A1, F8: `net.ts` reports X's `x-rate-limit-*` headers from every x.com tab, so the user's own browsing is counted too.
   - F3 (#29): `pageInfo` reports a pop-up over the page (`obstructed`); `clearPage` presses Escape, then the pop-up's own Close button, and clicks nothing else. It refuses on X's login and check pages. `noticeText` also reads pop-ups, so a restriction shown in one stops the job.

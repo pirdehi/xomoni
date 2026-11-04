@@ -193,10 +193,10 @@ describe('WorkerTab.send', () => {
     openTab();
     chrome.tabs.sendMessage.mockResolvedValue({ outcome: 'done', http: 200 });
 
-    expect(await worker.send({ cmd: 'delete', id: '123' })).toEqual({ outcome: 'done', http: 200 });
+    expect(await worker.send({ cmd: 'delete', id: '123', handle: 'me' })).toEqual({ outcome: 'done', http: 200 });
     expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(TAB_ID, {
       type: 'actor',
-      command: { cmd: 'delete', id: '123' },
+      command: { cmd: 'delete', id: '123', handle: 'me' },
     });
   });
 

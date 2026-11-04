@@ -310,6 +310,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 
 ### F2. X interface language · 📘 · ✅
 - **Scenario:** The Delete label is recognized in 22 languages, 23 spellings (including Persian), and the red color of the delete option is also checked as a second method. English is still the recommendation.
+- **Only the person's own posts (#144):** before a delete, and before the check that precedes it, the post's author on the page must be the signed-in account (the engine sends its handle; case doesn't matter). Anyone else's post, or one whose author can't be read, is left alone without its menu being opened. So the red-color fallback can never pick another destructive option, such as Block, on someone else's post. A write command for an id that isn't an X id (digits only) is refused. The archive and GraphQL parsers drop such ids, and the deep clean never opens a page for one. A refusal is counted as skipped, not as a failure.
 
 ### F3. Intrusive popups · 📰 · ✅
 - **Mechanism:** A Premium offer, cookie consent, a request to turn on notifications, or "Unlock more on X" may block the click.

@@ -3,18 +3,20 @@ import type { ActionKind, ItemDraft, Outcome, RateObservation } from './types';
 
 /**
  * Commands the dashboard sends to the content script in the worker tab. `canary` checks, on post `id`, that
- * X's page still has what `action` needs, without acting (PLAYBOOK F1).
+ * X's page still has what `action` needs, without acting (PLAYBOOK F1). `handle` is the signed-in account's:
+ * a post is deleted, or checked for deleting, only when the page shows it by that handle (#144). Every write
+ * command is refused for an `id` that isn't an X id.
  */
 export type ActorCommand =
   | { cmd: 'ping' }
   | { cmd: 'waitContent'; timeoutMs: number }
   | { cmd: 'visible' }
   | { cmd: 'scroll' }
-  | { cmd: 'delete'; id: string }
+  | { cmd: 'delete'; id: string; handle: string }
   | { cmd: 'unlike'; id: string }
   | { cmd: 'relikeUnlike'; id: string }
   | { cmd: 'unretweet'; id: string }
-  | { cmd: 'canary'; action: Exclude<ActionKind, 'read'>; id: string }
+  | { cmd: 'canary'; action: Exclude<ActionKind, 'read'>; id: string; handle: string }
   | { cmd: 'clearPage' };
 
 /** State of an x.com page, reported by the content script in reply to `ping`. */

@@ -26,6 +26,7 @@ Out of scope: X's own platform, rate limits or enforcement decisions; social eng
 - X content stays in the browser; the cloud stores job status only ([ADR-0004](docs/adr/0004-x-data-stays-local.md)).
 - The website cannot start deletions ([ADR-0006](docs/adr/0006-website-is-view-only.md)).
 - Every database table has Row Level Security; the browser uses only the publishable key.
+- Releases are built with a read-only token from a commit on `main`, signed with build provenance, reproducible and immutable once published ([releasing](docs/RELEASING.md#checking-a-download), #142).
 
 ## Cloud security review (2026-10-31)
 

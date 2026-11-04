@@ -1,5 +1,8 @@
-// Pure helpers for releasing the extension (docs/RELEASING.md). Kept apart from the command line in
+// Helpers for releasing the extension (docs/RELEASING.md). Kept apart from the command line in
 // tooling/release.mjs so tooling/release.test.mjs can test them.
+import { execFileSync } from 'node:child_process';
+import { chmodSync, readdirSync, utimesSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 /** The version in a tag such as `v0.2.0`, or null when the tag isn't `v` plus a semantic version. */
 export function versionOfTag(tag) {
@@ -36,4 +39,37 @@ export function changelogSection(changelog, version) {
     .slice(start + 1, end < 0 ? undefined : end)
     .join('\n')
     .trim();
+}
+
+/** Every file under `dir`, as paths relative to it, sorted, so a zip lists them in the same order anywhere. */
+export function filesUnder(dir) {
+  const files = [];
+  const walk = (folder) => {
+    for (const entry of readdirSync(folder, { withFileTypes: true })) {
+      const path = join(folder, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.isFile()) files.push(relative(dir, path));
+    }
+  };
+  walk(dir);
+  return files.sort();
+}
+
+/**
+ * Zips `dir` into `zipFile` so that the same files always give the same bytes (#142): sorted, without directory
+ * entries or extra attributes, every file readable by all and dated `epoch` (seconds) in UTC. Anyone can then
+ * rebuild a tag in the release's environment and compare the checksum. It changes the files' dates and modes.
+ */
+export function reproducibleZip(dir, zipFile, epoch) {
+  const files = filesUnder(dir);
+  const date = new Date(epoch * 1000);
+  for (const file of files) {
+    chmodSync(join(dir, file), 0o644);
+    utimesSync(join(dir, file), date, date);
+  }
+  execFileSync('zip', ['-X', '-D', '-q', zipFile, '-@'], {
+    cwd: dir,
+    input: `${files.join('\n')}\n`,
+    env: { ...process.env, TZ: 'UTC' },
+  });
 }

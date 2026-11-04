@@ -2,13 +2,14 @@
 //
 //   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section
 //   node tooling/release.mjs notes vX.Y.Z     prints the changelog section, for the GitHub release
-//   node tooling/release.mjs package          zips apps/extension/dist into apps/extension/release, with SHA256SUMS
+//   node tooling/release.mjs package          zips apps/extension/dist into apps/extension/release, with SHA256SUMS;
+//                                             reproducible: files dated SOURCE_DATE_EPOCH, else the last commit's time
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { changelogSection, releaseProblems, versionOfTag } from './release-lib.mjs';
+import { changelogSection, releaseProblems, reproducibleZip, versionOfTag } from './release-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXT = join(ROOT, 'apps/extension');
@@ -43,7 +44,11 @@ if (command === 'check') {
   mkdirSync(out);
   // One file with a fixed name for the website's "latest" link, and one that names the version.
   const names = ['xomoni-extension.zip', `xomoni-extension-${manifestVersion}.zip`];
-  execFileSync('zip', ['-r', '-X', '-q', join(out, names[0]), '.'], { cwd: dist });
+  const epoch = Number(
+    process.env.SOURCE_DATE_EPOCH ||
+      execFileSync('git', ['log', '-1', '--format=%ct'], { cwd: ROOT, encoding: 'utf8' }),
+  );
+  reproducibleZip(dist, join(out, names[0]), epoch);
   writeFileSync(join(out, names[1]), readFileSync(join(out, names[0])));
   const sums = names.map((name) => {
     const hash = createHash('sha256')

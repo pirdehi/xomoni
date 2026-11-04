@@ -23,7 +23,7 @@ Out of scope: X's own platform, rate limits or enforcement decisions; social eng
 ## How Xomoni is designed to limit damage
 
 - The extension never handles X passwords or session cookies, and never sends its own requests to X ([ADR-0002](docs/adr/0002-drive-x-ui-not-the-api.md), [ADR-0003](docs/adr/0003-no-credentials-no-evasion.md)).
-- X content stays in the browser; the cloud stores job status only ([ADR-0004](docs/adr/0004-x-data-stays-local.md)).
+- X content stays in the browser; the cloud stores job status only ([ADR-0004](docs/adr/0004-x-data-stays-local.md)). The extension's Content-Security-Policy enforces it: its pages can connect only to Xomoni's own API, never to X or anywhere else (#143).
 - The website cannot start deletions ([ADR-0006](docs/adr/0006-website-is-view-only.md)).
 - Every database table has Row Level Security; the browser uses only the publishable key.
 - Releases are built with a read-only token from a commit on `main`, signed with build provenance, reproducible and immutable once published ([releasing](docs/RELEASING.md#checking-a-download), #142).

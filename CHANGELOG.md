@@ -19,6 +19,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Changed
 
 - Releases are built with a read-only token, signed with build provenance and reproducible: anyone can rebuild a tag and compare the checksum ([releasing](docs/RELEASING.md#checking-a-download)). Workflow actions are pinned by commit SHA.
+- The extension is locked down: its pages can connect only to Xomoni's own API, it asks for no host permissions, and it doesn't run in incognito (#143).
 - The X window opens small (500 × 760) in the bottom-right corner of the screen, as a window without tabs, so it stays out of your way and your own tabs never end up in it. The dashboard can be minimized while a job runs; only the X window needs to be on screen.
 - The job card is redesigned with Fluent UI: a progress ring, colored counts, when the job should end, and a bar that fills toward the end of each wait. Xomoni's interfaces move from Tailwind to Fluent UI (ADR-0019).
 - The whole extension dashboard is on Fluent UI, in light and dark: a Fluent navigation, toasts and dialogs, tables, inputs, switches and a chart in colors color-blind readers can tell apart. Tailwind is gone from the extension.

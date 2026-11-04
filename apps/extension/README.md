@@ -37,7 +37,11 @@ src/
   dev/                    UI preview with demo data (not shipped)
 ```
 
-Build entry points: `dashboard.html` and `src/background/sw.ts` (Vite, `vite.config.ts`); `src/content/content.ts` and `src/inject/interceptor.ts` as classic scripts (esbuild, `scripts/build-content.mjs`). Permissions and content-script registration are in `public/manifest.json`.
+Build entry points: `dashboard.html` and `src/background/sw.ts` (Vite, `vite.config.ts`); `src/content/content.ts` and `src/inject/interceptor.ts` as classic scripts (esbuild, `scripts/build-content.mjs`). Permissions and content-script registration are in `public/manifest.json`. The manifest locks the extension down (#143), and `tests/manifest.test.ts` keeps it so:
+- **CSP for extension pages:** they can reach only Xomoni's own API (`connect-src` is the extension and `CLOUD_URL`), so the browser itself refuses any request to X or anywhere else (ADR-0002, ADR-0004). Only the extension's own scripts run; there are no plugins, frames, form posts or `<base>` tricks; images come only from the extension and X's picture servers (the avatar). Fluent's runtime styles need `style-src 'unsafe-inline'`.
+- **No host permissions.** The content scripts' matches cover x.com; nothing reads tab URLs or fetches x.com.
+- **No incognito** (`not_allowed`), so incognito X tabs never write to this profile's database.
+- **Nothing outside the extension listens:** no web-accessible resources, and no `onMessageExternal` or `onConnectExternal` listener (the test checks the source).
 
 ## Safety
 

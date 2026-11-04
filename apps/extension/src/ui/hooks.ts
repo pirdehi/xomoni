@@ -9,6 +9,7 @@ import type { Account } from '../shared/types';
 import { runner } from '../engine/platform';
 import { WorkerGone, workerTab } from '../engine/worker-tab';
 import { errorMessage } from './format';
+import { tabShare } from './tab-share';
 
 /** Live state of the job runner in this dashboard tab (the `runner` singleton from `engine/runner.ts`). */
 export function useRunner() {
@@ -62,6 +63,60 @@ export function useWorkerStatus(intervalMs = 3000): WorkerStatus {
     };
   }, [intervalMs]);
   return status;
+}
+
+/** Whether the dashboard shares the X tab now ("Run hidden", #140). */
+export function useTabShare() {
+  return useSyncExternalStore(tabShare.subscribe, tabShare.sharing);
+}
+
+/**
+ * "Run hidden" (#140): opens Chrome's picker for the person to share the X tab, then says what happened. Call it
+ * from a click; closing the picker says nothing.
+ */
+export async function runHidden() {
+  try {
+    const outcome = await tabShare.start();
+    if (outcome === 'sharing')
+      toast('Running hidden: you can minimize or cover the X window now. Xomoni doesn’t record or send it.', 'good');
+    else if (outcome === 'not-a-tab') toast('Choose a Chrome tab: the X tab in the small X window.', 'critical');
+    else if (outcome === 'unsupported')
+      toast('This browser can’t share a tab. Keep part of the X window on screen instead.', 'critical');
+  } catch (err) {
+    toast(errorMessage(err), 'critical');
+  }
+}
+
+/**
+ * How long a job may still wait for a hidden X window while a tab is shared. A shared X tab is never hidden and the
+ * job continues within seconds, so after this the shared tab is another one.
+ */
+export const WRONG_TAB_MS = 15_000;
+
+/**
+ * Stops sharing once it no longer helps: when no job runs, and when the job still waits for a hidden X window
+ * `WRONG_TAB_MS` after the tab was shared (the person chose another tab). The app shell runs it.
+ */
+export function useShareGuard() {
+  const sharing = useTabShare();
+  const { status, need } = useRunner();
+  const waitingForWindow = status === 'attention' && need === 'hidden';
+  useEffect(() => {
+    if (!sharing) return;
+    if (status === 'idle') {
+      tabShare.stop();
+      return;
+    }
+    if (!waitingForWindow) return;
+    const timer = setTimeout(() => {
+      tabShare.stop();
+      toast(
+        'The shared tab wasn’t the X window’s, so Xomoni stopped sharing it. Press Run hidden and choose the tab in the small X window.',
+        'critical',
+      );
+    }, WRONG_TAB_MS);
+    return () => clearTimeout(timer);
+  }, [sharing, status, waitingForWindow]);
 }
 
 type Toast = { id: number; tone: 'good' | 'critical' | 'neutral'; text: string };

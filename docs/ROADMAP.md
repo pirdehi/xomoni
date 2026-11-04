@@ -93,6 +93,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Keep a job going while the person is away: display kept on, a covered X window brought forward when idle | [#134](https://github.com/pirdehi/xomoni/issues/134) | [#135](https://github.com/pirdehi/xomoni/pull/135) |
 | ✅ | Let the display sleep when the dashboard closes in the middle of a job | [#136](https://github.com/pirdehi/xomoni/issues/136) | [#137](https://github.com/pirdehi/xomoni/pull/137) |
 | ✅ | Open the X window small, in a corner, as a window without tabs | [#138](https://github.com/pirdehi/xomoni/issues/138) | [#139](https://github.com/pirdehi/xomoni/pull/139) |
+| ✅ | Run hidden: share the X tab with the dashboard, so a job keeps going with the X window minimized | [#140](https://github.com/pirdehi/xomoni/issues/140) | [#141](https://github.com/pirdehi/xomoni/pull/141) |
 
 ## Phase 5 · Extension: cloud sync ✅
 

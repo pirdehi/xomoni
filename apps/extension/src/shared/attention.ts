@@ -50,7 +50,7 @@ export function needMessage(need: Need, handle: string): string {
     case 'account':
       return `The Xomoni window is signed in to another X account. Switch back to ${who}.`;
     case 'hidden':
-      return 'The Xomoni window is hidden, and Chrome pauses pages it doesn’t show. Keep part of it on screen: not minimized, not fully covered by other windows, with its X tab selected.';
+      return 'The Xomoni window is hidden, and Chrome pauses pages it doesn’t show. Keep part of it on screen: not minimized, not fully covered by other windows, with its X tab selected. Or press Run hidden on the dashboard and share its X tab.';
     case 'obstruction':
       return 'Something on X’s page is in the way, and Xomoni couldn’t close it. Close it in the Xomoni window; Xomoni continues by itself.';
   }

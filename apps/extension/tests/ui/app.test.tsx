@@ -10,7 +10,9 @@ import { needMessage } from '../../src/shared/attention';
 import { db, upsertAccount } from '../../src/shared/db';
 import type { PageInfo } from '../../src/shared/messages';
 import { App } from '../../src/ui/App';
-import { startJob, toast } from '../../src/ui/hooks';
+import { WRONG_TAB_MS, startJob, toast } from '../../src/ui/hooks';
+import { tabShare } from '../../src/ui/tab-share';
+import { fakeStream, refusal, stubDisplayMedia, stubMediaDevices } from '../support/display-media';
 import { WORKER_TAB, stubChrome } from '../support/chrome';
 import { ME, account, resetDb } from '../support/fixtures';
 import { fakeRunner, openWorker, pageInfo } from '../support/shell';
@@ -30,6 +32,8 @@ beforeEach(async () => {
 afterEach(() => {
   // Unmount first: a component's pending effect must not run against removed stubs or mocks.
   cleanup();
+  tabShare.stop();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -219,7 +223,9 @@ describe('App job banner', () => {
     expect(await screen.findByText('Scan: your posts')).toBeInTheDocument();
     // Where to keep the X window (#120): Chrome pauses a page it doesn't show; the dashboard may be minimized (#138).
     expect(
-      screen.getByText(/minimizing it is fine\), and part of the X window on screen: not minimized or fully covered/),
+      screen.getByText(
+        /minimizing it is fine\), and part of the X window on screen: not minimized or fully covered\. Or run it hidden\./,
+      ),
     ).toBeInTheDocument();
     const banner = screen.getByRole('region', { name: 'Running job' });
     expect(banner).toHaveTextContent('Scan: your posts');
@@ -291,6 +297,24 @@ describe('App job banner', () => {
     });
   });
 
+  it('offers Run hidden first when Chrome has paused the X window (#140)', async () => {
+    const job = await createScanJob(ME, 'Scan: likes', 'likes');
+    fakeRunner({ status: 'attention', jobId: job.id, message: needMessage('hidden', 'me'), need: 'hidden' });
+    const getDisplayMedia = stubDisplayMedia(fakeStream().stream);
+    render(<App />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Or press Run hidden on the dashboard and share its X tab\./);
+    const runHidden = within(alert).getByRole('button', { name: 'Run hidden' });
+    expect(runHidden).toHaveAttribute('data-variant', 'primary');
+    expect(within(alert).getByRole('button', { name: 'Open X window' })).toHaveAttribute('data-variant', 'secondary');
+
+    await userEvent.click(runHidden);
+    expect(getDisplayMedia).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Running hidden: you can minimize or cover the X window now/)).toBeInTheDocument();
+    expect(within(alert).queryByRole('button', { name: 'Run hidden' })).not.toBeInTheDocument();
+  });
+
   it('shows a toast when the worker window cannot be brought up', async () => {
     fakeRunner({ status: 'attention', jobId: 'job-x', message: 'Confirm it’s you.' });
     openWorker(chrome, pageInfo());
@@ -358,5 +382,146 @@ describe('App toasts and consent', () => {
     await started;
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(start).not.toHaveBeenCalled();
+  });
+});
+
+describe('App running hidden (#140)', () => {
+  beforeEach(async () => {
+    await upsertAccount(account());
+  });
+
+  const banner = () => screen.getByRole('region', { name: 'Running job' });
+
+  it('shares the X tab from the job banner, says so, and stops on request', async () => {
+    const { stream, track } = fakeStream();
+    stubDisplayMedia(stream);
+    fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    await screen.findByText('Job running');
+
+    await userEvent.click(within(banner()).getByRole('button', { name: 'Run hidden' }));
+    expect(await screen.findByText(/Xomoni doesn’t record or send it/)).toBeInTheDocument();
+    expect(banner()).toHaveTextContent('Running hidden: the X window may be minimized or covered.');
+    expect(banner()).not.toHaveTextContent('part of the X window on screen');
+
+    await userEvent.click(within(banner()).getByRole('button', { name: 'Stop running hidden' }));
+    expect(track.stop).toHaveBeenCalled();
+    expect(within(banner()).getByRole('button', { name: 'Run hidden' })).toBeInTheDocument();
+  });
+
+  it('goes back to the visible-window advice when Chrome’s Stop sharing is pressed', async () => {
+    const { stream, track } = fakeStream();
+    stubDisplayMedia(stream);
+    fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    await userEvent.click(
+      within(await screen.findByRole('region', { name: 'Running job' })).getByRole('button', { name: 'Run hidden' }),
+    );
+    await screen.findByText(/Running hidden: the X window/);
+
+    act(() => track.end());
+    expect(banner()).toHaveTextContent('part of the X window on screen');
+  });
+
+  it('says nothing when the person closes the picker', async () => {
+    stubDisplayMedia(refusal());
+    fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    await userEvent.click(
+      within(await screen.findByRole('region', { name: 'Running job' })).getByRole('button', { name: 'Run hidden' }),
+    );
+
+    expect(within(banner()).getByRole('button', { name: 'Run hidden' })).toBeInTheDocument();
+    expect(banner()).not.toHaveTextContent('Running hidden');
+    expect(screen.queryByText(/Choose a Chrome tab/)).not.toBeInTheDocument();
+  });
+
+  it('asks for a tab when the person shared a window, and keeps nothing', async () => {
+    const { stream, track } = fakeStream('window');
+    stubDisplayMedia(stream);
+    fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    await userEvent.click(
+      within(await screen.findByRole('region', { name: 'Running job' })).getByRole('button', { name: 'Run hidden' }),
+    );
+
+    expect(await screen.findByText('Choose a Chrome tab: the X tab in the small X window.')).toBeInTheDocument();
+    expect(track.stop).toHaveBeenCalled();
+    expect(within(banner()).getByRole('button', { name: 'Run hidden' })).toBeInTheDocument();
+  });
+
+  it('says so where the browser can’t share a tab, and shows other errors', async () => {
+    stubMediaDevices({});
+    fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    const runHidden = within(await screen.findByRole('region', { name: 'Running job' })).getByRole('button', {
+      name: 'Run hidden',
+    });
+    await userEvent.click(runHidden);
+    expect(await screen.findByText(/This browser can’t share a tab/)).toBeInTheDocument();
+
+    stubDisplayMedia(Object.assign(new Error('Document is not focused'), { name: 'InvalidStateError' }));
+    await userEvent.click(runHidden);
+    expect(await screen.findByText('Document is not focused')).toBeInTheDocument();
+  });
+
+  it('stops sharing when the job ends', async () => {
+    const { stream, track } = fakeStream();
+    stubDisplayMedia(stream);
+    const fake = fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    await userEvent.click(
+      within(await screen.findByRole('region', { name: 'Running job' })).getByRole('button', { name: 'Run hidden' }),
+    );
+    await screen.findByText(/Running hidden: the X window/);
+
+    act(() => fake.set({ status: 'idle', jobId: null }));
+    expect(track.stop).toHaveBeenCalled();
+    expect(tabShare.sharing()).toBe(false);
+  });
+
+  it('stops sharing a tab that isn’t the X window: the job still waits for it 15 s later', async () => {
+    const { stream, track } = fakeStream();
+    stubDisplayMedia(stream);
+    const fake = fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    await screen.findByText('Job running');
+    await act(() => tabShare.start());
+
+    vi.useFakeTimers();
+    act(() => fake.set({ status: 'attention', message: needMessage('hidden', 'me'), need: 'hidden' }));
+    act(() => {
+      vi.advanceTimersByTime(WRONG_TAB_MS - 1000);
+    });
+    expect(track.stop).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(track.stop).toHaveBeenCalled();
+    expect(screen.getByText(/The shared tab wasn’t the X window’s, so Xomoni stopped sharing it/)).toBeInTheDocument();
+    expect(within(screen.getByRole('alert')).getByRole('button', { name: 'Run hidden' })).toBeInTheDocument();
+  });
+
+  it('keeps sharing the X tab when the wait for the window ends in time', async () => {
+    const { stream, track } = fakeStream();
+    stubDisplayMedia(stream);
+    const fake = fakeRunner({ status: 'running', jobId: 'job-x' });
+    render(<App />);
+    await screen.findByText('Job running');
+    await act(() => tabShare.start());
+
+    vi.useFakeTimers();
+    act(() => fake.set({ status: 'attention', message: needMessage('hidden', 'me'), need: 'hidden' }));
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    act(() => fake.set({ status: 'running', need: null }));
+    act(() => {
+      vi.advanceTimersByTime(WRONG_TAB_MS);
+    });
+
+    expect(track.stop).not.toHaveBeenCalled();
+    expect(tabShare.sharing()).toBe(true);
   });
 });

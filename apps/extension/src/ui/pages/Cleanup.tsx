@@ -743,7 +743,8 @@ function ConfirmStart({
       </Text>
       <Text as="p" className={styles.paragraph}>
         Keep this tab open (minimizing it is fine), and part of the X window on screen: not minimized or fully covered.
-        You can pause at any time and resume later.
+        Or press Run hidden once it starts and share the X tab: then the X window may be minimized too. You can pause at
+        any time and resume later.
       </Text>
       <Field
         label={

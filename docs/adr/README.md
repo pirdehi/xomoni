@@ -23,3 +23,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0017](0017-test-standard.md) | Backend and frontend tests for every feature, enforced by the merge gate | Accepted |
 | [0018](0018-pair-the-extension-with-a-one-time-code.md) | Pair the extension with a one-time code; it holds a device token, not a session | Accepted |
 | [0019](0019-fluent-ui-everywhere.md) | Fluent UI for every Xomoni interface; Tailwind is removed | Accepted |
+| [0020](0020-run-hidden-by-sharing-the-x-tab.md) | Run hidden by sharing the X tab with the dashboard | Accepted |

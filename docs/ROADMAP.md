@@ -10,8 +10,8 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
-**Current focus:** Phase 6, the first release (v0.2.0, waiting for the maintainer's go) and then the install page; Phase 4, the pilot on the maintainer's account. Phases 5 and 7 are done.
-**Last updated:** 2026-11-02
+**Current focus:** Phase 4, the pilot on the maintainer's account (with Run hidden, #140); Phase 9, security hardening, starting with release integrity before the first tag; Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done.
+**Last updated:** 2026-11-04
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -131,6 +131,23 @@ Every interface on Fluent UI React v9, and no Tailwind ([ADR-0019](adr/0019-flue
 | ✅ | xomoni.com: Fluent with server-rendered styles in Next.js; Xomoni's themes shared by both apps (`@xomoni/fluent-theme`) | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#127](https://github.com/pirdehi/xomoni/pull/127) |
 | ✅ | xomoni.com: redesign the home page and every public page with Fluent | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#128](https://github.com/pirdehi/xomoni/pull/128) |
 | ✅ | xomoni.com: sign-in, account and dashboard pages on Fluent; Tailwind removed from the website | [#123](https://github.com/pirdehi/xomoni/issues/123) | [#129](https://github.com/pirdehi/xomoni/pull/129) |
+
+## Phase 9 · Security hardening
+
+From the security review of 2026-11-04 of the extension, xomoni.com, the database and the release pipeline. None of it needs X's API. Release integrity comes first, before the first tag.
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ⬜ | Release integrity: read-only build job, pinned actions, provenance, protected tags, reproducible zip (before the first tag) | [#142](https://github.com/pirdehi/xomoni/issues/142) | |
+| ⬜ | Extension CSP and manifest: network only to Xomoni's API, no incognito, no outside messages | [#143](https://github.com/pirdehi/xomoni/issues/143) | |
+| ⬜ | Never act on someone else's post: author checked before Delete, every id validated | [#144](https://github.com/pirdehi/xomoni/issues/144) | |
+| ⬜ | Trust only Xomoni's own messages: sender checks, payload validation, a sealed page-world channel | [#145](https://github.com/pirdehi/xomoni/issues/145) | |
+| ⬜ | Read X's restriction notices only from X's own banners, not from post text | [#146](https://github.com/pirdehi/xomoni/issues/146) | |
+| ⬜ | xomoni.com: Trusted Types, CSP reports, tighter images, CORP, Origin check on sign-out | [#147](https://github.com/pirdehi/xomoni/issues/147) | |
+| ⬜ | Account security: current password checked by the server, MFA, session age, email quota | [#148](https://github.com/pirdehi/xomoni/issues/148) | |
+| ⬜ | Database: private Realtime, no auto-exposed tables, SSL only, expiring device tokens, account shown on pairing | [#149](https://github.com/pirdehi/xomoni/issues/149) | |
+| ⬜ | Security monitoring: CodeQL, secret-scanning options, security.txt, alerts | [#150](https://github.com/pirdehi/xomoni/issues/150) | |
+| ⬜ | Local data hygiene: token storage, complete wipe, archive size limits, update notice | [#151](https://github.com/pirdehi/xomoni/issues/151) | |
 
 ## Dropped
 

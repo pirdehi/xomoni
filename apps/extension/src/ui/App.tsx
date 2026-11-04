@@ -25,6 +25,8 @@ import {
   CheckmarkCircle16Filled,
   Database20Filled,
   Database20Regular,
+  Eye16Regular,
+  EyeOff16Regular,
   type FluentIcon,
   History20Filled,
   History20Regular,
@@ -48,7 +50,18 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, type Tone } from './components/ui';
 import { ConsentDialog } from './components/ConsentDialog';
 import { errorMessage } from './format';
-import { type WorkerStatus, toast, useActiveAccount, useRunner, useToasts, useWorkerStatus } from './hooks';
+import {
+  type WorkerStatus,
+  runHidden,
+  toast,
+  useActiveAccount,
+  useRunner,
+  useShareGuard,
+  useTabShare,
+  useToasts,
+  useWorkerStatus,
+} from './hooks';
+import { tabShare } from './tab-share';
 import { ActivityPage } from './pages/Activity';
 import { ArchivePage } from './pages/Archive';
 import { CleanupPage } from './pages/Cleanup';
@@ -256,6 +269,7 @@ export function App() {
   const account = useActiveAccount();
   const worker = useWorkerStatus();
   useCloudSync();
+  useShareGuard();
 
   return (
     <div className={styles.shell}>
@@ -413,6 +427,7 @@ function WorkerChip({ worker }: { worker: WorkerStatus }) {
 function RunnerBanner() {
   const styles = useStyles();
   const state = useRunner();
+  const sharing = useTabShare();
   const job = useLiveQuery(() => (state.jobId ? db.jobs.get(state.jobId) : undefined), [state.jobId]);
   const attention = state.status === 'attention';
   useEffect(() => {
@@ -437,9 +452,14 @@ function RunnerBanner() {
             </div>
           </div>
           <div className={styles.actions}>
+            {state.need === 'hidden' && !sharing && (
+              <Button size="sm" variant="primary" icon={<EyeOff16Regular />} onClick={() => void runHidden()}>
+                Run hidden
+              </Button>
+            )}
             <Button
               size="sm"
-              variant="primary"
+              variant={state.need === 'hidden' && !sharing ? 'secondary' : 'primary'}
               icon={<Open16Regular />}
               onClick={() => void workerTab.focus().catch((e: unknown) => toast(errorMessage(e), 'critical'))}
             >
@@ -460,18 +480,30 @@ function RunnerBanner() {
           <Pulse20Regular className={styles.bannerIcon} aria-hidden />
           <Body1Strong className={styles.noShrink}>{job?.title ?? 'Job running'}</Body1Strong>
           <Body1 className={mergeClasses(styles.truncate, styles.secondary)}>
-            · Keep this tab open (minimizing it is fine), and part of the X window on screen: not minimized or fully
-            covered.
+            {sharing
+              ? '· Running hidden: the X window may be minimized or covered. Keep this tab open (minimizing it is fine).'
+              : '· Keep this tab open (minimizing it is fine), and part of the X window on screen: not minimized or fully covered. Or run it hidden.'}
           </Body1>
         </div>
-        <Button
-          size="sm"
-          icon={<Pause16Regular />}
-          onClick={() => runner.pause()}
-          disabled={state.status === 'stopping'}
-        >
-          {state.status === 'stopping' ? 'Stopping…' : 'Pause'}
-        </Button>
+        <div className={styles.actions}>
+          {sharing ? (
+            <Button size="sm" icon={<Eye16Regular />} onClick={() => tabShare.stop()}>
+              Stop running hidden
+            </Button>
+          ) : (
+            <Button size="sm" icon={<EyeOff16Regular />} onClick={() => void runHidden()}>
+              Run hidden
+            </Button>
+          )}
+          <Button
+            size="sm"
+            icon={<Pause16Regular />}
+            onClick={() => runner.pause()}
+            disabled={state.status === 'stopping'}
+          >
+            {state.status === 'stopping' ? 'Stopping…' : 'Pause'}
+          </Button>
+        </div>
       </div>
     </section>
   );

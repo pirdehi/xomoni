@@ -47,7 +47,8 @@ Set on GitHub, not in code (#142):
 - **Actions:** every action is pinned by full commit SHA. GitHub requires this, and `tooling/workflows.test.mjs` checks it. Only GitHub's own actions and `supabase/setup-cli` may run. Dependabot keeps the pins current.
 - **Tags:** a ruleset on `v*` lets only maintainers create tags, and nobody move or delete one.
 - **Releases** are immutable once published.
-- **`main`:** signed commits, branches up to date before merging, and the `verify`, `database` and `e2e` checks. GitHub signs the squash merges it makes.
+- **`main`:** branches up to date before merging, and the `verify`, `database` and `e2e` checks. GitHub signs the squash merges it makes.
+- **Not yet: signed commits.** GitHub refuses to merge a pull request whose own commits are unsigned, even as a squash. So the rule waits until the maintainer signs commits (an SSH signing key added to GitHub, and `git config commit.gpgsign true` with `gpg.format ssh`). It was turned on with #142 and taken back off the same day.
 - **Workflows from forks:** need approval for every outside contributor.
 
 ## Checked on every pull request

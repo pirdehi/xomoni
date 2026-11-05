@@ -5,7 +5,7 @@ import { CLOUD_KEY, CLOUD_URL } from '../src/cloud/config';
 import { clearConnection, getConnection, saveConnection, watchConnection } from '../src/cloud/connection';
 import { currentUpdateNotice } from '../src/cloud/release';
 import { jobReport } from '../src/cloud/summary';
-import { HEARTBEAT_MS, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
+import { HEARTBEAT_MS, confirmConnection, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
 import { createCleanupJob, watchJob } from '../src/engine/runner';
 import { db, recordRisk, upsertAccount } from '../src/shared/db';
 import type { Job } from '../src/shared/types';
@@ -48,16 +48,22 @@ const OPTIONS = { sweep: false, deep: true, ghostLikes: false };
 
 describe('the cloud client (ADR-0018)', () => {
   it('calls the database function with the publishable key and no session', async () => {
-    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 't'.repeat(64) }]));
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 't'.repeat(64), account: 'o•••@example.com' }]));
     expect(await pairDevice('ab2cd-ef3gh', 'Chrome on macOS', '0.3.0')).toEqual({
       deviceId: 'd1',
       token: 't'.repeat(64),
+      account: 'o•••@example.com',
     });
     const [url, init] = fetch.mock.calls[0]!;
     expect(url).toBe(`${CLOUD_URL}/rest/v1/rpc/pair_device`);
     expect(init?.headers).toEqual({ apikey: CLOUD_KEY, 'content-type': 'application/json' });
     expect(init?.headers).not.toHaveProperty('authorization');
     expect(sentBody(fetch)).toEqual({ code: 'ab2cd-ef3gh', name: 'Chrome on macOS', version: '0.3.0' });
+  });
+
+  it('names no account when an older server didn’t say', async () => {
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 't' }]));
+    expect(await pairDevice('ab2cd-ef3gh', 'Chrome', '0.3.0')).toMatchObject({ account: '' });
   });
 
   it('turns the database’s hints into reasons, with its message for the person', async () => {
@@ -137,7 +143,15 @@ describe('a job report (ADR-0004)', () => {
 });
 
 describe('the stored connection', () => {
-  const CONNECTION = { deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 };
+  const CONNECTION = {
+    deviceId: 'd1',
+    token: 't',
+    deviceName: 'Chrome',
+    connectedAt: 1,
+    reportedUpTo: 0,
+    account: 'o•••@example.com',
+    confirmed: true,
+  };
 
   it('keeps the device and token in the extension’s IndexedDB, out of content scripts’ reach (#151)', async () => {
     const seen: (string | null)[] = [];
@@ -163,6 +177,13 @@ describe('the stored connection', () => {
     expect(await getConnection()).toEqual(CONNECTION);
   });
 
+  it('counts a connection made before pairing named the account as confirmed: it was reporting already (#149)', async () => {
+    await chrome.storage.local.set({
+      cloud: { deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 },
+    });
+    expect(await getConnection()).toMatchObject({ account: '', confirmed: true });
+  });
+
   it('ignores a stored value it can’t use, and clears an unusable old one', async () => {
     await chrome.storage.local.set({ cloud: { deviceId: 5 } });
     expect(await getConnection()).toBeNull();
@@ -177,13 +198,24 @@ describe('reporting', () => {
     await upsertAccount({ id: ME, handle: 'me' });
   });
 
-  it('connects with a code, then reports the newest jobs with the account’s risk level', async () => {
+  it('connects with a code, sends nothing until the person confirms the account, then the newest jobs (#149)', async () => {
     await createCleanupJob(ME, 'Delete posts older than Jan 1, 2018', FILTER, OPTIONS);
     await recordRisk(ME, 'automation_flag');
-    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret' }]));
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret', account: 'o•••@example.com' }]));
 
     const connection = await connect('ab2cd-ef3gh', '  Chrome on macOS  ');
-    expect(connection).toMatchObject({ deviceId: 'd1', token: 'secret', deviceName: 'Chrome on macOS' });
+    expect(connection).toMatchObject({
+      deviceId: 'd1',
+      token: 'secret',
+      deviceName: 'Chrome on macOS',
+      account: 'o•••@example.com',
+      confirmed: false,
+    });
+    expect(await syncOnce()).toBe('idle');
+    expect(fetch.mock.calls.map(([url]) => url.split('/').pop())).toEqual(['pair_device']);
+
+    await confirmConnection();
+    expect(await getConnection()).toMatchObject({ confirmed: true });
     expect(fetch.mock.calls.map(([url]) => url.split('/').pop())).toEqual(['pair_device', 'device_report']);
     const report = sentBody(fetch, 1);
     expect(report).toMatchObject({ token: 'secret', version: '0.3.0' });
@@ -193,7 +225,15 @@ describe('reporting', () => {
   });
 
   it('keeps what the answer says about the newest release, and nothing from an answer without it (#151)', async () => {
-    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     // An older server answers a report with no content.
     expect(await syncOnce()).toBe('ok');
     expect(await currentUpdateNotice('0.3.0')).toBeNull();
@@ -206,6 +246,7 @@ describe('reporting', () => {
   it('keeps reporting other jobs when a Watch job ran, and moves past it (#158)', async () => {
     fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret' }]));
     await connect('code', 'Chrome');
+    await confirmConnection();
     fetch.mockClear();
 
     await watchJob(ME);
@@ -220,6 +261,7 @@ describe('reporting', () => {
   it('sends each job update once, then only heartbeats', async () => {
     fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret' }]));
     await connect('code', 'Chrome');
+    await confirmConnection();
     fetch.mockClear();
 
     const job = await createCleanupJob(ME, 'Delete posts', FILTER, OPTIONS);
@@ -230,7 +272,15 @@ describe('reporting', () => {
   });
 
   it('forgets the connection when the website no longer knows this browser', async () => {
-    await saveConnection({ deviceId: 'd1', token: 'gone', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 'gone',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     fetch.mockReturnValueOnce(json(400, { message: 'Not connected.', hint: 'unknown_device' }));
     expect(await syncOnce()).toBe('disconnected');
     expect(await getConnection()).toBeNull();
@@ -238,10 +288,18 @@ describe('reporting', () => {
 
   it('keeps the connection, and the jobs to send, while offline', async () => {
     const job = await createCleanupJob(ME, 'Delete posts', FILTER, OPTIONS);
-    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     expect(await syncOnce()).toBe('offline');
-    expect(await getConnection()).toMatchObject({ reportedUpTo: 0 });
+    expect(await getConnection()).toMatchObject({ reportedUpTo: 0, account: 'o•••@example.com', confirmed: true });
     expect(await syncOnce()).toBe('ok');
     expect(sentBody(fetch, 1).jobs).toEqual([expect.objectContaining({ local_id: job.id })]);
   });
@@ -252,19 +310,43 @@ describe('reporting', () => {
   });
 
   it('disconnects: tells the website, and forgets the token', async () => {
-    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     expect(await disconnect()).toBe('disconnected');
     expect(fetch.mock.calls[0]?.[0]).toMatch(/unpair_device$/);
     expect(await getConnection()).toBeNull();
   });
 
   it('says so when the website couldn’t be told, and forgets the token anyway (#151)', async () => {
-    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     expect(await disconnect()).toBe('forgotten-here');
     expect(await getConnection()).toBeNull();
 
-    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     fetch.mockReturnValueOnce(json(500, { message: 'boom' }));
     expect(await disconnect()).toBe('forgotten-here');
   });
@@ -275,7 +357,15 @@ describe('reporting', () => {
   });
 
   it('runs at once, after job changes and on every heartbeat, and stops cleanly', async () => {
-    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
     const onDisconnected = vi.fn();
     const stop = startCloudSync(onDisconnected, 1_000);
@@ -291,7 +381,15 @@ describe('reporting', () => {
   });
 
   it('tells the dashboard once the website disconnected this browser', async () => {
-    await saveConnection({ deviceId: 'd1', token: 'gone', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    await saveConnection({
+      deviceId: 'd1',
+      token: 'gone',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
     fetch.mockReturnValue(json(400, { message: 'Not connected.', hint: 'unknown_device' }));
     const onDisconnected = vi.fn();
     const stop = startCloudSync(onDisconnected, 10);

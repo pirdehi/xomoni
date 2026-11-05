@@ -203,10 +203,12 @@ export type Database = {
         Args: { jobs?: Json; token: string; version: string };
         Returns: Json;
       };
+      mask_email: { Args: { email: string }; Returns: string };
       normalize_pairing_code: { Args: { code: string }; Returns: string };
       pair_device: {
         Args: { code: string; name: string; version: string };
         Returns: {
+          account: string;
           device_id: string;
           token: string;
         }[];

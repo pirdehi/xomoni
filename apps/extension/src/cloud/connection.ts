@@ -20,6 +20,13 @@ export interface CloudConnection {
   connectedAt: number;
   /** The newest job update already reported (epoch ms); later updates go in the next report. */
   reportedUpTo: number;
+  /** The xomoni.com account, its email masked, as pairing named it (#149); empty when the server didn't say. */
+  account: string;
+  /**
+   * Whether the person confirmed `account` is theirs. Nothing is reported before (#149). Connections made before
+   * this existed count as confirmed: they were reporting already.
+   */
+  confirmed: boolean;
 }
 
 /** `stored` as a connection, or null when it lacks a device id or token. */
@@ -34,6 +41,8 @@ function parse(stored: unknown): CloudConnection | null {
     deviceName: asString(value?.deviceName) ?? 'This browser',
     connectedAt: asNumber(value?.connectedAt) ?? 0,
     reportedUpTo: asNumber(value?.reportedUpTo) ?? 0,
+    account: asString(value?.account) ?? '',
+    confirmed: value?.confirmed !== false,
   };
 }
 

@@ -1,10 +1,16 @@
 import { Body1, Input, Link, makeStyles, tokens } from '@fluentui/react-components';
-import { CloudOff20Regular, ErrorCircle16Regular, Link20Regular, Open12Regular } from '@fluentui/react-icons';
+import {
+  Checkmark20Regular,
+  CloudOff20Regular,
+  ErrorCircle16Regular,
+  Link20Regular,
+  Open12Regular,
+} from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { CloudError } from '../../cloud/client';
 import { PAIRING_PAGE } from '../../cloud/config';
 import { type CloudConnection, getConnection, watchConnection } from '../../cloud/connection';
-import { FORGOTTEN_HERE, connect, disconnect } from '../../cloud/sync';
+import { FORGOTTEN_HERE, confirmConnection, connect, disconnect } from '../../cloud/sync';
 import { errorMessage, fmtDateTime } from '../format';
 import { toast } from '../hooks';
 import { Button, Card, Field } from './ui';
@@ -30,6 +36,7 @@ const useStyles = makeStyles({
   input: { width: '100%' },
   code: { fontFamily: tokens.fontFamilyMonospace, textTransform: 'uppercase' },
   action: { alignSelf: 'flex-start' },
+  actions: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
   error: {
     display: 'flex',
     alignItems: 'flex-start',
@@ -83,7 +90,8 @@ function useConnection(): CloudConnection | null | undefined {
 
 /**
  * Settings card that connects this browser to a xomoni.com account with a one-time code (ADR-0018), so its jobs'
- * status shows on the website; or shows the connection and disconnects it. It says what is sent: status only. Drawn
+ * status shows on the website; or shows the connection and disconnects it. After pairing it names the account,
+ * masked, and sends nothing until the person confirms it is theirs (#149). It says what is sent: status only. Drawn
  * with Fluent UI (ADR-0019); a refused code is announced as an alert (`role="alert"`).
  */
 export function CloudCard() {
@@ -100,9 +108,18 @@ export function CloudCard() {
     try {
       await connect(code, name);
       setCode('');
-      toast('Connected to xomoni.com', 'good');
     } catch (err) {
       setError(err instanceof CloudError ? err.message : errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onConfirm = async () => {
+    setBusy(true);
+    try {
+      await confirmConnection();
+      toast('Connected to xomoni.com: job status is sent from now on', 'good');
     } finally {
       setBusy(false);
     }
@@ -123,11 +140,33 @@ export function CloudCard() {
       title="xomoni.com"
       subtitle="Follow your jobs from any device. Only their status is sent: titles, states and counts, never what you posted or liked."
     >
-      {connection ? (
+      {connection && !connection.confirmed ? (
+        <div className={styles.form} role="group" aria-label="Confirm the account">
+          <Body1 as="p" block className={styles.text}>
+            The code linked this browser to the xomoni.com account{' '}
+            <strong className={styles.device}>{connection.account || 'that made it'}</strong>. Is that your account?
+            Nothing is sent until you say so. If it isn’t yours, someone gave you their code: disconnect.
+          </Body1>
+          <div className={styles.actions}>
+            <Button variant="primary" icon={<Checkmark20Regular />} disabled={busy} onClick={() => void onConfirm()}>
+              Yes, it’s mine
+            </Button>
+            <Button icon={<CloudOff20Regular />} disabled={busy} onClick={() => void onDisconnect()}>
+              No, disconnect
+            </Button>
+          </div>
+        </div>
+      ) : connection ? (
         <div className={styles.connected}>
           <Body1 as="p" block className={styles.text}>
-            Connected as <strong className={styles.device}>{connection.deviceName}</strong> since{' '}
-            {fmtDateTime(connection.connectedAt)}.
+            Connected as <strong className={styles.device}>{connection.deviceName}</strong>
+            {connection.account && (
+              <>
+                {' '}
+                to <strong className={styles.device}>{connection.account}</strong>
+              </>
+            )}{' '}
+            since {fmtDateTime(connection.connectedAt)}.
           </Body1>
           <Button icon={<CloudOff20Regular />} disabled={busy} onClick={() => void onDisconnect()}>
             Disconnect

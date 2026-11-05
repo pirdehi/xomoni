@@ -24,7 +24,7 @@ insert into codes select * from public.create_pairing_code();
 set local role anon;
 create temporary table paired (device_id uuid, token text) on commit drop;
 grant all on paired to anon, authenticated;
-insert into paired select * from public.pair_device((select code from codes), 'Chrome', '0.1.0');
+insert into paired select device_id, token from public.pair_device((select code from codes), 'Chrome', '0.1.0');
 
 -- ── The answer names the newest release, compared as numbers ─────────────────────────────────────
 reset role;

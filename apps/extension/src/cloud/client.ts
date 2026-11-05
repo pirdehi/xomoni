@@ -42,14 +42,17 @@ async function rpc(fn: string, body: Record<string, unknown>): Promise<unknown> 
   throw new CloudError(reason, asString(error?.message) ?? `xomoni.com answered HTTP ${response.status}.`);
 }
 
-/** Trades a pairing code from the website for this browser's device id and token. */
+/**
+ * Trades a pairing code from the website for this browser's device id and token, and the account they belong to,
+ * its email masked (`o•••@example.com`, #149); empty from a server older than that.
+ */
 export async function pairDevice(code: string, name: string, version: string) {
   const rows: unknown = await rpc('pair_device', { code, name, version });
   const row = asObject(asArray(rows)[0]);
   const deviceId = asString(row?.device_id);
   const token = asString(row?.token);
   if (!deviceId || !token) throw new CloudError('refused', 'xomoni.com did not return a device. Try a new code.');
-  return { deviceId, token };
+  return { deviceId, token, account: (asString(row?.account) ?? '').slice(0, 200) };
 }
 
 /**

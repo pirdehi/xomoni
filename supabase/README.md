@@ -30,7 +30,7 @@ The CLI maps any environment variable named `SUPABASE_<SECTION>_<KEY>` onto `con
 ## Changing the schema
 
 1. `supabase migration new <name>` and write the SQL, starting with a `--` comment.
-2. Add Row Level Security policies for any new table. `anon` gets nothing unless there is a reason.
+2. Add Row Level Security policies for any new table, and grant by name what each role needs: nothing in `public` is exposed by default (`auto_expose_new_tables = false`, #149), and `supabase/tests/database/exposure.test.sql` fails for a table without Row Level Security or an unexpected grant. `anon` gets nothing unless there is a reason.
 3. `supabase db reset`, then `npm run gen -w @xomoni/db` to regenerate the types.
 4. After merge: `supabase db push` to production.
 

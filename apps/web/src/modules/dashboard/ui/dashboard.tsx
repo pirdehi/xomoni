@@ -555,7 +555,8 @@ function NeedsYou({ jobs, deviceName }: { jobs: JobSummary[]; deviceName: Map<st
                 @{job.xHandle}
                 {device && ` · ${device}`}
               </p>
-              {job.stateReason && <p className={s.reason}>{job.stateReason}</p>}
+              {/* The reason stays in the browser (#149); the phase is Xomoni's own words for what it waits on. */}
+              {(job.stateReason || job.phase) && <p className={s.reason}>{job.stateReason || job.phase}</p>}
             </li>
           );
         })}

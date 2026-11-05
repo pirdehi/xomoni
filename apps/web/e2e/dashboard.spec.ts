@@ -14,7 +14,7 @@ test.describe('dashboard (#41)', () => {
         kind: 'cleanup',
         title: 'Delete posts before Jan 1, 2024',
         state: 'waiting',
-        state_reason: 'Log in to X as @ada_x in the Xomoni window (including 2FA).',
+        phase: 'Log in to X as @ada_x in the Xomoni window (including 2FA).',
         risk_level: 2,
       },
       { local_id: 'stopped', x_handle: 'bob_x', kind: 'scan', title: 'Scan posts', state: 'blocked', risk_level: 4 },
@@ -40,7 +40,7 @@ test.describe('dashboard (#41)', () => {
     await expect(accounts.nth(1)).toContainText('Risk level 2: Retreat');
 
     // The extension reports again: the person logged in and X pushed back once more. No reload.
-    await updateJob(device, 'login', { state: 'running', state_reason: '', risk_level: 3 });
+    await updateJob(device, 'login', { state: 'running', phase: '', risk_level: 3 });
     await expect(page.getByRole('region', { name: 'Needs you' })).toHaveCount(0);
     await expect(accounts.nth(1)).toContainText('Risk level 3: Defensive');
 

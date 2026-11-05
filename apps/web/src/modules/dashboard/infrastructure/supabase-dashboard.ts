@@ -79,52 +79,43 @@ export function createSupabaseDevicePairing(supabase: Client): DevicePairing {
   };
 }
 
+/** What `realtime.broadcast_changes` sends: the table that changed and the row as it is now. */
+interface BroadcastChange {
+  table?: unknown;
+  record?: unknown;
+}
+
+/** Whether `value` looks like a row: an object with an id. Rows come from the owner's own trigger, but checked anyway. */
+const isRow = (value: unknown): value is { id: string } =>
+  typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string';
+
 /**
- * Live changes through Supabase Realtime (Postgres changes, filtered by RLS and by user id), on a private
- * channel only this viewer may join (`dashboard:<user id>`, #81).
+ * Live changes through Supabase Realtime, on a private channel only this viewer may join (`dashboard:<user id>`,
+ * #81). The database broadcasts every change of the viewer's devices and jobs there and nowhere else (#149):
+ * inserts and updates are passed on; deletions are left to the page, which removes a device itself.
  */
 export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
   return {
     subscribe(viewerId, handlers) {
-      const filter = `user_id=eq.${viewerId}`;
       const stopped = new AbortController();
       let channel: RealtimeChannel | null = null;
+      const apply = (payload: unknown) => {
+        const { table, record } = (payload ?? {}) as BroadcastChange;
+        if (!isRow(record)) return;
+        if (table === 'jobs') handlers.onJob(toJobSummary(record as JobRow));
+        else if (table === 'devices') handlers.onDevice(toDevice(record as DeviceRow));
+      };
 
       const connect = async () => {
-        // Load the user's JWT first; otherwise the join goes out with the anon key and RLS rejects it.
+        // Load the user's JWT first; otherwise the join goes out with the anon key and the policy refuses it.
         await supabase.realtime.setAuth();
         if (stopped.signal.aborted) return;
         channel = supabase
           .channel(dashboardTopic(viewerId), { config: { private: true } })
-          // "SUBSCRIBED" arrives before Postgres changes flow; this system message means they do.
-          .on('system', {}, (msg: { extension?: string; status?: string; message?: string }) => {
-            if (msg.extension !== 'postgres_changes') return;
-            if (msg.status !== 'ok') console.warn('Live updates unavailable:', msg.message);
-            handlers.onStatus(msg.status === 'ok');
-          })
-          .on<JobRow>(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'jobs', filter },
-            ({ new: row }) => handlers.onJob(toJobSummary(row)),
-          )
-          .on<JobRow>(
-            'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'jobs', filter },
-            ({ new: row }) => handlers.onJob(toJobSummary(row)),
-          )
-          .on<DeviceRow>(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'devices', filter },
-            ({ new: row }) => handlers.onDevice(toDevice(row)),
-          )
-          .on<DeviceRow>(
-            'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'devices', filter },
-            ({ new: row }) => handlers.onDevice(toDevice(row)),
-          )
-          .subscribe((status) => {
-            if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) handlers.onStatus(false);
-          });
+          .on('broadcast', { event: 'INSERT' }, ({ payload }) => apply(payload))
+          .on('broadcast', { event: 'UPDATE' }, ({ payload }) => apply(payload))
+          // Broadcasts flow as soon as the private channel is joined.
+          .subscribe((status) => handlers.onStatus(status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED));
       };
       // Without a token the feed can't join: the dashboard stays "not live" and keeps its last read.
       connect().catch((err: unknown) => {

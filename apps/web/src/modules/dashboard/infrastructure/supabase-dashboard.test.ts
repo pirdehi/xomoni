@@ -236,33 +236,32 @@ describe('createSupabaseLiveFeed', () => {
     expect(channel.subscribed).toBe(true);
   });
 
-  it('listens to inserts and updates of this viewer’s jobs and devices only', async () => {
+  it('listens only to the inserts and updates the database broadcasts on that channel (#149)', async () => {
     const { channel } = await subscribe('u1');
 
-    const changes = channel.listeners.filter((l) => l.type === 'postgres_changes').map((l) => l.filter);
-    expect(changes).toEqual([
-      { event: 'INSERT', schema: 'public', table: 'jobs', filter: 'user_id=eq.u1' },
-      { event: 'UPDATE', schema: 'public', table: 'jobs', filter: 'user_id=eq.u1' },
-      { event: 'INSERT', schema: 'public', table: 'devices', filter: 'user_id=eq.u1' },
-      { event: 'UPDATE', schema: 'public', table: 'devices', filter: 'user_id=eq.u1' },
+    expect(channel.listeners.map((l) => [l.type, l.filter])).toEqual([
+      ['broadcast', { event: 'INSERT' }],
+      ['broadcast', { event: 'UPDATE' }],
     ]);
   });
 
-  it('gives each viewer their own channel and filter', async () => {
+  it('gives each viewer their own channel', async () => {
     await subscribe('u1');
-    const { channel } = await subscribe('u2');
+    await subscribe('u2');
 
     expect(supabase.channels.map((c) => c.topic)).toEqual(['dashboard:u1', 'dashboard:u2']);
-    expect(channel.listeners.filter((l) => l.type === 'postgres_changes').map((l) => l.filter.filter)).toEqual(
-      Array(4).fill('user_id=eq.u2'),
-    );
   });
 
   it('passes created and updated jobs on as domain objects', async () => {
     const { channel } = await subscribe();
 
-    channel.change('jobs', 'INSERT', jobRow({ state: 'queued' }));
-    channel.change('jobs', 'UPDATE', jobRow({ state: 'completed', done: 10, risk_level: 9 }));
+    channel.broadcast('INSERT', { table: 'jobs', operation: 'INSERT', record: jobRow({ state: 'queued' }) });
+    channel.broadcast('UPDATE', {
+      table: 'jobs',
+      operation: 'UPDATE',
+      record: jobRow({ state: 'completed', done: 10, risk_level: 9 }),
+      old_record: jobRow({ state: 'running' }),
+    });
 
     expect(handlers.onJob.mock.calls).toEqual([
       [toJobSummary(jobRow({ state: 'queued' }))],
@@ -274,8 +273,8 @@ describe('createSupabaseLiveFeed', () => {
   it('passes added and updated devices on as domain objects', async () => {
     const { channel } = await subscribe();
 
-    channel.change('devices', 'INSERT', deviceRow({ id: 'd2' }));
-    channel.change('devices', 'UPDATE', deviceRow({ last_seen_at: '2026-11-01T08:00:00Z' }));
+    channel.broadcast('INSERT', { table: 'devices', record: deviceRow({ id: 'd2' }) });
+    channel.broadcast('UPDATE', { table: 'devices', record: deviceRow({ last_seen_at: '2026-11-01T08:00:00Z' }) });
 
     expect(handlers.onDevice.mock.calls).toEqual([
       [toDevice(deviceRow({ id: 'd2' }))],
@@ -287,41 +286,34 @@ describe('createSupabaseLiveFeed', () => {
   it('ignores deletions (a disconnected device is removed by the page itself)', async () => {
     const { channel } = await subscribe();
 
-    channel.change('jobs', 'DELETE', jobRow());
-    channel.change('devices', 'DELETE', deviceRow());
+    channel.broadcast('DELETE', { table: 'jobs', record: null, old_record: jobRow() });
+    channel.broadcast('DELETE', { table: 'devices', record: null, old_record: deviceRow() });
 
     expect(handlers.onJob).not.toHaveBeenCalled();
     expect(handlers.onDevice).not.toHaveBeenCalled();
   });
 
-  it('reports live only once Postgres changes flow, not on SUBSCRIBED alone', async () => {
+  it.each<[string, unknown]>([
+    ['no payload', undefined],
+    ['no row', { table: 'jobs' }],
+    ['a row without an id', { table: 'jobs', record: { title: 'x' } }],
+    ['another table', { table: 'device_tokens', record: { id: 't1' } }],
+  ])('ignores a broadcast with %s', async (_case, payload) => {
+    const { channel } = await subscribe();
+
+    channel.broadcast('INSERT', payload);
+
+    expect(handlers.onJob).not.toHaveBeenCalled();
+    expect(handlers.onDevice).not.toHaveBeenCalled();
+  });
+
+  it('reports live as soon as the private channel is joined', async () => {
     const { channel } = await subscribe();
 
     channel.status(REALTIME_SUBSCRIBE_STATES.SUBSCRIBED);
-    expect(handlers.onStatus).not.toHaveBeenCalled();
 
-    channel.system({ extension: 'postgres_changes', status: 'ok', message: 'Subscribed to PostgreSQL' });
     expect(handlers.onStatus).toHaveBeenCalledWith(true);
     expect(console.warn).not.toHaveBeenCalled();
-  });
-
-  it('reports not live and warns when the server refuses Postgres changes', async () => {
-    const { channel } = await subscribe();
-
-    channel.system({ extension: 'postgres_changes', status: 'error', message: 'Unauthorized' });
-
-    expect(handlers.onStatus).toHaveBeenCalledWith(false);
-    expect(console.warn).toHaveBeenCalledWith('Live updates unavailable:', 'Unauthorized');
-  });
-
-  it('ignores system messages about anything else', async () => {
-    const { channel } = await subscribe();
-
-    channel.system({ extension: 'presence', status: 'ok' });
-    channel.system({ status: 'error', message: 'unrelated' });
-    channel.system({});
-
-    expect(handlers.onStatus).not.toHaveBeenCalled();
   });
 
   it.each([

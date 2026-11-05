@@ -22,6 +22,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Changed
 
 - xomoni.com's database exposes nothing unless granted by name, never stores a job's reason, accepts only encrypted connections, and forgets a browser's token after 90 days without a report. Such a browser is asked to connect again (#149).
+- The xomoni.com dashboard updates live through broadcasts that only you can receive, on your private channel. The tables are no longer published to Realtime, so nobody else hears of a change, not even of a deletion (#149).
 - Releases are built with a read-only token, signed with build provenance and reproducible: anyone can rebuild a tag and compare the checksum ([releasing](docs/RELEASING.md#checking-a-download)). Workflow actions are pinned by commit SHA.
 - The extension is locked down: its pages can connect only to Xomoni's own API, it asks for no host permissions, and it doesn't run in incognito (#143).
 - xomoni.com enforces Trusted Types, reports policy violations, loads images only from itself and Google's avatar host, keeps its files from being embedded elsewhere (except the email logo), and refuses a sign-out posted from another site (#147).

@@ -30,6 +30,15 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
    - `xomoni-extension-X.Y.Z.zip`: the same file, named for its version;
    - `SHA256SUMS`: the SHA-256 of both, to check a download.
 
+6. Record the release, so connected browsers show that it is out (#151): add a migration that inserts it into `public.extension_releases`, with `security` true when it fixes a vulnerability, merge it, then run `supabase db push`.
+
+   ```sql
+   -- Release X.Y.Z, for the update notice in connected browsers (#151).
+   insert into public.extension_releases (version, published_at, security) values ('X.Y.Z', 'YYYY-MM-DD', false);
+   ```
+
+   A zip install never updates by itself, so this notice, together with the release notes, is how people hear about a fix until the Chrome Web Store ships updates (#43).
+
 ## Checking a download
 
 - **Checksum:** `shasum -a 256 -c SHA256SUMS` next to the zip. `SHA256SUMS` comes from the same release, so this only catches a broken download.

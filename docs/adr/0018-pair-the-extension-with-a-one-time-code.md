@@ -15,7 +15,7 @@ Phase 5 lets the website show the extension's job status (#38, #39, #40). The fi
 
 1. **The website makes a one-time code.** A signed-in person asks the dashboard for a code (`create_pairing_code()`, `authenticated` only): 10 characters of Crockford base-32 (50 bits), shown as `XXXXX-XXXXX`, valid for 10 minutes, one per person at a time. Only its SHA-256 hash is stored (`device_pairings`).
 2. **The extension trades the code for a device token.** The person types the code into the extension's Settings. The extension calls `pair_device(code, name, version)` with the publishable key and no session. A code that works is used up; the call creates the device (under the cap of 10, #82) and returns a 256-bit random token once. Only its SHA-256 hash is stored (`device_tokens`).
-3. **The token can do three things, through functions only:** `device_report(token, version, jobs)` records a heartbeat and up to 50 job summaries (#39, #40); `unpair_device(token)` disconnects the device. An unknown token gets the hint `unknown_device`, which the extension reads as "disconnected". It can't read anything.
+3. **The token can do three things, through functions only:** `device_report(token, version, jobs)` records a heartbeat and up to 50 job summaries (#39, #40), and answers with the newest release of the extension and whether one since the reporting version fixes a vulnerability (`extension_releases`, #151); `unpair_device(token)` disconnects the device. An unknown token gets the hint `unknown_device`, which the extension reads as "disconnected". It can't read anything.
 4. **The secret tables are closed.** `device_pairings` and `device_tokens` have Row Level Security on and no policies; `anon` and `authenticated` have no privileges on them. Only the security-definer functions, with an empty `search_path`, touch them.
 5. **What is sent stays status.** A job summary carries Xomoni's own title, state, phase, counters, timestamps and the risk level (0–4). No post text, no X notices: the reason field is left empty unless the text is Xomoni's own.
 6. **The website stays view-only** ([ADR-0006](0006-website-is-view-only.md)). Making a code and disconnecting a device are the only things it changes; neither acts on X.
@@ -25,7 +25,8 @@ Phase 5 lets the website show the extension's job status (#38, #39, #40). The fi
 - Pairing works the same for every account, whether it signs in with a password or with Google, and for every install, whatever its extension id.
 - A stolen token can only report fake status for one device, which the person sees and disconnects on the dashboard. It can't read the account or other devices.
 - The person types a code once per browser. Codes expire in 10 minutes, so a code seen over someone's shoulder is soon useless; a code that worked can't be used again.
-- The extension keeps the token in `chrome.storage.local`, outside the X data in IndexedDB.
+- The extension keeps the token in its IndexedDB (`kv`, key `cloud`), where content scripts can't reach it. Until #151 it was in `chrome.storage.local`, which content scripts can read; the first read moves it.
+- A zip install learns about a new version only while connected, from the answer to its status report (#151). Each release is recorded in `extension_releases` with a migration (docs/RELEASING.md).
 - The old `authenticated` insert and update policies on `devices` and `jobs` stay, but the extension doesn't use them; they only let a person write their own rows.
 
 ## Alternatives considered

@@ -3,6 +3,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { CloudError, pairDevice, reportStatus, unpairDevice } from '../src/cloud/client';
 import { CLOUD_KEY, CLOUD_URL } from '../src/cloud/config';
 import { clearConnection, getConnection, saveConnection, watchConnection } from '../src/cloud/connection';
+import { currentUpdateNotice } from '../src/cloud/release';
 import { jobReport } from '../src/cloud/summary';
 import { HEARTBEAT_MS, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
 import { createCleanupJob } from '../src/engine/runner';
@@ -185,6 +186,17 @@ describe('reporting', () => {
     expect(report.jobs).toEqual([
       expect.objectContaining({ x_handle: 'me', state: 'queued', risk_level: 2, state_reason: '' }),
     ]);
+  });
+
+  it('keeps what the answer says about the newest release, and nothing from an answer without it (#151)', async () => {
+    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    // An older server answers a report with no content.
+    expect(await syncOnce()).toBe('ok');
+    expect(await currentUpdateNotice('0.3.0')).toBeNull();
+
+    fetch.mockReturnValueOnce(json(200, { latest: '0.4.0', security: true }));
+    expect(await syncOnce()).toBe('ok');
+    expect(await currentUpdateNotice('0.3.0')).toEqual({ version: '0.4.0', security: true });
   });
 
   it('sends each job update once, then only heartbeats', async () => {

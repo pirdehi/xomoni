@@ -144,7 +144,7 @@ From the security review of 2026-11-04 of the extension, xomoni.com, the databas
 | ✅ | Never act on someone else's post: author checked before Delete, every id validated | [#144](https://github.com/pirdehi/xomoni/issues/144) | [#153](https://github.com/pirdehi/xomoni/pull/153) |
 | ⬜ | Trust only Xomoni's own messages: sender checks, payload validation, a sealed page-world channel | [#145](https://github.com/pirdehi/xomoni/issues/145) | |
 | ✅ | Read X's restriction notices only from X's own banners, not from post text | [#146](https://github.com/pirdehi/xomoni/issues/146) | [#154](https://github.com/pirdehi/xomoni/pull/154) |
-| ✅ | xomoni.com: Trusted Types, CSP reports, tighter images, CORP, Origin check on sign-out | [#147](https://github.com/pirdehi/xomoni/issues/147) | PR_147 |
+| ✅ | xomoni.com: Trusted Types, CSP reports, tighter images, CORP, Origin check on sign-out | [#147](https://github.com/pirdehi/xomoni/issues/147) | [#160](https://github.com/pirdehi/xomoni/pull/160) |
 | ⬜ | Account security: current password checked by the server, MFA, session age, email quota | [#148](https://github.com/pirdehi/xomoni/issues/148) | |
 | ⬜ | Database: private Realtime, no auto-exposed tables, SSL only, expiring device tokens, account shown on pairing | [#149](https://github.com/pirdehi/xomoni/issues/149) | |
 | ⬜ | Security monitoring: CodeQL, secret-scanning options, security.txt, alerts | [#150](https://github.com/pirdehi/xomoni/issues/150) | |

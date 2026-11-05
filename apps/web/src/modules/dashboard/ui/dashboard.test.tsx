@@ -295,6 +295,16 @@ describe('Dashboard', () => {
       expect(sections[0]).toBe(needsYou);
     });
 
+    it('says what a waiting job waits on in Xomoni’s own words, as reasons stay in the browser (#149)', () => {
+      renderDashboard({
+        devices: [device()],
+        jobs: [job({ id: 'w', state: 'waiting', stateReason: '', phase: 'Waiting for you to log in to X' })],
+      });
+
+      const needsYou = screen.getByRole('region', { name: 'Needs you' });
+      expect(within(needsYou).getByRole('listitem')).toHaveTextContent('Waiting for you to log in to X');
+    });
+
     it('is absent when no job waits for the person', () => {
       renderDashboard({ devices: [device()], jobs: [job()] });
 

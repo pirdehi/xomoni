@@ -52,7 +52,8 @@ export interface SeedJob {
   kind: 'cleanup' | 'scan';
   title: string;
   state: string;
-  state_reason?: string;
+  /** Xomoni's own words for what the job is doing or waiting on. A reason is never stored (#149). */
+  phase?: string;
   risk_level?: number | null;
 }
 
@@ -61,7 +62,7 @@ export async function addJobs(userId: string, deviceId: string, jobs: SeedJob[])
   await call('/rest/v1/jobs', {
     method: 'POST',
     // A bulk insert needs the same keys in every row.
-    body: jobs.map((job) => ({ user_id: userId, device_id: deviceId, state_reason: '', risk_level: null, ...job })),
+    body: jobs.map((job) => ({ user_id: userId, device_id: deviceId, phase: '', risk_level: null, ...job })),
     prefer: 'return=minimal',
   });
 }

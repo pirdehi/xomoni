@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { toAuthFailure, toDeleteAccountFailure } from './supabase-auth-gateway';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@xomoni/db';
+import { describe, expect, it, vi } from 'vitest';
+import { createSupabaseAuthGateway, toAuthFailure, toDeleteAccountFailure } from './supabase-auth-gateway';
 
 describe('toAuthFailure', () => {
   it.each([
@@ -34,5 +36,22 @@ describe('toDeleteAccountFailure (#80)', () => {
 
   it('treats any other failure as unexpected', () => {
     expect(toDeleteAccountFailure({ hint: null, message: 'permission denied' }).code).toBe('unknown');
+  });
+});
+
+describe('changing the password (#148)', () => {
+  const gatewayWith = (updateUser: ReturnType<typeof vi.fn>) =>
+    createSupabaseAuthGateway({ auth: { updateUser } } as unknown as SupabaseClient<Database>);
+
+  it('sends the current password with the new one, so Supabase can check it itself', async () => {
+    const updateUser = vi.fn(async () => ({ data: { user: null }, error: null }));
+    expect(await gatewayWith(updateUser).updatePassword('new password 1', 'old password 1')).toEqual({ ok: true });
+    expect(updateUser).toHaveBeenCalledWith({ password: 'new password 1', current_password: 'old password 1' });
+  });
+
+  it('sends none for a reset from an emailed link, which has no current password', async () => {
+    const updateUser = vi.fn(async () => ({ data: { user: null }, error: null }));
+    await gatewayWith(updateUser).updatePassword('new password 1');
+    expect(updateUser).toHaveBeenCalledWith({ password: 'new password 1' });
   });
 });

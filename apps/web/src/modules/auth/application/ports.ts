@@ -36,8 +36,11 @@ export interface AuthGateway {
   resendConfirmation(input: { email: string; captchaToken?: string; emailRedirectTo: string }): Promise<AuthResult>;
   /** Verifies a one-time email link; on success the browser holds a session. */
   verifyEmailLink(input: { tokenHash: string; type: EmailLinkType }): Promise<AuthResult>;
-  /** Sets a new password for the signed-in account. */
-  updatePassword(password: string): Promise<AuthResult>;
+  /**
+   * Sets a new password for the signed-in account. `currentPassword` goes to the provider too, which checks it
+   * itself when the project requires it (#148); a reset from an emailed link has none.
+   */
+  updatePassword(password: string, currentPassword?: string): Promise<AuthResult>;
   /** Starts an email change; both the old and the new address get a confirmation link. */
   changeEmail(input: { email: string; emailRedirectTo: string }): Promise<AuthResult>;
   /**

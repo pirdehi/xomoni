@@ -34,7 +34,7 @@ describe('createProxySupabase', () => {
     expect(createServerClient).toHaveBeenCalledWith(
       'http://127.0.0.1:54321',
       'sb_publishable_test',
-      expect.objectContaining({ cookies: expect.any(Object) }),
+      expect.objectContaining({ cookies: expect.any(Object), cookieOptions: { maxAge: 30 * 24 * 60 * 60 } }),
     );
   });
 

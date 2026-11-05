@@ -107,8 +107,13 @@ export function createSupabaseAuthGateway(supabase: SupabaseClient<Database>): A
       return done(await supabase.auth.verifyOtp({ token_hash: tokenHash, type }));
     },
 
-    async updatePassword(password) {
-      return done(await supabase.auth.updateUser({ password }));
+    async updatePassword(password, currentPassword) {
+      // Supabase checks `current_password` itself once "Require current password" is on (#148).
+      return done(
+        await supabase.auth.updateUser(
+          currentPassword === undefined ? { password } : { password, current_password: currentPassword },
+        ),
+      );
     },
 
     async changeEmail({ email, emailRedirectTo }) {

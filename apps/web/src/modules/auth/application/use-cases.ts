@@ -141,7 +141,8 @@ export async function setNewPassword({ auth }: Pick<AuthDeps, 'auth'>, input: Fo
 
 /**
  * Changes the password of the signed-in account. The current password is checked first by signing in
- * again, so a stolen session alone can't lock the owner out.
+ * again, so a stolen session alone can't lock the owner out, and sent with the change, so Supabase checks it
+ * too and a stolen token can't skip this page (#148).
  */
 export async function changePassword({ auth }: Pick<AuthDeps, 'auth'>, input: FormInput): Promise<AuthResult> {
   const form = validate(changePasswordSchema, input);
@@ -159,7 +160,7 @@ export async function changePassword({ auth }: Pick<AuthDeps, 'auth'>, input: Fo
       ? { ok: false, code: 'wrong_current_password', fieldErrors: { currentPassword: 'Incorrect password' } }
       : check;
   }
-  return auth.updatePassword(form.value.newPassword);
+  return auth.updatePassword(form.value.newPassword, form.value.currentPassword);
 }
 
 /** Starts changing the sign-in email; both addresses must confirm before it takes effect. */

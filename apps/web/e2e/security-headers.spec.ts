@@ -1,4 +1,4 @@
-import { signUpConfirmed, uniqueEmail } from './support/flows';
+import { expectDashboard, signUpConfirmed, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
 
 // Every test here also fails on anything the Content-Security-Policy blocks (see `support/test.ts`).
@@ -12,7 +12,70 @@ test.describe('security headers (#8)', () => {
       expect(headers['referrer-policy'], path).toBe('strict-origin-when-cross-origin');
       expect(headers['permissions-policy'], path).toContain('camera=()');
       expect(headers['cross-origin-opener-policy'], path).toBe('same-origin');
+      // #147
+      expect(headers['cross-origin-resource-policy'], path).toBe('same-origin');
+      expect(headers['reporting-endpoints'], path).toBe('csp="/api/csp-report"');
+      expect(headers['content-security-policy'], path).toContain('report-to csp');
+      expect(headers['content-security-policy'], path).toContain('report-uri /api/csp-report');
+      // `next dev` needs eval, so only the production build (CI) enforces Trusted Types.
+      if (process.env.CI) {
+        expect(headers['content-security-policy'], path).toContain("require-trusted-types-for 'script'");
+        expect(headers['content-security-policy'], path).toContain('trusted-types default');
+      }
     }
+  });
+
+  test('let mail apps load the logo the auth emails show (#147)', async ({ request }) => {
+    const logo = await request.get('/logo.png');
+    expect(logo.status()).toBe(200);
+    expect(logo.headers()['cross-origin-resource-policy']).toBe('cross-origin');
+  });
+
+  test('load every public page and move between them in the app without a violation (#147)', async ({ page }) => {
+    for (const path of ['/', '/login', '/signup', '/forgot-password', '/risks', '/privacy', '/terms']) {
+      expect((await page.goto(path))?.status(), path).toBe(200);
+    }
+    // Client-side navigation loads more bundles through `script.src`, which Trusted Types guards.
+    await page.goto('/');
+    for (const path of ['/risks', '/privacy', '/terms']) {
+      await page.locator(`a[href="${path}"]:visible`).first().click();
+      await expect(page).toHaveURL(`http://localhost:3000${path}`);
+      await page.goBack();
+      await expect(page).toHaveURL('http://localhost:3000/');
+    }
+  });
+
+  test('refuse a sign-out posted by another site, and keep the session (#147)', async ({ page }) => {
+    await signUpConfirmed(page, uniqueEmail('csrf'));
+    const forgeries: Record<string, string>[] = [{ origin: 'https://evil.example' }, { origin: 'null' }, {}];
+    for (const headers of forgeries) {
+      const forged = await page.request.post('/auth/signout?scope=everywhere', { maxRedirects: 0, headers });
+      expect(forged.status(), JSON.stringify(headers)).toBe(403);
+    }
+    await page.goto('/dashboard');
+    await expectDashboard(page);
+  });
+
+  test('take violation reports, and refuse oversized or malformed ones (#147)', async ({ request }) => {
+    const report = [
+      {
+        type: 'csp-violation',
+        url: 'http://localhost:3000/',
+        body: { documentURL: 'http://localhost:3000/', effectiveDirective: 'img-src', blockedURL: 'https://x.test/a' },
+      },
+    ];
+    const reports = { 'content-type': 'application/reports+json' };
+    expect((await request.post('/api/csp-report', { headers: reports, data: JSON.stringify(report) })).status()).toBe(
+      204,
+    );
+    expect((await request.post('/api/csp-report', { headers: reports, data: 'x'.repeat(64 * 1024) })).status()).toBe(
+      413,
+    );
+    expect((await request.post('/api/csp-report', { headers: reports, data: '{oops' })).status()).toBe(400);
+    expect(
+      (await request.post('/api/csp-report', { headers: { 'content-type': 'text/plain' }, data: '{}' })).status(),
+    ).toBe(415);
+    expect((await request.get('/api/csp-report')).status()).toBe(405);
   });
 
   test('let the auth forms load the Turnstile check', async ({ page }) => {

@@ -1,5 +1,6 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
+import { crossSiteRefused, isSameOriginRequest } from '@/shared/http/same-origin';
 import { completeOAuthSignIn, signOut } from '../application/use-cases';
 import { AUTH_ERROR_MESSAGES } from '../domain/auth-error';
 import { ROUTES, safeNextPath } from '../domain/routes';
@@ -23,9 +24,11 @@ export async function handleOAuthCallback(request: NextRequest): Promise<NextRes
 
 /**
  * `POST /auth/signout`: ends the session and returns home, or to a same-site `?next=` path. With
- * `?scope=everywhere` it ends every session of the account (#83). POST only, so links can't sign people out.
+ * `?scope=everywhere` it ends every session of the account (#83). POST only, so links can't sign people out,
+ * and only from the site's own pages (#147): a form on another site gets 403 and the session stays.
  */
-export async function handleSignOut(request: NextRequest): Promise<NextResponse> {
+export async function handleSignOut(request: NextRequest): Promise<Response> {
+  if (!isSameOriginRequest(request, request.nextUrl.origin)) return crossSiteRefused();
   const everywhere = request.nextUrl.searchParams.get('scope') === 'everywhere';
   await signOut(await authDeps(), { everywhere });
   // `?next=` lets "Sign in again" end on the sign-in page; only same-site paths are followed.

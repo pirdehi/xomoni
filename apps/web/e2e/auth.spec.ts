@@ -293,9 +293,12 @@ test.describe('account page', () => {
     const email = uniqueEmail('again');
     await signUpConfirmed(page, email);
 
-    // The form the delete section shows when the last sign-in is too old.
+    // The form the delete section shows when the last sign-in is too old. It posts from the site, so it carries
+    // the site's Origin (#147); Playwright's request client only sends one when told to.
+    const fromSite = { origin: 'http://localhost:3000' };
     const again = await page.request.post(`/auth/signout?next=${encodeURIComponent('/login?next=/account')}`, {
       maxRedirects: 0,
+      headers: fromSite,
     });
     expect(again.status()).toBe(303);
     expect(again.headers()['location']).toBe('http://localhost:3000/login?next=/account');
@@ -304,6 +307,7 @@ test.describe('account page', () => {
 
     const offSite = await page.request.post(`/auth/signout?next=${encodeURIComponent('https://evil.example/')}`, {
       maxRedirects: 0,
+      headers: fromSite,
     });
     expect(offSite.headers()['location']).toBe('http://localhost:3000/');
   });

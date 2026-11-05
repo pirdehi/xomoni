@@ -24,8 +24,9 @@ function location(response: Response): URL {
 }
 
 const callback = (query: string) => handleOAuthCallback(new NextRequest(`${SITE}/auth/callback?${query}`));
-const signOut = (query = '') =>
-  handleSignOut(new NextRequest(`${SITE}/auth/signout${query ? `?${query}` : ''}`, { method: 'POST' }));
+/** A sign-out POST; by default from the site's own page, as the browser marks it. */
+const signOut = (query = '', headers: Record<string, string> = { origin: SITE }) =>
+  handleSignOut(new NextRequest(`${SITE}/auth/signout${query ? `?${query}` : ''}`, { method: 'POST', headers }));
 
 beforeEach(() => {
   vi.mocked(authDeps).mockReset();
@@ -108,6 +109,37 @@ describe('GET /auth/callback', () => {
 });
 
 describe('POST /auth/signout', () => {
+  // #147: SameSite=Lax alone isn't the only guard any more; the request must come from the site's own pages.
+  it.each([
+    ['another site', { origin: 'https://evil.example' }],
+    ['a look-alike host', { origin: 'https://xomoni.test.evil.example' }],
+    ['a subdomain', { origin: 'https://www.evil.xomoni.test' }],
+    ['plain HTTP', { origin: 'http://xomoni.test' }],
+    ['an opaque origin (sandboxed frame or data: URL)', { origin: 'null' }],
+    ['no Origin and a cross-site fetch', { 'sec-fetch-site': 'cross-site' }],
+    ['no Origin and a same-site fetch from a sibling host', { 'sec-fetch-site': 'same-site' }],
+    ['neither header', {}],
+  ])('refuses a sign-out from %s with 403 and keeps the session', async (_name, headers) => {
+    const response = await signOut('scope=everywhere', headers);
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(gateway.signOut).not.toHaveBeenCalled();
+  });
+
+  it('accepts a browser that sends no Origin but marks the request same-origin', async () => {
+    const response = await signOut('', { 'sec-fetch-site': 'same-origin' });
+
+    expect(response.status).toBe(303);
+    expect(gateway.signOut).toHaveBeenCalledWith(false);
+  });
+
+  it('trusts the Origin over Sec-Fetch-Site when both are sent', async () => {
+    const response = await signOut('', { origin: 'https://evil.example', 'sec-fetch-site': 'same-origin' });
+    expect(response.status).toBe(403);
+  });
+
   it('ends the session on this device and goes home with 303, so the browser follows with GET', async () => {
     const response = await signOut();
 

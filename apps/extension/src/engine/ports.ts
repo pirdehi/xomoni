@@ -12,6 +12,7 @@ import type {
   ScrollResult,
   VisibleTweet,
 } from '../shared/messages';
+import type { WatchPost } from '../shared/watch';
 
 /** The reply the content script sends for each command. */
 export type Reply<C extends ActorCommand['cmd']> = C extends 'ping'
@@ -26,7 +27,9 @@ export type Reply<C extends ActorCommand['cmd']> = C extends 'ping'
           ? CanaryResult
           : C extends 'clearPage'
             ? ClearResult
-            : ActionResult;
+            : C extends 'readPosts'
+              ? WatchPost[]
+              : ActionResult;
 
 /** The worker tab was closed. The runner pauses the job; resuming opens a new worker. */
 export class WorkerGone extends Error {

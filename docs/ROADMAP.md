@@ -150,6 +150,14 @@ From the security review of 2026-11-04 of the extension, xomoni.com, the databas
 | ⬜ | Security monitoring: CodeQL, secret-scanning options, security.txt, alerts | [#150](https://github.com/pirdehi/xomoni/issues/150) | |
 | ⬜ | Local data hygiene: token storage, complete wipe, archive size limits, update notice | [#151](https://github.com/pirdehi/xomoni/issues/151) | |
 
+## Phase 10 · Watch
+
+Following phrases and #hashtags in X's search, read-only ([ADR-0021](adr/0021-watch-x-search-read-only.md)).
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ✅ | Watch page: up to 5 tabs of phrases or #hashtags, searched about once a minute within the read budget, newest 10 posts each | [#158](https://github.com/pirdehi/xomoni/issues/158) | [#159](https://github.com/pirdehi/xomoni/pull/159) |
+
 ## Dropped
 
 | | Task | Issue | Why |

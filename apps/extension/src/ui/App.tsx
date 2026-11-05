@@ -33,6 +33,8 @@ import {
   Open16Regular,
   Pause16Regular,
   Pulse20Regular,
+  Search20Filled,
+  Search20Regular,
   Settings20Filled,
   Settings20Regular,
   Sparkle20Filled,
@@ -69,6 +71,7 @@ import { InventoryPage } from './pages/Inventory';
 import { JobsPage } from './pages/Jobs';
 import { OverviewPage } from './pages/Overview';
 import { SettingsPage } from './pages/Settings';
+import { WatchPage } from './pages/Watch';
 import type { Account } from '../shared/types';
 import type { PageId, PageProps } from './navigation';
 import { startCloudSync } from '../cloud/sync';
@@ -79,6 +82,7 @@ const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
   { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
   { id: 'archive', label: 'Archive', icon: bundleIcon(Archive20Filled, Archive20Regular) },
   { id: 'inventory', label: 'Inventory', icon: bundleIcon(Database20Filled, Database20Regular) },
+  { id: 'watch', label: 'Watch', icon: bundleIcon(Search20Filled, Search20Regular) },
   { id: 'jobs', label: 'Jobs', icon: bundleIcon(TaskListLtr20Filled, TaskListLtr20Regular) },
   { id: 'activity', label: 'Activity log', icon: bundleIcon(History20Filled, History20Regular) },
   { id: 'settings', label: 'Settings', icon: bundleIcon(Settings20Filled, Settings20Regular) },
@@ -298,6 +302,8 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
       return <ArchivePage {...props} />;
     case 'inventory':
       return <InventoryPage {...props} />;
+    case 'watch':
+      return <WatchPage {...props} />;
     case 'jobs':
       return <JobsPage {...props} />;
     case 'activity':

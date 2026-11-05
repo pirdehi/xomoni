@@ -2,6 +2,15 @@ import Dexie, { type Table } from 'dexie';
 import { type RiskEvent, type RiskEventKind, isDuplicateRisk } from './risk';
 import { normalizeSettings } from './settings';
 import { DAY } from './time';
+import {
+  WATCH_TABS,
+  type WatchResult,
+  type WatchTab,
+  isInitialTab,
+  newTabId,
+  normalizeQuery,
+  normalizeTabs,
+} from './watch';
 import type { ViewCap } from './x-limits';
 import { CONSENT_VERSION } from '@xomoni/consent';
 import type {
@@ -167,6 +176,75 @@ export async function kvGet<T>(key: string, fallback: T): Promise<T> {
 /** Writes a value to the `kv` table. Keys in use: `settings` and `activeAccount`. */
 export async function kvSet(key: string, value: unknown) {
   await db.kv.put({ key, value });
+}
+
+/** Where an account's Watch tabs (#158) are kept in `kv`. */
+export const watchTabsKey = (accountId: string) => `watchTabs:${accountId}`;
+/** Where the last check of each of an account's Watch tabs is kept in `kv`, by tab id. */
+export const watchResultsKey = (accountId: string) => `watchResults:${accountId}`;
+
+/** An account's Watch tabs, checked by `normalizeTabs`: the two initial ones when nothing is stored. */
+export async function watchTabs(accountId: string): Promise<WatchTab[]> {
+  return normalizeTabs(await kvGet<unknown>(watchTabsKey(accountId), null));
+}
+
+/** Stores an account's Watch tabs, and forgets the results of tabs no longer there. */
+export async function saveWatchTabs(accountId: string, tabs: readonly WatchTab[]) {
+  const kept = normalizeTabs(tabs);
+  await db.transaction('rw', db.kv, async () => {
+    await kvSet(watchTabsKey(accountId), kept);
+    const results = await watchResults(accountId);
+    const ids = new Set(kept.map((t) => t.id));
+    await kvSet(watchResultsKey(accountId), Object.fromEntries(Object.entries(results).filter(([id]) => ids.has(id))));
+  });
+}
+
+/**
+ * Adds a Watch tab after the others and returns its id, or null when there are `WATCH_TABS.max` already. In one
+ * transaction, so quick clicks never give two tabs the same id.
+ */
+export async function addWatchTab(accountId: string): Promise<string | null> {
+  return db.transaction('rw', db.kv, async () => {
+    const tabs = await watchTabs(accountId);
+    if (tabs.length >= WATCH_TABS.max) return null;
+    const id = newTabId(tabs);
+    await saveWatchTabs(accountId, [...tabs, { id, query: '' }]);
+    return id;
+  });
+}
+
+/** Sets the query of one Watch tab (normalized); a tab that isn't there is left as it is. */
+export async function setWatchQuery(accountId: string, tabId: string, query: string) {
+  await db.transaction('rw', db.kv, async () => {
+    const tabs = await watchTabs(accountId);
+    await saveWatchTabs(
+      accountId,
+      tabs.map((t) => (t.id === tabId ? { ...t, query: normalizeQuery(query) } : t)),
+    );
+  });
+}
+
+/** Removes a Watch tab added by the person, with its results; the initial tabs stay. */
+export async function removeWatchTab(accountId: string, tabId: string) {
+  await db.transaction('rw', db.kv, async () => {
+    const tabs = await watchTabs(accountId);
+    await saveWatchTabs(
+      accountId,
+      tabs.filter((t) => t.id !== tabId || isInitialTab(t)),
+    );
+  });
+}
+
+/** The last check of each of an account's Watch tabs, by tab id. */
+export async function watchResults(accountId: string): Promise<Record<string, WatchResult>> {
+  return kvGet<Record<string, WatchResult>>(watchResultsKey(accountId), {});
+}
+
+/** Stores the last check of one Watch tab. */
+export async function saveWatchResult(accountId: string, tabId: string, result: WatchResult) {
+  await db.transaction('rw', db.kv, async () => {
+    await kvSet(watchResultsKey(accountId), { ...(await watchResults(accountId)), [tabId]: result });
+  });
 }
 
 /**

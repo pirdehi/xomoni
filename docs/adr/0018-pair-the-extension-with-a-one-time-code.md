@@ -23,7 +23,7 @@ Phase 5 lets the website show the extension's job status (#38, #39, #40). The fi
 ## Consequences
 
 - Pairing works the same for every account, whether it signs in with a password or with Google, and for every install, whatever its extension id.
-- A stolen token can only report fake status for one device, which the person sees and disconnects on the dashboard. It can't read the account or other devices.
+- A stolen token can only report fake status for one device, which the person sees and disconnects on the dashboard. It can't read the account or other devices. A token unused for 90 days stops working (#149); the extension then asks to connect again.
 - The person types a code once per browser. Codes expire in 10 minutes, so a code seen over someone's shoulder is soon useless; a code that worked can't be used again.
 - The extension keeps the token in its IndexedDB (`kv`, key `cloud`), where content scripts can't reach it. Until #151 it was in `chrome.storage.local`, which content scripts can read; the first read moves it.
 - A zip install learns about a new version only while connected, from the answer to its status report (#151). Each release is recorded in `extension_releases` with a migration (docs/RELEASING.md).

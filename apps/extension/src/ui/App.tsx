@@ -241,7 +241,7 @@ function useCloudSync() {
     () =>
       startCloudSync(() =>
         toast(
-          'xomoni.com no longer knows this browser, so its job status is no longer sent. Connect it again in Settings.',
+          'xomoni.com no longer knows this browser: it was disconnected there, or sent nothing for 90 days. Connect it again in Settings to keep sending job status.',
         ),
       ),
     [],

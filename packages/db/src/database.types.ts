@@ -24,14 +24,17 @@ export type Database = {
       device_tokens: {
         Row: {
           device_id: string;
+          last_used_at: string;
           token_hash: string;
         };
         Insert: {
           device_id: string;
+          last_used_at?: string;
           token_hash: string;
         };
         Update: {
           device_id?: string;
+          last_used_at?: string;
           token_hash?: string;
         };
         Relationships: [

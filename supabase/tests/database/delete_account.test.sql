@@ -18,6 +18,8 @@ begin
     )
   )::text, true);
 end $$;
+-- New functions are callable by nobody until granted (#149).
+grant execute on function pg_temp.sign_in(jsonb) to authenticated;
 
 set local role authenticated;
 

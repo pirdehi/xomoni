@@ -140,10 +140,8 @@ export interface FakeChannel {
   subscribed: boolean;
   /** The object the code under test holds, as it would hand it to `removeChannel`. */
   handle: unknown;
-  /** Delivers a `system` message, such as the one saying Postgres changes flow. */
-  system(message: { extension?: string; status?: string; message?: string }): void;
-  /** Delivers a Postgres change to the listeners registered for that table and event. */
-  change(table: string, event: 'INSERT' | 'UPDATE' | 'DELETE', row: unknown): void;
+  /** Delivers a broadcast, as `realtime.broadcast_changes` sends one, to the listeners for its event. */
+  broadcast(event: string, payload: unknown): void;
   /** Reports a subscription status, as the client does after joining or when the socket drops. */
   status(state: REALTIME_SUBSCRIBE_STATES): void;
 }
@@ -214,13 +212,9 @@ export function fakeSupabase(): FakeSupabase {
       listeners,
       subscribed: false,
       handle: null,
-      system: (message) => {
-        for (const l of listeners) if (l.type === 'system') l.callback(message);
-      },
-      change: (table, event, row) => {
+      broadcast: (event, payload) => {
         for (const l of listeners) {
-          if (l.type === 'postgres_changes' && l.filter.table === table && l.filter.event === event)
-            l.callback({ eventType: event, table, schema: 'public', new: row, old: {} });
+          if (l.type === 'broadcast' && l.filter.event === event) l.callback({ type: 'broadcast', event, payload });
         }
       },
       status: (state) => onStatus(state),

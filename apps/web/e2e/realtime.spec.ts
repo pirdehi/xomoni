@@ -29,15 +29,13 @@ function joinDashboard(client: SupabaseClient, viewerId: string): Promise<{ stat
   return new Promise((resolve) => {
     client
       .channel(`dashboard:${viewerId}`, { config: { private: true } })
-      .on<{ title: string }>(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'jobs', filter: `user_id=eq.${viewerId}` },
-        ({ new: row }) => titles.push(row.title),
-      )
-      .on('system', {}, (msg: { extension?: string; status?: string }) => {
-        if (msg.extension === 'postgres_changes' && msg.status === 'ok') resolve({ status: 'live', titles });
+      // The database broadcasts each change of the owner's rows here (#149).
+      .on('broadcast', { event: 'INSERT' }, ({ payload }) => {
+        const { table, record } = payload as { table?: string; record?: { title?: string } };
+        if (table === 'jobs' && record?.title) titles.push(record.title);
       })
       .subscribe((status) => {
+        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) resolve({ status: 'live', titles });
         if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT)
           resolve({ status, titles });
       });

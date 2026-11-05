@@ -1,5 +1,15 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { contentSecurityPolicy, securityHeaders } from './security-headers';
+import { AVATAR_HOST } from '@/modules/auth/domain/viewer';
+import {
+  CSP_REPORT_PATH,
+  EMBEDDABLE_PATHS,
+  GOOGLE_AVATARS,
+  contentSecurityPolicy,
+  embeddableHeaders,
+  securityHeaders,
+} from './security-headers';
 
 const PRODUCTION = { supabaseUrl: 'https://abcd.supabase.co', siteUrl: 'https://xomoni.com', dev: false };
 const LOCAL = { supabaseUrl: 'http://127.0.0.1:54321', siteUrl: 'http://localhost:3000', dev: true };
@@ -69,5 +79,56 @@ describe('security headers (#8)', () => {
     expect(headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     expect(headers.get('Permissions-Policy')).toBe('camera=(), microphone=(), geolocation=(), payment=(), usb=()');
     expect(headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin');
+  });
+});
+
+describe('Trusted Types, reports, images and resource policy (#147)', () => {
+  it('requires Trusted Types for every script sink and allows only the site’s default policy', () => {
+    const policy = directives(contentSecurityPolicy(PRODUCTION));
+    expect(policy.get('require-trusted-types-for')).toEqual(["'script'"]);
+    expect(policy.get('trusted-types')).toEqual(['default']);
+  });
+
+  it('leaves Trusted Types out of next dev, which needs eval', () => {
+    const policy = directives(contentSecurityPolicy(LOCAL));
+    expect(policy.has('require-trusted-types-for')).toBe(false);
+    expect(policy.has('trusted-types')).toBe(false);
+  });
+
+  it('reports violations to the site, through the Reporting API and the older report-uri', () => {
+    for (const settings of [PRODUCTION, LOCAL]) {
+      const policy = directives(contentSecurityPolicy(settings));
+      expect(policy.get('report-uri')).toEqual([CSP_REPORT_PATH]);
+      expect(policy.get('report-to')).toEqual(['csp']);
+    }
+    const headers = new Map(securityHeaders(PRODUCTION).map(({ key, value }) => [key, value]));
+    expect(headers.get('Reporting-Endpoints')).toBe(`csp="${CSP_REPORT_PATH}"`);
+    expect(CSP_REPORT_PATH).toBe('/api/csp-report');
+  });
+
+  it('loads images only from the site, data: URLs and Google’s avatar host, the one the dashboard accepts', () => {
+    expect(directives(contentSecurityPolicy(PRODUCTION)).get('img-src')).toEqual([
+      "'self'",
+      'data:',
+      'https://lh3.googleusercontent.com',
+    ]);
+    expect(GOOGLE_AVATARS).toBe(AVATAR_HOST);
+  });
+
+  it('keeps every response to the site itself, except the files mail apps embed', () => {
+    const headers = new Map(securityHeaders(PRODUCTION).map(({ key, value }) => [key, value]));
+    expect(headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+    expect(embeddableHeaders()).toEqual([{ key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' }]);
+  });
+
+  it('marks as embeddable every site file the auth emails load', () => {
+    const templates = path.join(__dirname, '..', '..', '..', '..', '..', 'supabase', 'templates');
+    const loaded = new Set<string>();
+    for (const name of readdirSync(templates)) {
+      const html = readFileSync(path.join(templates, name), 'utf8');
+      for (const [, url] of html.matchAll(/src="(https:\/\/xomoni\.com[^"]*)"/g)) loaded.add(new URL(url!).pathname);
+    }
+    expect(loaded.size).toBeGreaterThan(0);
+    for (const file of loaded) expect(EMBEDDABLE_PATHS).toContain(file);
   });
 });

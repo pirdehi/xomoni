@@ -6,7 +6,7 @@ export interface Viewer {
   email: string;
   /** Display name from the identity provider, or the email when there is none. */
   name: string;
-  /** Profile picture from the identity provider, if any. */
+  /** Profile picture from Google (`AVATAR_HOST`), if any. Other hosts are dropped: the site's CSP blocks them. */
   avatarUrl: string | null;
   /** How this account can sign in, such as `email` (password) and `google`. */
   signInMethods: string[];
@@ -37,7 +37,21 @@ export function viewerFromClaims(claims: IdentityClaims): Viewer {
   const name = text(meta.full_name) ?? text(meta.name) ?? email;
   const providers = claims.app_metadata?.providers;
   const signInMethods = Array.isArray(providers) ? providers.filter((p): p is string => typeof p === 'string') : [];
-  return { id: claims.sub, email, name, avatarUrl: text(meta.avatar_url), signInMethods };
+  return { id: claims.sub, email, name, avatarUrl: avatar(meta.avatar_url), signInMethods };
+}
+
+/** The only origin profile pictures load from; it matches `img-src` in the site's CSP (#147). */
+export const AVATAR_HOST = 'https://lh3.googleusercontent.com';
+
+/** `value` when it is an HTTPS URL on `AVATAR_HOST`, otherwise null. */
+function avatar(value: unknown): string | null {
+  const url = text(value);
+  if (!url) return null;
+  try {
+    return new URL(url).origin === AVATAR_HOST ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 function text(value: unknown): string | null {

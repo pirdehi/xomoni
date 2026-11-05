@@ -1,13 +1,13 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
-import { securityHeaders } from './src/shared/config/security-headers';
+import { EMBEDDABLE_PATHS, embeddableHeaders, securityHeaders } from './src/shared/config/security-headers';
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   // Workspace packages ship TypeScript source.
   transpilePackages: ['@xomoni/consent', '@xomoni/db', '@xomoni/fluent-theme'],
-  // CSP, HSTS, framing and the rest, on every response (ADR-0014).
+  // CSP, HSTS, framing and the rest, on every response (ADR-0014). Later entries override earlier ones.
   headers() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl)
@@ -19,7 +19,10 @@ const nextConfig: NextConfig = {
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
       dev: process.env.NODE_ENV === 'development',
     };
-    return Promise.resolve([{ source: '/:path*', headers: securityHeaders(settings) }]);
+    return Promise.resolve([
+      { source: '/:path*', headers: securityHeaders(settings) },
+      ...EMBEDDABLE_PATHS.map((source) => ({ source, headers: embeddableHeaders() })),
+    ]);
   },
   turbopack: {
     // npm workspaces hoist dependencies to the monorepo root.

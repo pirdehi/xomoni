@@ -7,6 +7,7 @@ import type { CleanupFilter, CleanupOptions, DateRange, Job, JobState, ScanTarge
 import { runCleanup } from './cleanup';
 import { Interrupted, JobContext, NeedsYou, Stop } from './context';
 import { runScan } from './scan';
+import { runWatch } from './watch';
 import { Aborted } from './timers';
 import { type EnginePorts, NotReady, PageError, WorkerGone } from './ports';
 
@@ -209,7 +210,9 @@ export class Runner {
       const summary =
         job.kind === 'scan'
           ? `${job.stats.scanned.toLocaleString()} posts seen`
-          : `${done} done, ${skipped} skipped, ${failed} failed`;
+          : job.kind === 'watch'
+            ? `${done.toLocaleString()} searches, ${job.stats.scanned.toLocaleString()} posts seen`
+            : `${done} done, ${skipped} skipped, ${failed} failed`;
       await ctx.log(
         final.state === 'completed'
           ? 'success'
@@ -253,6 +256,7 @@ async function runSteps(ctx: JobContext) {
     try {
       await ctx.connect();
       if (ctx.job.kind === 'scan') await runScan(ctx);
+      else if (ctx.job.kind === 'watch') await runWatch(ctx);
       else await runCleanup(ctx);
       return;
     } catch (err) {
@@ -334,6 +338,39 @@ export async function createScanJob(accountId: string, title: string, scan: Scan
     options: null,
     scan,
     ...(range ? { range } : {}),
+    state: 'queued',
+    phase: '',
+    stateReason: '',
+    stats: emptyStats(),
+    createdAt: now,
+    startedAt: null,
+    finishedAt: null,
+    updatedAt: now,
+  };
+  await db.jobs.put(job);
+  return job;
+}
+
+/** The title of an account's watch job. */
+export const WATCH_TITLE = 'Watch X searches';
+
+/**
+ * The account's watch job (#158): the one not yet finished, or a new queued one. An account has at most one, so
+ * Start watching resumes it, and its counts add up across runs. It does not start it.
+ */
+export async function watchJob(accountId: string): Promise<Job> {
+  const jobs = await db.jobs.where('accountId').equals(accountId).toArray();
+  const open = jobs.find((j) => j.kind === 'watch' && j.finishedAt == null);
+  if (open) return open;
+  const now = Date.now();
+  const job: Job = {
+    id: crypto.randomUUID(),
+    accountId,
+    kind: 'watch',
+    title: WATCH_TITLE,
+    filter: null,
+    options: null,
+    scan: null,
     state: 'queued',
     phase: '',
     stateReason: '',

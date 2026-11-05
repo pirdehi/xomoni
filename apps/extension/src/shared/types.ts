@@ -143,7 +143,7 @@ export interface DateRange {
 }
 
 /** A `cleanup` job changes the account; a `scan` job only reads X to fill the inventory. */
-export type JobKind = 'cleanup' | 'scan';
+export type JobKind = 'cleanup' | 'scan' | 'watch';
 /** waiting = running, but paused until the person completes a login or X check. */
 export type JobState = 'queued' | 'running' | 'waiting' | 'paused' | 'blocked' | 'completed' | 'cancelled' | 'failed';
 

@@ -15,11 +15,13 @@ import type {
   ScrollResult,
   VisibleTweet,
 } from '../shared/messages';
+import type { WatchPost } from '../shared/watch';
 import {
   $,
   $$,
   SEL,
   articleInfo,
+  authorName,
   click,
   closeMenus,
   describeDialog,
@@ -65,6 +67,8 @@ export async function runCommand(command: ActorCommand): Promise<unknown> {
       return guarded(command.id, () => unretweet(command.id));
     case 'canary':
       return canary(command.action, command.id, command.handle);
+    case 'readPosts':
+      return readPosts(command.limit);
     case 'clearPage':
       return clearPage();
   }
@@ -140,6 +144,27 @@ function visibleTweets(): VisibleTweet[] {
     out.push({ ...info, liked: !!$(SEL.unlike, article), reposted: !!$(SEL.unretweet, article) });
   }
   return out;
+}
+
+/**
+ * The newest `limit` posts on the page, in its order, for Watch (#158): id, author, time and text, as X shows
+ * them. Articles without a linked timestamp (ads, quoted posts' shells) are left out. Reads only; clicks nothing.
+ */
+function readPosts(limit: number): WatchPost[] {
+  const posts: WatchPost[] = [];
+  for (const article of $$(SEL.article)) {
+    if (posts.length >= Math.max(0, Math.min(limit, 50))) break;
+    const info = articleInfo(article);
+    if (!info || posts.some((p) => p.id === info.id)) continue;
+    posts.push({
+      id: info.id,
+      handle: info.handle,
+      name: authorName(article),
+      text: ($(SEL.tweetText, article)?.innerText ?? '').trim().slice(0, 1000),
+      time: info.time,
+    });
+  }
+  return posts;
 }
 
 async function scrollMore(): Promise<ScrollResult> {

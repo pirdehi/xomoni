@@ -83,6 +83,7 @@ describe('App navigation', () => {
       ['Cleanup', 'cleanup'],
       ['Archive', 'archive'],
       ['Inventory', 'inventory'],
+      ['Watch', 'watch'],
       ['Jobs', 'jobs'],
       ['Activity log', 'activity'],
       ['Settings', 'settings'],

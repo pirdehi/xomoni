@@ -99,7 +99,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/background`](../apps/extension/src/background/README.md) | Service worker: stores observations, opens the dashboard, handles notification clicks. |
 | [`apps/extension/src/content`](../apps/extension/src/content/README.md) | Content script in the x.com tab: X selectors, user-equivalent actions, response matching. |
 | [`apps/extension/src/inject`](../apps/extension/src/inject/README.md) | Page-world script: reads X's own GraphQL responses and rate-limit headers. Never sends. |
-| [`apps/extension/src/engine`](../apps/extension/src/engine/README.md) | Job runner, pacing limiter, safety policy, cleanup and scan strategies. |
+| [`apps/extension/src/engine`](../apps/extension/src/engine/README.md) | Job runner, pacing limiter, safety policy, cleanup, scan and watch strategies. |
 | [`apps/extension/src/shared`](../apps/extension/src/shared/README.md) | Types, IndexedDB schema, parsers, filters, settings: the extension's kernel. |
 | [`apps/extension/src/cloud`](../apps/extension/src/cloud/README.md) | Connects the browser to a xomoni.com account with a one-time code and reports job status only (ADR-0018). |
 | [`apps/extension/src/ui`](../apps/extension/src/ui/README.md) | The dashboard (React). |

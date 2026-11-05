@@ -6,6 +6,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- Watch: follow up to five phrases or #hashtags in X's search, two tabs to start. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads; nothing is liked, replied to or posted (ADR-0021).
 - Run hidden: press it on the dashboard and share the X tab in Chrome's picker, and a job keeps going with the X window minimized or covered. Only the tab is shared; nothing of it is recorded or sent (ADR-0020).
 - Keep going while you're away (on by default): the display stays on while a job runs, and after two minutes without keyboard or mouse a covered X window comes forward so the job continues. A hidden window is waited for up to a day instead of an hour.
 - Connect the extension to a xomoni.com account with a one-time code, and follow its jobs live on the dashboard. Only job status is sent (ADR-0018).

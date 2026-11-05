@@ -11,6 +11,10 @@ export const SEL = {
   menuItem: '[role="menu"] [role="menuitem"]',
   /** The confirm button of X's "Delete post?" sheet. */
   confirm: '[data-testid="confirmationSheetConfirm"]',
+  /** A post's text. */
+  tweetText: '[data-testid="tweetText"]',
+  /** A post's author line: display name, then @handle. */
+  userName: '[data-testid="User-Name"]',
   like: '[data-testid="like"]',
   unlike: '[data-testid="unlike"]',
   retweet: '[data-testid="retweet"]',
@@ -93,6 +97,19 @@ export function articleInfo(article: Element): { id: string; handle: string; tim
     return { handle, id, time: Number.isNaN(t) ? null : t };
   }
   return null;
+}
+
+/**
+ * The author's display name on a post: the first link in its author line that isn't the @handle (X links both to
+ * the profile). Empty when there is none.
+ */
+export function authorName(article: Element): string {
+  const line = $(SEL.userName, article);
+  for (const link of line ? $$('a', line) : []) {
+    const text = link.textContent.trim();
+    if (text && !text.startsWith('@')) return text.slice(0, 100);
+  }
+  return '';
 }
 
 /**

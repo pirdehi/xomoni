@@ -215,6 +215,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 - **Scenario (implemented, #15):**
   - If the first search page is empty but the inventory (archive or profile) still has matching posts, the job notes "X search showed none of the N matching posts in your inventory" and finishes **with a warning**, never as a plain Completed.
   - The deep clean visits those posts one by one (the note says to turn it on if it is off); small accounts are swept on the profile timeline first (E2).
+  - Watch (#158, [ADR-0021](adr/0021-watch-x-search-read-only.md)) shows only what X's search shows. Each check is one paced page load of the `search` budget (60 per 15 minutes) under Xomoni's page-load ceiling, so a tab is searched at most once a minute and often less. Watch only reads: it never likes, replies or posts.
 
 ### C7. Ban on non-API automation in X's rules · 📘 · ⚠️
 - **Rule:** "Non-API automation, such as scripting the X website" is prohibited and may lead to suspension.

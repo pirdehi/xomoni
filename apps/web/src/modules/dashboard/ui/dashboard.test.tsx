@@ -389,7 +389,7 @@ describe('Dashboard', () => {
 
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
       expect(fake.services.registry.disconnect).not.toHaveBeenCalled();
-      expect(screen.getByRole('region', { name: 'Connected browsers' })).toHaveTextContent('Chrome on macOS');
+      expect(await screen.findByRole('region', { name: 'Connected browsers' })).toHaveTextContent('Chrome on macOS');
     });
 
     it('tells the person when disconnecting failed, and keeps the browser', async () => {
@@ -407,7 +407,8 @@ describe('Dashboard', () => {
       // Cancelling clears the reason; asking again starts clean.
       await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-      await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+      // Found, not got: right after a modal dialog closes, Fluent keeps the page aria-hidden for a moment.
+      await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
       expect(within(await screen.findByRole('alertdialog')).queryByRole('alert')).not.toBeInTheDocument();
     });
   });

@@ -43,6 +43,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 
 - **Test behavior, not implementation.** Components are queried by role, label and visible text, the way a person finds them. No snapshot tests.
 - **No real waiting.** Use `findBy…`, `vi.waitFor` or fake timers. No `setTimeout` sleeps.
+- **Find what follows a dialog.** Right after a Fluent dialog opens or closes, the rest of the page is `aria-hidden` for a moment. Look up the dialog and the page's controls with `findBy…`, not `getBy…`, in that moment.
 - **Independent tests.** Each test sets up its own data: `resetDb()` for the extension, `resetNavigation()` and `resetTurnstile()` for the website.
 - **Fakes live in one place.** Extension: `apps/extension/tests/support/` (`stubChrome()`, account and page fixtures). Website: `apps/web/test/fakes/` (`next/navigation`, `server-only`, the Turnstile widget), wired in `vitest.config.ts`.
 - **Component test files** start with `// @vitest-environment happy-dom`; the extension's also import `fake-indexeddb/auto`.
@@ -60,3 +61,5 @@ supabase start && npm run test:e2e -w @xomoni/web   # end to end (needs Docker)
 ```
 
 Coverage reports are written to `coverage/` in each workspace (`index.html`).
+
+Vitest runs on half the machine's cores (`maxWorkers: '50%'` in each workspace's config). With a worker on every core, component tests ran past their waits whenever other apps were busy; with half, the suite is faster and passes every time.

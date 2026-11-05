@@ -11,20 +11,22 @@ const deleteAction = vi.mocked(deleteAccount);
 
 const NEEDS_SIGN_IN = 'To delete your account, sign in again first.';
 
-const deleteButton = () => screen.getByRole('button', { name: 'Delete my Xomoni account' });
-const dialog = () => screen.getByRole('dialog', { name: 'Delete your Xomoni account?' });
-const confirmButton = () => within(dialog()).getByRole('button', { name: 'Delete account' });
+// Found, not got: right after a modal dialog closes, Fluent keeps the rest of the page aria-hidden for a moment, and
+// a dialog takes a moment to open on a busy machine.
+const deleteButton = () => screen.findByRole('button', { name: 'Delete my Xomoni account' });
+const dialog = () => screen.findByRole('dialog', { name: 'Delete your Xomoni account?' });
+const confirmButton = async () => within(await dialog()).getByRole('button', { name: 'Delete account' });
 
 /** Opens the confirmation and types `word` into it. */
 async function openAndType(word: string) {
-  await userEvent.click(deleteButton());
-  if (word) await userEvent.type(within(dialog()).getByLabelText('Type DELETE to confirm'), word);
+  await userEvent.click(await deleteButton());
+  if (word) await userEvent.type(within(await dialog()).getByLabelText('Type DELETE to confirm'), word);
 }
 
 /** Opens the confirmation, types DELETE and confirms. */
 async function confirmDeletion() {
   await openAndType('DELETE');
-  await userEvent.click(confirmButton());
+  await userEvent.click(await confirmButton());
 }
 
 describe('DeleteAccountSection', () => {
@@ -32,23 +34,23 @@ describe('DeleteAccountSection', () => {
     deleteAction.mockReset();
   });
 
-  it('says what goes and what stays', () => {
+  it('says what goes and what stays', async () => {
     render(<DeleteAccountSection />);
 
     const section = screen.getByRole('region', { name: 'Delete account' });
     expect(section).toHaveTextContent('Your X account and everything stored in the extension stay as they are.');
-    expect(deleteButton()).toHaveAttribute('data-variant', 'danger');
+    expect(await deleteButton()).toHaveAttribute('data-variant', 'danger');
   });
 
   it('asks the person to type DELETE, saying nothing on X is deleted', async () => {
     render(<DeleteAccountSection />);
 
-    await userEvent.click(deleteButton());
+    await userEvent.click(await deleteButton());
 
-    expect(dialog()).toHaveTextContent('Nothing on X is deleted');
-    const field = within(dialog()).getByLabelText('Type DELETE to confirm');
+    expect(await dialog()).toHaveTextContent('Nothing on X is deleted');
+    const field = within(await dialog()).getByLabelText('Type DELETE to confirm');
     await waitFor(() => expect(field).toHaveFocus());
-    expect(confirmButton()).toBeDisabled();
+    expect(await confirmButton()).toBeDisabled();
   });
 
   it.each([
@@ -62,7 +64,7 @@ describe('DeleteAccountSection', () => {
     await openAndType(word);
     await userEvent.keyboard('{Enter}');
 
-    expect(confirmButton()).toBeDisabled();
+    expect(await confirmButton()).toBeDisabled();
     expect(deleteAction).not.toHaveBeenCalled();
   });
 
@@ -70,13 +72,13 @@ describe('DeleteAccountSection', () => {
     render(<DeleteAccountSection />);
 
     await openAndType('DELETE');
-    await userEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(within(await dialog()).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(deleteAction).not.toHaveBeenCalled();
-    await userEvent.click(deleteButton());
-    expect(within(dialog()).getByLabelText('Type DELETE to confirm')).toHaveValue('');
-    expect(confirmButton()).toBeDisabled();
+    await userEvent.click(await deleteButton());
+    expect(within(await dialog()).getByLabelText('Type DELETE to confirm')).toHaveValue('');
+    expect(await confirmButton()).toBeDisabled();
   });
 
   it('deletes the account once DELETE is typed, and blocks a second click meanwhile', async () => {
@@ -88,9 +90,9 @@ describe('DeleteAccountSection', () => {
 
     expect(deleteAction).toHaveBeenCalledOnce();
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Deleting…' })).toBeDisabled();
     await act(async () => finish({ error: 'Something went wrong on our side. Try again in a moment.' }));
-    expect(deleteButton()).toBeEnabled();
+    expect(await deleteButton()).toBeEnabled();
   });
 
   it('confirms with Enter once DELETE is typed', async () => {

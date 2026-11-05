@@ -22,6 +22,9 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['test/setup.ts'],
     testTimeout: 15_000,
+    // Half the machine's cores: component tests wait on rendering, and with a worker on every core they ran past
+    // their waits whenever other apps were busy too. Fewer workers finished the suite faster and every time.
+    maxWorkers: '50%',
     // The public settings the site reads at import time; tests never reach these addresses.
     env: {
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3000',

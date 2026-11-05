@@ -27,6 +27,9 @@ export default defineConfig({
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['tests/setup.ts'],
     testTimeout: 15_000,
+    // Half the machine's cores: component tests wait on rendering, and with a worker on every core they ran past
+    // their waits whenever other apps were busy too. Fewer workers finished the suite faster and every time.
+    maxWorkers: '50%',
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

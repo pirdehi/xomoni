@@ -16,7 +16,8 @@ import {
 import { ArrowDownload20Regular, Delete20Regular, ShieldCheckmark16Regular } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { db, getSettings, kvSet } from '../../shared/db';
+import { FORGOTTEN_HERE, disconnect } from '../../cloud/sync';
+import { db, getSettings, kvSet, wipeLocalData } from '../../shared/db';
 import { FINISHED_ID, notify } from '../../shared/notify';
 import { ACTION_LABELS, PRESETS, normalizeSettings } from '../../shared/settings';
 import { DAY } from '../../shared/time';
@@ -163,16 +164,12 @@ export function SettingsPage(_props: PageProps) {
   };
 
   const wipe = async () => {
-    await Promise.all([
-      db.items.clear(),
-      db.jobs.clear(),
-      db.logs.clear(),
-      db.limits.clear(),
-      db.accounts.clear(),
-      db.kv.clear(),
-    ]);
+    // xomoni.com first: telling it needs the token the wipe deletes (#151).
+    const cloud = await disconnect().catch(() => 'forgotten-here' as const);
+    await wipeLocalData();
     setWiping(false);
     toast('All local Xomoni data was deleted', 'good');
+    if (cloud === 'forgotten-here') toast(FORGOTTEN_HERE, 'critical');
   };
 
   return (
@@ -382,7 +379,9 @@ export function SettingsPage(_props: PageProps) {
           </>
         }
       >
-        This removes Xomoni’s inventory, jobs, activity log and settings from this browser. Nothing on X is changed.
+        This removes Xomoni’s inventory, jobs, activity log, settings and xomoni.com connection from this browser. It
+        keeps when pages were loaded in the last day and the risk ladder’s warnings, so X’s limits still hold. Nothing
+        on X is changed.
       </Modal>
     </>
   );

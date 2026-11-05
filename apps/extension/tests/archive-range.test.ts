@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
 import type { JobContext } from '../src/engine/context';
 import { runScan, scanUrls } from '../src/engine/scan';
-import { archiveHtml, archiveItems, archiveJson, escapeHtml, itemUrl } from '../src/shared/backup';
+import { ARCHIVE_CSP, archiveHtml, archiveItems, archiveJson, escapeHtml, itemUrl } from '../src/shared/backup';
 import type { DateRange, Item, Job } from '../src/shared/types';
 
 const DAY = 86_400_000;
@@ -152,6 +152,16 @@ describe('the archive file for a date range', () => {
     expect(html).not.toMatch(/<script|<img|<b>/i);
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;quotes&quot; &#39;single&#39;<br>');
     expect(escapeHtml('<a href="x">')).toBe('&lt;a href=&quot;x&quot;&gt;');
+  });
+
+  it('forbids scripts, frames, forms and connections in the page itself (#151)', () => {
+    const html = archiveHtml({ handle: 'me', name: 'Me' }, RANGE, archiveItems(ITEMS, RANGE, ['post']));
+    const head = html.slice(0, html.indexOf('</head>'));
+    expect(head).toContain(`<meta http-equiv="Content-Security-Policy" content="${ARCHIVE_CSP}">`);
+    // The policy comes before anything it governs.
+    expect(head.indexOf('Content-Security-Policy')).toBeLessThan(head.indexOf('<style>'));
+    expect(ARCHIVE_CSP).toMatch(/^default-src 'none';/);
+    expect(ARCHIVE_CSP).not.toMatch(/script-src|connect-src|unsafe-eval/);
   });
 
   it('marks deleted items and groups them by month', () => {

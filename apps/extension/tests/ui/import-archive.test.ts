@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { archiveImported, db } from '../../src/shared/db';
-import { importArchive } from '../../src/ui/importArchive';
+import { MAX_ACCOUNT_FILE_BYTES, MAX_ARCHIVE_FILE_BYTES, importArchive } from '../../src/ui/importArchive';
 import { accountJs, draft, likeJs, seed, tweetsJs, watchNetwork, ytdFile } from '../support/cleanup-pages';
 import { ME, account, resetDb } from '../support/fixtures';
 
@@ -43,6 +43,37 @@ describe('importArchive', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it('refuses a file larger than it reads, before reading or saving anything (#151)', async () => {
+    const huge = tweetsJs([]);
+    Object.defineProperty(huge, 'size', { value: MAX_ARCHIVE_FILE_BYTES + 1 });
+    const account = accountJs(ME, 'me');
+    const read = [watchRead(huge), watchRead(account), watchRead(LIKES)];
+
+    await expect(importArchive([account, huge, LIKES], ME_ACCOUNT, vi.fn())).rejects.toThrow(
+      'tweets.js is 513 MB, larger than Xomoni reads (512 MB). Check that you chose the “data” folder of your own X archive. Nothing was imported.',
+    );
+    for (const spy of read) expect(spy).not.toHaveBeenCalled();
+    expect(await db.items.count()).toBe(0);
+  });
+
+  it('refuses an account.js far larger than X makes one', async () => {
+    const account = accountJs(ME, 'me');
+    Object.defineProperty(account, 'size', { value: MAX_ACCOUNT_FILE_BYTES + 1 });
+
+    await expect(importArchive([account, TWEETS], ME_ACCOUNT, vi.fn())).rejects.toThrow(
+      /^account\.js is 2 MB, larger than Xomoni reads \(1 MB\)/,
+    );
+    expect(await db.items.count()).toBe(0);
+  });
+
+  it('reads a file right at the limit', async () => {
+    Object.defineProperty(TWEETS, 'size', { value: MAX_ARCHIVE_FILE_BYTES, configurable: true });
+    await expect(importArchive([accountJs(ME, 'me'), TWEETS], ME_ACCOUNT, vi.fn())).resolves.toMatchObject({
+      tweets: 4,
+    });
+    Reflect.deleteProperty(TWEETS, 'size');
   });
 
   it('merges tweets and likes of the connected account into the inventory', async () => {

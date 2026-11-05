@@ -82,6 +82,13 @@ const STATUS_NOTE: Record<Item['status'], string> = {
 };
 
 /**
+ * The Content-Security-Policy of a downloaded archive page (#151): no scripts, frames, forms or connections, only
+ * its own inline styles and images from `data:` or https. Post text is escaped anyway; this holds if that ever slips.
+ */
+export const ARCHIVE_CSP =
+  "default-src 'none'; style-src 'unsafe-inline'; img-src data: https:; base-uri 'none'; form-action 'none'";
+
+/**
  * The archive as one self-contained HTML page to open in any browser: no scripts, no outside files, every
  * post's text escaped. Grouped by month, oldest first. `dateLabel` formats a time for headings and entries.
  */
@@ -120,6 +127,7 @@ export function archiveHtml(
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="${ARCHIVE_CSP}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
 <style>

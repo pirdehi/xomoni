@@ -85,6 +85,24 @@ class XomoniDB extends Dexie {
  */
 export const db = new XomoniDB();
 
+/**
+ * Tables "Delete local data" keeps on purpose (#151). They hold no X content, only account ids and times, and keep
+ * Xomoni within X's limits and the risk ladder: page loads of the last 24 hours (`reads`) and the risk events
+ * (`risk`). Without them, a wipe right after a warning from X would let Xomoni run at full pace again at once.
+ */
+export const KEPT_ON_WIPE: readonly string[] = ['reads', 'risk'];
+
+/**
+ * Deletes everything Xomoni keeps in this browser except `KEPT_ON_WIPE`, in one transaction: the inventory, jobs,
+ * the activity log, X's observed limits, accounts, sampled post ids to check again (`checks`), consents, and
+ * `kv` (settings, Watch, the xomoni.com connection). A table added later is wiped too unless it is listed there.
+ * Disconnect from xomoni.com first: that needs the token this deletes.
+ */
+export async function wipeLocalData() {
+  const wiped = db.tables.filter((table) => !KEPT_ON_WIPE.includes(table.name));
+  await db.transaction('rw', wiped, () => Promise.all(wiped.map((table) => table.clear())));
+}
+
 /** Primary key of an inventory item in the `items` table. */
 export const itemKey = (accountId: string, kind: ItemKind, id: string) => `${accountId}:${kind}:${id}`;
 

@@ -7,13 +7,13 @@ Connects this browser to a xomoni.com account and keeps the website's dashboard 
 | `config.ts`     | The public Supabase URL and publishable key (the same ones the website ships), and the page where codes are made.                                                                                                                                |
 | `client.ts`     | `pairDevice`, `reportStatus`, `unpairDevice`: the three functions a device may call, as `fetch` to PostgREST with no session; `CloudError` with a reason (`bad_code`, `device_limit`, `unknown_device`, `unreachable`, `refused`).               |
 | `summary.ts`    | `jobReport`: one job as the website stores it, with the reason always empty. Pure.                                                                                                                                                               |
-| `connection.ts` | The device id and token in `chrome.storage.local`, apart from the X data in IndexedDB; `watchConnection` for the UI.                                                                                                                             |
+| `connection.ts` | The device id and token in the extension's IndexedDB (`kv`, key `cloud`), where content scripts can't reach them (#151); an older copy in `chrome.storage.local` is moved on first read. `watchConnection` for the UI. |
 | `sync.ts`       | `connect` (trade a code, report the newest 50 jobs), `disconnect`, `syncOnce` (heartbeat plus jobs updated since the last report, 50 at a time) and `startCloudSync` (a report a few seconds after a job changes, and at least every 5 minutes). |
 
 ## Depends on
 
 - `../shared/` only (rule `ext-cloud-is-isolated`): the database, the risk ladder and the JSON readers.
-- `fetch`, `chrome.storage.local` and `chrome.runtime.getManifest`.
+- `fetch`, `chrome.runtime.getManifest`, and `chrome.storage.local` only to move a connection an earlier version kept there.
 
 ## Used by
 
@@ -21,5 +21,5 @@ Connects this browser to a xomoni.com account and keeps the website's dashboard 
 
 ## Tests
 
-- `../../tests/cloud.test.ts`: the client's requests and error reasons, the job report (no reason, valid handles only), the stored connection, connecting, reporting changes once, heartbeats, and disconnection by the website.
+- `../../tests/cloud.test.ts`: the client's requests and error reasons, the job report (no reason, valid handles only), the stored connection (in IndexedDB, moved from `chrome.storage.local`), connecting, reporting changes once, heartbeats, disconnection by the website, and a disconnect the website couldn't be told about (`FORGOTTEN_HERE`, #151).
 - `../../tests/ui/cloud-card.test.tsx`: connecting and disconnecting from Settings, and the refused-code message.

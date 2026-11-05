@@ -18,6 +18,11 @@ revoke execute on function public.touch_updated_at() from public, anon, authenti
 revoke all on public.devices, public.jobs from anon, authenticated;
 grant select, insert, update, delete on public.devices, public.jobs to authenticated;
 
+-- service_role, the admin key that bypasses Row Level Security, keeps what production gave it by default. The
+-- apps never hold it (SECURITY.md); the local stack's tests seed data with it.
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+
 -- ── A job's reason stays in the browser (ADR-0004) ────────────────────────────────────────────────
 update public.jobs set state_reason = '' where state_reason <> '';
 alter table public.jobs add constraint jobs_state_reason_empty check (state_reason = '');

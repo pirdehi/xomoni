@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CloudError } from '../../cloud/client';
 import { PAIRING_PAGE } from '../../cloud/config';
 import { type CloudConnection, getConnection, watchConnection } from '../../cloud/connection';
-import { connect, disconnect } from '../../cloud/sync';
+import { FORGOTTEN_HERE, connect, disconnect } from '../../cloud/sync';
 import { errorMessage, fmtDateTime } from '../format';
 import { toast } from '../hooks';
 import { Button, Card, Field } from './ui';
@@ -62,11 +62,16 @@ function useConnection(): CloudConnection | null | undefined {
   const [connection, setConnection] = useState<CloudConnection | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
+    // Called at once and after every change; a read that fails after the card is gone is of no interest.
     const load = () =>
-      void getConnection().then((c) => {
-        if (alive) setConnection(c);
-      });
-    load();
+      void getConnection().then(
+        (c) => {
+          if (alive) setConnection(c);
+        },
+        (err: unknown) => {
+          if (alive) console.warn('[xomoni] could not read the xomoni.com connection', err);
+        },
+      );
     const stop = watchConnection(load);
     return () => {
       alive = false;
@@ -106,8 +111,8 @@ export function CloudCard() {
   const onDisconnect = async () => {
     setBusy(true);
     try {
-      await disconnect();
-      toast('Disconnected from xomoni.com');
+      if ((await disconnect()) === 'forgotten-here') setError(FORGOTTEN_HERE);
+      else toast('Disconnected from xomoni.com');
     } finally {
       setBusy(false);
     }

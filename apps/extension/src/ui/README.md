@@ -31,7 +31,7 @@ The React dashboard (`dashboard.html`), which runs as an extension page in a nor
 | `pages/Jobs.tsx`               | List of jobs, each with its log on demand.                                                                                                                                                                             |
 | `pages/Watch.tsx`              | Watch (#158, ADR-0021): tabs for phrases or #hashtags (2 by default, up to 5; added ones removable), Start and Pause watching (the account's one watch job), when each was checked, and the newest 10 posts with a link to X, each in its own text direction. It waits while another job holds the X window. |
 | `pages/Activity.tsx`           | Full activity log with a level filter and CSV export.                                                                                                                                                                  |
-| `pages/Settings.tsx`           | Pacing presets and rules, active hours, notifications, failure limit, theme, and export or wipe of local data.                                                                                                         |
+| `pages/Settings.tsx`           | Pacing presets and rules, active hours, notifications, failure limit, theme, and export or wipe of local data. The wipe disconnects xomoni.com first, then clears every table but `KEPT_ON_WIPE` (#151). |
 
 ## Depends on
 

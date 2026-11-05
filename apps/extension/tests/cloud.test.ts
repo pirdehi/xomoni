@@ -6,7 +6,7 @@ import { clearConnection, getConnection, saveConnection, watchConnection } from 
 import { jobReport } from '../src/cloud/summary';
 import { HEARTBEAT_MS, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
 import { createCleanupJob } from '../src/engine/runner';
-import { recordRisk, upsertAccount } from '../src/shared/db';
+import { db, recordRisk, upsertAccount } from '../src/shared/db';
 import type { Job } from '../src/shared/types';
 import { stubChrome } from './support/chrome';
 import { ME, resetDb } from './support/fixtures';
@@ -132,20 +132,37 @@ describe('a job report (ADR-0004)', () => {
 });
 
 describe('the stored connection', () => {
-  it('keeps the device and token in chrome.storage.local, and forgets them', async () => {
-    const changed = vi.fn();
-    const stop = watchConnection(changed);
-    expect(await getConnection()).toBeNull();
-    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+  const CONNECTION = { deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 };
+
+  it('keeps the device and token in the extension’s IndexedDB, out of content scripts’ reach (#151)', async () => {
+    const seen: (string | null)[] = [];
+    const stop = watchConnection(() => void getConnection().then((c) => seen.push(c?.token ?? null)));
+    await vi.waitFor(() => expect(seen).toEqual([null]));
+    await saveConnection(CONNECTION);
     expect(await getConnection()).toMatchObject({ deviceId: 'd1', token: 't' });
+    expect(await db.kv.get('cloud')).toMatchObject({ value: { token: 't' } });
+    // Nothing in chrome.storage.local, which content scripts can read.
+    expect(await chrome.storage.local.get(null)).toEqual({});
+    await vi.waitFor(() => expect(seen.at(-1)).toBe('t'));
     await clearConnection();
     expect(await getConnection()).toBeNull();
-    expect(changed).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(seen.at(-1)).toBeNull());
     stop();
   });
 
-  it('ignores a stored value it can’t use', async () => {
+  it('moves a connection an earlier version kept in chrome.storage.local, and leaves nothing there', async () => {
+    await chrome.storage.local.set({ cloud: CONNECTION });
+    expect(await getConnection()).toEqual(CONNECTION);
+    expect(await chrome.storage.local.get('cloud')).toEqual({});
+    expect(await db.kv.get('cloud')).toMatchObject({ value: CONNECTION });
+    expect(await getConnection()).toEqual(CONNECTION);
+  });
+
+  it('ignores a stored value it can’t use, and clears an unusable old one', async () => {
     await chrome.storage.local.set({ cloud: { deviceId: 5 } });
+    expect(await getConnection()).toBeNull();
+    expect(await chrome.storage.local.get('cloud')).toEqual({});
+    await db.kv.put({ key: 'cloud', value: { token: 7 } });
     expect(await getConnection()).toBeNull();
   });
 });
@@ -204,12 +221,27 @@ describe('reporting', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('disconnects: tells the website when it can, and forgets the token either way', async () => {
+  it('disconnects: tells the website, and forgets the token', async () => {
     await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
-    fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    await disconnect();
+    expect(await disconnect()).toBe('disconnected');
     expect(fetch.mock.calls[0]?.[0]).toMatch(/unpair_device$/);
     expect(await getConnection()).toBeNull();
+  });
+
+  it('says so when the website couldn’t be told, and forgets the token anyway (#151)', async () => {
+    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    expect(await disconnect()).toBe('forgotten-here');
+    expect(await getConnection()).toBeNull();
+
+    await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+    fetch.mockReturnValueOnce(json(500, { message: 'boom' }));
+    expect(await disconnect()).toBe('forgotten-here');
+  });
+
+  it('has nothing to disconnect when this browser isn’t connected', async () => {
+    expect(await disconnect()).toBe('idle');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('runs at once, after job changes and on every heartbeat, and stops cleanly', async () => {

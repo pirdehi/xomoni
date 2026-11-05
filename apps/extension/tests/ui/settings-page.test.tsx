@@ -4,7 +4,9 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } 
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createScanJob } from '../../src/engine/runner';
-import { db, kvGet, kvSet } from '../../src/shared/db';
+import { getConnection, saveConnection } from '../../src/cloud/connection';
+import { FORGOTTEN_HERE } from '../../src/cloud/sync';
+import { KEPT_ON_WIPE, db, kvGet, kvSet } from '../../src/shared/db';
 import { FINISHED_ID } from '../../src/shared/notify';
 import { ACTION_LABELS, DEFAULT_SETTINGS, PRESETS } from '../../src/shared/settings';
 import type { ActionKind, PacingRule, Settings } from '../../src/shared/types';
@@ -447,6 +449,67 @@ describe('Settings page', () => {
       }
       // Settings are back to the defaults.
       expect(await screen.findByRole('switch', { name: /Desktop notifications/ })).toBeChecked();
+    });
+
+    it('wipes every table but the two that keep X’s limits in force, and disconnects xomoni.com first (#151)', async () => {
+      const now = Date.now();
+      await db.checks.add({
+        accountId: ME,
+        jobId: 'job-1',
+        action: 'delete',
+        postId: '1000000001',
+        at: now,
+        dueAt: now,
+      });
+      await db.consents.put({ accountId: ME, version: 1, at: now });
+      await db.reads.add({ accountId: ME, budget: 'search', ts: now, posts: 20 });
+      await db.risk.add({ accountId: ME, kind: 'rate_limited', at: now });
+      await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+      const fetch = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+      vi.stubGlobal('fetch', fetch);
+      await renderPage();
+      const toasts = renderHook(() => useToasts());
+
+      const open = await screen.findByRole('button', { name: 'Delete local data' });
+      await userEvent.click(open);
+      const dialog = await screen.findByRole('dialog');
+      expect(dialog).toHaveTextContent('xomoni.com connection');
+      expect(dialog).toHaveTextContent('so X’s limits still hold');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Delete local data' }));
+
+      await waitFor(() => {
+        expect(toasts.result.current).toContainEqual(
+          expect.objectContaining({ text: 'All local Xomoni data was deleted' }),
+        );
+      });
+      expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/unpair_device$/), expect.anything());
+      expect(await getConnection()).toBeNull();
+      for (const table of db.tables) {
+        expect(await table.count(), table.name).toBe(KEPT_ON_WIPE.includes(table.name) ? 1 : 0);
+      }
+      expect(toasts.result.current).not.toContainEqual(expect.objectContaining({ text: FORGOTTEN_HERE }));
+    });
+
+    it('says to remove this browser on xomoni.com when the website couldn’t be reached', async () => {
+      await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+      );
+      await renderPage();
+      const toasts = renderHook(() => useToasts());
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Delete local data' }));
+      await userEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete local data' }),
+      );
+
+      await waitFor(() => {
+        expect(toasts.result.current).toContainEqual(
+          expect.objectContaining({ text: FORGOTTEN_HERE, tone: 'critical' }),
+        );
+      });
+      expect(await getConnection()).toBeNull();
     });
 
     it('closes the delete dialog with Escape', async () => {

@@ -77,6 +77,22 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     expect(fetch.mock.calls.at(-1)?.[0]).toMatch(/unpair_device$/);
   });
 
+  it('tells the person to remove the browser on the website when it couldn’t be told (#151)', async () => {
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome on macOS',
+      connectedAt: 1,
+      reportedUpTo: 0,
+    });
+    fetch.mockRejectedValue(new TypeError('Failed to fetch'));
+    render(<CloudCard />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('remove it under Connected browsers on xomoni.com');
+    expect(await getConnection()).toBeNull();
+  });
+
   it('suggests a name from the browser and the system', () => {
     const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/156.0 Safari/537.36';
     expect(suggestedDeviceName(mac)).toBe('Chrome on macOS');

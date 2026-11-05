@@ -72,12 +72,24 @@ export async function connect(code: string, deviceName: string): Promise<CloudCo
   return connection;
 }
 
-/** Disconnects this browser: tells xomoni.com when it can, and forgets the token either way. */
-export async function disconnect(): Promise<void> {
+/** What the person is told when xomoni.com couldn't be told about a disconnect (#151). */
+export const FORGOTTEN_HERE =
+  'Couldn’t reach xomoni.com, so this browser was forgotten here only. To end its access, remove it under Connected browsers on xomoni.com.';
+
+/**
+ * Disconnects this browser and forgets its token either way. `disconnected` when xomoni.com was told, so the token
+ * stops working there; `forgotten-here` when it couldn't be reached, so the browser stays listed on the website
+ * until the person removes it there (`FORGOTTEN_HERE`); `idle` when it wasn't connected.
+ */
+export async function disconnect(): Promise<'disconnected' | 'forgotten-here' | 'idle'> {
   const connection = await getConnection();
-  if (!connection) return;
-  await unpairDevice(connection.token).catch(() => undefined);
+  if (!connection) return 'idle';
+  const told = await unpairDevice(connection.token).then(
+    () => true,
+    () => false,
+  );
   await clearConnection();
+  return told ? 'disconnected' : 'forgotten-here';
 }
 
 /**

@@ -6,7 +6,7 @@ import { clearConnection, getConnection, saveConnection, watchConnection } from 
 import { currentUpdateNotice } from '../src/cloud/release';
 import { jobReport } from '../src/cloud/summary';
 import { HEARTBEAT_MS, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
-import { createCleanupJob } from '../src/engine/runner';
+import { createCleanupJob, watchJob } from '../src/engine/runner';
 import { db, recordRisk, upsertAccount } from '../src/shared/db';
 import type { Job } from '../src/shared/types';
 import { stubChrome } from './support/chrome';
@@ -125,6 +125,10 @@ describe('a job report (ADR-0004)', () => {
     });
   });
 
+  it('is left out for a Watch job, which only reads and never ends (#158)', () => {
+    expect(jobReport(job({ kind: 'watch', title: 'Watch X searches' }), 'me', 0)).toBeNull();
+  });
+
   it('is left out for an account without a valid handle, and cuts long titles', () => {
     expect(jobReport(job(), '', 0)).toBeNull();
     expect(jobReport(job(), 'not a handle', 0)).toBeNull();
@@ -197,6 +201,20 @@ describe('reporting', () => {
     fetch.mockReturnValueOnce(json(200, { latest: '0.4.0', security: true }));
     expect(await syncOnce()).toBe('ok');
     expect(await currentUpdateNotice('0.3.0')).toEqual({ version: '0.4.0', security: true });
+  });
+
+  it('keeps reporting other jobs when a Watch job ran, and moves past it (#158)', async () => {
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret' }]));
+    await connect('code', 'Chrome');
+    fetch.mockClear();
+
+    await watchJob(ME);
+    const cleanup = await createCleanupJob(ME, 'Delete posts', FILTER, OPTIONS);
+    expect(await syncOnce()).toBe('ok');
+    expect(sentBody(fetch, 0).jobs).toEqual([expect.objectContaining({ local_id: cleanup.id, kind: 'cleanup' })]);
+    // Nothing is left behind for the next report.
+    expect(await syncOnce()).toBe('ok');
+    expect(sentBody(fetch, 1).jobs).toEqual([]);
   });
 
   it('sends each job update once, then only heartbeats', async () => {

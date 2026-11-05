@@ -3,11 +3,17 @@
 import { isHandle } from '../shared/ids';
 import type { Job } from '../shared/types';
 
+/**
+ * The job kinds the website shows, as the `jobs` table allows them. Watch (#158) only reads and never ends, so it
+ * stays in the browser: reported, it would show as running forever, and the database refuses its kind.
+ */
+export type ReportedKind = Exclude<Job['kind'], 'watch'>;
+
 /** One job as `device_report` stores it. Field names follow the `jobs` table. */
 export interface JobReport {
   local_id: string;
   x_handle: string;
-  kind: Job['kind'];
+  kind: ReportedKind;
   title: string;
   state: Job['state'];
   phase: string;
@@ -27,10 +33,11 @@ const iso = (ms: number | null) => (ms == null ? null : new Date(ms).toISOString
 
 /**
  * The report for `job` of the X account `handle` at risk level `riskLevel` (0–4), or null when the handle isn't
- * one X allows (the account was never seen with its handle), since the website groups jobs by handle.
+ * one X allows (the account was never seen with its handle), since the website groups jobs by handle, or when the
+ * job is a Watch, which the website doesn't show (`ReportedKind`).
  */
 export function jobReport(job: Job, handle: string, riskLevel: number | null): JobReport | null {
-  if (!isHandle(handle)) return null;
+  if (job.kind === 'watch' || !isHandle(handle)) return null;
   const { matched, done, skipped, failed, scanned } = job.stats;
   return {
     local_id: job.id,

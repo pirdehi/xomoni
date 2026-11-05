@@ -61,6 +61,8 @@ describe('Watch page (#158)', () => {
   it('saves a phrase or #hashtag and names the tab after it', async () => {
     await renderPage();
     const field = screen.getByRole('textbox', { name: /Phrase or #hashtag/ });
+    // Persian or English, each query reads in its own direction.
+    expect(field).toHaveAttribute('dir', 'auto');
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
 
     await userEvent.type(field, '  #برنامه_نویس  ');

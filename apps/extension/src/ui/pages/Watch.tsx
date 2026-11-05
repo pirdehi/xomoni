@@ -44,6 +44,7 @@ const useStyles = makeStyles({
   panel: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalM },
   form: { display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
   query: { flexGrow: 1, minWidth: '240px' },
+  input: { width: '100%' },
   meta: { color: tokens.colorNeutralForeground3 },
   posts: { listStyleType: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' },
   post: {
@@ -200,6 +201,8 @@ function TabPanel({
         <div className={styles.query}>
           <Field label="Phrase or #hashtag" hint={'A word, #hashtag or "exact phrase". X’s search operators work too.'}>
             <Input
+              className={styles.input}
+              dir="auto"
               value={draft}
               maxLength={MAX_QUERY_LENGTH}
               placeholder="#hashtag"

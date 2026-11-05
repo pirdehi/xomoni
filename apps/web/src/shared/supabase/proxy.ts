@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@xomoni/db';
 import { NextResponse, type NextRequest } from 'next/server';
-import { SUPABASE_KEY, SUPABASE_URL } from './env';
+import { SESSION_COOKIE_OPTIONS, SUPABASE_KEY, SUPABASE_URL } from './env';
 
 /** A Supabase client for the proxy, plus the response that carries any refreshed session cookies. */
 export interface ProxySupabase {
@@ -24,6 +24,7 @@ export function createProxySupabase(request: NextRequest): ProxySupabase {
   const sessionHeaders: Record<string, string> = {};
 
   const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+    cookieOptions: SESSION_COOKIE_OPTIONS,
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet, headers) {

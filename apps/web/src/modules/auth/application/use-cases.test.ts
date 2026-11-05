@@ -248,7 +248,8 @@ describe('passwords while signed in', () => {
       password: 'old password 1',
       captchaToken: 't',
     });
-    expect(d.auth.updatePassword).toHaveBeenCalledWith(GOOD_PASSWORD);
+    // The current password goes with the change too, so the provider can check it itself (#148).
+    expect(d.auth.updatePassword).toHaveBeenCalledWith(GOOD_PASSWORD, 'old password 1');
   });
 
   it('changePassword refuses reusing the current password', async () => {

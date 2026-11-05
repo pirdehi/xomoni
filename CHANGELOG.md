@@ -22,6 +22,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Changed
 
 - Connecting a browser to xomoni.com now shows which account the code belongs to, its email masked, and sends nothing until you confirm it is yours (#149).
+- xomoni.com sends your current password to Supabase with a password change, so it can be checked there too, signs a browser out after 30 days unused instead of 400, and doesn't offer two-factor enrollment until it has a page for it (#148).
 - xomoni.com's database exposes nothing unless granted by name, never stores a job's reason, accepts only encrypted connections, and forgets a browser's token after 90 days without a report. Such a browser is asked to connect again (#149).
 - The xomoni.com dashboard updates live through broadcasts that only you can receive, on your private channel. The tables are no longer published to Realtime, so nobody else hears of a change, not even of a deletion (#149).
 - Releases are built with a read-only token, signed with build provenance and reproducible: anyone can rebuild a tag and compare the checksum ([releasing](docs/RELEASING.md#checking-a-download)). Workflow actions are pinned by commit SHA.

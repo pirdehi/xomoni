@@ -11,6 +11,9 @@ describe('createBrowserSupabase', () => {
 
     expect(createBrowserSupabase()).toBe(client);
     // No custom cookie methods: @supabase/ssr writes the session cookie the server reads.
-    expect(createBrowserClient).toHaveBeenCalledWith('http://127.0.0.1:54321', 'sb_publishable_test');
+    // Session cookies last 30 days, renewed with every refresh, not @supabase/ssr's 400 (#148).
+    expect(createBrowserClient).toHaveBeenCalledWith('http://127.0.0.1:54321', 'sb_publishable_test', {
+      cookieOptions: { maxAge: 30 * 24 * 60 * 60 },
+    });
   });
 });

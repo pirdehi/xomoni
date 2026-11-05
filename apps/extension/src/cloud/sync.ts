@@ -5,6 +5,7 @@ import { db, riskEvents } from '../shared/db';
 import { assessRisk } from '../shared/risk';
 import { CloudError, pairDevice, reportStatus, unpairDevice } from './client';
 import { type CloudConnection, clearConnection, getConnection, saveConnection } from './connection';
+import { type ReleaseNews, saveReleaseNews } from './release';
 import { type JobReport, jobReport } from './summary';
 
 /** How often a connected browser says it is still there, even with nothing new. */
@@ -33,14 +34,16 @@ async function changedJobs(since: number): Promise<{ jobs: JobReport[]; upTo: nu
 
 /**
  * One report: a heartbeat with the jobs updated since the last one. `disconnected` when xomoni.com no longer
- * knows this browser (the person disconnected it there), `offline` when it couldn't be reached.
+ * knows this browser (the person disconnected it there), `offline` when it couldn't be reached. Keeps what the
+ * answer says about the newest release (#151).
  */
 export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offline'> {
   const connection = await getConnection();
   if (!connection) return 'idle';
   const { jobs, upTo } = await changedJobs(connection.reportedUpTo);
+  let news: ReleaseNews | null;
   try {
-    await reportStatus(connection.token, version(), jobs);
+    news = await reportStatus(connection.token, version(), jobs);
   } catch (err) {
     if (err instanceof CloudError && err.reason === 'unknown_device') {
       await clearConnection();
@@ -50,6 +53,7 @@ export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offl
     throw err;
   }
   if (upTo > connection.reportedUpTo) await saveConnection({ ...connection, reportedUpTo: upTo });
+  if (news) await saveReleaseNews(news);
   return 'ok';
 }
 

@@ -2,6 +2,7 @@
 // Plain `fetch` to PostgREST with the publishable key and no session, from the dashboard page.
 import { asArray, asObject, asString } from '../shared/json';
 import { CLOUD_KEY, CLOUD_URL } from './config';
+import { type ReleaseNews, parseReleaseNews } from './release';
 import type { JobReport } from './summary';
 
 /** Why a call to the cloud failed, as far as the extension acts on it. */
@@ -51,9 +52,16 @@ export async function pairDevice(code: string, name: string, version: string) {
   return { deviceId, token };
 }
 
-/** Says the extension is still there and reports its jobs' status (up to 50). */
-export async function reportStatus(token: string, version: string, jobs: readonly JobReport[]): Promise<void> {
-  await rpc('device_report', { token, version, jobs });
+/**
+ * Says the extension is still there and reports its jobs' status (up to 50). Answers with the newest release
+ * (#151), or null when xomoni.com didn't say.
+ */
+export async function reportStatus(
+  token: string,
+  version: string,
+  jobs: readonly JobReport[],
+): Promise<ReleaseNews | null> {
+  return parseReleaseNews(await rpc('device_report', { token, version, jobs }));
 }
 
 /** Disconnects this browser; its jobs leave the website too. */

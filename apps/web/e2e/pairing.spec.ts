@@ -56,7 +56,9 @@ test.describe('connecting a browser with a one-time code (ADR-0018)', () => {
         },
       ],
     });
-    expect(report.status).toBe(204);
+    // The answer names the newest release, for the extension's update notice (#151).
+    expect(report.status).toBe(200);
+    expect(report.json).toEqual({ latest: expect.stringMatching(/^\d+\.\d+\.\d+$/), security: expect.any(Boolean) });
     await expect(page.getByRole('region', { name: 'Jobs' })).toContainText('Delete posts older than Jan 1, 2018');
 
     // The code was used up.

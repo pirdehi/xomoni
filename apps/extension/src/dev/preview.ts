@@ -28,7 +28,12 @@ const answers =
     Promise.resolve(value);
 
 (globalThis as unknown as { chrome: unknown }).chrome = {
-  runtime: { getURL: (p: string) => `/${p}`, sendMessage: answers(undefined), onMessage: { addListener() {} } },
+  runtime: {
+    getURL: (p: string) => `/${p}`,
+    getManifest: () => ({ version: '0.1.0' }),
+    sendMessage: answers(undefined),
+    onMessage: { addListener() {} },
+  },
   tabs: {
     get: answers(tab),
     update: answers(tab),

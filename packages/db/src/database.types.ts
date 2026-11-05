@@ -71,6 +71,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      extension_releases: {
+        Row: {
+          published_at: string;
+          security: boolean;
+          version: string;
+        };
+        Insert: {
+          published_at?: string;
+          security?: boolean;
+          version: string;
+        };
+        Update: {
+          published_at?: string;
+          security?: boolean;
+          version?: string;
+        };
+        Relationships: [];
+      };
       jobs: {
         Row: {
           created_at: string;
@@ -180,7 +198,7 @@ export type Database = {
       };
       device_report: {
         Args: { jobs?: Json; token: string; version: string };
-        Returns: undefined;
+        Returns: Json;
       };
       normalize_pairing_code: { Args: { code: string }; Returns: string };
       pair_device: {
@@ -190,6 +208,7 @@ export type Database = {
           token: string;
         }[];
       };
+      release_rank: { Args: { version: string }; Returns: number[] };
       unpair_device: { Args: { token: string }; Returns: undefined };
     };
     Enums: {

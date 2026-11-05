@@ -50,6 +50,7 @@ import { workerTab } from '../engine/worker-tab';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, type Tone } from './components/ui';
+import { UpdateNotice } from './components/UpdateNotice';
 import { ConsentDialog } from './components/ConsentDialog';
 import { errorMessage } from './format';
 import {
@@ -263,7 +264,8 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
 
 /**
  * The dashboard shell, on Fluent UI (ADR-0019): a full-height sidebar (Fluent `Nav`, with the current page marked
- * `aria-current="page"`, the worker status and the account), the running-job banner, the current page and toasts.
+ * `aria-current="page"`, the worker status and the account), the running-job banner, a notice when a newer version
+ * is out (#151), the current page and toasts.
  * Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, only the onboarding view is shown,
  * whatever the hash says.
  */
@@ -281,6 +283,7 @@ export function App() {
       <main className={styles.main}>
         <RunnerBanner />
         <div className={styles.content}>
+          <UpdateNotice />
           {account === undefined ? null : !account ? (
             <OverviewPage account={null} worker={worker} navigate={navigate} />
           ) : (

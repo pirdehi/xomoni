@@ -8,6 +8,19 @@ export function snowflakeTime(id: string): number | null {
   return ms > 1288834974657 && ms < Date.now() + 86_400_000 ? ms : null;
 }
 
+/** How far apart two records of one post's time may be: X's pages and archives show seconds, ids milliseconds. */
+export const POST_TIME_SLACK_MS = 60_000;
+
+/**
+ * Whether `time` (epoch ms) agrees with the time in post `id` (`snowflakeTime`), within `POST_TIME_SLACK_MS`.
+ * True when the id carries no time, such as a post from before November 2010. A post's id is what Xomoni acts
+ * on, so a date stored apart from it can't be forged to make a recent post look old (#145).
+ */
+export function timeMatchesId(id: string, time: number): boolean {
+  const created = snowflakeTime(id);
+  return created == null || Math.abs(created - time) <= POST_TIME_SLACK_MS;
+}
+
 /** Parses X's legacy date format: "Wed Oct 10 20:19:24 +0000 2018". */
 export function parseTwitterDate(value: unknown): number | null {
   if (typeof value !== 'string') return null;

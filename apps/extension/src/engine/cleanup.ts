@@ -15,7 +15,7 @@ import { db, itemKey } from '../shared/db';
 import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
 import { isXId } from '../shared/ids';
 import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../shared/messages';
-import { DAY, searchDate } from '../shared/time';
+import { DAY, searchDate, timeMatchesId } from '../shared/time';
 import type { Account, ActionKind, CleanupFilter, CleanupOptions, Item, ItemKind } from '../shared/types';
 import { readBudgetFor } from '../shared/x-limits';
 import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
@@ -315,7 +315,7 @@ async function pickTargets(
 type ActionCommand = Extract<ActorCommand, { cmd: 'delete' | 'unlike' | 'relikeUnlike' | 'unretweet' }>;
 
 /** The command for `action` on `item`. A delete names the account's `handle`, so only its own posts go (#144). */
-function commandFor(action: ActionKind, item: Item, handle: string): ActionCommand {
+function commandFor(action: ActionKind, item: Item, handle: string, keep: string[]): ActionCommand {
   switch (action) {
     case 'unretweet':
       return { cmd: 'unretweet', id: item.targetId };
@@ -324,7 +324,7 @@ function commandFor(action: ActionKind, item: Item, handle: string): ActionComma
     case 'relike':
       return { cmd: 'relikeUnlike', id: item.id };
     default:
-      return { cmd: 'delete', id: item.id, handle };
+      return { cmd: 'delete', id: item.id, handle, keep };
   }
 }
 
@@ -376,7 +376,13 @@ async function preflight(ctx: JobContext, action: ActionKind, command: ActionCom
 }
 
 async function act(ctx: JobContext, item: Item, action: ActionKind) {
-  const command = commandFor(action, item, ctx.handle);
+  // A post's id carries its time. A stored date that disagrees means the row is wrong, or was forged to make a
+  // recent post look old enough to delete (#145).
+  if (action === 'delete' && !timeMatchesId(item.id, item.createdAt)) {
+    await ctx.leaveAlone(item, 'its date doesn’t match its id');
+    return;
+  }
+  const command = commandFor(action, item, ctx.handle, rules(ctx).filter.keepKeywords);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     await ctx.limiter.before(action);
     await ctx.verifyPage();

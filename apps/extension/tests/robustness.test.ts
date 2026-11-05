@@ -131,4 +131,64 @@ describe('interceptor: request bodies passed inside a Request (#60)', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(captures).toEqual([]);
   });
+
+  it.each([
+    ['another site', 'https://evil.example/i/api/graphql/abc/DeleteTweet'],
+    ['a site whose name starts like X’s', 'https://x.com.evil.example/i/api/graphql/abc/DeleteTweet'],
+    ['plain http', 'http://x.com/i/api/graphql/abc/DeleteTweet'],
+    ['a watched path inside the query string', 'https://x.com/home?next=/i/api/graphql/abc/DeleteTweet'],
+  ])('captures nothing from a request to %s (#145)', async (_, url) => {
+    await win.fetch(url, { method: 'POST', body: BODY });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(captures).toEqual([]);
+  });
+
+  it('captures a request X makes with a relative URL, as one to x.com', async () => {
+    await win.fetch('/i/api/graphql/abc/DeleteTweet', { method: 'POST', body: BODY });
+    expect(await captured()).toMatchObject({ op: 'DeleteTweet', url: DELETE_URL });
+  });
+
+  it('is not fooled by built-ins a page script patches after it started (#145)', async () => {
+    const patched: [object, string, PropertyDescriptor][] = [
+      [Response.prototype, 'text', { value: () => Promise.resolve('{"data":{"forged":true}}') }],
+      [
+        Response.prototype,
+        'clone',
+        {
+          value() {
+            return this;
+          },
+        },
+      ],
+      [Response.prototype, 'status', { get: () => 200 }],
+      [Headers.prototype, 'get', { value: () => '9999999999' }],
+      [Request.prototype, 'text', { value: () => Promise.resolve('{"variables":{"tweet_id":"666"}}') }],
+    ];
+    const stolen = vi.fn();
+    patched.push([MessagePort.prototype, 'postMessage', { value: stolen }]);
+    const originals = patched.map(
+      ([proto, key]) => [proto, key, Object.getOwnPropertyDescriptor(proto, key)!] as const,
+    );
+    nativeFetch.mockResolvedValueOnce(
+      new Response('{"errors":[{"code":88}]}', { status: 429, headers: { 'x-rate-limit-remaining': '0' } }),
+    );
+    let capture: unknown;
+    try {
+      for (const [proto, key, descriptor] of patched)
+        Object.defineProperty(proto, key, { ...descriptor, configurable: true });
+      await win.fetch(new Request(DELETE_URL, { method: 'POST', body: BODY }));
+      capture = await captured();
+    } finally {
+      // Restore before asserting: the test's own tools use these built-ins too.
+      for (const [proto, key, descriptor] of originals) Object.defineProperty(proto, key, descriptor);
+    }
+    expect(capture).toMatchObject({
+      status: 429,
+      reqBody: BODY,
+      body: '{"errors":[{"code":88}]}',
+      headers: { 'x-rate-limit-remaining': '0' },
+    });
+    // The page never got hold of the private port.
+    expect(stolen).not.toHaveBeenCalled();
+  });
 });

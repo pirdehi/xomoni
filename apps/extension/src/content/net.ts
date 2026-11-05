@@ -11,6 +11,7 @@ import {
   unavailableTweetIds,
 } from '../shared/graphql';
 import type { RuntimeMessage } from '../shared/messages';
+import { capReset } from '../shared/x-limits';
 import { viewerHandle, viewerIdFromCookie } from './dom';
 
 /** One response to a GraphQL request made by X's own web app, as captured by the page-world interceptor. */
@@ -88,14 +89,15 @@ function rateNumber(v: string | null | undefined): number | null {
  * When X's rate-limit window resets, on this computer's clock (epoch ms), from `x-rate-limit-reset` (epoch
  * seconds on X's clock); null when the header is missing or not a number. If the response's `date` header shows
  * this clock running ahead of X's, the reset moves later by the same amount, so Xomoni never acts before X's
- * real reset (PLAYBOOK F7, #31). A clock running behind is left alone: waiting a little longer is safe.
+ * real reset (PLAYBOOK F7, #31). A clock running behind is left alone: waiting a little longer is safe. A reset
+ * more than a day ahead is wrong or forged and is cut to a day (`capReset`, #145).
  * @param headers The response headers the interceptor captured.
  * @param receivedAt When the response arrived, on this computer's clock.
  */
 export function resetAtFrom(headers: Record<string, string | null>, receivedAt = Date.now()): number | null {
   const reset = rateNumber(headers['x-rate-limit-reset']);
   if (reset == null) return null;
-  return reset * 1000 + Math.max(0, clockAhead(headers.date, receivedAt));
+  return capReset(reset * 1000 + Math.max(0, clockAhead(headers.date, receivedAt)), receivedAt);
 }
 
 /** How far this computer's clock runs ahead of X's (ms, negative when behind), from a `date` header; 0 without one. */

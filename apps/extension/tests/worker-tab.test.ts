@@ -193,11 +193,18 @@ describe('WorkerTab.send', () => {
     openTab();
     chrome.tabs.sendMessage.mockResolvedValue({ outcome: 'done', http: 200 });
 
-    expect(await worker.send({ cmd: 'delete', id: '123', handle: 'me' })).toEqual({ outcome: 'done', http: 200 });
-    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(TAB_ID, {
-      type: 'actor',
-      command: { cmd: 'delete', id: '123', handle: 'me' },
+    expect(await worker.send({ cmd: 'delete', id: '123', handle: 'me', keep: [] })).toEqual({
+      outcome: 'done',
+      http: 200,
     });
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(
+      TAB_ID,
+      {
+        type: 'actor',
+        command: { cmd: 'delete', id: '123', handle: 'me', keep: [] },
+      },
+      { frameId: 0 },
+    );
   });
 
   it('throws NotReady when no content script answers in an open tab', async () => {

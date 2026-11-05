@@ -99,8 +99,8 @@ describe('the deep clean acts on the person’s own posts only (#144)', () => {
     await run();
     expect(commands('canary')).toEqual([{ cmd: 'canary', action: 'delete', id: '1', handle: 'me' }]);
     expect(commands('delete')).toEqual([
-      { cmd: 'delete', id: '1', handle: 'me' },
-      { cmd: 'delete', id: '2', handle: 'me' },
+      { cmd: 'delete', id: '1', handle: 'me', keep: [] },
+      { cmd: 'delete', id: '2', handle: 'me', keep: [] },
     ]);
   });
 
@@ -113,7 +113,35 @@ describe('the deep clean acts on the person’s own posts only (#144)', () => {
       'its id isn’t an X post id',
     );
     expect(ctx.navigate.mock.calls.map(([url]) => url)).toEqual(['https://x.com/me/status/1']);
-    expect(commands('delete')).toEqual([{ cmd: 'delete', id: '1', handle: 'me' }]);
+    expect(commands('delete')).toEqual([{ cmd: 'delete', id: '1', handle: 'me', keep: [] }]);
+  });
+});
+
+describe('the deep clean trusts a post’s id over its stored date (#145)', () => {
+  /** A post id that carries `time`, as X's snowflake ids do. */
+  const idAt = (time: number) => ((BigInt(time) - 1_288_834_974_657n) << 22n).toString();
+
+  it('leaves a row alone whose date disagrees with its id, and never deletes it', async () => {
+    // A recent post, stored with a date old enough for the rule: what a forged inventory row would look like.
+    const recent = idAt(NOW - 86_400_000);
+    await db.items.bulkAdd([post(recent)]);
+    const { ctx, run } = deepClean();
+    await run();
+    expect(ctx.leaveAlone).toHaveBeenCalledWith(
+      expect.objectContaining({ id: recent }),
+      'its date doesn’t match its id',
+    );
+    expect(commands('delete')).toEqual([]);
+  });
+
+  it('deletes a row whose date agrees with its id, and sends the words the rule keeps', async () => {
+    const old = idAt(NOW - 400 * 86_400_000);
+    await db.items.bulkAdd([post(old)]);
+    const { ctx, run } = deepClean();
+    ctx.job.filter.keepKeywords = ['conference'] as never[];
+    await run();
+    expect(ctx.leaveAlone).not.toHaveBeenCalled();
+    expect(commands('delete')).toEqual([{ cmd: 'delete', id: old, handle: 'me', keep: ['conference'] }]);
   });
 });
 

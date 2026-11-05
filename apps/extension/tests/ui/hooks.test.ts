@@ -133,7 +133,11 @@ describe('useWorkerStatus', () => {
       expect(await kvGet('activeAccount', null)).toBe('acct-new');
     });
     expect((await db.accounts.get('acct-new'))?.handle).toBe('newbie');
-    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(WORKER_TAB.id, { type: 'actor', command: { cmd: 'ping' } });
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(
+      WORKER_TAB.id,
+      { type: 'actor', command: { cmd: 'ping' } },
+      { frameId: 0 },
+    );
   });
 
   it('leaves a known account as it is', async () => {

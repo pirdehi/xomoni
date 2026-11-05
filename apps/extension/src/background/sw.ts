@@ -1,5 +1,6 @@
 // Service worker: stores what the content script observes and opens the dashboard.
 import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
+import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID } from '../shared/notify';
 
@@ -44,8 +45,12 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') void openDashboard();
 });
 
-chrome.runtime.onMessage.addListener((message: RuntimeMessage, sender) => {
-  if (!sender.tab) return;
+// Only Xomoni's own content script in the top frame of an x.com tab is heard, and only with a message whose every
+// field has the expected shape (#145): the content script runs inside X's page, so what it sends is untrusted.
+chrome.runtime.onMessage.addListener((raw: unknown, sender) => {
+  if (!fromXPage(sender, chrome.runtime.id)) return;
+  const message = parseRuntimeMessage(raw);
+  if (!message) return;
   void handle(message).catch((err: unknown) => console.warn('[xomoni] failed to store observation', err));
 });
 

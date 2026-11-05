@@ -2,8 +2,15 @@
  * The private channel between the page-world interceptor and the content script (#59). Anything sent with
  * `window.postMessage` can be read and forged by every script on x.com, so captures travel through a
  * `MessageChannel` instead. The content script hands one port to the interceptor with a synchronous DOM event
- * while both start at `document_start`, before any of X's scripts run. Once handed over, nothing else on the
- * page can see the channel or post into it. Works the same whichever of the two scripts runs first.
+ * while both start at `document_start`, before any of X's scripts run, and stops offering it once the page has
+ * loaded. Works the same whichever of the two scripts runs first.
+ *
+ * What keeps the port private afterwards (#145): the interceptor holds it in a closure and posts only through
+ * the `MessagePort.prototype.postMessage` it took at `document_start` (`inject/natives.ts`), so a page script
+ * that patches the prototype later never receives the port. What the channel can't rule out: a script in X's page
+ * can still make requests of its own through X's `fetch`, and their answers, which are X's real ones, are
+ * captured like X's own. The content script and the engine therefore check what they act on again
+ * (`shared/inbound.ts`, the ownership and time checks before a delete).
  */
 
 /** Dispatched on `document` by the content script: a `MessageEvent` carrying the interceptor's port. */
@@ -32,11 +39,14 @@ type Target = Pick<EventTarget, 'addEventListener' | 'removeEventListener' | 'di
 /**
  * Content-script side: offers `port` to the interceptor at once and, if nobody took it because the interceptor
  * hasn't started yet, once more when the interceptor asks. The interceptor asks only once, as it starts, so
- * the offer is never repeated for a script that asks later.
+ * the offer is never repeated for a script that asks later. The interceptor starts at `document_start`, so once
+ * the page's DOM has loaded, a request for the port can only come from a page script, and none is answered.
  */
 export function offerPort(doc: Target, port: MessagePort) {
   const offer = () => !doc.dispatchEvent(new MessageEvent(PORT_EVENT, { ports: [port], cancelable: true }));
-  if (!offer()) doc.addEventListener(ASK_EVENT, offer, { once: true });
+  if (offer()) return;
+  doc.addEventListener(ASK_EVENT, offer, { once: true });
+  doc.addEventListener('DOMContentLoaded', () => doc.removeEventListener(ASK_EVENT, offer), { once: true });
 }
 
 /**

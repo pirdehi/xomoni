@@ -34,6 +34,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Fixed
 
+- The extension trusts only its own messages (#145). The service worker stores only what Xomoni's content script on x.com sends, checked field by field and capped in size. Commands reach X's page only from Xomoni's dashboard. Captures from X's page can't be rewritten by a page script that patches the browser's built-ins, and only requests to x.com are read. Before deleting, Xomoni checks that the post's id, its stored date and the time X shows agree, and that the text on the page has none of the words the rule keeps. A rate-limit reset more than a day ahead no longer parks a job.
 - A delete now checks that the page shows the post by your own account. Anyone else's post, or one whose author can't be read, is left alone without its menu being opened. Post ids that aren't X ids are dropped from archives and X's responses and never acted on. Such posts count as skipped, not failed.
 - A reply or a bio that quoted X's "account suspended" or "temporarily limited" wording could stop a job and raise the risk level. Only X's own banners, alerts and pop-ups count now, and Xomoni reports the notice in its own words.
 - The display stayed on after the dashboard was closed in the middle of a job. It is let go when the dashboard closes.

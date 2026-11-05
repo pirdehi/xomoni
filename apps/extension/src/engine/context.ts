@@ -8,7 +8,7 @@ import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from
 import { DEFAULT_SETTINGS } from '../shared/settings';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Item, Job, JobState, LogLevel, Outcome, Settings } from '../shared/types';
-import { BUDGETS, type BudgetId, quotaHit, readBudgetFor, unexplainedRefusal } from '../shared/x-limits';
+import { BUDGETS, type BudgetId, capReset, quotaHit, readBudgetFor, unexplainedRefusal } from '../shared/x-limits';
 import { Limiter } from './limiter';
 import { Aborted, randomBetween, sleep } from './timers';
 import { type EnginePorts, NotReady, type Presence, WorkerGone, type XTab } from './ports';
@@ -558,9 +558,11 @@ export class JobContext {
         const blocked = riskBlock(await this.risk('rate_limited'));
         if (blocked) throw new Stop('blocked', blocked);
         // X's reset time plus 30–90 s, so the next request never lands right on the edge of X's window.
+        // A reset more than a day ahead is wrong or forged; it is cut to a day (#145).
+        const resetAt = capReset(result.resetAt ?? null, Date.now());
         const until =
-          result.resetAt && result.resetAt > Date.now()
-            ? result.resetAt + randomBetween(30_000, 90_000)
+          resetAt && resetAt > Date.now()
+            ? resetAt + randomBetween(30_000, 90_000)
             : Date.now() + randomBetween(15, 20) * 60_000;
         await this.log(
           'warn',

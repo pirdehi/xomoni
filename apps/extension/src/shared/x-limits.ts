@@ -176,6 +176,17 @@ export interface LiveLimit {
 }
 
 /**
+ * The furthest ahead X's rate-limit reset is believed: a day. X's windows are 15 minutes or 24 hours, so a later
+ * reset is wrong or forged, and would otherwise park Xomoni for good (#145).
+ */
+export const MAX_RESET_AHEAD_MS = 24 * 60 * 60 * 1000;
+
+/** `reset` (epoch ms) moved no later than `MAX_RESET_AHEAD_MS` after `now`; null stays null. */
+export function capReset(reset: number | null, now: number): number | null {
+  return reset == null ? null : Math.min(reset, now + MAX_RESET_AHEAD_MS);
+}
+
+/**
  * Applies the one-fifth rule to a live limit: once one fifth of X's window is used (by Xomoni or by the person
  * browsing X), wait until X resets it. Returns when the next request may go, or `now` when it may go now.
  */

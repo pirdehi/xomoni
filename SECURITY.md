@@ -9,6 +9,8 @@ Please report security issues privately, not in public issues:
 
 Include what you found, how to reproduce it, and the impact you expect. You'll get an answer within a few days. Please give a reasonable time to fix the issue before disclosing it.
 
+The same contacts are in [xomoni.com/.well-known/security.txt](https://xomoni.com/.well-known/security.txt) ([RFC 9116](https://www.rfc-editor.org/rfc/rfc9116)). Its `Expires` is renewed yearly; a unit test fails 30 days before it lapses.
+
 ## Scope
 
 In scope: the Xomoni extension (`apps/extension`), the website at xomoni.com (`apps/web`), and the database rules (`supabase/`). For example:
@@ -55,6 +57,23 @@ A review of what the cloud side exposes today: Supabase (Postgres with Row Level
 | Sign-out ends only the current session. Accounts that use Google have no password to change, so they can't end a session left elsewhere. | Low | Fixed: *Sign out everywhere* on the account page ([#83](https://github.com/pirdehi/xomoni/issues/83)). |
 
 The Data API has no per-user request rate limit; the caps from #82 (at most 10,000 job rows per account) and the 1,000-row `max_rows` bound what one account can store and read with it.
+
+## Monitoring and alerts
+
+Everything below alerts one person, the maintainer, through GitHub's notifications (web and email). There is no on-call rotation.
+
+| Check | What it watches | When it alerts |
+| --- | --- | --- |
+| Private vulnerability reports and privacy@xomoni.com | Reports from anyone | When one arrives. The maintainer answers within a few days and works on a critical issue (another person's data, a leaked secret, a way around sign-in) first. |
+| CodeQL code scanning (default setup, `security-extended` queries, JavaScript/TypeScript and GitHub Actions) | The code and the workflows | On every push to `main` and every pull request, and weekly. |
+| Secret scanning with push protection | Every push | Immediately: a push with a known provider's token is refused, and an alert opens for anything that gets through. |
+| Dependabot alerts and security updates | Dependencies with a published advisory | When the advisory is published, with a pull request that fixes it. |
+| Content-Security-Policy reports (#147) | Scripts and markup the site's policy blocks | Not yet: they are `csp violation` lines in the Vercel runtime logs. |
+
+Not covered yet:
+
+- **Secret scanning for generic secrets and validity checks.** On 2026-11-05 GitHub kept both off when the API was asked to turn them on, so they aren't available for this repository today (Settings → Advanced Security shows why).
+- **Alerts for auth errors and rate limits (HTTP 429)** from Vercel and Supabase. The site's plans have no alerting or log drains: Vercel's need Pro, Supabase's need Team. Until then the maintainer checks the Vercel runtime logs (`csp violation`, `oauth callback failed`, 4xx and 5xx responses) and Supabase's Auth logs (failed sign-ins, 429s) every week and after each release ([#161](https://github.com/pirdehi/xomoni/issues/161)).
 
 ## Supported versions
 

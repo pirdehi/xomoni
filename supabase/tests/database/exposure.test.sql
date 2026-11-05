@@ -68,7 +68,7 @@ insert into codes select * from public.create_pairing_code();
 set local role anon;
 create temporary table paired (device_id uuid, token text) on commit drop;
 grant all on paired to anon, authenticated;
-insert into paired select * from public.pair_device((select code from codes), 'Chrome', '0.1.0');
+insert into paired select device_id, token from public.pair_device((select code from codes), 'Chrome', '0.1.0');
 
 select lives_ok(format($$ select public.device_report(%L, '0.1.0', %L) $$, (select token from paired),
   '[{"local_id": "job-1", "x_handle": "jo", "kind": "cleanup", "title": "Delete posts", "state": "blocked",

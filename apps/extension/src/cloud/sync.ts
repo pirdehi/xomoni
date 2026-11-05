@@ -39,7 +39,8 @@ async function changedJobs(since: number): Promise<{ jobs: JobReport[]; upTo: nu
  */
 export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offline'> {
   const connection = await getConnection();
-  if (!connection) return 'idle';
+  // Nothing goes out until the person confirmed the account is theirs (#149).
+  if (!connection?.confirmed) return 'idle';
   const { jobs, upTo } = await changedJobs(connection.reportedUpTo);
   let news: ReleaseNews | null;
   try {
@@ -57,10 +58,13 @@ export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offl
   return 'ok';
 }
 
-/** Connects this browser with a code from xomoni.com, then reports the newest jobs at once. */
+/**
+ * Connects this browser with a code from xomoni.com. Nothing is reported yet: the person first confirms that the
+ * account pairing named is theirs (`confirmConnection`), so a code someone else gave them sends them nothing (#149).
+ */
 export async function connect(code: string, deviceName: string): Promise<CloudConnection> {
   const name = deviceName.trim().slice(0, 80) || 'This browser';
-  const { deviceId, token } = await pairDevice(code, name, version());
+  const { deviceId, token, account } = await pairDevice(code, name, version());
   // Start with the newest 50 jobs; older ones would not show on the dashboard anyway.
   const jobs = (await db.jobs.toArray()).sort((a, b) => b.updatedAt - a.updatedAt);
   const since = (jobs[BATCH - 1]?.updatedAt ?? 1) - 1;
@@ -70,10 +74,19 @@ export async function connect(code: string, deviceName: string): Promise<CloudCo
     deviceName: name,
     connectedAt: Date.now(),
     reportedUpTo: since,
+    account,
+    confirmed: false,
   };
   await saveConnection(connection);
-  await syncOnce().catch(() => undefined);
   return connection;
+}
+
+/** The person confirmed the account pairing named is theirs: reporting starts, with the newest jobs at once. */
+export async function confirmConnection(): Promise<void> {
+  const connection = await getConnection();
+  if (!connection || connection.confirmed) return;
+  await saveConnection({ ...connection, confirmed: true });
+  await syncOnce().catch(() => undefined);
 }
 
 /** What the person is told when xomoni.com couldn't be told about a disconnect (#151). */

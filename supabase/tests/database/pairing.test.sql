@@ -2,7 +2,7 @@
 -- Proves the negative cases: no code without a session, a code works once and only while fresh, a token
 -- reports only for its own device, the secret tables are closed to everyone. Run with `supabase test db`.
 begin;
-select plan(27);
+select plan(31);
 
 insert into auth.users (id, email, aud, role)
 values
@@ -44,12 +44,14 @@ select throws_ok($$ select * from public.pair_device('AAAAA-AAAAA', 'Chrome', '0
 select throws_ok(format($$ select * from public.pair_device(%L, 'Chrome', '0.3.0') $$,
   (select code from codes order by n limit 1)), 'P0001', null, 'the replaced first code is refused');
 
-create temporary table paired (device_id uuid, token text) on commit drop;
+create temporary table paired (device_id uuid, token text, account text) on commit drop;
 grant all on paired to anon, authenticated;
 insert into paired select * from public.pair_device(
   lower(replace((select code from codes order by n desc limit 1), '-', '')), ' Chrome on macOS ', '0.3.0');
 select is((select count(*)::int from paired), 1, 'the latest code pairs, typed in lower case without the dash');
 select matches((select token from paired), '^[0-9a-f]{64}$', 'the token is 256 random bits');
+select is((select account from paired), 'f•••@pair.test.xomoni.com',
+  'pairing names the account, masked, so the person can tell it is theirs (#149)');
 select throws_ok(format($$ select * from public.pair_device(%L, 'Chrome', '0.3.0') $$,
   (select code from codes order by n desc limit 1)), 'P0001', null, 'a used code is refused');
 
@@ -103,6 +105,12 @@ select lives_ok(format($$ select public.unpair_device(%L) $$, (select token from
 reset role;
 select is((select count(*)::int from public.devices where id = (select device_id from paired)), 0,
   'the device and its jobs are gone after unpairing');
+
+-- ── The account hint (#149) ─────────────────────────────────────────────────────────────────────
+reset role;
+select is(public.mask_email('omid@example.com'), 'o•••@example.com', 'an address shows its first character and domain');
+select is(public.mask_email('@example.com'), '•••', 'an address without a name part shows nothing');
+select is(public.mask_email(null), '•••', 'nor does a missing one');
 
 select * from finish();
 rollback;

@@ -464,7 +464,15 @@ describe('Settings page', () => {
       await db.consents.put({ accountId: ME, version: 1, at: now });
       await db.reads.add({ accountId: ME, budget: 'search', ts: now, posts: 20 });
       await db.risk.add({ accountId: ME, kind: 'rate_limited', at: now });
-      await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+      await saveConnection({
+        deviceId: 'd1',
+        token: 't',
+        deviceName: 'Chrome',
+        connectedAt: 1,
+        reportedUpTo: 0,
+        account: 'o•••@example.com',
+        confirmed: true,
+      });
       const fetch = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
       vi.stubGlobal('fetch', fetch);
       await renderPage();
@@ -491,7 +499,15 @@ describe('Settings page', () => {
     });
 
     it('says to remove this browser on xomoni.com when the website couldn’t be reached', async () => {
-      await saveConnection({ deviceId: 'd1', token: 't', deviceName: 'Chrome', connectedAt: 1, reportedUpTo: 0 });
+      await saveConnection({
+        deviceId: 'd1',
+        token: 't',
+        deviceName: 'Chrome',
+        connectedAt: 1,
+        reportedUpTo: 0,
+        account: 'o•••@example.com',
+        confirmed: true,
+      });
       vi.stubGlobal(
         'fetch',
         vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),

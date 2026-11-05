@@ -36,7 +36,9 @@ test.describe('connecting a browser with a one-time code (ADR-0018)', () => {
       version: '0.3.0',
     });
     expect(paired.status).toBe(200);
-    const [{ token }] = paired.json as [{ device_id: string; token: string }];
+    const [{ token, account }] = paired.json as [{ device_id: string; token: string; account: string }];
+    // The account is named, masked, so the person can tell it is theirs before anything is sent (#149).
+    expect(account).toBe('e•••@xomoni.test');
 
     await expect(page.getByRole('region', { name: 'Connected browsers' })).toContainText('Chrome on macOS');
 

@@ -123,7 +123,7 @@ export class WorkerTab implements XTab {
     if (id == null) throw new WorkerGone();
     let reply: unknown;
     try {
-      reply = await chrome.tabs.sendMessage(id, { type: 'actor', command });
+      reply = await chrome.tabs.sendMessage(id, { type: 'actor', command }, { frameId: 0 });
     } catch (err) {
       if ((await this.current()) == null) throw new WorkerGone();
       throw new NotReady(String(err instanceof Error ? err.message : err));

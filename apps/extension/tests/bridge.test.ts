@@ -53,6 +53,17 @@ describe('the private channel between the interceptor and the content script (#5
     expect(thief).not.toHaveBeenCalled();
   });
 
+  it('stops offering the port once the page has loaded, so a page script that asks later gets nothing (#145)', () => {
+    const doc = new EventTarget();
+    // The interceptor never started, so the offer is still waiting.
+    offerPort(doc, newChannel().port2);
+    doc.dispatchEvent(new Event('DOMContentLoaded'));
+    const thief = vi.fn();
+    doc.addEventListener(PORT_EVENT, thief);
+    doc.dispatchEvent(new Event(ASK_EVENT));
+    expect(thief).not.toHaveBeenCalled();
+  });
+
   it('accepts only the exact shape of a capture', () => {
     expect(isCapture(CAPTURE)).toBe(true);
     expect(isCapture({ ...CAPTURE, reqBody: null })).toBe(true);

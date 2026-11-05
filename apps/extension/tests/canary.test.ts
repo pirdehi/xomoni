@@ -22,6 +22,10 @@ interface Page {
   author?: string;
   /** The handle in the sidebar's Profile link; null: X hasn't rendered it. */
   profile?: string | null;
+  /** The post's id, its time as X shows it, and its text (#145). */
+  id?: string;
+  time?: string;
+  text?: string;
 }
 
 /** Every click on a menu option, which a canary must never make. */
@@ -47,6 +51,9 @@ function renderX({
   rebuildAfterMs = 20,
   author = 'me',
   profile = null,
+  id = '1',
+  time = '2024-01-01T00:00:00.000Z',
+  text = '',
 }: Page = {}) {
   optionClicks = [];
   bodyEscapes = 0;
@@ -54,7 +61,8 @@ function renderX({
   document.body.innerHTML = `
     ${profile == null ? '' : `<a data-testid="AppTabBar_Profile_Link" href="/${profile}">Profile</a>`}
     <article data-testid="tweet">
-      <a href="/${author}/status/1"><time datetime="2024-01-01T00:00:00.000Z"></time></a>
+      <a href="/${author}/status/${id}"><time datetime="${time}"></time></a>
+      ${text ? `<div data-testid="tweetText">${text}</div>` : ''}
       ${menu ? button('caret') : ''}
       ${liked == null ? '' : button(liked ? 'unlike' : 'like')}
       ${reposted == null ? '' : button(reposted ? 'unretweet' : 'retweet')}
@@ -105,7 +113,7 @@ function renderX({
       }
     } else if (answers && target.closest('[data-testid="confirmationSheetConfirm"]')) {
       layers.querySelector('[role="alertdialog"]')?.remove();
-      answer('DeleteTweet', { tweet_id: '1' }, { delete_tweet: { tweet_results: {} } });
+      answer('DeleteTweet', { tweet_id: id }, { delete_tweet: { tweet_results: {} } });
     }
   });
   layers.addEventListener('keydown', (event) => {
@@ -179,7 +187,10 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     document.cookie = 'twid=u%3D1';
     // X builds the menu's items again 20 ms after opening it, before Xomoni clicks.
     renderX();
-    expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me' })).toEqual({ outcome: 'done', http: 200 });
+    expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me', keep: [] })).toEqual({
+      outcome: 'done',
+      http: 200,
+    });
     expect(optionClicks).toEqual(['Delete']);
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
@@ -188,7 +199,10 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
     document.cookie = 'twid=u%3D1';
     for (const rebuildAfterMs of [1_000, null]) {
       renderX({ rebuildAfterMs });
-      expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me' })).toEqual({ outcome: 'done', http: 200 });
+      expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me', keep: [] })).toEqual({
+        outcome: 'done',
+        http: 200,
+      });
     }
     document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
@@ -204,7 +218,10 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
   it('a Delete that opens no confirmation fails, saying what was open instead (#121)', async () => {
     document.cookie = 'twid=u%3D1';
     renderX({ answers: false });
-    const result = (await runCommand({ cmd: 'delete', id: '1', handle: 'me' })) as { outcome: string; message: string };
+    const result = (await runCommand({ cmd: 'delete', id: '1', handle: 'me', keep: [] })) as {
+      outcome: string;
+      message: string;
+    };
     expect(result.outcome).toBe('failed');
     expect(result.message).toBe(
       'Delete confirmation did not appear for this post (menus open: 1, pop-ups: none, buttons: none)',
@@ -243,7 +260,7 @@ describe('canary: X’s page checked before acting, nothing done (#21, PLAYBOOK 
 describe('only the person’s own posts (#144)', { timeout: 15_000 }, () => {
   const signedIn = () => (document.cookie = 'twid=u%3D1');
   const signedOut = () => (document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT');
-  const deleteAs = (handle: string, id = '1') => runCommand({ cmd: 'delete', id, handle });
+  const deleteAs = (handle: string, id = '1') => runCommand({ cmd: 'delete', id, handle, keep: [] });
 
   it('leaves someone else’s post alone, without even opening its menu', async () => {
     signedIn();
@@ -275,8 +292,8 @@ describe('only the person’s own posts (#144)', { timeout: 15_000 }, () => {
     signedIn();
     renderX();
     for (const command of [
-      { cmd: 'delete', id: '1/../../settings', handle: 'me' },
-      { cmd: 'delete', id: '', handle: 'me' },
+      { cmd: 'delete', id: '1/../../settings', handle: 'me', keep: [] as string[] },
+      { cmd: 'delete', id: '', handle: 'me', keep: [] as string[] },
       { cmd: 'unretweet', id: '' },
       { cmd: 'unlike', id: 'abc' },
       { cmd: 'relikeUnlike', id: '1'.repeat(21) },
@@ -306,5 +323,55 @@ describe('only the person’s own posts (#144)', { timeout: 15_000 }, () => {
     // Unlike and undo repost act on other people's posts by nature.
     expect(await canary('unlike')).toMatchObject({ verdict: 'ok' });
     expect(await canary('delete', 'x1')).toMatchObject({ verdict: 'unknown', message: 'the post is not on the page' });
+  });
+});
+
+describe('the page is asked again right before a delete (#145)', { timeout: 15_000 }, () => {
+  const signedIn = () => (document.cookie = 'twid=u%3D1');
+  const signedOut = () => (document.cookie = 'twid=; expires=Thu, 01 Jan 1970 00:00:00 GMT');
+  /** A post id that carries `time`, as X's snowflake ids do. */
+  const idAt = (time: string) => ((BigInt(Date.parse(time)) - 1_288_834_974_657n) << 22n).toString();
+  const WHEN = '2018-05-01T12:00:00.000Z';
+
+  it('deletes a post whose time on the page agrees with its id', async () => {
+    signedIn();
+    const id = idAt(WHEN);
+    renderX({ id, time: '2018-05-01T12:00:30.000Z' });
+    expect(await runCommand({ cmd: 'delete', id, handle: 'me', keep: [] })).toEqual({ outcome: 'done', http: 200 });
+    signedOut();
+  });
+
+  it('leaves a post alone when the time X shows disagrees with its id, without opening its menu', async () => {
+    signedIn();
+    const id = idAt(WHEN);
+    renderX({ id, time: '2026-11-01T09:00:00.000Z' });
+    expect(await runCommand({ cmd: 'delete', id, handle: 'me', keep: [] })).toEqual({
+      outcome: 'skipped',
+      message: 'the time X shows for it doesn’t match its id',
+    });
+    expect(menuOpen()).toBe(false);
+    expect(optionClicks).toEqual([]);
+    signedOut();
+  });
+
+  it('leaves a post alone when its text on the page contains a word the rule keeps, whatever its case', async () => {
+    signedIn();
+    renderX({ text: 'Notes from the Conference in Tehran' });
+    expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me', keep: ['vacation', 'conference'] })).toEqual({
+      outcome: 'skipped',
+      message: 'X shows it with “conference”, a word this rule keeps',
+    });
+    expect(menuOpen()).toBe(false);
+    signedOut();
+  });
+
+  it('deletes a post whose text has none of the words the rule keeps', async () => {
+    signedIn();
+    renderX({ text: 'An old joke' });
+    expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me', keep: ['conference', ''] })).toEqual({
+      outcome: 'done',
+      http: 200,
+    });
+    signedOut();
   });
 });

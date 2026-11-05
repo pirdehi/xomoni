@@ -1,6 +1,7 @@
 // Isolated-world content script on x.com: bridges the page interceptor to the
 // extension and executes actor commands from the dashboard.
 import { isCapture, offerPort } from '../shared/bridge';
+import { fromXomoniPage } from '../shared/inbound';
 import { asObject } from '../shared/json';
 import type { ActorCommand } from '../shared/messages';
 import { runCommand } from './actor';
@@ -20,8 +21,9 @@ function isActorMessage(message: unknown): message is { type: 'actor'; command: 
   return m?.type === 'actor' && !!asObject(m.command);
 }
 
-chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
-  if (!isActorMessage(message)) return;
+// Commands come only from Xomoni's own pages (the dashboard), never from another extension or content script (#145).
+chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+  if (!fromXomoniPage(sender, chrome.runtime.id) || !isActorMessage(message)) return;
   runCommand(message.command).then(sendResponse, (err: unknown) =>
     sendResponse({ error: err instanceof Error ? err.message : String(err) }),
   );

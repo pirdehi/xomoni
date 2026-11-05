@@ -395,7 +395,13 @@ describe('resetAtFrom and clockAhead', () => {
   it('has no reset without a usable header, and no skew without a date', () => {
     expect(net.resetAtFrom({})).toBeNull();
     expect(net.resetAtFrom({ 'x-rate-limit-reset': 'soon' })).toBeNull();
-    expect(net.resetAtFrom({ 'x-rate-limit-reset': '1800000000' }, NOW)).toBe(1_800_000_000_000);
+    const inTenMinutes = Math.floor(NOW / 1000) + 600;
+    expect(net.resetAtFrom({ 'x-rate-limit-reset': String(inTenMinutes) }, NOW)).toBe(inTenMinutes * 1000);
     expect(net.clockAhead(null, NOW)).toBe(0);
+  });
+
+  it('believes a reset at most a day ahead, so a wrong or forged header can’t park Xomoni for good (#145)', () => {
+    const yearAhead = Math.floor(NOW / 1000) + 365 * 86_400;
+    expect(net.resetAtFrom({ 'x-rate-limit-reset': String(yearAhead) }, NOW)).toBe(NOW + 86_400_000);
   });
 });

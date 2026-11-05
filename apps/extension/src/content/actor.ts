@@ -5,6 +5,7 @@ import { isCheckPath, isLoginPath, restrictionNotice } from '../shared/attention
 import { extractErrors } from '../shared/graphql';
 import { isXId, sameHandle } from '../shared/ids';
 import { at } from '../shared/json';
+import { timeMatchesId } from '../shared/time';
 import type {
   ActionResult,
   ActorCommand,
@@ -58,7 +59,7 @@ export async function runCommand(command: ActorCommand): Promise<unknown> {
     case 'scroll':
       return scrollMore();
     case 'delete':
-      return guarded(command.id, () => deletePost(command.id, command.handle));
+      return guarded(command.id, () => deletePost(command.id, command.handle, command.keep));
     case 'unlike':
       return guarded(command.id, () => unlike(command.id));
     case 'relikeUnlike':
@@ -233,10 +234,23 @@ function notMine(article: HTMLElement, handle: string): string | null {
   return sameHandle(author, me) ? null : `not your post: X shows it by @${author}`;
 }
 
-async function deletePost(id: string, handle: string): Promise<ActionResult> {
+/**
+ * Why the post the page shows must be kept although the inventory says otherwise, or null (#145): the time the
+ * page shows for it disagrees with its id, or its text there contains one of the rule's `keep` words. The
+ * inventory is built from what X's page sent, so the page is asked again right before deleting.
+ */
+function pageSaysKeep(article: Element, id: string, keep: readonly string[]): string | null {
+  const time = articleInfo(article)?.time;
+  if (time != null && !timeMatchesId(id, time)) return 'the time X shows for it doesn’t match its id';
+  const text = ($(SEL.tweetText, article)?.textContent ?? '').toLowerCase();
+  const word = keep.find((k) => k && text.includes(k.toLowerCase()));
+  return word ? `X shows it with “${word}”, a word this rule keeps` : null;
+}
+
+async function deletePost(id: string, handle: string, keep: readonly string[]): Promise<ActionResult> {
   const article = findArticle(id);
   if (!article) return { outcome: 'not_found', message: 'Post is not on the page' };
-  const refusal = notMine(article, handle);
+  const refusal = notMine(article, handle) ?? pageSaysKeep(article, id, keep);
   if (refusal) return { outcome: 'skipped', message: refusal };
   await focus(article);
   const caret = $(SEL.caret, article);

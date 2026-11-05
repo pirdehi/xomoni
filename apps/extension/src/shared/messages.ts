@@ -4,8 +4,9 @@ import type { ActionKind, ItemDraft, Outcome, RateObservation } from './types';
 /**
  * Commands the dashboard sends to the content script in the worker tab. `canary` checks, on post `id`, that
  * X's page still has what `action` needs, without acting (PLAYBOOK F1). `handle` is the signed-in account's:
- * a post is deleted, or checked for deleting, only when the page shows it by that handle (#144). Every write
- * command is refused for an `id` that isn't an X id. `readPosts` reads the newest `limit` posts on a search
+ * a post is deleted, or checked for deleting, only when the page shows it by that handle (#144). `delete` also
+ * leaves the post alone when the time the page shows disagrees with its id, or its text there contains one of the
+ * rule's `keep` words (#145). Every write command is refused for an `id` that isn't an X id. `readPosts` reads the newest `limit` posts on a search
  * page for Watch (#158), without acting.
  */
 export type ActorCommand =
@@ -13,7 +14,7 @@ export type ActorCommand =
   | { cmd: 'waitContent'; timeoutMs: number }
   | { cmd: 'visible' }
   | { cmd: 'scroll' }
-  | { cmd: 'delete'; id: string; handle: string }
+  | { cmd: 'delete'; id: string; handle: string; keep: string[] }
   | { cmd: 'unlike'; id: string }
   | { cmd: 'relikeUnlike'; id: string }
   | { cmd: 'unretweet'; id: string }

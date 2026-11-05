@@ -6,11 +6,11 @@ The extension's MV3 service worker (`sw.js`). It stores what content scripts obs
 
 | File    | Responsibility                                                                                                        |
 | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| `sw.ts` | Stores `ingest`, `profile` and `rate` messages from content scripts; opens the dashboard; routes notification clicks. |
+| `sw.ts` | Stores `ingest`, `profile` and `rate` messages from Xomoni's content script in the top frame of an x.com tab, after `parseRuntimeMessage` has checked and copied them (#145); opens the dashboard; routes notification clicks. |
 
 ## Depends on
 
-- `../shared/` for `db`, `upsertItems`, `upsertAccount` and `kvSet` (`db.ts`), the `RuntimeMessage` type (`messages.ts`) and `ATTENTION_ID` (`notify.ts`).
+- `../shared/` for `db`, `upsertItems`, `upsertAccount` and `kvSet` (`db.ts`), `fromXPage` and `parseRuntimeMessage` (`inbound.ts`), the `RuntimeMessage` type (`messages.ts`) and `ATTENTION_ID` (`notify.ts`).
 - Chrome APIs: `chrome.runtime`, `chrome.action`, `chrome.notifications`, `chrome.tabs`, `chrome.windows` and `chrome.storage.session`.
 - Shared state, not an import: the `workerTab` key in `chrome.storage.session`, written by `../engine/worker-tab.ts`.
 

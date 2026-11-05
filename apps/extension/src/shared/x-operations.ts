@@ -2,6 +2,9 @@
 // only these) and the content script (which parses them), so the two can't drift apart (#61). Pure data:
 // the interceptor runs inside X's page, so this file must stay free of other imports.
 
+/** The only site Xomoni reads and acts on, and the only origin whose requests the interceptor captures (#145). */
+export const X_ORIGIN = 'https://x.com';
+
 /** GraphQL operations whose responses carry timeline posts for the inventory. */
 export const TIMELINE_OPS: ReadonlySet<string> = new Set([
   'UserTweets',

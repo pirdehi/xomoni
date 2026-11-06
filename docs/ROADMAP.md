@@ -10,7 +10,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
-**Current focus:** Phase 4, the pilot on the maintainer's account (with Run hidden, #140); Phase 9, security hardening, starting with release integrity before the first tag; Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done.
+**Current focus:** Phase 4, the pilot on the maintainer's account (with Run hidden, #140); Phase 9, security hardening, done but for one Supabase dashboard setting (#148; [report](PHASE-9-REPORT.md)); Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done.
 **Last updated:** 2026-11-04
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
@@ -135,7 +135,7 @@ Every interface on Fluent UI React v9, and no Tailwind ([ADR-0019](adr/0019-flue
 
 ## Phase 9 · Security hardening
 
-From the security review of 2026-11-04 of the extension, xomoni.com, the database and the release pipeline. None of it needs X's API. Release integrity comes first, before the first tag.
+From the security review of 2026-11-04 of the extension, xomoni.com, the database and the release pipeline. None of it needs X's API. Release integrity comes first, before the first tag. What came of it: [report](PHASE-9-REPORT.md) ([فارسی](PHASE-9-REPORT.fa.md)).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
@@ -145,7 +145,7 @@ From the security review of 2026-11-04 of the extension, xomoni.com, the databas
 | ✅ | Trust only Xomoni's own messages: sender checks, payload validation, a sealed page-world channel | [#145](https://github.com/pirdehi/xomoni/issues/145) | [#165](https://github.com/pirdehi/xomoni/pull/165) |
 | ✅ | Read X's restriction notices only from X's own banners, not from post text | [#146](https://github.com/pirdehi/xomoni/issues/146) | [#154](https://github.com/pirdehi/xomoni/pull/154) |
 | ✅ | xomoni.com: Trusted Types, CSP reports, tighter images, CORP, Origin check on sign-out | [#147](https://github.com/pirdehi/xomoni/issues/147) | [#160](https://github.com/pirdehi/xomoni/pull/160) |
-| ⬜ | Account security: current password checked by the server, MFA, session age, email quota | [#148](https://github.com/pirdehi/xomoni/issues/148) | |
+| ⬜ | Account security: current password checked by the server, MFA, session age, email quota (code done; waits on a Supabase dashboard setting) | [#148](https://github.com/pirdehi/xomoni/issues/148) | [#174](https://github.com/pirdehi/xomoni/pull/174) |
 | ✅ | Database: private Realtime, no auto-exposed tables, SSL only, expiring device tokens, account shown on pairing | [#149](https://github.com/pirdehi/xomoni/issues/149) | [#170](https://github.com/pirdehi/xomoni/pull/170), [#171](https://github.com/pirdehi/xomoni/pull/171), [#172](https://github.com/pirdehi/xomoni/pull/172) |
 | ✅ | Security monitoring: CodeQL, secret-scanning options, security.txt, alerts (alerts need paid plans: [#161](https://github.com/pirdehi/xomoni/issues/161)) | [#150](https://github.com/pirdehi/xomoni/issues/150) | [#162](https://github.com/pirdehi/xomoni/pull/162) |
 | ✅ | Local data hygiene: token storage, complete wipe, archive size limits, update notice | [#151](https://github.com/pirdehi/xomoni/issues/151) | [#166](https://github.com/pirdehi/xomoni/pull/166), [#167](https://github.com/pirdehi/xomoni/pull/167) |

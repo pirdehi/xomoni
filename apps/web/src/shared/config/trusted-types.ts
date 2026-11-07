@@ -32,7 +32,7 @@ export interface TrustedTypesRules {
 
 /** The part of `window` the policy needs; tests pass a fake. */
 export interface TrustedTypesHost {
-  trustedTypes?: { createPolicy(name: string, rules: TrustedTypesRules): unknown } | null;
+  trustedTypes?: { createPolicy(name: string, rules: TrustedTypesRules): unknown; defaultPolicy?: unknown } | null;
   location: { origin: string };
   document: { baseURI: string };
 }
@@ -68,6 +68,11 @@ export function trustedTypesRules(origin: string, baseURI: () => string): Truste
 export function installTrustedTypesPolicy(host: TrustedTypesHost): boolean {
   const trustedTypes = host.trustedTypes;
   if (!trustedTypes || typeof trustedTypes.createPolicy !== 'function') return false;
+  // Asked first: even a failed attempt to make a second default policy is reported as a CSP violation.
+  if (trustedTypes.defaultPolicy) {
+    console.warn('Xomoni: another default Trusted Types policy is in place, probably from a browser extension.');
+    return false;
+  }
   try {
     trustedTypes.createPolicy(
       TRUSTED_TYPES_POLICY,

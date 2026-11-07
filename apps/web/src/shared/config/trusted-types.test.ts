@@ -133,6 +133,21 @@ describe('a default policy made before the site’s (#178)', () => {
     warn.mockRestore();
   });
 
+  it('doesn’t even try when the browser says a default policy exists, as the attempt is reported as a violation', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const createPolicy = vi.fn();
+    const host: TrustedTypesHost = {
+      trustedTypes: { createPolicy, defaultPolicy: {} },
+      location: { origin: ORIGIN },
+      document: { baseURI: `${ORIGIN}/login` },
+    };
+
+    expect(installTrustedTypesPolicy(host)).toBe(false);
+    expect(createPolicy).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('another default Trusted Types policy'));
+    warn.mockRestore();
+  });
+
   it('says when the site’s own policy is the one in place', () => {
     const host: TrustedTypesHost = {
       trustedTypes: { createPolicy: () => ({}) },

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { AuthCard, AuthLegalNote, AuthLink, OrDivider } from '@/modules/auth/ui/auth-card';
+import { AuthCard, AuthLegalNote, AuthLink, FormSkeleton, NoScriptNote, OrDivider } from '@/modules/auth/ui/auth-card';
 import { GoogleButton } from '@/modules/auth/ui/google-button';
 import { SignUpForm } from '@/modules/auth/ui/sign-up-form';
 
@@ -18,7 +18,8 @@ export default function SignUpPage() {
         </>
       }
     >
-      <Suspense>
+      <NoScriptNote />
+      <Suspense fallback={<FormSkeleton />}>
         <SignUpForm />
         <OrDivider />
         <GoogleButton label="Sign up with Google" />

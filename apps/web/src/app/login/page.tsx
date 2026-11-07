@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { AuthCard, AuthLegalNote, AuthLink, OrDivider } from '@/modules/auth/ui/auth-card';
+import { AuthCard, AuthLegalNote, AuthLink, FormSkeleton, NoScriptNote, OrDivider } from '@/modules/auth/ui/auth-card';
 import { CallbackError, GoogleButton } from '@/modules/auth/ui/google-button';
 import { SignInForm } from '@/modules/auth/ui/sign-in-form';
 
@@ -18,7 +18,8 @@ export default function LoginPage() {
         </>
       }
     >
-      <Suspense>
+      <NoScriptNote />
+      <Suspense fallback={<FormSkeleton />}>
         <CallbackError />
         <SignInForm />
         <OrDivider />

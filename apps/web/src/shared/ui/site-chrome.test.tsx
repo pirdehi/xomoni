@@ -1,8 +1,16 @@
 // @vitest-environment happy-dom
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { GITHUB_URL } from '@/shared/config/site';
 import { GithubMark, Logo, SiteFooter, SiteHeader } from './site-chrome';
+
+// A visitor: the session cookie names no one.
+vi.mock('@/shared/supabase/browser-session', () => ({
+  watchSessionEmail: (onChange: (email: string | null) => void) => {
+    onChange(null);
+    return () => undefined;
+  },
+}));
 
 describe('Logo', () => {
   it('links home with the name as its text, the image being decorative', () => {
@@ -28,8 +36,9 @@ describe('GithubMark', () => {
 });
 
 describe('SiteHeader', () => {
-  it('shows the default navigation and a sign-in link', () => {
+  it('shows a visitor the default navigation and a sign-in link', async () => {
     render(<SiteHeader />);
+    await screen.findByRole('link', { name: 'Sign in' });
 
     const banner = screen.getByRole('banner');
     expect(within(banner).getByRole('link', { name: 'Xomoni' })).toHaveAttribute('href', '/');
@@ -44,17 +53,13 @@ describe('SiteHeader', () => {
     expect(within(banner).getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
 
-  it('replaces the default navigation with its children', () => {
-    render(
-      <SiteHeader>
-        <a href="/dashboard">Dashboard</a>
-      </SiteHeader>,
-    );
+  it('shows only the account corner on pages of the signed-in app', () => {
+    render(<SiteHeader app />);
 
-    const nav = screen.getByRole('navigation');
-    expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard');
-    expect(within(nav).queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).queryByRole('link', { name: 'How it works' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'GitHub' })).not.toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
   });
 });
 

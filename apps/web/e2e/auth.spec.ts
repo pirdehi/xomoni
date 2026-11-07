@@ -328,6 +328,26 @@ test.describe('account page', () => {
     await elsewhere.close();
   });
 
+  test('shows who is signed in on every page, and signs out from the header (#180)', async ({ page }) => {
+    const email = uniqueEmail('header');
+    await signUpConfirmed(page, email);
+    const menu = page.getByRole('button', { name: `Account menu for ${email}` });
+    for (const path of ['/', '/privacy', '/dashboard', '/account']) {
+      await page.goto(path);
+      await expect(menu, path).toBeVisible();
+      await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' }), path).toHaveCount(0);
+    }
+
+    await page.goto('/risks');
+    await menu.click();
+    await expect(page.getByRole('menu')).toContainText(`Signed in as ${email}`);
+    await page.getByRole('menuitem', { name: 'Sign out' }).click();
+    await expect(page).toHaveURL('http://localhost:3000/');
+    await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' })).toBeVisible();
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
+  });
+
   test('a normal sign-out leaves the other browsers signed in', async ({ page, browser }) => {
     const email = uniqueEmail('here-only');
     await signUpConfirmed(page, email);

@@ -1,10 +1,18 @@
 // @vitest-environment happy-dom
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { GITHUB_URL, INSTALL_URL } from '@/shared/config/site';
 import { ALWAYS, FAQ, HERO_FACTS, LIMITS, NEVER, PROBLEMS, STAYS, STEPS, SYNCS } from './content';
 import { HomePage } from './home-page';
+
+// A visitor: the header's account corner reads no session.
+vi.mock('@/shared/supabase/browser-session', () => ({
+  watchSessionEmail: (onChange: (email: string | null) => void) => {
+    onChange(null);
+    return () => undefined;
+  },
+}));
 
 const region = (name: string | RegExp) => screen.getByRole('region', { name });
 
@@ -153,10 +161,13 @@ describe('HomePage', () => {
     expect(within(closing).getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', GITHUB_URL);
   });
 
-  it('sits between the site header and footer', () => {
+  it('sits between the site header and footer', async () => {
     render(<HomePage />);
 
-    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    expect(await within(screen.getByRole('banner')).findByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/login',
+    );
     expect(screen.getByRole('contentinfo')).toHaveTextContent('Not affiliated with X Corp.');
   });
 });

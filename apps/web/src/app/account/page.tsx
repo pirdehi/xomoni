@@ -4,7 +4,6 @@ import { requireAccount } from '@/modules/auth/server/session';
 import { AccountMain, AccountSkeleton } from '@/modules/auth/ui/account-layout';
 import { AccountSettings } from '@/modules/auth/ui/account-settings';
 import { DeleteAccountSection } from '@/modules/auth/ui/delete-account';
-import { ButtonLink } from '@/shared/ui/links';
 import { SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
 
 export const metadata: Metadata = { title: 'Account' };
@@ -13,11 +12,7 @@ export const metadata: Metadata = { title: 'Account' };
 export default function AccountPage() {
   return (
     <>
-      <SiteHeader>
-        <ButtonLink href="/dashboard" appearance="subtle">
-          Dashboard
-        </ButtonLink>
-      </SiteHeader>
+      <SiteHeader app />
       <AccountMain>
         <Suspense fallback={<AccountSkeleton />}>
           <Account />

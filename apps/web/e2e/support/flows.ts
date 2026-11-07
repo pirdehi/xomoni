@@ -54,7 +54,8 @@ export async function signUpConfirmed(page: Page, email: string, password = PASS
 /** Waits until the dashboard has rendered for a signed-in person (not just until the URL changed). */
 export async function expectDashboard(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('link', { name: 'Account' }).first()).toBeVisible();
+  // The header's account corner names whoever is signed in (#180).
+  await expect(page.getByRole('button', { name: /^Account menu for / })).toBeVisible();
   await expect(page.getByText(/Live|Connecting…/)).toBeVisible();
 }
 

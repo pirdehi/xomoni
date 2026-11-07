@@ -140,3 +140,15 @@ export function FormSkeleton() {
     </Skeleton>
   );
 }
+
+/**
+ * Shown only with JavaScript off: signing in, signing up and the security check run in the browser (ADR-0011),
+ * so the forms can't work without it. Keeps those pages from looking empty.
+ */
+export function NoScriptNote() {
+  return (
+    <noscript>
+      <p>Turn on JavaScript to continue: the security check and signing in run in your browser.</p>
+    </noscript>
+  );
+}

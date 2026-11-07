@@ -3,8 +3,8 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { GITHUB_URL } from '@/shared/config/site';
+import { HeaderAccount } from './header-account';
 import { ButtonLink } from './links';
 
 const useStyles = makeStyles({
@@ -45,7 +45,7 @@ const useStyles = makeStyles({
   // Section links only fit next to the logo on wider screens; GitHub fits from a small tablet up.
   wide: { display: 'none', '@media (min-width: 768px)': { display: 'inline-flex' } },
   medium: { display: 'none', '@media (min-width: 640px)': { display: 'inline-flex' } },
-  signIn: { marginLeft: tokens.spacingHorizontalXS },
+  account: { display: 'inline-flex', marginLeft: tokens.spacingHorizontalXS },
   footer: {
     marginTop: 'auto',
     borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
@@ -99,15 +99,19 @@ export function GithubMark({ className }: { className?: string }) {
   );
 }
 
-/** Sticky, translucent site header; pass `children` to replace the default navigation. */
-export function SiteHeader({ children }: { children?: ReactNode }) {
+/**
+ * Sticky, translucent site header. Every page gets the account corner (`HeaderAccount`): "Sign in" for visitors,
+ * the dashboard and an account menu with "Sign out" for signed-in people. Public pages also link the home page's
+ * sections; pages of the signed-in app (`app`) don't.
+ */
+export function SiteHeader({ app = false }: { app?: boolean }) {
   const s = useStyles();
   return (
     <header className={s.header}>
       <div className={s.bar}>
         <Logo />
         <nav className={s.nav} aria-label="Main">
-          {children ?? (
+          {!app && (
             <>
               <ButtonLink href="/#how" appearance="subtle" className={s.wide}>
                 How it works
@@ -121,11 +125,11 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
               <ButtonLink href={GITHUB_URL} appearance="subtle" className={s.medium}>
                 GitHub
               </ButtonLink>
-              <ButtonLink href="/login" appearance="primary" className={s.signIn}>
-                Sign in
-              </ButtonLink>
             </>
           )}
+          <span className={s.account}>
+            <HeaderAccount />
+          </span>
         </nav>
       </div>
     </header>

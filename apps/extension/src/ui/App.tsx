@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Body1,
   Body1Strong,
   Caption1,
@@ -50,6 +49,7 @@ import { workerTab } from '../engine/worker-tab';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, type Tone } from './components/ui';
+import { AccountMenu } from './components/AccountMenu';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ConsentDialog } from './components/ConsentDialog';
 import { errorMessage } from './format';
@@ -356,29 +356,9 @@ function Sidebar({
       </nav>
       <div className={styles.footer}>
         <WorkerChip worker={worker} />
-        {account && <AccountRow account={account} />}
+        {account && <AccountMenu account={account} navigate={navigate} />}
       </div>
     </aside>
-  );
-}
-
-/** The signed-in X account: its picture (or its initial) beside its name and handle. */
-function AccountRow({ account }: { account: Account }) {
-  const styles = useStyles();
-  return (
-    <div className={styles.account}>
-      {/* Decorative: the name is written next to it. Without a picture, the initial stands in. */}
-      <Avatar
-        aria-hidden
-        size={32}
-        image={account.avatar ? { src: account.avatar } : undefined}
-        initials={account.avatar ? undefined : (account.name || account.handle || '?').slice(0, 1).toUpperCase()}
-      />
-      <div className={styles.accountText}>
-        <Body1Strong className={styles.truncate}>{account.name || account.handle}</Body1Strong>
-        <Caption1 className={mergeClasses(styles.truncate, styles.muted)}>@{account.handle}</Caption1>
-      </div>
-    </div>
   );
 }
 

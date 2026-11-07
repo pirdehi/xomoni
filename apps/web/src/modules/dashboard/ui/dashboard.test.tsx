@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { INSTALL_URL } from '@/shared/config/site';
 import { createLiveDashboardServices, type LiveDashboardServices } from '../client/live';
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { RISK_LEVEL } from '../domain/risk';
-import { Dashboard, type DashboardViewer } from './dashboard';
+import { Dashboard, type DashboardViewer, useJustConnected } from './dashboard';
 
 vi.mock('../client/live', () => ({ createLiveDashboardServices: vi.fn() }));
 
@@ -159,7 +159,8 @@ describe('Dashboard', () => {
       expect(connect).toHaveTextContent('type it in the extension under Settings → xomoni.com');
       await userEvent.click(within(connect).getByRole('button', { name: 'Get a code to connect a browser' }));
       expect(await within(connect).findByLabelText('Pairing code')).toHaveTextContent('AB2CD-EF3GH');
-      expect(connect).toHaveTextContent('Waiting for your browser…');
+      // With a code on screen, the panel says it waits for the browser that will use it (#182).
+      expect(connect).toHaveTextContent('Waiting for your browser to connect…');
       expect(screen.queryByRole('region', { name: 'Jobs' })).not.toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Connected browsers' })).not.toBeInTheDocument();
     });
@@ -454,5 +455,26 @@ describe('Dashboard', () => {
       const controls = [...buttons, ...links].join(' ');
       expect(controls).not.toMatch(/start|resume|approve|continue|retry|run|pause|cancel|stop|delete/i);
     });
+  });
+});
+
+describe('useJustConnected (#182)', () => {
+  it('marks a browser that connects while the page is open, for a while, and never the ones it started with', () => {
+    vi.useFakeTimers();
+    const first = device({ id: 'd1' });
+    const second = device({ id: 'd2', name: 'Edge on Windows' });
+    const { result, rerender } = renderHook(({ devices }) => useJustConnected(devices, 1_000), {
+      initialProps: { devices: [first] },
+    });
+    expect([...result.current]).toEqual([]);
+
+    rerender({ devices: [second, first] });
+    expect([...result.current]).toEqual(['d2']);
+
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect([...result.current]).toEqual([]);
+    vi.useRealTimers();
   });
 });

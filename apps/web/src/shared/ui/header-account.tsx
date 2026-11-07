@@ -17,6 +17,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Board20Regular, PersonSettings20Regular, SignOut20Regular } from '@fluentui/react-icons';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { watchSessionEmail } from '@/shared/supabase/browser-session';
 import { ButtonLink } from './links';
@@ -46,12 +47,13 @@ const useStyles = makeStyles({
 });
 
 /**
- * "Sign in" for visitors; for signed-in people, a Dashboard button and a menu named after their email with the
- * dashboard, the account page and "Sign out". The session comes from this browser's cookie (`watchSessionEmail`),
+ * "Sign in" for visitors; for signed-in people, a Dashboard button (except on the dashboard) and a menu named after
+ * their email with the dashboard, the account page and "Sign out". The session comes from this browser's cookie (`watchSessionEmail`),
  * so it only decides what is shown; a placeholder holds the space until it is read.
  */
 export function HeaderAccount() {
   const s = useStyles();
+  const pathname = usePathname();
   const [email, setEmail] = useState<string | null | undefined>(undefined);
   useEffect(() => watchSessionEmail(setEmail), []);
 
@@ -65,11 +67,13 @@ export function HeaderAccount() {
   }
   return (
     <span className={s.corner}>
-      <span className={s.dashboard}>
-        <ButtonLink href={ACCOUNT_PATHS.dashboard} appearance="primary">
-          Dashboard
-        </ButtonLink>
-      </span>
+      {pathname !== ACCOUNT_PATHS.dashboard && (
+        <span className={s.dashboard}>
+          <ButtonLink href={ACCOUNT_PATHS.dashboard} appearance="primary">
+            Dashboard
+          </ButtonLink>
+        </span>
+      )}
       <AccountMenu email={email} />
     </span>
   );

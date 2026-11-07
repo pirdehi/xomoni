@@ -37,7 +37,7 @@ import {
   Warning16Filled,
 } from '@fluentui/react-icons';
 import Image from 'next/image';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { ButtonLink, TextLink } from '@/shared/ui/links';
 import { isOnline, jobProgress, jobStateView, relativeTime, type Tone } from '../domain/job-status';
@@ -208,7 +208,6 @@ const useStyles = makeStyles({
   },
   stepText: { minWidth: 0, color: tokens.colorNeutralForeground2, lineHeight: '1.6' },
   stepLead: { display: 'block', marginBottom: tokens.spacingVerticalM },
-  waiting: { marginTop: tokens.spacingVerticalXXL, justifyContent: 'flex-start' },
 
   needsYou: { borderLeftWidth: '4px', borderLeftColor: tokens.colorStatusWarningBorderActive },
   warningIcon: { color: tokens.colorStatusWarningForeground1, flexShrink: 0 },
@@ -277,6 +276,19 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     fontSize: '24px',
   },
+  // A browser that has just connected: its icon turns green and rings for a moment (#182).
+  deviceIconNew: {
+    backgroundColor: tokens.colorPaletteGreenBackground2,
+    color: tokens.colorPaletteGreenForeground1,
+    animationName: {
+      '0%': { boxShadow: `0 0 0 0 ${tokens.colorPaletteGreenBorderActive}` },
+      '100%': { boxShadow: '0 0 0 12px transparent' },
+    },
+    animationDuration: '1.4s',
+    animationIterationCount: 3,
+    '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
+  },
+  nameRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
   status: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   online: { color: tokens.colorStatusSuccessForeground1 },
   pairing: { marginTop: tokens.spacingVerticalL },
@@ -293,6 +305,31 @@ const useStyles = makeStyles({
 });
 
 /**
+ * Ids of the browsers that connected while this page was open, kept for `ms` so the list can say "Just connected".
+ * The browsers the page started with are never new.
+ */
+export function useJustConnected(devices: readonly Device[], ms = 20_000): ReadonlySet<string> {
+  const seen = useRef<Set<string> | null>(null);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    if (!seen.current) {
+      seen.current = new Set(devices.map((device) => device.id));
+      return;
+    }
+    const known = seen.current;
+    const arrived = devices.map((device) => device.id).filter((id) => !known.has(id));
+    if (!arrived.length) return;
+    arrived.forEach((id) => known.add(id));
+    setFresh((before) => new Set([...before, ...arrived]));
+    const timer = setTimeout(() => {
+      setFresh((before) => new Set([...before].filter((id) => !arrived.includes(id))));
+    }, ms);
+    return () => clearTimeout(timer);
+  }, [devices, ms]);
+  return fresh;
+}
+
+/**
  * The signed-in dashboard: account bar, jobs that need the person, each X account's risk level, live jobs and
  * connected browsers. It shows; it never starts, resumes or changes a job (ADR-0006).
  */
@@ -300,6 +337,7 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
   const s = useStyles();
   const { devices, jobs, live, disconnect, createPairingCode } = useLiveDashboard(viewer.id, initial);
   const now = useNow(30_000);
+  const justConnected = useJustConnected(devices);
   const [leaving, setLeaving] = useState<Device | null>(null);
 
   const deviceName = new Map(devices.map((d) => [d.id, d.name]));
@@ -342,14 +380,22 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
           <ul className={mergeClasses(s.card, s.list, s.sectionBody)}>
             {devices.map((device) => {
               const online = isOnline(device, now);
+              const isNew = justConnected.has(device.id);
               return (
                 <li key={device.id} className={mergeClasses(s.divided, s.row, s.center)}>
                   <div className={s.group}>
-                    <span className={s.deviceIcon} aria-hidden>
+                    <span className={mergeClasses(s.deviceIcon, isNew && s.deviceIconNew)} aria-hidden>
                       <Laptop24Regular />
                     </span>
                     <div className={s.minW0}>
-                      <p className={s.strong}>{device.name}</p>
+                      <div className={s.nameRow}>
+                        <p className={s.strong}>{device.name}</p>
+                        {isNew && (
+                          <Badge appearance="tint" color="success" size="small">
+                            Just connected
+                          </Badge>
+                        )}
+                      </div>
                       <p className={s.meta}>
                         <span className={mergeClasses(s.status, online && s.online)}>
                           <span className={mergeClasses(s.dot, online && s.dotOn)} aria-hidden />
@@ -367,7 +413,7 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
             })}
           </ul>
           <div className={s.pairing}>
-            <PairingPanel createCode={createPairingCode} />
+            <PairingPanel createCode={createPairingCode} devices={devices} />
           </div>
         </section>
       )}
@@ -515,7 +561,6 @@ function ConnectBrowser({ createCode }: { createCode: () => Promise<PairingResul
         </Step>
         <Step n={3}>This page updates by itself as soon as your browser connects.</Step>
       </ol>
-      <Spinner className={s.waiting} size="extra-tiny" labelPosition="after" label="Waiting for your browser…" />
     </section>
   );
 }

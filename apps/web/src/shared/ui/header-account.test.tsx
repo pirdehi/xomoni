@@ -2,6 +2,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetNavigation, setLocation } from '@test/fakes/navigation';
 import { ACCOUNT_PATHS, HeaderAccount } from './header-account';
 
 // The session as this browser's cookie has it, driven by each test.
@@ -20,6 +21,7 @@ vi.mock('@/shared/supabase/browser-session', () => ({
 
 beforeEach(() => {
   session.stopped = 0;
+  resetNavigation();
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -58,6 +60,15 @@ describe('HeaderAccount', () => {
     expect(within(menu).getByRole('menuitem', { name: 'Dashboard' })).toHaveAttribute('href', ACCOUNT_PATHS.dashboard);
     expect(within(menu).getByRole('menuitem', { name: 'Account' })).toHaveAttribute('href', ACCOUNT_PATHS.account);
     expect(within(menu).getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('leaves the Dashboard button out on the dashboard itself', () => {
+    setLocation('/dashboard');
+    render(<HeaderAccount />);
+    signedIn('ada@example.com');
+
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Account menu/ })).toBeInTheDocument();
   });
 
   it('signs out by posting the form the server expects', async () => {

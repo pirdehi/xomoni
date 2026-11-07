@@ -29,6 +29,7 @@ import { downloadFile, errorMessage, toDateInput } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
 import { CloudCard } from '../components/CloudCard';
+import { xLinkOf } from '../components/ConnectionMap';
 
 const ACTIONS: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
 const COLUMNS: { key: keyof PacingRule; label: string; unit?: string }[] = [
@@ -133,7 +134,7 @@ const save = (s: Settings) => {
  * running job keeps the settings it read when it started. Each pacing field is named by its action and column
  * (such as "Unlike, Per hour") for screen readers.
  */
-export function SettingsPage(_props: PageProps) {
+export function SettingsPage({ worker }: PageProps) {
   const styles = useStyles();
   const settings = useLiveQuery(getSettings, []);
   const run = useRunner();
@@ -325,7 +326,7 @@ export function SettingsPage(_props: PageProps) {
             </div>
           </Card>
 
-          <CloudCard />
+          <CloudCard x={xLinkOf(worker)} />
 
           <Card title="Appearance & data">
             <Field label="Theme">

@@ -2,6 +2,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Device } from '../domain/model';
 import type { PairingResult } from '../domain/pairing';
 import { PairingPanel } from './pairing-panel';
 
@@ -60,5 +61,50 @@ describe('PairingPanel', () => {
     await user().click(screen.getByRole('button', { name: 'Get a code to connect a browser' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Sign in first.');
     expect(screen.queryByLabelText('Pairing code')).not.toBeInTheDocument();
+  });
+
+  describe('the link while a code waits, and once a browser uses it (#182)', () => {
+    const laptop: Device = {
+      id: 'd1',
+      name: 'Chrome on macOS',
+      extensionVersion: '0.2.0',
+      lastSeenAt: new Date(NOW).toISOString(),
+    };
+    const desktop: Device = { ...laptop, id: 'd2', name: 'Edge on Windows' };
+    const codeOk = () =>
+      vi.fn<() => Promise<PairingResult>>().mockResolvedValue({
+        ok: true,
+        code: { code: 'AB2CD-EF3GH', expiresAt: new Date(NOW + 600_000).toISOString() },
+      });
+
+    it('says it is waiting for the browser while the code is shown', async () => {
+      render(<PairingPanel createCode={codeOk()} devices={[laptop]} />);
+      await user().click(screen.getByRole('button', { name: 'Get a code to connect a browser' }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Waiting for your browser to connect…');
+      expect(document.querySelector('[data-state="waiting"]')).not.toBeNull();
+    });
+
+    it('gives way to the browser that used the code, named, with a live link and a way to connect another', async () => {
+      const createCode = codeOk();
+      const { rerender } = render(<PairingPanel createCode={createCode} devices={[laptop]} />);
+      await user().click(screen.getByRole('button', { name: 'Get a code to connect a browser' }));
+      await screen.findByLabelText('Pairing code');
+
+      // The browser already there before the code doesn't count; the one that appears after does.
+      rerender(<PairingPanel createCode={createCode} devices={[laptop]} />);
+      expect(screen.getByLabelText('Pairing code')).toBeInTheDocument();
+      rerender(<PairingPanel createCode={createCode} devices={[desktop, laptop]} />);
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Edge on Windows is connected. Its jobs show here live.',
+      );
+      expect(screen.queryByLabelText('Pairing code')).not.toBeInTheDocument();
+      expect(document.querySelector('[data-state="connected"]')).not.toBeNull();
+
+      await user().click(screen.getByRole('button', { name: 'Connect another browser' }));
+      expect(await screen.findByLabelText('Pairing code')).toBeInTheDocument();
+      expect(createCode).toHaveBeenCalledTimes(2);
+    });
   });
 });

@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { CloudError } from '../../cloud/client';
 import { PAIRING_PAGE } from '../../cloud/config';
 import { type CloudConnection, getConnection, watchConnection } from '../../cloud/connection';
+import { ConnectionMap, type XLink } from './ConnectionMap';
 import { FORGOTTEN_HERE, confirmConnection, connect, disconnect } from '../../cloud/sync';
 import { errorMessage, fmtDateTime } from '../format';
 import { toast } from '../hooks';
@@ -47,6 +48,7 @@ const useStyles = makeStyles({
     color: tokens.colorStatusDangerForeground1,
   },
   errorIcon: { flexShrink: 0, marginTop: '1px' },
+  map: { maxWidth: '440px', marginBottom: tokens.spacingVerticalL },
 });
 
 /** "Chrome on macOS", from the browser's own description of itself, as a default name for this device. */
@@ -91,10 +93,11 @@ export function useConnection(): CloudConnection | null | undefined {
 /**
  * Settings card that connects this browser to a xomoni.com account with a one-time code (ADR-0018), so its jobs'
  * status shows on the website; or shows the connection and disconnects it. After pairing it names the account,
- * masked, and sends nothing until the person confirms it is theirs (#149). It says what is sent: status only. Drawn
+ * masked, and sends nothing until the person confirms it is theirs (#149). A `ConnectionMap` on top shows the link as
+ * it stands, and moves while a code is being checked. It says what is sent: status only. Drawn
  * with Fluent UI (ADR-0019); a refused code is announced as an alert (`role="alert"`).
  */
-export function CloudCard() {
+export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
   const styles = useStyles();
   const connection = useConnection();
   const [code, setCode] = useState('');
@@ -140,6 +143,13 @@ export function CloudCard() {
       title="xomoni.com"
       subtitle="Follow your jobs from any device. Only their status is sent: titles, states and counts, never what you posted or liked."
     >
+      <div className={styles.map}>
+        <ConnectionMap
+          x={x}
+          cloud={busy || (connection && !connection.confirmed) ? 'pending' : connection ? 'connected' : 'off'}
+          size="large"
+        />
+      </div>
       {connection && !connection.confirmed ? (
         <div className={styles.form} role="group" aria-label="Confirm the account">
           <Body1 as="p" block className={styles.text}>

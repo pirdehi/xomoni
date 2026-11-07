@@ -4,7 +4,6 @@ import { requireViewer } from '@/modules/auth/server/session';
 import { loadDashboardSnapshot } from '@/modules/dashboard/server/load';
 import { Dashboard } from '@/modules/dashboard/ui/dashboard';
 import { DashboardMain, DashboardSkeleton } from '@/modules/dashboard/ui/dashboard-shell';
-import { ButtonLink } from '@/shared/ui/links';
 import { SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
 
 export const metadata: Metadata = { title: 'Dashboard' };
@@ -13,11 +12,7 @@ export const metadata: Metadata = { title: 'Dashboard' };
 export default function DashboardPage() {
   return (
     <>
-      <SiteHeader>
-        <ButtonLink href="/account" appearance="subtle">
-          Account
-        </ButtonLink>
-      </SiteHeader>
+      <SiteHeader app />
       <DashboardMain>
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />

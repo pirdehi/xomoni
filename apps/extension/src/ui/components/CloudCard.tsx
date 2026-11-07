@@ -64,8 +64,8 @@ export function suggestedDeviceName(userAgent = navigator.userAgent): string {
   return os ? `${browser} on ${os}` : browser;
 }
 
-/** The stored connection, kept current as it changes; undefined while loading. */
-function useConnection(): CloudConnection | null | undefined {
+/** The stored xomoni.com connection, kept current as it changes; undefined while loading. */
+export function useConnection(): CloudConnection | null | undefined {
   const [connection, setConnection] = useState<CloudConnection | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;

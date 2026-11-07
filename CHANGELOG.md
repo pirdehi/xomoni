@@ -39,6 +39,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Fixed
 
+- The sign-in page on xomoni.com showed no form in browsers where an extension had made a Trusted Types policy of its own: the site's startup stopped before the form was drawn. It now carries on with the policy it finds (#178).
 - A browser connected to xomoni.com stopped reporting once Watch had run: the website doesn't take Watch jobs, and the whole report was refused. Watch jobs now stay in the browser, and reporting carries on (#168).
 - The extension trusts only its own messages (#145). The service worker stores only what Xomoni's content script on x.com sends, checked field by field and capped in size. Commands reach X's page only from Xomoni's dashboard. Captures from X's page can't be rewritten by a page script that patches the browser's built-ins, and only requests to x.com are read. Before deleting, Xomoni checks that the post's id, its stored date and the time X shows agree, and that the text on the page has none of the words the rule keeps. A rate-limit reset more than a day ahead no longer parks a job.
 - "Delete local data" now deletes everything Xomoni keeps about your posts, including the post ids it sampled to check later and your consents, and disconnects xomoni.com. It keeps only when pages were loaded and the risk ladder's warnings, so X's limits still hold after a wipe. If xomoni.com can't be reached when you disconnect, Xomoni tells you to remove the browser there (#151).

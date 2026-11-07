@@ -58,14 +58,24 @@ export function trustedTypesRules(origin: string, baseURI: () => string): Truste
 }
 
 /**
- * Creates the site's default Trusted Types policy on `host`. Does nothing in a browser without Trusted Types.
- * Creating it twice throws, as the browser does: the CSP allows no duplicate.
+ * Creates the site's default Trusted Types policy on `host`, and says whether it is the one in place. Does nothing
+ * in a browser without Trusted Types.
+ *
+ * A browser allows one `default` policy, and an extension that runs in the page before its scripts may have made
+ * it already. Then that one stays in charge and the page carries on with a warning: throwing here stopped React
+ * before it rendered anything, which left the sign-in page without its form (#178).
  */
-export function installTrustedTypesPolicy(host: TrustedTypesHost): void {
+export function installTrustedTypesPolicy(host: TrustedTypesHost): boolean {
   const trustedTypes = host.trustedTypes;
-  if (!trustedTypes || typeof trustedTypes.createPolicy !== 'function') return;
-  trustedTypes.createPolicy(
-    TRUSTED_TYPES_POLICY,
-    trustedTypesRules(host.location.origin, () => host.document.baseURI),
-  );
+  if (!trustedTypes || typeof trustedTypes.createPolicy !== 'function') return false;
+  try {
+    trustedTypes.createPolicy(
+      TRUSTED_TYPES_POLICY,
+      trustedTypesRules(host.location.origin, () => host.document.baseURI),
+    );
+    return true;
+  } catch (err) {
+    console.warn('Xomoni: another default Trusted Types policy is in place, probably from a browser extension.', err);
+    return false;
+  }
 }

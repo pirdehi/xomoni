@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   SITE_BUNDLES,
   TRUSTED_TYPES_POLICY,
@@ -106,5 +106,40 @@ describe('the Trusted Types policy (#147)', () => {
     expect(rules.createScriptURL('../_next/static/x.js')).toBe('../_next/static/x.js');
     base = 'https://evil.example/';
     expect(rules.createScriptURL('/_next/static/x.js')).toBeNull();
+  });
+});
+
+describe('a default policy made before the site’s (#178)', () => {
+  it('keeps it, warns, and lets the page start instead of throwing', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    // An extension running in the page made `default` first; the browser refuses a second one.
+    const taken = {
+      createPolicy: vi.fn(() => {
+        throw new TypeError('Policy with name "default" already exists.');
+      }),
+    };
+    const host: TrustedTypesHost = {
+      trustedTypes: taken,
+      location: { origin: ORIGIN },
+      document: { baseURI: `${ORIGIN}/login` },
+    };
+
+    expect(() => installTrustedTypesPolicy(host)).not.toThrow();
+    expect(installTrustedTypesPolicy(host)).toBe(false);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('another default Trusted Types policy'),
+      expect.any(TypeError),
+    );
+    warn.mockRestore();
+  });
+
+  it('says when the site’s own policy is the one in place', () => {
+    const host: TrustedTypesHost = {
+      trustedTypes: { createPolicy: () => ({}) },
+      location: { origin: ORIGIN },
+      document: { baseURI: `${ORIGIN}/login` },
+    };
+    expect(installTrustedTypesPolicy(host)).toBe(true);
+    expect(installTrustedTypesPolicy({ ...host, trustedTypes: null })).toBe(false);
   });
 });

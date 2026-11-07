@@ -21,6 +21,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- The account corner of the extension's sidebar opens a **Connections** panel: a map of X, this browser and xomoni.com, with dots flowing along live links and dashes along one waiting for you, then a card for the X account and one for xomoni.com, each with its state and actions. Settings shows the same map. On xomoni.com, pairing is animated the same way and a browser that just connected is highlighted; the header leaves out *Dashboard* on the dashboard. Motion stops when the system asks for less of it (#182).
 - xomoni.com's header shows who is signed in on every page, with a menu for the dashboard, the account and *Sign out*; visitors see *Sign in*. The sign-in pages show a placeholder while they load, and say so when JavaScript is off. In the extension, the account at the bottom of the sidebar opens a menu: the X account (its profile, X's own sign-out) and the xomoni.com connection (which account, its dashboard, disconnect or connect) (#180).
 - Connecting a browser to xomoni.com now shows which account the code belongs to, its email masked, and sends nothing until you confirm it is yours (#149).
 - xomoni.com sends your current password to Supabase with a password change, so it can be checked there too, signs a browser out after 30 days unused instead of 400, and doesn't offer two-factor enrollment until it has a page for it (#148).

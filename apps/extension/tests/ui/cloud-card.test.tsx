@@ -118,6 +118,21 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     expect(await getConnection()).toBeNull();
   });
 
+  it('draws the link to xomoni.com as it stands: none, waiting for the person, then live (#182)', async () => {
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret', account: 'o•••@example.com' }]));
+    render(<CloudCard x="signed-in" />);
+    const map = () => screen.getByRole('img');
+    await waitFor(() => expect(map()).toHaveAttribute('data-cloud', 'off'));
+    expect(map()).toHaveAttribute('data-x', 'signed-in');
+
+    await userEvent.type(await screen.findByLabelText('Code'), 'ab2cd-ef3gh');
+    await userEvent.click(screen.getByRole('button', { name: 'Connect' }));
+    await waitFor(() => expect(map()).toHaveAttribute('data-cloud', 'pending'));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, it’s mine' }));
+    await waitFor(() => expect(map()).toHaveAttribute('data-cloud', 'connected'));
+  });
+
   it('suggests a name from the browser and the system', () => {
     const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/156.0 Safari/537.36';
     expect(suggestedDeviceName(mac)).toBe('Chrome on macOS');

@@ -49,7 +49,7 @@ import { workerTab } from '../engine/worker-tab';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, type Tone } from './components/ui';
-import { AccountMenu } from './components/AccountMenu';
+import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ConsentDialog } from './components/ConsentDialog';
 import { errorMessage } from './format';
@@ -356,7 +356,7 @@ function Sidebar({
       </nav>
       <div className={styles.footer}>
         <WorkerChip worker={worker} />
-        {account && <AccountMenu account={account} navigate={navigate} />}
+        {account && <AccountPanel account={account} worker={worker} navigate={navigate} />}
       </div>
     </aside>
   );

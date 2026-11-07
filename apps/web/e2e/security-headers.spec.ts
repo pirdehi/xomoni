@@ -45,6 +45,19 @@ test.describe('security headers (#8)', () => {
     }
   });
 
+  test('show the sign-in form when an extension made a default Trusted Types policy first (#178)', async ({ page }) => {
+    // What some browser extensions do at document_start, before the site's own scripts.
+    await page.addInitScript(() => {
+      type Rules = Record<string, (value: string) => string>;
+      const host = window as unknown as { trustedTypes?: { createPolicy(name: string, rules: Rules): unknown } };
+      host.trustedTypes?.createPolicy('default', { createHTML: (value) => value, createScriptURL: (value) => value });
+    });
+    await page.goto('/login');
+    await expect(page.getByLabel('Email')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+  });
+
   test('refuse a sign-out posted by another site, and keep the session (#147)', async ({ page }) => {
     await signUpConfirmed(page, uniqueEmail('csrf'));
     const forgeries: Record<string, string>[] = [{ origin: 'https://evil.example' }, { origin: 'null' }, {}];

@@ -25,8 +25,8 @@ import {
   ChevronLeft16Regular,
   ChevronRight16Regular,
   Compose20Regular,
-  DocumentJavascript16Regular,
   FolderOpen16Regular,
+  FolderZip16Regular,
   Heart20Regular,
   History20Regular,
   LockClosed12Regular,
@@ -51,6 +51,7 @@ import {
 } from '../format';
 import { startJob, toast, useRunner } from '../hooks';
 import { importArchive } from '../importArchive';
+import { pickZipInDownloads } from '../pick-zip';
 import { useKindCounts } from '../queries';
 
 const PAGE_SIZE = 25;
@@ -75,7 +76,6 @@ const useStyles = makeStyles({
     '& > li + li': { marginTop: tokens.spacingVerticalXS },
   },
   emphasis: { color: tokens.colorNeutralForeground1, fontWeight: tokens.fontWeightSemibold },
-  mono: { fontFamily: tokens.fontFamilyMonospace, color: tokens.colorNeutralForeground1 },
   dropZone: {
     display: 'flex',
     flexDirection: 'column',
@@ -265,7 +265,7 @@ export function InventoryPage({ account, navigate }: PageProps) {
 function ImportCard({ account }: Pick<PageProps, 'account'>) {
   const styles = useStyles();
   const folderInput = useRef<HTMLInputElement>(null);
-  const filesInput = useRef<HTMLInputElement>(null);
+  const zipInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -273,7 +273,7 @@ function ImportCard({ account }: Pick<PageProps, 'account'>) {
     folderInput.current?.setAttribute('webkitdirectory', '');
   }, []);
 
-  const run = async (list: FileList | null) => {
+  const run = async (list: FileList | readonly File[] | null) => {
     if (!list?.length) return;
     setError(null);
     setBusy('Starting…');
@@ -285,8 +285,14 @@ function ImportCard({ account }: Pick<PageProps, 'account'>) {
     } finally {
       setBusy(null);
       if (folderInput.current) folderInput.current.value = '';
-      if (filesInput.current) filesInput.current.value = '';
+      if (zipInput.current) zipInput.current.value = '';
     }
+  };
+  // The picker opens in Downloads, where Chrome saved X's ZIP; a browser without it gets the plain file input.
+  const chooseZip = async () => {
+    const picked = await pickZipInDownloads();
+    if (picked === undefined) zipInput.current?.click();
+    else if (picked) await run([picked]);
   };
 
   return (
@@ -299,9 +305,7 @@ function ImportCard({ account }: Pick<PageProps, 'account'>) {
           On X: <span className={styles.emphasis}>Settings → Your account → Download an archive of your data</span>{' '}
           (ready in 24–72h).
         </li>
-        <li>
-          Unzip it, then choose its <span className={styles.mono}>data</span> folder below.
-        </li>
+        <li>Drop the ZIP file X sends you here, as it is. No need to unzip it.</li>
       </ol>
       <div
         className={styles.dropZone}
@@ -319,26 +323,28 @@ function ImportCard({ account }: Pick<PageProps, 'account'>) {
               <Archive20Regular aria-hidden />
             </span>
             <Body1 as="p" className={styles.dropText}>
-              Drop account.js, tweets.js and like.js here
+              Drop your X archive here (twitter-….zip)
             </Body1>
             <div className={styles.dropActions}>
-              <Button
-                size="sm"
-                variant="primary"
-                icon={<FolderOpen16Regular />}
-                onClick={() => folderInput.current?.click()}
-              >
-                Choose data folder
+              <Button size="sm" variant="primary" icon={<FolderZip16Regular />} onClick={() => void chooseZip()}>
+                Choose ZIP file
               </Button>
-              <Button size="sm" icon={<DocumentJavascript16Regular />} onClick={() => filesInput.current?.click()}>
-                Choose files
+              <Button size="sm" icon={<FolderOpen16Regular />} onClick={() => folderInput.current?.click()}>
+                Choose unzipped folder
               </Button>
             </div>
           </>
         )}
       </div>
       <input ref={folderInput} type="file" multiple hidden onChange={(e) => void run(e.target.files)} />
-      <input ref={filesInput} type="file" multiple accept=".js" hidden onChange={(e) => void run(e.target.files)} />
+      <input
+        ref={zipInput}
+        type="file"
+        accept=".zip,application/zip"
+        hidden
+        data-testid="zip-input"
+        onChange={(e) => void run(e.target.files)}
+      />
       {error && (
         <div className={styles.error}>
           <Callout tone="critical" icon={<Archive16Regular />}>
@@ -348,7 +354,8 @@ function ImportCard({ account }: Pick<PageProps, 'account'>) {
       )}
       <Caption1 as="p" className={styles.note}>
         <LockClosed12Regular aria-hidden />
-        Files are read locally. Only account.js, tweets.js and like.js are opened.
+        Read on this computer only. Xomoni opens account.js, tweets.js and like.js; photos, videos and messages are
+        never read.
       </Caption1>
     </Card>
   );

@@ -131,10 +131,11 @@ export interface CleanupOptions {
 
 /**
  * What a scan job reads: the profile timeline, the replies tab, the Likes timeline, (`history`) X search
- * in half-year windows to reach posts older than the ~3,200 the profile shows, or (`range`) the posts, replies
- * and reposts of one date range (`Job.range`), for an archive of that range.
+ * in half-year windows to reach posts older than the ~3,200 the profile shows, (`complete`) all four one after the
+ * other, as the Library's *Complete my copy* (#185), or (`range`) the posts, replies and reposts of one date range
+ * (`Job.range`), for an archive of that range.
  */
-export type ScanTarget = 'posts' | 'replies' | 'likes' | 'history' | 'range';
+export type ScanTarget = 'posts' | 'replies' | 'likes' | 'history' | 'complete' | 'range';
 
 /** A span of time in epoch ms: `after` inclusive, `before` exclusive, as in `CleanupFilter`. */
 export interface DateRange {

@@ -131,8 +131,8 @@ On macOS, allow notifications for your browser in *System Settings → Notificat
 ## Usage
 
 1. **Connect.** In the dashboard, click **Open X worker**. A normal x.com window opens. Log in there as usual, including 2FA, and Xomoni detects your account.
-2. **Import your archive (recommended).** In X, go to *Settings → Your account → Download an archive of your data*. When it arrives, open **Inventory** and select the archive's `data` folder. Only `account.js`, `tweets.js` and `like.js` are read, and Xomoni checks that the archive belongs to the connected account.
-3. **Or scan.** **Inventory** can also scan your posts, replies, likes, or your full history from X.
+2. **Import your archive (recommended).** In **Library**, press *Request it on X*. X asks for your password on its own page. When X says the archive is ready, download the ZIP and drop it on the Library as it is, with no unzipping. Only `account.js`, `tweets.js` and `like.js` are read, and Xomoni checks that the archive belongs to the connected account.
+3. **Complete your copy.** **Library** shows how much of your account Xomoni has. *Complete my copy* reads your posts, replies, likes and full history from X in one job; *Download a copy* saves any dates as a page or as JSON.
 4. **Clean up.** In **Cleanup**:
    1. Pick a type, a date and keep rules.
    2. Review the matches and download a backup.

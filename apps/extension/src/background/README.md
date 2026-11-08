@@ -4,8 +4,8 @@ The extension's MV3 service worker (`sw.js`). It stores what content scripts obs
 
 ## Files
 
-| File    | Responsibility                                                                                                        |
-| ------- | --------------------------------------------------------------------------------------------------------------------- |
+| File    | Responsibility                                                                                                                                                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `sw.ts` | Stores `ingest`, `profile` and `rate` messages from Xomoni's content script in the top frame of an x.com tab, after `parseRuntimeMessage` has checked and copied them (#145); opens the dashboard; routes notification clicks. |
 
 ## Depends on

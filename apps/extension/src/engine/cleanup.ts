@@ -11,12 +11,12 @@
 // Rule of thumb throughout: if Xomoni can't verify an item, it leaves it alone.
 import { needMessage } from '../shared/attention';
 import { PROFILE_TIMELINE_LIMIT, unseenPosts, worthWarning } from '../shared/coverage';
-import { db, itemKey } from '../shared/db';
+import { db, itemKey, postTotals } from '../shared/db';
 import { actionFor, findCandidates, matchesFilter } from '../shared/filter';
 import { isXId } from '../shared/ids';
 import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../shared/messages';
 import { DAY, searchDate, timeMatchesId } from '../shared/time';
-import type { Account, ActionKind, CleanupFilter, CleanupOptions, Item, ItemKind } from '../shared/types';
+import type { ActionKind, CleanupFilter, CleanupOptions, Item, ItemKind } from '../shared/types';
 import { readBudgetFor } from '../shared/x-limits';
 import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
 import { runDueChecks, sampleAction } from './samples';
@@ -74,30 +74,13 @@ async function noteUnseen(ctx: JobContext) {
   const unseen = unseenPosts({
     postsCount: account.postsCount,
     profileSeen: account.profileAt != null,
-    ...(await inventoryTotals(account)),
+    ...(await postTotals(account)),
   });
   if (worthWarning(unseen, account.postsCount)) {
     await ctx.note(
       `X shows about ${unseen.toLocaleString()} more posts, replies and reposts than Xomoni knows about. Search can’t find old posts without likes; import your archive to reach them.`,
     );
   }
-}
-
-/** Posts, replies and reposts still present in the inventory, and those removed after X's count was seen. */
-async function inventoryTotals(account: Account) {
-  let present = 0;
-  let removedSinceProfile = 0;
-  for (const kind of ['post', 'reply', 'repost'] as const) {
-    const range = (status: Item['status']) =>
-      db.items
-        .where('[accountId+kind+status+createdAt]')
-        .between([account.id, kind, status, -Infinity], [account.id, kind, status, Infinity]);
-    present += await range('present').count();
-    removedSinceProfile += await range('deleted')
-      .filter((item) => item.statusAt > (account.profileAt ?? Infinity))
-      .count();
-  }
-  return { present, removedSinceProfile };
 }
 
 /** matched = everything settled so far + what the inventory still says matches. */

@@ -1,11 +1,8 @@
 import {
-  Body1,
   Button as FluentButton,
   Caption1,
-  CompoundButton,
   Link,
   SearchBox,
-  Spinner,
   Table,
   TableBody,
   TableCell,
@@ -18,138 +15,23 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
-  Archive16Regular,
   Archive20Regular,
   ArrowDownload16Regular,
-  ArrowReply20Regular,
   ChevronLeft16Regular,
   ChevronRight16Regular,
-  Compose20Regular,
-  FolderOpen16Regular,
-  FolderZip16Regular,
-  Heart20Regular,
-  History20Regular,
-  LockClosed12Regular,
   Open16Regular,
 } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { createScanJob } from '../../engine/runner';
+import { useState } from 'react';
 import { db } from '../../shared/db';
-import type { ItemKind, ScanTarget } from '../../shared/types';
-import type { PageProps } from '../navigation';
-import { Badge, Button, Callout, Card, EmptyState, PageHeader, Segmented } from '../components/ui';
-import {
-  KIND_PLURAL,
-  TARGET_PLURAL,
-  downloadFile,
-  errorMessage,
-  fmtDate,
-  fmtNumber,
-  postUrl,
-  toDateInput,
-} from '../format';
-import { startJob, toast, useRunner } from '../hooks';
-import { importArchive } from '../importArchive';
-import { pickZipInDownloads } from '../pick-zip';
+import type { ItemKind } from '../../shared/types';
+import { KIND_PLURAL, TARGET_PLURAL, downloadFile, fmtDate, fmtNumber, postUrl, toDateInput } from '../format';
 import { useKindCounts } from '../queries';
+import { Badge, Button, Card, EmptyState, Segmented } from './ui';
 
 const PAGE_SIZE = 25;
 
 const useStyles = makeStyles({
-  columns: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr)',
-    gap: tokens.spacingHorizontalL,
-    '@media (min-width: 1024px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
-  },
-  below: { marginTop: tokens.spacingVerticalL },
-
-  // Import card.
-  steps: {
-    margin: `0 0 ${tokens.spacingVerticalL}`,
-    paddingLeft: tokens.spacingHorizontalL,
-    listStyleType: 'decimal',
-    fontSize: tokens.fontSizeBase200,
-    lineHeight: tokens.lineHeightBase200,
-    color: tokens.colorNeutralForeground2,
-    '& > li + li': { marginTop: tokens.spacingVerticalXS },
-  },
-  emphasis: { color: tokens.colorNeutralForeground1, fontWeight: tokens.fontWeightSemibold },
-  dropZone: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center',
-    padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalL}`,
-    borderRadius: tokens.borderRadiusXLarge,
-    border: `${tokens.strokeWidthThin} dashed ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  dropIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '40px',
-    height: '40px',
-    marginBottom: tokens.spacingVerticalS,
-    borderRadius: tokens.borderRadiusCircular,
-    backgroundColor: tokens.colorBrandBackground2,
-    color: tokens.colorBrandForeground1,
-  },
-  dropText: { margin: 0, color: tokens.colorNeutralForeground1 },
-  dropActions: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: tokens.spacingHorizontalS,
-    marginTop: tokens.spacingVerticalM,
-  },
-  busy: { color: tokens.colorNeutralForeground2 },
-  error: { marginTop: tokens.spacingVerticalM },
-  note: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalXS,
-    margin: `${tokens.spacingVerticalM} 0 0`,
-    color: tokens.colorNeutralForeground3,
-  },
-
-  // Scan card.
-  scans: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr)',
-    gap: tokens.spacingHorizontalS,
-    '@media (min-width: 640px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
-  },
-  scan: {
-    width: '100%',
-    maxWidth: 'none',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    padding: tokens.spacingHorizontalM,
-    borderRadius: tokens.borderRadiusLarge,
-  },
-  scanIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    width: '32px',
-    height: '32px',
-    fontSize: '20px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorBrandBackground2,
-    color: tokens.colorBrandForeground1,
-  },
-  scanIconDisabled: {
-    backgroundColor: tokens.colorNeutralBackgroundDisabled,
-    color: tokens.colorNeutralForegroundDisabled,
-  },
-  scanBody: { marginTop: tokens.spacingVerticalXXS, lineHeight: tokens.lineHeightBase200 },
-
-  // Browser card.
   toolbar: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -240,184 +122,10 @@ const useStyles = makeStyles({
 });
 
 /**
- * The local inventory: X archive import, scan jobs that only read X, and a paged browser of known
- * items with JSON export. Nothing on this page changes anything on X.
+ * Everything in the library, a page of 25 at a time: posts, replies, reposts or likes, still on X or removed, with a
+ * search over text and authors, each row linked to X. *Export JSON* saves the list shown, whole.
  */
-export function InventoryPage({ account, navigate }: PageProps) {
-  const styles = useStyles();
-  return (
-    <>
-      <PageHeader
-        title="Inventory"
-        description="Everything Xomoni knows about your account. Fill it from your official X archive (complete) and/or by scanning X (recent)."
-      />
-      <div className={styles.columns}>
-        <ImportCard account={account} />
-        <ScanCard accountId={account.id} navigate={navigate} />
-      </div>
-      <div className={styles.below}>
-        <Browser accountId={account.id} handle={account.handle} />
-      </div>
-    </>
-  );
-}
-
-function ImportCard({ account }: Pick<PageProps, 'account'>) {
-  const styles = useStyles();
-  const folderInput = useRef<HTMLInputElement>(null);
-  const zipInput = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    folderInput.current?.setAttribute('webkitdirectory', '');
-  }, []);
-
-  const run = async (list: FileList | readonly File[] | null) => {
-    if (!list?.length) return;
-    setError(null);
-    setBusy('Starting…');
-    try {
-      const r = await importArchive([...list], account, setBusy);
-      toast(`Imported ${fmtNumber(r.tweets)} posts and ${fmtNumber(r.likes)} likes`, 'good');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-      if (folderInput.current) folderInput.current.value = '';
-      if (zipInput.current) zipInput.current.value = '';
-    }
-  };
-  // The picker opens in Downloads, where Chrome saved X's ZIP; a browser without it gets the plain file input.
-  const chooseZip = async () => {
-    const picked = await pickZipInDownloads();
-    if (picked === undefined) zipInput.current?.click();
-    else if (picked) await run([picked]);
-  };
-
-  return (
-    <Card
-      title="Import your X archive"
-      subtitle="The only complete list of your posts and likes — including ones X no longer shows."
-    >
-      <ol className={styles.steps}>
-        <li>
-          On X: <span className={styles.emphasis}>Settings → Your account → Download an archive of your data</span>{' '}
-          (ready in 24–72h).
-        </li>
-        <li>Drop the ZIP file X sends you here, as it is. No need to unzip it.</li>
-      </ol>
-      <div
-        className={styles.dropZone}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          void run(e.dataTransfer.files);
-        }}
-      >
-        {busy ? (
-          <Spinner size="tiny" label={{ children: busy, className: styles.busy }} />
-        ) : (
-          <>
-            <span className={styles.dropIcon}>
-              <Archive20Regular aria-hidden />
-            </span>
-            <Body1 as="p" className={styles.dropText}>
-              Drop your X archive here (twitter-….zip)
-            </Body1>
-            <div className={styles.dropActions}>
-              <Button size="sm" variant="primary" icon={<FolderZip16Regular />} onClick={() => void chooseZip()}>
-                Choose ZIP file
-              </Button>
-              <Button size="sm" icon={<FolderOpen16Regular />} onClick={() => folderInput.current?.click()}>
-                Choose unzipped folder
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
-      <input ref={folderInput} type="file" multiple hidden onChange={(e) => void run(e.target.files)} />
-      <input
-        ref={zipInput}
-        type="file"
-        accept=".zip,application/zip"
-        hidden
-        data-testid="zip-input"
-        onChange={(e) => void run(e.target.files)}
-      />
-      {error && (
-        <div className={styles.error}>
-          <Callout tone="critical" icon={<Archive16Regular />}>
-            {error}
-          </Callout>
-        </div>
-      )}
-      <Caption1 as="p" className={styles.note}>
-        <LockClosed12Regular aria-hidden />
-        Read on this computer only. Xomoni opens account.js, tweets.js and like.js; photos, videos and messages are
-        never read.
-      </Caption1>
-    </Card>
-  );
-}
-
-const SCANS: { target: ScanTarget; title: string; body: string; icon: ReactNode }[] = [
-  {
-    target: 'posts',
-    title: 'Posts & reposts',
-    body: 'Your profile timeline (about the latest 3,200).',
-    icon: <Compose20Regular />,
-  },
-  { target: 'replies', title: 'Replies', body: 'Your replies timeline.', icon: <ArrowReply20Regular /> },
-  { target: 'likes', title: 'Likes', body: 'Your Likes page (recent likes).', icon: <Heart20Regular /> },
-  {
-    target: 'history',
-    title: 'Full history',
-    body: 'Searches X half-year by half-year back to when you joined.',
-    icon: <History20Regular />,
-  },
-];
-
-function ScanCard({ accountId, navigate }: { accountId: string; navigate: PageProps['navigate'] }) {
-  const styles = useStyles();
-  const run = useRunner();
-  const busy = run.status !== 'idle';
-  const scan = async (target: ScanTarget, title: string) => {
-    try {
-      const job = await createScanJob(accountId, `Scan: ${title}`, target);
-      void startJob(job.id);
-      navigate('jobs');
-    } catch (err) {
-      toast(`The scan could not be saved: ${errorMessage(err)}`, 'critical');
-    }
-  };
-  return (
-    <Card
-      title="Scan from X"
-      subtitle="Scrolls pages of X in the worker window and records what it sees. Nothing is changed."
-    >
-      <div className={styles.scans}>
-        {SCANS.map((s) => (
-          <CompoundButton
-            key={s.target}
-            className={styles.scan}
-            icon={{ className: mergeClasses(styles.scanIcon, busy && styles.scanIconDisabled), children: s.icon }}
-            secondaryContent={{ className: styles.scanBody, children: s.body }}
-            disabled={busy}
-            onClick={() => void scan(s.target, s.title)}
-          >
-            {s.title}
-          </CompoundButton>
-        ))}
-      </div>
-      <Caption1 as="p" className={styles.note}>
-        Tip: Xomoni also records your own posts whenever you browse your profile in the worker window.
-      </Caption1>
-    </Card>
-  );
-}
-
-function Browser({ accountId, handle }: { accountId: string; handle: string }) {
+export function ItemBrowser({ accountId, handle }: { accountId: string; handle: string }) {
   const styles = useStyles();
   const [kind, setKind] = useState<ItemKind>('post');
   const [status, setStatus] = useState<'present' | 'deleted'>('present');
@@ -507,7 +215,9 @@ function Browser({ accountId, handle }: { accountId: string; handle: string }) {
         <EmptyState
           icon={<Archive20Regular />}
           title="Nothing here"
-          body={query ? 'No items match your search.' : 'Import your archive or run a scan to fill the inventory.'}
+          body={
+            query ? 'No items match your search.' : 'Import your X archive or complete your copy to fill the library.'
+          }
         />
       ) : (
         <div className={styles.scroll}>

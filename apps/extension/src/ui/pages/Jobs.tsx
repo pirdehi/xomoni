@@ -74,7 +74,7 @@ export function JobsPage({ account, navigate }: PageProps) {
           <EmptyState
             icon={<TaskListLtr20Regular />}
             title={filter === 'open' ? 'No open jobs' : 'No jobs yet'}
-            body="Create a cleanup, or scan your account from the Inventory page."
+            body="Create a cleanup, or complete your copy from the Library."
             action={
               <Button size="sm" onClick={() => navigate('cleanup')}>
                 New cleanup

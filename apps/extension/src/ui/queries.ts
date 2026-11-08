@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../shared/db';
-import type { ItemKind, ItemStatus } from '../shared/types';
+import { unseenPosts } from '../shared/coverage';
+import { archiveImported, archiveImportedAt, db, postTotals } from '../shared/db';
+import type { Account, ItemKind, ItemStatus, Job, ScanTarget } from '../shared/types';
 
 /** All item kinds, in display order. */
 export const KINDS: ItemKind[] = ['post', 'reply', 'repost', 'like'];
@@ -59,4 +60,57 @@ export function useYearHistogram(accountId: string | undefined, kinds: ItemKind[
     for (let y = Math.min(...years); y <= Math.max(...years); y++) out.push({ year: y, values: byYear.get(y) ?? {} });
     return out;
   }, [accountId, key]);
+}
+
+/** Scan targets that read the recent timelines, and those that search the whole history (`range` is neither). */
+const READS_RECENT: readonly ScanTarget[] = ['posts', 'replies', 'likes', 'complete'];
+const READS_HISTORY: readonly ScanTarget[] = ['history', 'complete'];
+const UNFINISHED: readonly Job['state'][] = ['queued', 'running', 'waiting', 'paused', 'blocked'];
+
+/** How complete Xomoni's copy of an account is, for the Library (#185). */
+export interface CopyStatus {
+  /** Posts, replies and reposts Xomoni has that are still on X. */
+  present: number;
+  /** X's own count of posts, replies and reposts, when its profile was last read; null until then. */
+  postsCount: number | null;
+  /** About how many of those X has that Xomoni doesn't (PLAYBOOK E2); null when X's count is unknown. */
+  unseen: number | null;
+  /** Whether X's archive was imported; `importedAt` is null for imports made before the date was kept. */
+  archive: { imported: boolean; importedAt: number | null };
+  /** When a read of the recent timelines last finished; null if never. */
+  recentAt: number | null;
+  /** When a search of the whole history last finished; null if never. */
+  historyAt: number | null;
+  /** A read that hasn't finished yet (running, waiting, paused, blocked or never started), newest first. */
+  openRead: Job | null;
+}
+
+/** When the newest finished scan of one of `targets` ended, or null. */
+function lastFinished(jobs: readonly Job[], targets: readonly ScanTarget[]): number | null {
+  let at: number | null = null;
+  for (const job of jobs) {
+    if (job.state !== 'completed' || !job.scan || !targets.includes(job.scan) || job.finishedAt == null) continue;
+    at = Math.max(at ?? 0, job.finishedAt);
+  }
+  return at;
+}
+
+/** Live `CopyStatus` of an account; undefined while loading. */
+export function useCopyStatus(account: Account): CopyStatus | undefined {
+  return useLiveQuery(async () => {
+    const jobs = (await db.jobs.where('accountId').equals(account.id).toArray()).filter(
+      (job) => job.kind === 'scan' && job.scan !== 'range',
+    );
+    const totals = await postTotals(account);
+    const openRead = jobs.filter((job) => UNFINISHED.includes(job.state)).sort((a, b) => b.createdAt - a.createdAt)[0];
+    return {
+      present: totals.present,
+      postsCount: account.postsCount,
+      unseen: unseenPosts({ postsCount: account.postsCount, profileSeen: account.profileAt != null, ...totals }),
+      archive: { imported: await archiveImported(account.id), importedAt: await archiveImportedAt(account.id) },
+      recentAt: lastFinished(jobs, READS_RECENT),
+      historyAt: lastFinished(jobs, READS_HISTORY),
+      openRead: openRead ?? null,
+    };
+  }, [account.id, account.postsCount, account.profileAt]);
 }

@@ -190,3 +190,12 @@ describe('the archive file for a date range', () => {
     ]);
   });
 });
+
+describe('scanUrls: completing the copy in one job (#185)', () => {
+  it('reads the profile, replies and likes timelines, then searches the whole history, newest first', () => {
+    const urls = scanUrls('complete', 'me', Date.UTC(2025, 2, 1));
+    expect(urls.slice(0, 3)).toEqual(['https://x.com/me', 'https://x.com/me/with_replies', 'https://x.com/me/likes']);
+    expect(urls.slice(3)).toEqual(scanUrls('history', 'me', Date.UTC(2025, 2, 1)));
+    expect(urls.at(-1)).toContain(encodeURIComponent('since:2025-01-01 until:2025-07-01'));
+  });
+});

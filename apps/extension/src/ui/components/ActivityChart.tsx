@@ -209,7 +209,7 @@ export function ActivityChart({ accountId }: { accountId: string }) {
         <EmptyState
           icon={<DataBarVertical20Regular />}
           title="No data yet"
-          body="Import your X archive or run a scan from the Inventory page to see your history here."
+          body="Import your X archive or complete your copy in the Library to see your history here."
         />
       ) : view === 'table' ? (
         <div className={styles.tableWrap}>

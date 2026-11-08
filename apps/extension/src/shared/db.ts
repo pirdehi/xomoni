@@ -320,6 +320,33 @@ export async function markArchiveImported(accountId: string) {
   await kvSet(archiveKey(accountId), Date.now());
 }
 
+/** When an X archive was last imported for this account (epoch ms), or null; imports before #185 kept no date. */
+export async function archiveImportedAt(accountId: string): Promise<number | null> {
+  const at = await kvGet<number | null>(archiveKey(accountId), null);
+  return typeof at === 'number' && at > 0 ? at : null;
+}
+
+/**
+ * Posts, replies and reposts of an account still present in the inventory, and those Xomoni removed after X's count
+ * was last seen, which that count still includes (PLAYBOOK E2). Counted on the index, without loading rows but the
+ * removed ones.
+ */
+export async function postTotals(account: Account): Promise<{ present: number; removedSinceProfile: number }> {
+  let present = 0;
+  let removedSinceProfile = 0;
+  for (const kind of ['post', 'reply', 'repost'] as const) {
+    const range = (status: Item['status']) =>
+      db.items
+        .where('[accountId+kind+status+createdAt]')
+        .between([account.id, kind, status, -Infinity], [account.id, kind, status, Infinity]);
+    present += await range('present').count();
+    removedSinceProfile += await range('deleted')
+      .filter((item) => item.statusAt > (account.profileAt ?? Infinity))
+      .count();
+  }
+  return { present, removedSinceProfile };
+}
+
 /**
  * Whether an X archive was ever imported for this account: the marker an import sets, or, for imports from
  * before the marker existed, an item that came from an archive. Read-only, so it can run inside a live query

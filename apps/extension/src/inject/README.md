@@ -6,10 +6,10 @@ Once X's scripts run, the interceptor calls only built-ins it took at `document_
 
 ## Files
 
-| File             | Responsibility                                                                                                                                                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| File             | Responsibility                                                                                                                                                                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `interceptor.ts` | Wraps `fetch` and `XMLHttpRequest`; for the 10 watched operations on x.com, posts the URL, method, request body (from `init`, or a copy of a `Request` object's), status, `x-rate-limit-*` and `date` headers and response body over the private channel. |
-| `natives.ts` | The built-ins the interceptor uses, taken once at `document_start` and uncurried (`responseText(res)` calls the original `Response.prototype.text`), with brand checks for `Request` and `URL` (#145). Imports nothing. |
+| `natives.ts`     | The built-ins the interceptor uses, taken once at `document_start` and uncurried (`responseText(res)` calls the original `Response.prototype.text`), with brand checks for `Request` and `URL` (#145). Imports nothing.                                   |
 
 ## Depends on
 

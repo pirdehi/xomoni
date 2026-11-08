@@ -52,6 +52,9 @@ export function scanUrls(target: ScanTarget, handle: string, createdAt: number |
       return [`https://x.com/${handle}/with_replies`];
     case 'likes':
       return [`https://x.com/${handle}/likes`];
+    case 'complete':
+      // Everything a read can reach, in one job, since only one job runs at a time: the timelines, then search.
+      return (['posts', 'replies', 'likes', 'history'] as const).flatMap((part) => scanUrls(part, handle, createdAt));
     case 'history': {
       // Search in half-year windows to reach posts older than the timeline's ~3,200 limit.
       const urls: string[] = [];

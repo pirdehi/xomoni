@@ -1,4 +1,4 @@
-// Shared helpers for the tests of the Cleanup, Archive and Inventory pages and of the archive importer:
+// Shared helpers for the tests of the Cleanup and Library pages, the Download a copy dialog and the archive importer:
 // inventory items, X archive data files, and a watch on every way a page could send data off the computer.
 import { vi } from 'vitest';
 import { upsertItems } from '../../src/shared/db';

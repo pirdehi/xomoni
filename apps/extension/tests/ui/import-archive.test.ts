@@ -2,9 +2,15 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { archiveImported, db } from '../../src/shared/db';
-import { MAX_ACCOUNT_FILE_BYTES, MAX_ARCHIVE_FILE_BYTES, importArchive } from '../../src/ui/importArchive';
+import {
+  MAX_ACCOUNT_FILE_BYTES,
+  MAX_ARCHIVE_FILE_BYTES,
+  archiveFiles,
+  importArchive,
+} from '../../src/ui/importArchive';
 import { accountJs, draft, likeJs, seed, tweetsJs, watchNetwork, ytdFile } from '../support/cleanup-pages';
 import { ME, account, resetDb } from '../support/fixtures';
+import { zipFile } from '../support/zip';
 
 const ME_ACCOUNT = account();
 
@@ -52,7 +58,7 @@ describe('importArchive', () => {
     const read = [watchRead(huge), watchRead(account), watchRead(LIKES)];
 
     await expect(importArchive([account, huge, LIKES], ME_ACCOUNT, vi.fn())).rejects.toThrow(
-      'tweets.js is 513 MB, larger than Xomoni reads (512 MB). Check that you chose the “data” folder of your own X archive. Nothing was imported.',
+      'tweets.js is 513 MB, larger than Xomoni reads (512 MB). Check that this is your own X archive. Nothing was imported.',
     );
     for (const spy of read) expect(spy).not.toHaveBeenCalled();
     expect(await db.items.count()).toBe(0);
@@ -152,7 +158,7 @@ describe('importArchive', () => {
 
   it('needs tweets.js or like.js', async () => {
     await expect(importArchive([accountJs(ME, 'me')], ME_ACCOUNT, vi.fn())).rejects.toThrow(
-      'No tweets.js or like.js found. Choose the “data” folder inside your unzipped X archive.',
+      'No tweets.js or like.js found. Choose the ZIP file X sent you (twitter-….zip), or the “data” folder inside it.',
     );
     await expect(importArchive([], ME_ACCOUNT, vi.fn())).rejects.toThrow(/No tweets\.js or like\.js found/);
   });
@@ -230,5 +236,115 @@ describe('importArchive', () => {
     const network = watchNetwork();
     await importArchive([accountJs(ME, 'me'), TWEETS, LIKES], ME_ACCOUNT, vi.fn());
     expect(network.calls()).toBe(0);
+  });
+});
+
+/** The text of a test file, for putting it in a ZIP. */
+const textOf = (file: File) => file.text();
+
+describe('importArchive from the ZIP X sends (#184)', () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it('imports the ZIP as it is, reading only the files it needs', async () => {
+    const zip = await zipFile([
+      { path: 'Your archive.html', data: '<html>' },
+      { path: 'data/account.js', data: await textOf(accountJs(ME, 'me')) },
+      { path: 'data/tweets.js', data: await textOf(TWEETS) },
+      { path: 'data/like.js', data: await textOf(LIKES), method: 0 },
+      // Read, these would fail: broken data proves that photos and messages are never opened.
+      { path: 'data/tweets_media/1-photo.jpg', data: 'x', rawData: new Uint8Array([0xff, 0xff]) },
+      { path: 'data/direct-messages.js', data: 'x', rawData: new Uint8Array([0xff, 0xff]) },
+    ]);
+    const progress = vi.fn();
+
+    await expect(importArchive([zip], ME_ACCOUNT, progress)).resolves.toEqual({ tweets: 4, likes: 2 });
+    expect(await db.items.count()).toBe(6);
+    expect(await archiveImported(ME)).toBe(true);
+    expect(progress).toHaveBeenCalledWith('Reading tweets.js…');
+  });
+
+  it('reads a large ZIP64 archive with split files', async () => {
+    const part = tweetsJs([{ id: '1000000005', text: 'From part 1', createdAt: 'Fri Jan 05 12:00:00 +0000 2018' }]);
+    const zip = await zipFile(
+      [
+        { path: 'data/account.js', data: await textOf(accountJs(ME, 'me')) },
+        { path: 'data/tweets-part1.js', data: await textOf(part) },
+      ],
+      'twitter-2026-11-08-abc.zip',
+      { zip64: true },
+    );
+    await expect(importArchive([zip], ME_ACCOUNT, vi.fn())).resolves.toEqual({ tweets: 1, likes: 0 });
+  });
+
+  it('knows a ZIP by its bytes when its name lost the .zip', async () => {
+    const zip = await zipFile(
+      [
+        { path: 'data/account.js', data: await textOf(accountJs(ME, 'me')) },
+        { path: 'data/like.js', data: await textOf(LIKES) },
+      ],
+      'twitter-archive',
+    );
+    await expect(importArchive([zip], ME_ACCOUNT, vi.fn())).resolves.toEqual({ tweets: 0, likes: 2 });
+  });
+
+  it('refuses the ZIP of another account', async () => {
+    const zip = await zipFile([
+      { path: 'data/account.js', data: await textOf(accountJs('acct-other', 'someone')) },
+      { path: 'data/tweets.js', data: await textOf(TWEETS) },
+    ]);
+    await expect(importArchive([zip], ME_ACCOUNT, vi.fn())).rejects.toThrow(
+      'This archive belongs to @someone, not @me. Nothing was imported.',
+    );
+    expect(await db.items.count()).toBe(0);
+  });
+
+  it('refuses a file larger than it reads by the size the ZIP declares, before inflating anything', async () => {
+    const zip = await zipFile([
+      { path: 'data/account.js', data: await textOf(accountJs(ME, 'me')) },
+      {
+        path: 'data/tweets.js',
+        data: 'x',
+        declaredSize: MAX_ARCHIVE_FILE_BYTES + 1,
+        rawData: new Uint8Array([0xff, 0xff]),
+      },
+    ]);
+    await expect(importArchive([zip], ME_ACCOUNT, vi.fn())).rejects.toThrow(
+      'tweets.js is 513 MB, larger than Xomoni reads (512 MB). Check that this is your own X archive. Nothing was imported.',
+    );
+    expect(await db.items.count()).toBe(0);
+  });
+
+  it('says what is wrong with a ZIP that is not X’s archive, or damaged, and imports nothing', async () => {
+    const other = await zipFile([{ path: 'holiday.jpg', data: 'x' }], 'photos.zip');
+    await expect(importArchive([other], ME_ACCOUNT, vi.fn())).rejects.toThrow(/^No tweets\.js or like\.js found/);
+
+    const broken = new File(['not a zip at all'], 'twitter-2026.zip');
+    await expect(importArchive([broken], ME_ACCOUNT, vi.fn())).rejects.toThrow('This is not a ZIP file.');
+
+    const damaged = await zipFile([
+      { path: 'data/account.js', data: await textOf(accountJs(ME, 'me')) },
+      { path: 'data/tweets.js', data: await textOf(TWEETS), crc: 1 },
+    ]);
+    await expect(importArchive([damaged], ME_ACCOUNT, vi.fn())).rejects.toThrow(
+      'This ZIP file is damaged or incomplete. Download it again from X.',
+    );
+    expect(await db.items.count()).toBe(0);
+    expect(await archiveImported(ME)).toBe(false);
+  });
+
+  it('takes a ZIP only on its own', async () => {
+    const zip = await zipFile([{ path: 'data/account.js', data: 'x' }]);
+    await expect(archiveFiles([zip, TWEETS])).rejects.toThrow('Choose the ZIP file on its own, without other files.');
+  });
+
+  it('keeps reading an unzipped folder by each file’s path', async () => {
+    const owner = accountJs(ME, 'me', 'x/data/account.js');
+    const files = await archiveFiles([owner, TWEETS]);
+    expect(files.map((f) => [f.name, f.path, f.size])).toEqual([
+      ['account.js', 'x/data/account.js', owner.size],
+      ['tweets.js', 'tweets.js', TWEETS.size],
+    ]);
   });
 });

@@ -10,8 +10,8 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
-**Current focus:** Phase 4, the pilot on the maintainer's account (with Run hidden, #140); Phase 9, security hardening, starting with release integrity before the first tag; Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done.
-**Last updated:** 2026-11-04
+**Current focus:** Phase 11, getting X's archive into Xomoni without leaving it; Phase 4, the pilot on the maintainer's account; Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done, and Phase 9 is done except what waits on the maintainer.
+**Last updated:** 2026-11-08
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -157,6 +157,17 @@ Following phrases and #hashtags in X's search, read-only ([ADR-0021](adr/0021-wa
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ✅ | Watch page: up to 5 tabs of phrases or #hashtags, searched about once a minute within the read budget, newest 10 posts each | [#158](https://github.com/pirdehi/xomoni/issues/158) | [#159](https://github.com/pirdehi/xomoni/pull/159) |
+
+## Phase 11 · The X archive without the chores
+
+Today, getting X's archive into Xomoni takes more than ten steps by hand. This phase brings them down to the password X asks for, typed on X. The Archive and Inventory pages become one place.
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ✅ | Import the ZIP X sends as it is: no unzipping; only the files Xomoni needs are read, and photos and videos never are | [#184](https://github.com/pirdehi/xomoni/issues/184) | [#188](https://github.com/pirdehi/xomoni/pull/188) |
+| ⬜ | One Library page instead of Archive and Inventory: how complete the copy is, one action to complete it, *Download a copy* with dates chosen at download time | [#185](https://github.com/pirdehi/xomoni/issues/185) | |
+| ⬜ | Get X's archive as a job through X's own settings page: request, wait, notify, download; the password is typed on X only | [#186](https://github.com/pirdehi/xomoni/issues/186) | |
+| ⬜ | Import the downloaded archive by itself from the Downloads folder, with one click as the fallback | [#187](https://github.com/pirdehi/xomoni/issues/187) | |
 
 ## Dropped
 

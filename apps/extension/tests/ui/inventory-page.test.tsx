@@ -13,6 +13,7 @@ import { InventoryPage } from '../../src/ui/pages/Inventory';
 import { stubChrome } from '../support/chrome';
 import { DAY_MS, accountJs, draft, likeJs, seed, tweetsJs, watchNetwork } from '../support/cleanup-pages';
 import { ME, pageProps, resetDb } from '../support/fixtures';
+import { zipFile } from '../support/zip';
 
 const mocks = vi.hoisted(() => {
   const runStatus: { current: RunnerState['status'] } = { current: 'idle' };
@@ -54,10 +55,23 @@ const TWEETS = () =>
   ]);
 const LIKES = () => likeJs([{ tweetId: '1100000000000000001', fullText: 'Liked it' }]);
 
-/** The two hidden file inputs: the data folder picker and the single-files picker. */
+/** The two hidden file inputs: the unzipped-folder picker and the ZIP picker for browsers without a better one. */
 function fileInputs() {
-  const [folder, files] = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
-  return { folder: folder!, files: files! };
+  const [folder, zip] = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+  return { folder: folder!, zip: zip! };
+}
+
+/** X's archive as the ZIP it sends: account.js, tweets.js and like.js, and a photo never read. */
+async function archiveZip(name = 'twitter-2026-11-08-abc.zip') {
+  return zipFile(
+    [
+      { path: 'data/account.js', data: await accountJs(ME, 'me').text() },
+      { path: 'data/tweets.js', data: await TWEETS().text() },
+      { path: 'data/like.js', data: await LIKES().text() },
+      { path: 'data/tweets_media/1.jpg', data: 'x', rawData: new Uint8Array([0xff]) },
+    ],
+    name,
+  );
 }
 const bodyRows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1);
 const kindTab = (label: string) => screen.getByRole('button', { name: new RegExp(`^${label} \\d+$`) });
@@ -85,7 +99,7 @@ describe('Inventory page', () => {
       const { folder } = fileInputs();
       expect(folder).toHaveAttribute('webkitdirectory');
       const click = vi.spyOn(folder, 'click');
-      await userEvent.click(screen.getByRole('button', { name: 'Choose data folder' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Choose unzipped folder' }));
       expect(click).toHaveBeenCalled();
 
       await userEvent.upload(folder, [accountJs(ME, 'me', 'data/account.js'), TWEETS(), LIKES()]);
@@ -95,25 +109,69 @@ describe('Inventory page', () => {
       expect(await archiveImported(ME)).toBe(true);
       expect(await screen.findByText('Another archived post')).toBeInTheDocument();
       expect(folder.value).toBe('');
-      expect(screen.getByRole('button', { name: 'Choose data folder' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose unzipped folder' })).toBeInTheDocument();
     });
 
-    it('imports single files', async () => {
+    it('imports the ZIP X sends as it is, through a plain file input where there is no better picker (#184)', async () => {
       render(<InventoryPage {...await pageProps()} />);
-      const { files } = fileInputs();
-      expect(files).toHaveAttribute('accept', '.js');
-      const click = vi.spyOn(files, 'click');
-      await userEvent.click(screen.getByRole('button', { name: 'Choose files' }));
+      const { zip } = fileInputs();
+      expect(zip).toHaveAttribute('accept', '.zip,application/zip');
+      const click = vi.spyOn(zip, 'click');
+      await userEvent.click(screen.getByRole('button', { name: 'Choose ZIP file' }));
       expect(click).toHaveBeenCalled();
 
-      await userEvent.upload(files, [accountJs(ME, 'me'), LIKES()]);
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 0 posts and 1 likes', 'good'));
-      expect(files.value).toBe('');
+      await userEvent.upload(zip, [await archiveZip()]);
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
+      expect(await archiveImported(ME)).toBe(true);
+      expect(zip.value).toBe('');
+    });
+
+    it('opens the picker in Downloads, where Chrome saved the ZIP, and imports what is chosen there (#184)', async () => {
+      const archive = await archiveZip();
+      const picker = vi.fn(() => Promise.resolve([{ getFile: () => Promise.resolve(archive) }]));
+      vi.stubGlobal('showOpenFilePicker', picker);
+      render(<InventoryPage {...await pageProps()} />);
+      const click = vi.spyOn(fileInputs().zip, 'click');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Choose ZIP file' }));
+
+      expect(picker).toHaveBeenCalledWith(expect.objectContaining({ startIn: 'downloads' }));
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
+      expect(click).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the picker is closed without a choice', async () => {
+      vi.stubGlobal('showOpenFilePicker', () => Promise.reject(new DOMException('closed', 'AbortError')));
+      render(<InventoryPage {...await pageProps()} />);
+      const click = vi.spyOn(fileInputs().zip, 'click');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Choose ZIP file' }));
+
+      expect(click).not.toHaveBeenCalled();
+      expect(screen.queryByText('Starting…')).not.toBeInTheDocument();
+      expect(mocks.toast).not.toHaveBeenCalled();
+    });
+
+    it('imports the ZIP dragged from Chrome’s downloads onto the card', async () => {
+      render(<InventoryPage {...await pageProps()} />);
+      fireEvent.drop(screen.getByText('Drop your X archive here (twitter-….zip)'), {
+        dataTransfer: { files: [await archiveZip()] },
+      });
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
+    });
+
+    it('says when a ZIP is damaged, and imports nothing', async () => {
+      render(<InventoryPage {...await pageProps()} />);
+      await userEvent.upload(fileInputs().zip, [
+        new File(['not a zip'], 'twitter-2026.zip', { type: 'application/zip' }),
+      ]);
+      expect(await screen.findByText('This is not a ZIP file.')).toBeInTheDocument();
+      expect(await db.items.count()).toBe(0);
     });
 
     it('imports files dropped on the card', async () => {
       render(<InventoryPage {...await pageProps()} />);
-      const zone = screen.getByText('Drop account.js, tweets.js and like.js here');
+      const zone = screen.getByText('Drop your X archive here (twitter-….zip)');
       // The drop zone must cancel dragover, or the browser opens the file instead of dropping it.
       expect(fireEvent.dragOver(zone)).toBe(false);
 
@@ -123,11 +181,11 @@ describe('Inventory page', () => {
 
     it('ignores an empty pick', async () => {
       render(<InventoryPage {...await pageProps()} />);
-      fireEvent.drop(screen.getByText('Drop account.js, tweets.js and like.js here'), {
+      fireEvent.drop(screen.getByText('Drop your X archive here (twitter-….zip)'), {
         dataTransfer: { files: [] },
       });
       fireEvent.change(fileInputs().folder);
-      expect(screen.getByRole('button', { name: 'Choose data folder' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose unzipped folder' })).toBeInTheDocument();
       expect(screen.queryByText('Starting…')).not.toBeInTheDocument();
       expect(mocks.toast).not.toHaveBeenCalled();
     });
@@ -149,12 +207,12 @@ describe('Inventory page', () => {
 
     it('explains what is missing, and clears the error after a good import', async () => {
       render(<InventoryPage {...await pageProps()} />);
-      const { files } = fileInputs();
-      await userEvent.upload(files, [TWEETS()]);
+      const { folder } = fileInputs();
+      await userEvent.upload(folder, [TWEETS()]);
       const error = /account\.js is missing\. Include it so Xomoni can check the archive belongs to @me\./;
       expect(await screen.findByText(error)).toBeInTheDocument();
 
-      await userEvent.upload(files, [accountJs(ME, 'me'), TWEETS()]);
+      await userEvent.upload(folder, [accountJs(ME, 'me'), TWEETS()]);
       await waitFor(() => expect(mocks.toast).toHaveBeenCalledOnce());
       expect(screen.queryByText(error)).not.toBeInTheDocument();
     });
@@ -171,13 +229,13 @@ describe('Inventory page', () => {
         return read();
       });
       render(<InventoryPage {...await pageProps()} />);
-      await userEvent.upload(fileInputs().files, [owner, TWEETS()]);
+      await userEvent.upload(fileInputs().folder, [owner, TWEETS()]);
 
       expect(await screen.findByText('Starting…')).toBeInTheDocument();
       expect(screen.getByRole('progressbar', { name: 'Starting…' })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Choose data folder' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Choose unzipped folder' })).not.toBeInTheDocument();
       release();
-      expect(await screen.findByRole('button', { name: 'Choose data folder' })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: 'Choose unzipped folder' })).toBeInTheDocument();
       expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 0 likes', 'good');
     });
   });

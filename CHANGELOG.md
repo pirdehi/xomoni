@@ -6,6 +6,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- Import X's archive as the ZIP X sends, without unzipping it: drop it on the Inventory page, even straight from Chrome's downloads, or choose it in a picker that opens in Downloads. Only `account.js`, `tweets.js` and `like.js` are read from it; photos, videos and messages never are, so a large archive opens in moments. A damaged or altered ZIP is refused and nothing is imported (#184).
 - A browser connected to xomoni.com says when a newer version of the extension is out, and whether it fixes a security problem. A zip install never updates by itself, so this is how you hear about fixes until the Chrome Web Store ships updates (#151).
 - xomoni.com/.well-known/security.txt says where to report a vulnerability, and SECURITY.md says what watches the code and who is alerted. CodeQL scans the code and the workflows on every push and pull request (#150).
 - Watch: follow up to five phrases or #hashtags in X's search, two tabs to start. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads; nothing is liked, replied to or posted (ADR-0021).

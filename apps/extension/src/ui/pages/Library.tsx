@@ -26,6 +26,7 @@ import { createScanJob } from '../../engine/runner';
 import type { Account, ScanTarget } from '../../shared/types';
 import { ArchiveImport } from '../components/ArchiveImport';
 import { DownloadCopyDialog } from '../components/DownloadCopy';
+import { DownloadsWatch } from '../components/DownloadsWatch';
 import { ItemBrowser } from '../components/ItemBrowser';
 import { Badge, Button, Card, PageHeader } from '../components/ui';
 import { errorMessage, fmtAgo, fmtDate, fmtNumber } from '../format';
@@ -289,6 +290,7 @@ function XArchiveCard({ account, archive }: { account: Account; archive: CopySta
         <li>When X says it’s ready, download the ZIP and drop it below as it is.</li>
       </ol>
       <ArchiveImport account={account} />
+      <DownloadsWatch account={account} />
     </Card>
   );
 }

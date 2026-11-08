@@ -6,6 +6,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- Xomoni can find X's archive in your Downloads folder and import it by itself (#187). Choose the folder once, read-only, in the Library. From then on, a ZIP named like X's archive (`twitter-YYYY-MM-DD-….zip`) that lands there is imported while the Library is open, once per file. Only files named like X's archive are opened, and nothing leaves the computer.
 - Import X's archive as the ZIP X sends, without unzipping it: drop it on the Inventory page, even straight from Chrome's downloads, or choose it in a picker that opens in Downloads. Only `account.js`, `tweets.js` and `like.js` are read from it; photos, videos and messages never are, so a large archive opens in moments. A damaged or altered ZIP is refused and nothing is imported (#184).
 - A browser connected to xomoni.com says when a newer version of the extension is out, and whether it fixes a security problem. A zip install never updates by itself, so this is how you hear about fixes until the Chrome Web Store ships updates (#151).
 - xomoni.com/.well-known/security.txt says where to report a vulnerability, and SECURITY.md says what watches the code and who is alerted. CodeQL scans the code and the workflows on every push and pull request (#150).

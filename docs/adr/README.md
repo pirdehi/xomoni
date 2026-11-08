@@ -25,3 +25,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0019](0019-fluent-ui-everywhere.md) | Fluent UI for every Xomoni interface; Tailwind is removed | Accepted |
 | [0020](0020-run-hidden-by-sharing-the-x-tab.md) | Run hidden by sharing the X tab with the dashboard | Accepted |
 | [0021](0021-watch-x-search-read-only.md) | Watch X's search for phrases and #hashtags, read-only and within the read budget | Accepted |
+| [0022](0022-get-the-x-archive-without-leaving-xomoni.md) | Get X's archive without leaving Xomoni: X's own page, the person's password on X, the ZIP read here | Accepted |

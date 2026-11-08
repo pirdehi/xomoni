@@ -7,6 +7,7 @@ import type { RunnerState } from '../../src/engine/runner';
 import { archiveImported, db } from '../../src/shared/db';
 import type * as Hooks from '../../src/ui/hooks';
 import { ArchiveImport } from '../../src/ui/components/ArchiveImport';
+import { fileKey, seenArchives } from '../../src/ui/downloads-folder';
 import { stubChrome } from '../support/chrome';
 import { accountJs, likeJs, tweetsJs } from '../support/cleanup-pages';
 import { ME, pageProps, resetDb } from '../support/fixtures';
@@ -109,6 +110,14 @@ describe('ArchiveImport (#184)', () => {
       await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
       expect(await archiveImported(ME)).toBe(true);
       expect(zip.value).toBe('');
+    });
+
+    it('remembers a ZIP imported by hand, so finding it in Downloads won’t import it again (#187)', async () => {
+      render(<ArchiveImport account={(await pageProps()).account} />);
+      const zip = await archiveZip();
+      await userEvent.upload(fileInputs().zip, [zip]);
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledOnce());
+      expect((await seenArchives(ME)).has(fileKey(zip))).toBe(true);
     });
 
     it('opens the picker in Downloads, where Chrome saved the ZIP, and imports what is chosen there (#184)', async () => {

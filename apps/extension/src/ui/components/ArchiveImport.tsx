@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Account } from '../../shared/types';
 import { fmtNumber } from '../format';
 import { toast } from '../hooks';
+import { ARCHIVE_FILE, markArchiveSeen } from '../downloads-folder';
 import { importArchive } from '../importArchive';
 import { pickZipInDownloads } from '../pick-zip';
 import { Button, Callout } from './ui';
@@ -77,7 +78,10 @@ export function ArchiveImport({ account }: { account: Account }) {
     setError(null);
     setBusy('Starting…');
     try {
-      const r = await importArchive([...list], account, setBusy);
+      const files = [...list];
+      const r = await importArchive(files, account, setBusy);
+      // A ZIP imported by hand is not imported again when Xomoni finds it in Downloads (#187).
+      for (const file of files) if (ARCHIVE_FILE.test(file.name)) await markArchiveSeen(account.id, file);
       toast(`Imported ${fmtNumber(r.tweets)} posts and ${fmtNumber(r.likes)} likes`, 'good');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

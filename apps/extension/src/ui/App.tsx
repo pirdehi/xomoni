@@ -17,18 +17,16 @@ import {
 } from '@fluentui/react-components';
 import {
   AlertUrgent20Regular,
-  Archive20Filled,
-  Archive20Regular,
   Board20Filled,
   Board20Regular,
   CheckmarkCircle16Filled,
-  Database20Filled,
-  Database20Regular,
   Eye16Regular,
   EyeOff16Regular,
   type FluentIcon,
   History20Filled,
   History20Regular,
+  Library20Filled,
+  Library20Regular,
   Open16Regular,
   Pause16Regular,
   Pulse20Regular,
@@ -66,23 +64,21 @@ import {
 } from './hooks';
 import { tabShare } from './tab-share';
 import { ActivityPage } from './pages/Activity';
-import { ArchivePage } from './pages/Archive';
 import { CleanupPage } from './pages/Cleanup';
-import { InventoryPage } from './pages/Inventory';
+import { LibraryPage } from './pages/Library';
 import { JobsPage } from './pages/Jobs';
 import { OverviewPage } from './pages/Overview';
 import { SettingsPage } from './pages/Settings';
 import { WatchPage } from './pages/Watch';
 import type { Account } from '../shared/types';
-import type { PageId, PageProps } from './navigation';
+import { MOVED_PAGES, type PageId, type PageProps } from './navigation';
 import { startCloudSync } from '../cloud/sync';
 
 // Each page's icon: Fluent's Nav shows the filled one for the current page and the outline for the others.
 const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
   { id: 'overview', label: 'Overview', icon: bundleIcon(Board20Filled, Board20Regular) },
   { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
-  { id: 'archive', label: 'Archive', icon: bundleIcon(Archive20Filled, Archive20Regular) },
-  { id: 'inventory', label: 'Inventory', icon: bundleIcon(Database20Filled, Database20Regular) },
+  { id: 'library', label: 'Library', icon: bundleIcon(Library20Filled, Library20Regular) },
   { id: 'watch', label: 'Watch', icon: bundleIcon(Search20Filled, Search20Regular) },
   { id: 'jobs', label: 'Jobs', icon: bundleIcon(TaskListLtr20Filled, TaskListLtr20Regular) },
   { id: 'activity', label: 'Activity log', icon: bundleIcon(History20Filled, History20Regular) },
@@ -250,8 +246,9 @@ function useCloudSync() {
 
 function useHashRoute(): [PageId, (p: PageId) => void] {
   const read = () => {
-    const id = location.hash.replace(/^#\/?/, '') as PageId;
-    return NAV.some((n) => n.id === id) ? id : 'overview';
+    const hash = location.hash.replace(/^#\/?/, '');
+    const id = MOVED_PAGES[hash] ?? hash;
+    return NAV.find((n) => n.id === id)?.id ?? 'overview';
   };
   const [page, setPage] = useState<PageId>(read);
   useEffect(() => {
@@ -301,10 +298,8 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
   switch (page) {
     case 'cleanup':
       return <CleanupPage {...props} />;
-    case 'archive':
-      return <ArchivePage {...props} />;
-    case 'inventory':
-      return <InventoryPage {...props} />;
+    case 'library':
+      return <LibraryPage {...props} />;
     case 'watch':
       return <WatchPage {...props} />;
     case 'jobs':

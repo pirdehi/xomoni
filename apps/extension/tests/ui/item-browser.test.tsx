@@ -1,19 +1,18 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerState } from '../../src/engine/runner';
-import { archiveImported, db } from '../../src/shared/db';
+import { db } from '../../src/shared/db';
 import type { Item } from '../../src/shared/types';
 import type * as Format from '../../src/ui/format';
 import { fmtDate, toDateInput } from '../../src/ui/format';
 import type * as Hooks from '../../src/ui/hooks';
-import { InventoryPage } from '../../src/ui/pages/Inventory';
+import { ItemBrowser } from '../../src/ui/components/ItemBrowser';
 import { stubChrome } from '../support/chrome';
-import { DAY_MS, accountJs, draft, likeJs, seed, tweetsJs, watchNetwork } from '../support/cleanup-pages';
-import { ME, pageProps, resetDb } from '../support/fixtures';
-import { zipFile } from '../support/zip';
+import { DAY_MS, draft, seed } from '../support/cleanup-pages';
+import { ME, resetDb } from '../support/fixtures';
 
 const mocks = vi.hoisted(() => {
   const runStatus: { current: RunnerState['status'] } = { current: 'idle' };
@@ -48,40 +47,13 @@ vi.mock('../../src/ui/format', async (importOriginal) => ({
   downloadFile: mocks.downloadFile,
 }));
 
-const TWEETS = () =>
-  tweetsJs([
-    { id: '1000000001', text: 'Archived post', createdAt: 'Mon Jan 01 12:00:00 +0000 2018' },
-    { id: '1000000002', text: 'Another archived post', createdAt: 'Tue Jan 02 12:00:00 +0000 2018' },
-  ]);
-const LIKES = () => likeJs([{ tweetId: '1100000000000000001', fullText: 'Liked it' }]);
-
-/** The two hidden file inputs: the unzipped-folder picker and the ZIP picker for browsers without a better one. */
-function fileInputs() {
-  const [folder, zip] = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
-  return { folder: folder!, zip: zip! };
-}
-
-/** X's archive as the ZIP it sends: account.js, tweets.js and like.js, and a photo never read. */
-async function archiveZip(name = 'twitter-2026-11-08-abc.zip') {
-  return zipFile(
-    [
-      { path: 'data/account.js', data: await accountJs(ME, 'me').text() },
-      { path: 'data/tweets.js', data: await TWEETS().text() },
-      { path: 'data/like.js', data: await LIKES().text() },
-      { path: 'data/tweets_media/1.jpg', data: 'x', rawData: new Uint8Array([0xff]) },
-    ],
-    name,
-  );
-}
 const bodyRows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1);
 const kindTab = (label: string) => screen.getByRole('button', { name: new RegExp(`^${label} \\d+$`) });
 const search = () => screen.getByPlaceholderText('Search text or @author');
 
-describe('Inventory page', () => {
-  let chrome: ReturnType<typeof stubChrome>;
-
+describe('ItemBrowser', () => {
   beforeEach(async () => {
-    chrome = stubChrome();
+    stubChrome();
     mocks.runStatus.current = 'idle';
     await resetDb();
   });
@@ -93,199 +65,11 @@ describe('Inventory page', () => {
     vi.restoreAllMocks();
   });
 
-  describe('importing the X archive', () => {
-    it('imports the archive of the connected account from the data folder', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      const { folder } = fileInputs();
-      expect(folder).toHaveAttribute('webkitdirectory');
-      const click = vi.spyOn(folder, 'click');
-      await userEvent.click(screen.getByRole('button', { name: 'Choose unzipped folder' }));
-      expect(click).toHaveBeenCalled();
-
-      await userEvent.upload(folder, [accountJs(ME, 'me', 'data/account.js'), TWEETS(), LIKES()]);
-
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
-      expect(await db.items.count()).toBe(3);
-      expect(await archiveImported(ME)).toBe(true);
-      expect(await screen.findByText('Another archived post')).toBeInTheDocument();
-      expect(folder.value).toBe('');
-      expect(screen.getByRole('button', { name: 'Choose unzipped folder' })).toBeInTheDocument();
-    });
-
-    it('imports the ZIP X sends as it is, through a plain file input where there is no better picker (#184)', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      const { zip } = fileInputs();
-      expect(zip).toHaveAttribute('accept', '.zip,application/zip');
-      const click = vi.spyOn(zip, 'click');
-      await userEvent.click(screen.getByRole('button', { name: 'Choose ZIP file' }));
-      expect(click).toHaveBeenCalled();
-
-      await userEvent.upload(zip, [await archiveZip()]);
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
-      expect(await archiveImported(ME)).toBe(true);
-      expect(zip.value).toBe('');
-    });
-
-    it('opens the picker in Downloads, where Chrome saved the ZIP, and imports what is chosen there (#184)', async () => {
-      const archive = await archiveZip();
-      const picker = vi.fn(() => Promise.resolve([{ getFile: () => Promise.resolve(archive) }]));
-      vi.stubGlobal('showOpenFilePicker', picker);
-      render(<InventoryPage {...await pageProps()} />);
-      const click = vi.spyOn(fileInputs().zip, 'click');
-
-      await userEvent.click(screen.getByRole('button', { name: 'Choose ZIP file' }));
-
-      expect(picker).toHaveBeenCalledWith(expect.objectContaining({ startIn: 'downloads' }));
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
-      expect(click).not.toHaveBeenCalled();
-    });
-
-    it('does nothing when the picker is closed without a choice', async () => {
-      vi.stubGlobal('showOpenFilePicker', () => Promise.reject(new DOMException('closed', 'AbortError')));
-      render(<InventoryPage {...await pageProps()} />);
-      const click = vi.spyOn(fileInputs().zip, 'click');
-
-      await userEvent.click(screen.getByRole('button', { name: 'Choose ZIP file' }));
-
-      expect(click).not.toHaveBeenCalled();
-      expect(screen.queryByText('Starting…')).not.toBeInTheDocument();
-      expect(mocks.toast).not.toHaveBeenCalled();
-    });
-
-    it('imports the ZIP dragged from Chrome’s downloads onto the card', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      fireEvent.drop(screen.getByText('Drop your X archive here (twitter-….zip)'), {
-        dataTransfer: { files: [await archiveZip()] },
-      });
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 1 likes', 'good'));
-    });
-
-    it('says when a ZIP is damaged, and imports nothing', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      await userEvent.upload(fileInputs().zip, [
-        new File(['not a zip'], 'twitter-2026.zip', { type: 'application/zip' }),
-      ]);
-      expect(await screen.findByText('This is not a ZIP file.')).toBeInTheDocument();
-      expect(await db.items.count()).toBe(0);
-    });
-
-    it('imports files dropped on the card', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      const zone = screen.getByText('Drop your X archive here (twitter-….zip)');
-      // The drop zone must cancel dragover, or the browser opens the file instead of dropping it.
-      expect(fireEvent.dragOver(zone)).toBe(false);
-
-      fireEvent.drop(zone, { dataTransfer: { files: [accountJs(ME, 'me'), TWEETS()] } });
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 0 likes', 'good'));
-    });
-
-    it('ignores an empty pick', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      fireEvent.drop(screen.getByText('Drop your X archive here (twitter-….zip)'), {
-        dataTransfer: { files: [] },
-      });
-      fireEvent.change(fileInputs().folder);
-      expect(screen.getByRole('button', { name: 'Choose unzipped folder' })).toBeInTheDocument();
-      expect(screen.queryByText('Starting…')).not.toBeInTheDocument();
-      expect(mocks.toast).not.toHaveBeenCalled();
-    });
-
-    it('refuses an archive of another account and imports nothing', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      const { folder } = fileInputs();
-      await userEvent.upload(folder, [accountJs('acct-other', 'someone'), TWEETS(), LIKES()]);
-
-      expect(
-        await screen.findByText('This archive belongs to @someone, not @me. Nothing was imported.'),
-      ).toBeInTheDocument();
-      expect(await db.items.count()).toBe(0);
-      expect(await archiveImported(ME)).toBe(false);
-      expect(mocks.toast).not.toHaveBeenCalled();
-      expect(folder.value).toBe('');
-      expect(screen.getByText('Nothing here')).toBeInTheDocument();
-    });
-
-    it('explains what is missing, and clears the error after a good import', async () => {
-      render(<InventoryPage {...await pageProps()} />);
-      const { folder } = fileInputs();
-      await userEvent.upload(folder, [TWEETS()]);
-      const error = /account\.js is missing\. Include it so Xomoni can check the archive belongs to @me\./;
-      expect(await screen.findByText(error)).toBeInTheDocument();
-
-      await userEvent.upload(folder, [accountJs(ME, 'me'), TWEETS()]);
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledOnce());
-      expect(screen.queryByText(error)).not.toBeInTheDocument();
-    });
-
-    it('shows that it is working while the archive is read', async () => {
-      let release: () => void = () => undefined;
-      const gate = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      const owner = accountJs(ME, 'me');
-      const read = owner.text.bind(owner);
-      vi.spyOn(owner, 'text').mockImplementation(async () => {
-        await gate;
-        return read();
-      });
-      render(<InventoryPage {...await pageProps()} />);
-      await userEvent.upload(fileInputs().folder, [owner, TWEETS()]);
-
-      expect(await screen.findByText('Starting…')).toBeInTheDocument();
-      expect(screen.getByRole('progressbar', { name: 'Starting…' })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Choose unzipped folder' })).not.toBeInTheDocument();
-      release();
-      expect(await screen.findByRole('button', { name: 'Choose unzipped folder' })).toBeInTheDocument();
-      expect(mocks.toast).toHaveBeenCalledWith('Imported 2 posts and 0 likes', 'good');
-    });
-  });
-
-  describe('scans', () => {
-    it.each([
-      ['Posts & reposts', 'posts'],
-      ['Replies', 'replies'],
-      ['Likes', 'likes'],
-      ['Full history', 'history'],
-    ] as const)('“%s” creates a read-only scan job, starts it and opens the Jobs page', async (title, scan) => {
-      const props = await pageProps();
-      render(<InventoryPage {...props} />);
-      await userEvent.click(
-        screen.getByRole('button', { name: new RegExp(`^${title.replace('&', '\\&')} Your|^${title} Searches`) }),
-      );
-
-      await waitFor(() => expect(props.navigate).toHaveBeenCalledWith('jobs'));
-      const jobs = await db.jobs.toArray();
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0]).toMatchObject({
-        accountId: ME,
-        kind: 'scan',
-        scan,
-        title: `Scan: ${title}`,
-        filter: null,
-        options: null,
-        state: 'queued',
-      });
-      expect(mocks.startJob).toHaveBeenCalledExactlyOnceWith(jobs[0]!.id);
-    });
-
-    it('waits while another job is running', async () => {
-      mocks.runStatus.current = 'running';
-      render(<InventoryPage {...await pageProps()} />);
-      const scans = screen.getAllByRole('button', {
-        name: /Your profile timeline|Your replies timeline|Your Likes page|half-year/,
-      });
-      expect(scans).toHaveLength(4);
-      for (const button of scans) expect(button).toBeDisabled();
-      fireEvent.click(scans[0]!);
-      expect(await db.jobs.count()).toBe(0);
-    });
-  });
-
   describe('browsing', () => {
     it('says the inventory is empty and offers nothing to export', async () => {
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
       expect(await screen.findByText('Nothing here')).toBeInTheDocument();
-      expect(screen.getByText('Import your archive or run a scan to fill the inventory.')).toBeInTheDocument();
+      expect(screen.getByText('Import your X archive or complete your copy to fill the library.')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Export JSON' })).toBeDisabled();
       expect(screen.getByText('0 items · page 1 of 1')).toBeInTheDocument();
     });
@@ -299,7 +83,7 @@ describe('Inventory page', () => {
         draft({ id: '1000000001', createdAt: Date.UTC(2018, 0, 1), text: 'Old post', likes: 1234 }),
         draft({ id: '1000000002', createdAt: Date.UTC(2019, 0, 1), text: '' }),
       ]);
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
 
       await waitFor(() => expect(bodyRows()).toHaveLength(2));
       const [newest, oldest] = bodyRows();
@@ -335,7 +119,7 @@ describe('Inventory page', () => {
         draft({ id: '2003', kind: 'repost', author: 'bob', targetId: '3003', text: 'Reposted' }),
         draft({ id: '2004', kind: 'repost', author: 'carol', targetId: '', text: 'From the archive' }),
       ]);
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
 
       await userEvent.click(await screen.findByRole('button', { name: 'Likes 2' }));
       await waitFor(() => expect(bodyRows()).toHaveLength(2));
@@ -363,7 +147,7 @@ describe('Inventory page', () => {
     it('shows what Xomoni removed under Removed', async () => {
       await seed([draft({ id: '1000000001', text: 'Still on X' }), draft({ id: '1000000002', text: 'Gone now' })]);
       await db.items.update(`${ME}:post:1000000002`, { status: 'deleted' });
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
 
       expect(await screen.findByText('Still on X')).toBeInTheDocument();
       expect(screen.queryByText('Gone now')).not.toBeInTheDocument();
@@ -380,7 +164,7 @@ describe('Inventory page', () => {
         draft({ id: '2001', kind: 'like', author: 'Alice', text: 'Something' }),
         draft({ id: '2002', kind: 'like', author: 'bob', text: 'Other' }),
       ]);
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
       await screen.findByText('Lunch');
 
       await userEvent.type(search(), 'LAUNCH');
@@ -403,7 +187,7 @@ describe('Inventory page', () => {
 
     it('clears the search with its clear button and lists every item again', async () => {
       await seed([draft({ id: '1000000001', text: 'Launch day!' }), draft({ id: '1000000002', text: 'Lunch' })]);
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
       await screen.findByText('Lunch');
       const box = screen.getByRole('searchbox', { name: 'Search text or @author' });
 
@@ -424,7 +208,7 @@ describe('Inventory page', () => {
         draft({ id: '2001', kind: 'like', author: 'alice', text: 'Something' }),
         draft({ id: '2002', kind: 'like', author: 'bob', text: 'Other' }),
       ]);
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
       await userEvent.click(await screen.findByRole('button', { name: 'Likes 2' }));
       expect(await screen.findByText('Other')).toBeInTheDocument();
       await userEvent.type(search(), '@alice');
@@ -439,10 +223,10 @@ describe('Inventory page', () => {
         ),
       );
       await seed([draft({ id: '2001', kind: 'like', text: 'A like' })]);
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
 
       await waitFor(() => expect(bodyRows()).toHaveLength(25));
-      expect(screen.getByText('30 items · page 1 of 2')).toBeInTheDocument();
+      expect(await screen.findByText('30 items · page 1 of 2')).toBeInTheDocument();
       expect(bodyRows()[0]).toHaveTextContent('Numbered 29');
       const prev = screen.getByRole('button', { name: 'Prev' });
       const next = screen.getByRole('button', { name: 'Next' });
@@ -473,7 +257,7 @@ describe('Inventory page', () => {
           draft({ id: String(1_000_000_100 + i), createdAt: Date.UTC(2018, 0, 1 + i), text: `Numbered ${i}` }),
         ),
       );
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
       await waitFor(() => expect(bodyRows()).toHaveLength(25));
       await userEvent.click(screen.getByRole('button', { name: 'Next' }));
       expect(await screen.findByText('30 items · page 2 of 2')).toBeInTheDocument();
@@ -491,7 +275,7 @@ describe('Inventory page', () => {
         ),
       );
       await seed([draft({ id: '9', createdAt: Date.UTC(2018, 0, 1) })], 'scan', 'someone-else');
-      render(<InventoryPage {...await pageProps()} />);
+      render(<ItemBrowser accountId={ME} handle="me" />);
       const exportButton = screen.getByRole('button', { name: 'Export JSON' });
       await waitFor(() => expect(exportButton).toBeEnabled());
       await userEvent.click(exportButton);
@@ -503,23 +287,5 @@ describe('Inventory page', () => {
       expect(items).toHaveLength(30);
       expect(items.every((i) => i.accountId === ME && i.kind === 'post' && i.status === 'present')).toBe(true);
     });
-  });
-
-  it('sends nothing off this computer', async () => {
-    const network = watchNetwork();
-    const props = await pageProps();
-    render(<InventoryPage {...props} />);
-    await userEvent.upload(fileInputs().folder, [accountJs(ME, 'me'), TWEETS(), LIKES()]);
-    await waitFor(() => expect(mocks.toast).toHaveBeenCalledOnce());
-    const exportButton = screen.getByRole('button', { name: 'Export JSON' });
-    await waitFor(() => expect(exportButton).toBeEnabled());
-    await userEvent.click(exportButton);
-    await waitFor(() => expect(mocks.downloadFile).toHaveBeenCalledOnce());
-    await userEvent.click(screen.getByRole('button', { name: /^Full history/ }));
-    await waitFor(() => expect(props.navigate).toHaveBeenCalledWith('jobs'));
-
-    expect(network.calls()).toBe(0);
-    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-    expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
   });
 });

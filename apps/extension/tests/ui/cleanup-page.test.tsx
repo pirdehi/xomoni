@@ -133,10 +133,10 @@ describe('Cleanup page', () => {
       expect(props.navigate).not.toHaveBeenCalled();
     });
 
-    it('sends the person to the Inventory page to import the archive', async () => {
+    it('sends the person to the Library to import the archive', async () => {
       const props = await renderPage();
       await userEvent.click(await screen.findByRole('button', { name: 'Import your archive' }));
-      expect(props.navigate).toHaveBeenCalledWith('inventory');
+      expect(props.navigate).toHaveBeenCalledWith('library');
     });
 
     it('says where to keep the X window before the job starts (#120)', async () => {

@@ -395,7 +395,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
               report fewer than you have. Download your archive from X and import it first.
             </p>
             <div className={styles.noticeActions}>
-              <Button size="sm" variant="primary" onClick={() => navigate('inventory')}>
+              <Button size="sm" variant="primary" onClick={() => navigate('library')}>
                 Import your archive
               </Button>
               <Toggle

@@ -102,7 +102,7 @@ describe('ActivityChart', () => {
     render(<ActivityChart accountId={ME} />);
 
     expect(await screen.findByText('No data yet')).toBeInTheDocument();
-    expect(screen.getByText(/Import your X archive or run a scan/)).toBeInTheDocument();
+    expect(screen.getByText(/Import your X archive or complete your copy in the Library/)).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 

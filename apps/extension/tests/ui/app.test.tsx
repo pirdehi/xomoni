@@ -75,14 +75,19 @@ describe('App navigation', () => {
     expect(await pageHeading('Overview')).toBeInTheDocument();
   });
 
+  it.each(['#/archive', '#/inventory'])('opens the Library for %s, the pages it replaced (#185)', async (hash) => {
+    window.location.hash = hash;
+    render(<App />);
+    expect(await pageHeading('Library')).toBeInTheDocument();
+  });
+
   it('moves between pages from the sidebar and marks them in the URL', async () => {
     render(<App />);
     await pageHeading('Overview');
 
     for (const [label, id] of [
       ['Cleanup', 'cleanup'],
-      ['Archive', 'archive'],
-      ['Inventory', 'inventory'],
+      ['Library', 'library'],
       ['Watch', 'watch'],
       ['Jobs', 'jobs'],
       ['Activity log', 'activity'],

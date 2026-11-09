@@ -1,4 +1,7 @@
 // Every X DOM dependency lives here, so a UI change on x.com means editing one file.
+import type { ArchiveState } from '../shared/messages';
+import { ARCHIVE_PATH } from '../shared/x-archive';
+
 /**
  * CSS selectors for the parts of X's page that Xomoni reads or clicks. Most rely on X's own
  * `data-testid` attributes, which X can rename at any time (PLAYBOOK F1).
@@ -300,4 +303,78 @@ export function describeDialog(dialog: HTMLElement): string {
 /** The signed-in user's handle, read from the sidebar Profile link; null until X has rendered that link. */
 export function viewerHandle(): string | null {
   return $(SEL.profileLink)?.getAttribute('href')?.replace(/^\//, '') || null;
+}
+
+/**
+ * Fields X uses to ask the person to confirm it's them, wherever they appear: their password, or a one-time code X
+ * sent. Xomoni never reads or fills them (ADR-0003).
+ */
+const IDENTITY_FIELD = 'input[type="password"], input[autocomplete="one-time-code"]';
+
+/** Form fields on a page, leaving out hidden ones and X's search boxes (the settings pages have one). */
+const FORM_FIELD =
+  'input:not([type="hidden"]):not([type="search"]):not([role="combobox"]):not([data-testid="SearchBox_Search_Input"])';
+
+/**
+ * What X's archive page says on the parts Xomoni recognizes (#186, ADR-0022), lowercase with single spaces. X has
+ * used both wordings. Other languages are not read: their page counts as unknown, and the person presses the button
+ * themselves (the job says which).
+ */
+export const ARCHIVE_LABELS = {
+  request: ['request archive', 'request data'],
+  download: ['download archive', 'download data'],
+  preparing: ['requesting archive', 'requesting data', 'archive requested'],
+} as const;
+
+/** An element's text as `ARCHIVE_LABELS` holds it. */
+const labelOf = (el: Element) => el.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+
+/** The page's main region, where X's settings pages put their content; the whole page when there is none. */
+const mainRegion = (): ParentNode => $('main') ?? document.body;
+
+/**
+ * The archive page's *Request archive* or *Download archive* buttons (or links shaped as buttons), matched by their
+ * whole label. Xomoni presses one only when exactly one shows.
+ */
+export function archiveButtons(button: 'request' | 'download'): HTMLElement[] {
+  const labels: readonly string[] = ARCHIVE_LABELS[button];
+  return $$('button, [role="button"], a[href]', mainRegion()).filter((el) => labels.includes(labelOf(el)));
+}
+
+/** Whether X's button is turned off (`disabled` or `aria-disabled`), so pressing it would do nothing. */
+export const isDisabled = (el: Element) => el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true';
+
+/** Whether the archive page says X is making the archive: a line, or a turned-off button, reading so. */
+function preparingShown(): boolean {
+  const labels: readonly string[] = ARCHIVE_LABELS.preparing;
+  return $$('*', mainRegion()).some((el) => labels.includes(labelOf(el)));
+}
+
+/** Whether this is X's archive page (`ARCHIVE_PATH` in `shared/x-archive.ts`). */
+export const onArchivePage = () => location.pathname.replace(/\/+$/, '') === ARCHIVE_PATH;
+
+/** Whether the archive page shows one of the parts Xomoni recognizes. */
+const archiveShown = () =>
+  archiveButtons('download').length > 0 || preparingShown() || archiveButtons('request').length > 0;
+
+/**
+ * Whether X asks the person to confirm it's them on this page: a password or one-time code field anywhere, or, on
+ * the archive page before it shows the archive, any form field (X's password, where to send a code, or the code).
+ */
+export function asksIdentity(): boolean {
+  if ($(IDENTITY_FIELD)) return true;
+  return onArchivePage() && !archiveShown() && $$(FORM_FIELD, mainRegion()).length > 0;
+}
+
+/**
+ * What X's archive page shows (#186): a ready archive first, then one being made, then the offer to make one, then
+ * X's check. Anything else, or any other page, is `unknown`.
+ */
+export function archiveState(): ArchiveState {
+  if (!onArchivePage()) return 'unknown';
+  if (archiveButtons('download').length) return 'ready';
+  if (preparingShown()) return 'preparing';
+  if (archiveButtons('request').length) return 'request';
+  if (asksIdentity()) return 'identity';
+  return 'unknown';
 }

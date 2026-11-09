@@ -11,6 +11,7 @@ import {
   normalizeQuery,
   normalizeTabs,
 } from './watch';
+import type { ArchiveRequest } from './x-archive';
 import type { ViewCap } from './x-limits';
 import { CONSENT_VERSION } from '@xomoni/consent';
 import type {
@@ -324,6 +325,19 @@ export async function markArchiveImported(accountId: string) {
 export async function archiveImportedAt(accountId: string): Promise<number | null> {
   const at = await kvGet<number | null>(archiveKey(accountId), null);
   return typeof at === 'number' && at > 0 ? at : null;
+}
+
+const archiveRequestKey = (accountId: string) => `archiveRequest:${accountId}`;
+
+/** The archive asked for on X for this account and not yet downloaded or given up on (#186), or null. */
+export async function archiveRequest(accountId: string): Promise<ArchiveRequest | null> {
+  const stored = await kvGet<ArchiveRequest | null>(archiveRequestKey(accountId), null);
+  return stored && typeof stored.requestedAt === 'number' ? stored : null;
+}
+
+/** Keeps what the archive job saw of a request on X (#186); null forgets it. */
+export async function saveArchiveRequest(accountId: string, request: ArchiveRequest | null) {
+  await kvSet(archiveRequestKey(accountId), request);
 }
 
 /**

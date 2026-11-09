@@ -5,10 +5,11 @@ import type { PageInfo } from './messages';
 
 /**
  * What only the person can do: `login` (signed out), `verify` (an X check or account lock), `account` (the
- * worker is signed in to a different X account), `hidden` (the worker window is minimized or fully covered, so
- * Chrome pauses its page, #118), `obstruction` (a pop-up Xomoni couldn't close covers the page).
+ * worker is signed in to a different X account), `identity` (X asks for their password, or a code it sent, before a
+ * page such as the archive's, #186), `hidden` (the worker window is minimized or fully covered, so Chrome pauses its
+ * page, #118), `obstruction` (a pop-up Xomoni couldn't close covers the page).
  */
-export type Need = 'login' | 'verify' | 'account' | 'hidden' | 'obstruction';
+export type Need = 'login' | 'verify' | 'account' | 'identity' | 'hidden' | 'obstruction';
 
 /**
  * Whether a path is one of X's login pages: `/login`, the `/i/flow/login` flow, or any page of the newer
@@ -23,17 +24,19 @@ export const isCheckPath = (path: string) =>
 
 /**
  * What the page needs from the person before Xomoni may act, or null when it is signed in to `accountId`, on
- * screen, with no check or pop-up showing. Checked in order: login, verify, account, hidden, obstruction. A
- * hidden page comes before a pop-up because closing one needs the page on screen.
+ * screen, with no check or pop-up showing. Checked in order: login, verify, account, identity, hidden, obstruction.
+ * A hidden page comes before a pop-up because closing one needs the page on screen; X asking for the password comes
+ * before both, so its form, which can be a pop-up, is never closed.
  */
 export function pageNeed(
   info: Pick<PageInfo, 'loggedIn' | 'locked' | 'challenge' | 'viewerId'> &
-    Partial<Pick<PageInfo, 'obstructed' | 'hidden'>>,
+    Partial<Pick<PageInfo, 'obstructed' | 'hidden' | 'asksIdentity'>>,
   accountId: string,
 ): Need | null {
   if (!info.loggedIn) return 'login';
   if (info.locked || info.challenge) return 'verify';
   if (info.viewerId !== accountId) return 'account';
+  if (info.asksIdentity) return 'identity';
   if (info.hidden) return 'hidden';
   if (info.obstructed) return 'obstruction';
   return null;
@@ -49,6 +52,8 @@ export function needMessage(need: Need, handle: string): string {
       return 'X wants to confirm it’s you (captcha, code or account unlock). Complete it in the Xomoni window.';
     case 'account':
       return `The Xomoni window is signed in to another X account. Switch back to ${who}.`;
+    case 'identity':
+      return 'X asks you to confirm it’s you: type your password, and the code X sends you if it asks, on X’s page in the Xomoni window. Xomoni never sees them.';
     case 'hidden':
       return 'The Xomoni window is hidden, and Chrome pauses pages it doesn’t show. Keep part of it on screen: not minimized, not fully covered by other windows, with its X tab selected. Or press Run hidden on the dashboard and share its X tab.';
     case 'obstruction':
@@ -86,6 +91,7 @@ export const NEED_TITLE: Record<Need, string> = {
   login: 'Log in to X',
   verify: 'Confirm it’s you on X',
   account: 'Switch X account',
+  identity: 'Type your password on X',
   hidden: 'Show the Xomoni window',
   obstruction: 'Close what covers X’s page',
 };

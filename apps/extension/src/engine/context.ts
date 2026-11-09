@@ -467,6 +467,21 @@ export class JobContext {
   }
 
   /**
+   * Paced load of an X page that shows no posts, such as X's archive page (#186): counted like `navigate`, then
+   * checked for login, X's checks (including X asking for the password) and pop-ups, without waiting for posts.
+   */
+  async openPage(url: string): Promise<PageInfo> {
+    this.checkpoint();
+    if (!online()) throw new Interrupted('offline', 'The internet connection dropped');
+    this.readBudget = readBudgetFor(url);
+    await this.limiter.before('read', this.readBudget);
+    this.status(`Opening ${url.replace('https://x.com', '')}`);
+    const info = await this.xTab.navigate(url, this.signal);
+    this.limiter.after('read', 'done', this.readBudget);
+    return this.clearAndAssert(info);
+  }
+
+  /**
    * Whether X refused the current page for its quota since `since` (epoch ms): a 429, or nothing remaining, on
    * any request of the page's read budget. Returns it as a `rate_limited` result for `settle`, or null. X's
    * answer may be stored a moment after the page shows its error, so this looks for up to two seconds.

@@ -24,6 +24,7 @@ import {
   CheckmarkCircle16Regular,
   Clock16Regular,
   Delete16Regular,
+  Archive20Regular,
   DocumentSearch20Regular,
   ErrorCircle16Regular,
   HourglassHalf16Regular,
@@ -205,7 +206,7 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
           <ProgressRing value={pct} label={`${fmtNumber(settled)} of ${fmtNumber(matched)} settled`} />
         ) : (
           <div className={styles.kindIcon}>
-            <DocumentSearch20Regular />
+            {job.kind === 'archive' ? <Archive20Regular /> : <DocumentSearch20Regular />}
           </div>
         )}
         <div className={styles.heading}>
@@ -264,7 +265,7 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
             {fmtNumber(remaining)} remaining
           </span>
         </div>
-      ) : (
+      ) : job.kind === 'archive' ? null : (
         <Caption1>
           <span className={styles.strong}>{fmtNumber(scanned)}</span> posts looked at
         </Caption1>

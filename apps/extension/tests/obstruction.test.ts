@@ -34,6 +34,7 @@ const PAGE: PageInfo = {
   challenge: false,
   restriction: null,
   obstructed: false,
+  asksIdentity: false,
   lang: 'en',
   hidden: false,
 };

@@ -4,6 +4,8 @@ import { NEED_TITLE, type Need } from '../shared/attention';
 import { db, recordRisk } from '../shared/db';
 import { ATTENTION_ID, FINISHED_ID } from '../shared/notification-ids';
 import type { CleanupFilter, CleanupOptions, DateRange, Job, JobState, ScanTarget } from '../shared/types';
+import type { ArchiveMode } from '../shared/x-archive';
+import { runArchive } from './archive';
 import { runCleanup } from './cleanup';
 import { Interrupted, JobContext, NeedsYou, Stop } from './context';
 import { runScan } from './scan';
@@ -212,7 +214,9 @@ export class Runner {
           ? `${job.stats.scanned.toLocaleString()} posts seen`
           : job.kind === 'watch'
             ? `${done.toLocaleString()} searches, ${job.stats.scanned.toLocaleString()} posts seen`
-            : `${done} done, ${skipped} skipped, ${failed} failed`;
+            : job.kind === 'archive'
+              ? `${done} ${done === 1 ? 'button' : 'buttons'} pressed on X’s archive page`
+              : `${done} done, ${skipped} skipped, ${failed} failed`;
       await ctx.log(
         final.state === 'completed'
           ? 'success'
@@ -257,6 +261,7 @@ async function runSteps(ctx: JobContext) {
       await ctx.connect();
       if (ctx.job.kind === 'scan') await runScan(ctx);
       else if (ctx.job.kind === 'watch') await runWatch(ctx);
+      else if (ctx.job.kind === 'archive') await runArchive(ctx);
       else await runCleanup(ctx);
       return;
     } catch (err) {
@@ -371,6 +376,51 @@ export async function watchJob(accountId: string): Promise<Job> {
     filter: null,
     options: null,
     scan: null,
+    state: 'queued',
+    phase: '',
+    stateReason: '',
+    stats: emptyStats(),
+    createdAt: now,
+    startedAt: null,
+    finishedAt: null,
+    updatedAt: now,
+  };
+  await db.jobs.put(job);
+  return job;
+}
+
+/** The titles of archive jobs (#186): the person's *Get my archive*, and the dashboard's own look while X makes it. */
+export const ARCHIVE_TITLE: Record<ArchiveMode, string> = {
+  get: 'Get X’s archive',
+  look: 'Look for X’s archive',
+};
+
+/**
+ * The account's archive job (#186): the one not yet finished, set to `mode`, or a new queued one. An account has at
+ * most one, so asking twice, or a look while the person's own job waits, never opens X's page in two jobs. It does
+ * not start it.
+ */
+export async function archiveJob(accountId: string, mode: ArchiveMode): Promise<Job> {
+  const jobs = await db.jobs.where('accountId').equals(accountId).toArray();
+  const open = jobs.find((j) => j.kind === 'archive' && j.finishedAt == null);
+  // The person's own request wins over a look; a look never turns their request into one.
+  if (open) {
+    if (mode === 'get' && open.archive !== 'get') {
+      Object.assign(open, { archive: mode, title: ARCHIVE_TITLE[mode], updatedAt: Date.now() });
+      await db.jobs.put(open);
+    }
+    return open;
+  }
+  const now = Date.now();
+  const job: Job = {
+    id: crypto.randomUUID(),
+    accountId,
+    kind: 'archive',
+    title: ARCHIVE_TITLE[mode],
+    filter: null,
+    options: null,
+    scan: null,
+    archive: mode,
     state: 'queued',
     phase: '',
     stateReason: '',

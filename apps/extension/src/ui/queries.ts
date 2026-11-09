@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { unseenPosts } from '../shared/coverage';
-import { archiveImported, archiveImportedAt, db, postTotals } from '../shared/db';
+import { archiveImported, archiveImportedAt, archiveRequest, db, postTotals } from '../shared/db';
 import type { Account, ItemKind, ItemStatus, Job, ScanTarget } from '../shared/types';
+import type { ArchiveRequest } from '../shared/x-archive';
 
 /** All item kinds, in display order. */
 export const KINDS: ItemKind[] = ['post', 'reply', 'repost', 'like'];
@@ -113,4 +114,29 @@ export function useCopyStatus(account: Account): CopyStatus | undefined {
       openRead: openRead ?? null,
     };
   }, [account.id, account.postsCount, account.profileAt]);
+}
+
+/** Where getting X's archive through X's page stands for one account (#186). */
+export interface ArchiveStatus {
+  /** The archive asked for on X and not yet given up on, or null. */
+  request: ArchiveRequest | null;
+  /** Whether an X archive was imported; `importedAt` is null for imports made before the date was kept. */
+  imported: boolean;
+  /** When an X archive was last imported, or null. */
+  importedAt: number | null;
+  /** The account's archive job that hasn't finished (queued, running, waiting, paused or blocked), or null. */
+  openJob: Job | null;
+}
+
+/** Live `ArchiveStatus` of an account; undefined while loading. */
+export function useArchiveStatus(accountId: string): ArchiveStatus | undefined {
+  return useLiveQuery(async () => {
+    const jobs = await db.jobs.where('accountId').equals(accountId).toArray();
+    return {
+      request: await archiveRequest(accountId),
+      imported: await archiveImported(accountId),
+      importedAt: await archiveImportedAt(accountId),
+      openJob: jobs.find((job) => job.kind === 'archive' && job.finishedAt == null) ?? null,
+    };
+  }, [accountId]);
 }

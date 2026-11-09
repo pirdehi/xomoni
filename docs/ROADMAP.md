@@ -10,8 +10,8 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
-**Current focus:** Phase 11, getting X's archive into Xomoni without leaving it; Phase 4, the pilot on the maintainer's account; Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done, and Phase 9 is done except what waits on the maintainer.
-**Last updated:** 2026-11-08
+**Current focus:** Phase 11, getting X's archive into Xomoni without leaving it: built, and one check on X's real archive page left ([report](PHASE-11-REPORT.md)); Phase 4, the pilot on the maintainer's account; Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done, and Phase 9 is done except what waits on the maintainer.
+**Last updated:** 2026-11-09
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -160,7 +160,7 @@ Following phrases and #hashtags in X's search, read-only ([ADR-0021](adr/0021-wa
 
 ## Phase 11 · The X archive without the chores
 
-Today, getting X's archive into Xomoni takes more than ten steps by hand. This phase brings them down to the password X asks for, typed on X. The Archive and Inventory pages become one place.
+Getting X's archive into Xomoni took more than ten steps by hand. This phase brings them down to one press and the password X asks for, typed on X. The Archive and Inventory pages become one place. Report: [English](PHASE-11-REPORT.md) · [فارسی](PHASE-11-REPORT.fa.md).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |

@@ -127,6 +127,9 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     fontSize: tokens.fontSizeBase200,
   },
+  /** What X needs from the person is read in full: it says where to type, and that Xomoni never sees it. */
+  statusTextFull: { whiteSpace: 'normal', overflow: 'visible', color: tokens.colorNeutralForeground1 },
+  noWrap: { flexShrink: 0, whiteSpace: 'nowrap' },
   countdown: {
     flexShrink: 0,
     fontVariantNumeric: 'tabular-nums',
@@ -301,12 +304,18 @@ function LiveStatus({ now }: { now: number }) {
     <div className={mergeClasses(styles.status, attention && styles.attention)}>
       <div className={styles.statusRow}>
         {attention ? <Warning16Regular aria-hidden /> : <Clock16Regular aria-hidden />}
-        <span className={styles.statusText} title={run.message}>
+        <span className={mergeClasses(styles.statusText, attention && styles.statusTextFull)} title={run.message}>
           {run.message}
         </span>
         {wait && <span className={styles.countdown}>{fmtDuration(wait.until - now)}</span>}
         {attention && (
-          <Button size="small" appearance="primary" icon={<Open16Regular />} onClick={() => void workerTab.focus()}>
+          <Button
+            size="small"
+            appearance="primary"
+            icon={<Open16Regular />}
+            className={styles.noWrap}
+            onClick={() => void workerTab.focus()}
+          >
             Open X window
           </Button>
         )}

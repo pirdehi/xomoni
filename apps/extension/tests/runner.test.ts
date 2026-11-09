@@ -907,10 +907,7 @@ describe('runner: an archive job (#186)', () => {
       `${needMessage('identity', 'me')} “Get X’s archive” continues by itself afterwards.`,
       true,
     );
-    expect(await logLines(job.id)).toContainEqual([
-      'success',
-      `Finished “Get X’s archive” — 0 buttons pressed on X’s archive page. ${ARCHIVE_PREPARING}`,
-    ]);
+    expect(await logLines(job.id)).toContainEqual(['success', `Finished “Get X’s archive”: ${ARCHIVE_PREPARING}`]);
     expect(runCleanup).not.toHaveBeenCalled();
     expect(runScan).not.toHaveBeenCalled();
   });

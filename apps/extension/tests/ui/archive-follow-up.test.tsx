@@ -12,7 +12,7 @@ import {
   recordConsent,
   saveArchiveRequest,
 } from '../../src/shared/db';
-import { DEFAULT_SETTINGS, withinActiveHours } from '../../src/shared/settings';
+import { DEFAULT_SETTINGS, nextActiveTime, withinActiveHours } from '../../src/shared/settings';
 import { DAY, HOUR } from '../../src/shared/time';
 import type { ArchiveRequest } from '../../src/shared/x-archive';
 import { IMPORT_WINDOW_MS, type LookRunner, importIfDownloaded, lookIfDue } from '../../src/ui/archive-follow-up';
@@ -122,6 +122,17 @@ describe('looking again for X’s archive (#186)', () => {
     await saveArchiveRequest(ME, asked());
     const runner = { busy: false, start: vi.fn(() => Promise.reject(new Error('Another Xomoni tab is running'))) };
     expect(await lookIfDue(ME, runner, NOON)).not.toBeNull();
+  });
+
+  it('finds the next moment inside the active hours (#186)', () => {
+    const hours = { enabled: true, start: 8, end: 23 };
+    const noon = new Date(2026, 10, 9, 12).getTime();
+    expect(nextActiveTime(hours, noon)).toBe(noon);
+    expect(nextActiveTime(hours, new Date(2026, 10, 9, 3).getTime())).toBe(new Date(2026, 10, 9, 8).getTime());
+    expect(nextActiveTime(hours, new Date(2026, 10, 9, 23, 30).getTime())).toBe(new Date(2026, 10, 10, 8).getTime());
+    expect(nextActiveTime({ ...hours, enabled: false }, new Date(2026, 10, 9, 3).getTime())).toBe(
+      new Date(2026, 10, 9, 3).getTime(),
+    );
   });
 
   it('knows the active hours, across midnight too', () => {

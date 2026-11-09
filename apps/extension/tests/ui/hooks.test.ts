@@ -8,6 +8,7 @@ import { runner } from '../../src/engine/platform';
 import { db, hasConsent, kvGet, kvSet, recordConsent, recordRisk } from '../../src/shared/db';
 import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
 import {
+  ensureConsent,
   resumeAnyway,
   startJob,
   toast,
@@ -332,6 +333,23 @@ describe('startJob and consent', () => {
     await started;
 
     expect(start).toHaveBeenCalledWith(job.id);
+    expect(result.current).toBeNull();
+  });
+
+  it('asks before a job exists, so declining leaves nothing (#186)', async () => {
+    const { result } = renderHook(() => useConsentRequest());
+    const declined = ensureConsent(ME);
+    await waitFor(() => expect(result.current?.accountId).toBe(ME));
+    act(() => result.current!.answer(false));
+    expect(await declined).toBe(false);
+
+    const agreed = ensureConsent(ME);
+    await waitFor(() => expect(result.current).not.toBeNull());
+    act(() => result.current!.answer(true));
+    expect(await agreed).toBe(true);
+
+    await recordConsent(ME);
+    expect(await ensureConsent(ME)).toBe(true);
     expect(result.current).toBeNull();
   });
 

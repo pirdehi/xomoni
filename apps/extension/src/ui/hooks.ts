@@ -184,6 +184,14 @@ export function useConsentRequest() {
 }
 
 /**
+ * Whether the person accepted the risks for this X account, asking now if they haven't (#24). Lets a page ask
+ * before it creates a job, so closing the dialog leaves nothing behind (#186).
+ */
+export async function ensureConsent(accountId: string): Promise<boolean> {
+  return (await hasConsent(accountId)) || askConsent(accountId);
+}
+
+/**
  * Starts or resumes a job without waiting for it: `runner.start` settles only when the job ends.
  * Before an X account's first job, the person must read the risks and type their consent (#24);
  * closing the dialog starts nothing. Errors that prevent the start (a job already running, another

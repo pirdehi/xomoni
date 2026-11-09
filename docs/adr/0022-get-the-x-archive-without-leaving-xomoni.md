@@ -29,6 +29,7 @@ The fixed constraints:
    - The person may choose their Downloads folder once, with the browser's own folder picker (File System Access, read-only; no extension permission).
    - Xomoni then looks there, while the Library is open, for files named like X's archive (`twitter-YYYY-MM-DD-….zip`). It opens no other file, and imports each one once.
    - The folder handle stays in this browser's database and is forgotten by *Stop* or by wiping local data.
+   - *Get my archive* asks for it in the same click, once, after the risks are accepted: without it, nothing would import the download by itself.
 3. **X's archive page is driven like any other X page (#186).** Requesting and downloading the archive is a job in the worker window, on `x.com/settings/download_your_data`:
    - Xomoni presses X's own *Request archive* and *Download archive* buttons, as it presses Delete. It presses only a button it recognizes, and never one it isn't sure of:
      - the button's whole label must read *Request archive* / *Request data* or *Download archive* / *Download data* (English only; another language counts as a page Xomoni doesn't know);

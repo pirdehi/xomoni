@@ -88,3 +88,11 @@ export const ACTION_LABELS: Record<ActionKind, string> = {
   relike: 'Ghost-like cleanup (like → unlike)',
   read: 'Page loads & scrolls',
 };
+
+/** Whether `date` falls within the person's active hours: always, when they are off or start and end are the same. */
+export function withinActiveHours(hours: Settings['activeHours'], date: Date): boolean {
+  const { enabled, start, end } = hours;
+  if (!enabled || start === end) return true;
+  const hour = date.getHours() + date.getMinutes() / 60;
+  return start < end ? hour >= start && hour < end : hour >= start || hour < end;
+}

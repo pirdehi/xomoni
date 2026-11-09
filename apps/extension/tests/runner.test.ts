@@ -1,7 +1,9 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Interrupted, type JobContext, NeedsYou, Stop } from '../src/engine/context';
+import { ARCHIVE_PREPARING } from '../src/engine/archive';
 import {
+  archiveJob,
   createCleanupJob,
   createScanJob,
   recoverInterruptedJobs,
@@ -14,10 +16,10 @@ import type * as Timers from '../src/engine/timers';
 import { NotReady, PageError, WorkerGone } from '../src/engine/worker-tab';
 import type { XTab } from '../src/engine/ports';
 import type * as WorkerTabModule from '../src/engine/worker-tab';
-import { NEED_TITLE } from '../src/shared/attention';
+import { NEED_TITLE, needMessage } from '../src/shared/attention';
 import { db, kvSet, recordConsent, upsertAccount } from '../src/shared/db';
 import { healthReport } from '../src/shared/health';
-import type { ActorCommand, PageInfo } from '../src/shared/messages';
+import type { ActorCommand, ArchiveState, PageInfo } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
 import type * as Notify from '../src/shared/notify';
 import { assessRisk } from '../src/shared/risk';
@@ -874,5 +876,42 @@ describe('runner: keeps the display on while a job runs (keep going while away)'
     await own.start(job.id);
 
     expect(displayOn()).toEqual([false]);
+  });
+});
+
+describe('runner: an archive job (#186)', () => {
+  it('waits while X asks for the password, then reads X’s page again and ends with what X is doing', async () => {
+    const job = await archiveJob(ACCOUNT, 'get');
+    const onArchive = (asksIdentity: boolean) => page({ path: '/settings/download_your_data', asksIdentity });
+    worker.waitReady.mockResolvedValue(onArchive(false));
+    // X's form stays up for two looks, then the person has typed the password.
+    worker.ping
+      .mockResolvedValueOnce(onArchive(false))
+      .mockResolvedValueOnce(onArchive(true))
+      .mockResolvedValueOnce(onArchive(true))
+      .mockResolvedValue(onArchive(false));
+    const shown: ArchiveState[] = ['identity', 'preparing'];
+    worker.send.mockImplementation(async (command) =>
+      command.cmd === 'archiveState' ? (shown.shift() ?? 'preparing') : { clear: true, what: '' },
+    );
+
+    const done = await run(job);
+
+    expect(done.state).toBe('completed');
+    expect(done.stateReason).toBe(ARCHIVE_PREPARING);
+    expect(worker.navigate).not.toHaveBeenCalled();
+    expect(states).toContainEqual(expect.objectContaining({ status: 'attention', need: 'identity' }));
+    expect(notify).toHaveBeenCalledWith(
+      ATTENTION_ID,
+      `Xomoni needs you: ${NEED_TITLE.identity}`,
+      `${needMessage('identity', 'me')} “Get X’s archive” continues by itself afterwards.`,
+      true,
+    );
+    expect(await logLines(job.id)).toContainEqual([
+      'success',
+      `Finished “Get X’s archive” — 0 buttons pressed on X’s archive page. ${ARCHIVE_PREPARING}`,
+    ]);
+    expect(runCleanup).not.toHaveBeenCalled();
+    expect(runScan).not.toHaveBeenCalled();
   });
 });

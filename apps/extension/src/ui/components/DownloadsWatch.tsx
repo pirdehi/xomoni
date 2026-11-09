@@ -8,15 +8,17 @@ import {
   type FolderStore,
   canRead,
   chooseFolder,
+  importNewestArchive,
   kvFolderStore,
-  markArchiveSeen,
-  newestArchive,
-  seenArchives,
 } from '../downloads-folder';
 import { fmtNumber } from '../format';
 import { toast } from '../hooks';
-import { importArchive } from '../importArchive';
+import type { ImportResult } from '../importArchive';
 import { Button, Callout } from './ui';
+
+/** What the toast says once X's archive was imported from Downloads, here or by the dashboard's own look (#186). */
+export const importedToast = (r: ImportResult) =>
+  `Imported X’s archive from Downloads: ${fmtNumber(r.tweets)} posts and ${fmtNumber(r.likes)} likes`;
 
 const useStyles = makeStyles({
   row: {
@@ -85,24 +87,15 @@ export function DownloadsWatch({
           return;
         }
         setWatch((w) => (w.state === 'importing' ? w : { state: 'watching', folder }));
-        const file = await newestArchive(folder, await seenArchives(account.id));
-        if (!file) return;
-        // Remembered before reading, so a file that fails is not tried again and again.
-        await markArchiveSeen(account.id, file);
-        setError(null);
-        setWatch({ state: 'importing', folder, name: file.name, progress: 'Starting…' });
-        try {
-          const r = await importArchive([file], account, (progress) =>
-            setWatch({ state: 'importing', folder, name: file.name, progress }),
-          );
-          toast(
-            `Imported X’s archive from Downloads: ${fmtNumber(r.tweets)} posts and ${fmtNumber(r.likes)} likes`,
-            'good',
-          );
-        } catch (err) {
-          setError(`${file.name}: ${err instanceof Error ? err.message : String(err)}`);
-        } finally {
-          setWatch({ state: 'watching', folder });
+        const found = await importNewestArchive(account, folder, (progress) =>
+          setWatch({ state: 'importing', folder, name: 'X’s archive', progress }),
+        );
+        setWatch({ state: 'watching', folder });
+        if (!found) return;
+        if (found.error != null) setError(`${found.file.name}: ${found.error}`);
+        else {
+          setError(null);
+          toast(importedToast(found.result), 'good');
         }
       } catch {
         // The folder was moved, deleted or can't be listed now; the next look tries again.

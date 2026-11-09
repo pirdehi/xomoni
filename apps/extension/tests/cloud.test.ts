@@ -135,6 +135,10 @@ describe('a job report (ADR-0004)', () => {
     expect(jobReport(job({ kind: 'watch', title: 'Watch X searches' }), 'me', 0)).toBeNull();
   });
 
+  it('is left out for an archive job, which only handles X’s archive (#186, ADR-0004)', () => {
+    expect(jobReport(job({ kind: 'archive', archive: 'get', title: 'Get X’s archive' }), 'me', 0)).toBeNull();
+  });
+
   it('is left out for an account without a valid handle, and cuts long titles', () => {
     expect(jobReport(job(), '', 0)).toBeNull();
     expect(jobReport(job(), 'not a handle', 0)).toBeNull();

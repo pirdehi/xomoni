@@ -5,6 +5,8 @@
 import type {
   ActionResult,
   ActorCommand,
+  ArchivePressResult,
+  ArchiveState,
   CanaryResult,
   ClearResult,
   ContentState,
@@ -29,7 +31,11 @@ export type Reply<C extends ActorCommand['cmd']> = C extends 'ping'
             ? ClearResult
             : C extends 'readPosts'
               ? WatchPost[]
-              : ActionResult;
+              : C extends 'archiveState'
+                ? ArchiveState
+                : C extends 'archivePress'
+                  ? ArchivePressResult
+                  : ActionResult;
 
 /** The worker tab was closed. The runner pauses the job; resuming opens a new worker. */
 export class WorkerGone extends Error {

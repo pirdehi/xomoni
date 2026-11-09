@@ -9,6 +9,9 @@ import { timeMatchesId } from '../shared/time';
 import type {
   ActionResult,
   ActorCommand,
+  ArchiveButton,
+  ArchivePressResult,
+  ArchiveState,
   CanaryResult,
   ClearResult,
   ContentState,
@@ -21,7 +24,10 @@ import {
   $,
   $$,
   SEL,
+  archiveButtons,
+  archiveState,
   articleInfo,
+  asksIdentity,
   authorName,
   click,
   closeMenus,
@@ -30,6 +36,7 @@ import {
   describeOpenMenu,
   findArticle,
   findDeleteMenuItem,
+  isDisabled,
   jitter,
   noticeText,
   openDialog,
@@ -72,6 +79,10 @@ export async function runCommand(command: ActorCommand): Promise<unknown> {
       return readPosts(command.limit);
     case 'clearPage':
       return clearPage();
+    case 'archiveState':
+      return readArchiveState(command.timeoutMs);
+    case 'archivePress':
+      return archivePress(command.button);
   }
 }
 
@@ -89,6 +100,7 @@ function pageInfo(): PageInfo {
     challenge: isCheckPath(path),
     restriction: restrictionNotice(noticeText()),
     obstructed: !!openDialog(),
+    asksIdentity: asksIdentity(),
     lang: document.documentElement.lang || '',
     hidden: document.hidden,
   };
@@ -191,15 +203,15 @@ async function scrollMore(): Promise<ScrollResult> {
 
 /**
  * Closes a pop-up X put over the page (PLAYBOOK F3): first with Escape (and a click on its backdrop), then with
- * its own Close button. Nothing else in a pop-up is ever clicked. Refuses on X's login and check pages, which
- * are pop-ups too and belong to the person.
+ * its own Close button. Nothing else in a pop-up is ever clicked. Refuses on X's login and check pages, and while X
+ * asks for the password or a code, which are pop-ups too and belong to the person.
  */
 async function clearPage(): Promise<ClearResult> {
   const dialog = openDialog();
   if (!dialog) return { clear: true, what: '' };
   const what = describeDialog(dialog);
   const info = pageInfo();
-  if (!info.loggedIn || info.locked || info.challenge) return { clear: false, what };
+  if (!info.loggedIn || info.locked || info.challenge || info.asksIdentity) return { clear: false, what };
   const gone = () => !openDialog();
   closeMenus();
   if (await waitFor(gone, 1500)) return { clear: true, what };
@@ -357,6 +369,56 @@ async function unretweet(id: string): Promise<ActionResult> {
   await sleep(jitter(150, 400));
   clickCurrent(() => $(SEL.unretweetConfirm));
   return classify(await response, 'DeleteRetweet');
+}
+
+/** What X's archive page shows, once it shows something Xomoni knows or after `timeoutMs` (#186). */
+async function readArchiveState(timeoutMs: number): Promise<ArchiveState> {
+  return (await waitFor(() => (archiveState() === 'unknown' ? null : archiveState()), timeoutMs)) ?? 'unknown';
+}
+
+/** What each archive button is called in Xomoni's messages, and what the page shows when it can be pressed. */
+const ARCHIVE_BUTTON: Record<ArchiveButton, { name: string; when: ArchiveState }> = {
+  request: { name: '“Request archive”', when: 'request' },
+  download: { name: '“Download archive”', when: 'ready' },
+};
+
+/**
+ * Presses *Request archive* or *Download archive* on X's archive page (#186, ADR-0022), the way a person would.
+ * Refuses unless the page shows that state and exactly one such button, turned on, while signed in and not
+ * restricted. After *Request archive* it waits for X's page to show the archive being made; the download that
+ * *Download archive* starts is the browser's own, so it can't be followed here.
+ */
+async function archivePress(button: ArchiveButton): Promise<ArchivePressResult> {
+  const { name, when } = ARCHIVE_BUTTON[button];
+  const refused = (state: ArchiveState, message: string): ArchivePressResult => ({
+    outcome: 'refused',
+    state,
+    message,
+  });
+  const info = pageInfo();
+  if (!info.loggedIn || info.locked || info.restriction) return refused(archiveState(), 'X isn’t ready for this');
+  const state = archiveState();
+  if (state !== when) return refused(state, `X’s page doesn’t show ${name} now`);
+  const find = () => {
+    const [only, ...more] = archiveButtons(button);
+    return only && more.length === 0 && !isDisabled(only) ? only : null;
+  };
+  if (!find()) return refused(state, `X’s page doesn’t show exactly one ${name} button that can be pressed`);
+  find()?.scrollIntoView({ block: 'center' });
+  await sleep(jitter(400, 900));
+  clickCurrent(find);
+  if (button === 'download') {
+    await sleep(1500);
+    return { outcome: 'done', state: archiveState(), message: '' };
+  }
+  const after = await waitFor(() => (archiveState() === 'request' ? null : archiveState()), 15_000);
+  if (after === 'preparing' || after === 'ready') return { outcome: 'done', state: after, message: '' };
+  if (after === 'identity') return refused(after, 'X asks you to confirm it’s you first');
+  return {
+    outcome: 'failed',
+    state: after ?? 'request',
+    message: `X’s page didn’t show the archive being made after ${name}`,
+  };
 }
 
 const verdict = (v: CanaryResult['verdict'], message: string): CanaryResult => ({ verdict: v, message });

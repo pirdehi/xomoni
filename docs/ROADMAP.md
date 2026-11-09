@@ -166,7 +166,7 @@ Today, getting X's archive into Xomoni takes more than ten steps by hand. This p
 | --- | --- | --- | --- |
 | ✅ | Import the ZIP X sends as it is: no unzipping; only the files Xomoni needs are read, and photos and videos never are | [#184](https://github.com/pirdehi/xomoni/issues/184) | [#188](https://github.com/pirdehi/xomoni/pull/188) |
 | ✅ | One Library page instead of Archive and Inventory: how complete the copy is, one action to complete it, *Download a copy* with dates chosen at download time | [#185](https://github.com/pirdehi/xomoni/issues/185) | [#189](https://github.com/pirdehi/xomoni/pull/189) |
-| ⬜ | Get X's archive as a job through X's own settings page: request, wait, notify, download; the password is typed on X only | [#186](https://github.com/pirdehi/xomoni/issues/186) | |
+| ⏸ | Get X's archive as a job through X's own settings page: request, wait, notify, download; the password is typed on X only. Built; waits for one check on X's real page with the maintainer | [#186](https://github.com/pirdehi/xomoni/issues/186) | [#191](https://github.com/pirdehi/xomoni/pull/191) |
 | ✅ | Import the downloaded archive by itself from the Downloads folder, with one click as the fallback | [#187](https://github.com/pirdehi/xomoni/issues/187) | [#190](https://github.com/pirdehi/xomoni/pull/190) |
 
 ## Dropped

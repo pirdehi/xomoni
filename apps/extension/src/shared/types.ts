@@ -1,4 +1,5 @@
 import type { JobHealth } from './health';
+import type { ArchiveMode } from './x-archive';
 
 /** Kind of an inventory item. `post`, `reply` and `repost` are the account's own; `like` is a post it liked. */
 export type ItemKind = 'post' | 'reply' | 'repost' | 'like';
@@ -143,8 +144,11 @@ export interface DateRange {
   before: number;
 }
 
-/** A `cleanup` job changes the account; a `scan` job only reads X to fill the inventory. */
-export type JobKind = 'cleanup' | 'scan' | 'watch';
+/**
+ * A `cleanup` job changes the account; a `scan` job only reads X to fill the inventory; a `watch` job searches X for
+ * the Watch tabs (#158); an `archive` job asks X for the account's archive on X's own page and downloads it (#186).
+ */
+export type JobKind = 'cleanup' | 'scan' | 'watch' | 'archive';
 /** waiting = running, but paused until the person completes a login or X check. */
 export type JobState = 'queued' | 'running' | 'waiting' | 'paused' | 'blocked' | 'completed' | 'cancelled' | 'failed';
 
@@ -181,6 +185,8 @@ export interface Job {
   scan: ScanTarget | null;
   /** `range` scans only: the dates to read. */
   range?: DateRange;
+  /** Archive jobs only (#186): asked for by the person (`get`), or the dashboard's own look (`look`). */
+  archive?: ArchiveMode;
   state: JobState;
   /** Resume marker: `sweep` or `deep` for cleanups, `<page>/<pages>` for scans; empty before the first run. */
   phase: string;

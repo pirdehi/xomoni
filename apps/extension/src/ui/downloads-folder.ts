@@ -4,6 +4,8 @@
 // X's archive are ever opened; nothing leaves this computer (ADR-0004).
 
 import { kvGet, kvSet } from '../shared/db';
+import type { Account } from '../shared/types';
+import { type ImportResult, importArchive } from './importArchive';
 
 /** How X names its archive: `twitter-2026-11-08-<hash>.zip`, or `x-…` should X rename it. */
 export const ARCHIVE_FILE = /^(?:twitter|x)-\d{4}-\d{2}-\d{2}-[\w-]+\.zip$/i;
@@ -110,4 +112,27 @@ export async function seenArchives(accountId: string): Promise<Set<string>> {
 export async function markArchiveSeen(accountId: string, file: Pick<File, 'name' | 'size' | 'lastModified'>) {
   const list = [...(await seenArchives(accountId)), fileKey(file)];
   await kvSet(seenKey(accountId), [...new Set(list)].slice(-20));
+}
+
+/** What one look in the folder did: imported an archive, failed to (and why), or found nothing new (null). */
+export type FolderImport =
+  { file: File; result: ImportResult; error?: undefined } | { file: File; error: string; result?: undefined } | null;
+
+/**
+ * Imports the newest archive in the folder not seen yet for this account, if any. The file is remembered before it
+ * is read, so one that fails is not tried again and again.
+ */
+export async function importNewestArchive(
+  account: Account,
+  folder: FolderHandle,
+  onProgress: (message: string) => void,
+): Promise<FolderImport> {
+  const file = await newestArchive(folder, await seenArchives(account.id));
+  if (!file) return null;
+  await markArchiveSeen(account.id, file);
+  try {
+    return { file, result: await importArchive([file], account, onProgress) };
+  } catch (err) {
+    return { file, error: err instanceof Error ? err.message : String(err) };
+  }
 }

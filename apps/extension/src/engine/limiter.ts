@@ -4,6 +4,7 @@
 import { db, getViewCap, riskEvents, setViewCap } from '../shared/db';
 import { SESSION, pacingDelay, sessionStart } from '../shared/pacing';
 import { RISK_LABELS, type RiskAssessment, assessRisk } from '../shared/risk';
+import { withinActiveHours } from '../shared/settings';
 import { DAY, HOUR } from '../shared/time';
 import type { ActionKind, Outcome, Settings } from '../shared/types';
 import {
@@ -360,12 +361,9 @@ export class Limiter {
   }
 
   private async waitForActiveHours() {
-    const { enabled, start, end } = this.settings.activeHours;
-    if (!enabled || start === end) return;
+    const { start, end } = this.settings.activeHours;
     const now = new Date();
-    const hour = now.getHours() + now.getMinutes() / 60;
-    const inside = start < end ? hour >= start && hour < end : hour >= start || hour < end;
-    if (inside) return;
+    if (withinActiveHours(this.settings.activeHours, now)) return;
     const next = new Date(now);
     next.setHours(start, Math.floor(randomBetween(0, 15)), 0, 0);
     if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-08
+- Amended: 2026-11-09, how the archive job works (#186)
 
 ## Context
 
@@ -29,15 +30,21 @@ The fixed constraints:
    - Xomoni then looks there, while the Library is open, for files named like X's archive (`twitter-YYYY-MM-DD-….zip`). It opens no other file, and imports each one once.
    - The folder handle stays in this browser's database and is forgotten by *Stop* or by wiping local data.
 3. **X's archive page is driven like any other X page (#186).** Requesting and downloading the archive is a job in the worker window, on `x.com/settings/download_your_data`:
-   - Xomoni presses X's own *Request archive* and *Download archive* buttons, as it presses Delete. It presses only a button it recognizes, and never one it isn't sure of.
-   - When X asks for the password or a code, the job waits as *Needs you*. The person types it on X; Xomoni never reads, stores or fills it.
-   - While X prepares the archive, the job checks the page now and then within active hours, and says when it is ready.
-   - The download is the browser's own, from X's button. Xomoni never fetches the file itself, and asks for no host permission to do so.
+   - Xomoni presses X's own *Request archive* and *Download archive* buttons, as it presses Delete. It presses only a button it recognizes, and never one it isn't sure of:
+     - the button's whole label must read *Request archive* / *Request data* or *Download archive* / *Download data* (English only; another language counts as a page Xomoni doesn't know);
+     - exactly one such button must show, turned on, in the state that needs it;
+     - *Request archive* is pressed at most once a run, and only when the person asked (*Get my archive*).
+   - When X asks for the password or a code, the job waits as *Needs you* (`identity`). The person types it on X; Xomoni never reads, stores or fills it. X's form is never closed as a pop-up. The job stays on the page afterwards, since loading it again could make X ask again.
+   - A page Xomoni doesn't recognize, or a press that doesn't work, pauses the job with nothing else pressed, and says which button to press by hand.
+   - While X makes the archive, the dashboard looks again by itself: a day after asking, then every six hours, for two weeks at most. Each look is a short job of its own, so the runner is never held for days. It starts only when no job runs, within active hours, and for an account whose risks the person already accepted; it never asks for anything. A look never asks X for a new archive: when X shows none, it stops looking, and the Library offers to ask again.
+   - The download is the browser's own, from X's button. Xomoni never fetches the file itself, and asks for no host permission to do so. For 12 hours after it, the dashboard imports the ZIP from the Downloads folder on whichever page is open.
+   - Archive jobs are not reported to xomoni.com: they handle only X's archive, which stays in the browser (ADR-0004).
 4. **The person can always do it by hand.** The link to X's page, the drop zone and the ZIP picker stay. Anything the job can't recognize falls back to them.
 
 ## Consequences
 
-- Getting the archive needs the person only for X's password, typed on X, and optionally for choosing Downloads once.
+- Getting the archive needs the person for one press (*Get my archive*), for X's password, typed on X whenever X asks for it, and for choosing Downloads once. The rest happens while the dashboard is open.
+- X's archive page markup isn't public. The labels and fields Xomoni reads are checked against test markup built from X's help pages and guides, and must be checked once on the real page with the maintainer (#186).
 - X can change its archive page; its selectors live with the others in `content/dom.ts` (PLAYBOOK F1), and the job asks the person whenever the page isn't what it expects.
 - Importing a large archive reads tens of megabytes, not gigabytes, since media is skipped.
 - Chrome may ask again before Xomoni reads the Downloads folder in a later visit; that takes one click.

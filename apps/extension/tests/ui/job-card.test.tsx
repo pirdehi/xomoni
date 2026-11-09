@@ -325,6 +325,27 @@ describe('JobCard', () => {
       expect(screen.queryByText(/removed/)).not.toBeInTheDocument();
       expect(ring()).toBeNull();
     });
+
+    it('shows an archive job by what it did on X’s page, without counts (#186)', async () => {
+      await show(
+        job({
+          kind: 'archive',
+          title: 'Get X’s archive',
+          filter: null,
+          options: null,
+          archive: 'get',
+          state: 'completed',
+          phase: 'preparing',
+          finishedAt: Date.now(),
+          stateReason: 'X is making your archive.',
+        }),
+      );
+      expect(await screen.findByText('X is making your archive.')).toBeInTheDocument();
+      expect(screen.getByText(/phase: preparing/)).toBeInTheDocument();
+      expect(screen.queryByText(/posts looked at/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/removed/)).not.toBeInTheDocument();
+      expect(ring()).toBeNull();
+    });
   });
 
   describe('starting', () => {

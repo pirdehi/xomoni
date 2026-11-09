@@ -52,7 +52,7 @@ export function JobsPage({ account, navigate }: PageProps) {
     <>
       <PageHeader
         title="Jobs"
-        description="Cleanups and scans. Jobs are resumable — pausing, closing the browser or a safety stop never loses progress."
+        description="Cleanups, reads and X’s archive. Jobs are resumable — pausing, closing the browser or a safety stop never loses progress."
         actions={
           <Button variant="primary" icon={<Sparkle20Regular />} onClick={() => navigate('cleanup')}>
             New cleanup

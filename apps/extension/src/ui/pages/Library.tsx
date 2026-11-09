@@ -18,22 +18,20 @@ import {
   ChevronDown16Regular,
   Compose20Regular,
   History20Regular,
-  Open16Regular,
   TaskListLtr20Regular,
 } from '@fluentui/react-icons';
 import { type ReactNode, useState } from 'react';
-import { archiveJob, createScanJob } from '../../engine/runner';
+import { createScanJob } from '../../engine/runner';
 import type { Account, ScanTarget } from '../../shared/types';
-import { ARCHIVE_PAGE_URL, type ArchiveMode, archiveOverdue, nextArchiveLook } from '../../shared/x-archive';
-import { ArchiveImport } from '../components/ArchiveImport';
+import { ARCHIVE_PAGE_URL } from '../../shared/x-archive';
 import { DownloadCopyDialog } from '../components/DownloadCopy';
-import { DownloadsWatch } from '../components/DownloadsWatch';
 import { ItemBrowser } from '../components/ItemBrowser';
-import { Badge, Button, Card, PageHeader, useNow } from '../components/ui';
-import { errorMessage, fmtAgo, fmtDate, fmtFinish, fmtNumber } from '../format';
+import { XArchiveCard } from '../components/XArchiveCard';
+import { Badge, Button, Card, PageHeader } from '../components/ui';
+import { errorMessage, fmtAgo, fmtNumber } from '../format';
 import { startJob, toast, useRunner } from '../hooks';
 import type { PageProps } from '../navigation';
-import { type ArchiveStatus, type CopyStatus, useArchiveStatus, useCopyStatus } from '../queries';
+import { type CopyStatus, useCopyStatus } from '../queries';
 
 /** X's page for requesting the official archive. The person confirms it there with their password, never Xomoni. */
 export const X_ARCHIVE_URL = ARCHIVE_PAGE_URL;
@@ -90,15 +88,6 @@ const useStyles = makeStyles({
   badge: { flexShrink: 0, whiteSpace: 'nowrap' },
   actions: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalS },
   note: { display: 'block', margin: `${tokens.spacingVerticalM} 0 0`, color: tokens.colorNeutralForeground3 },
-  status: {
-    display: 'block',
-    margin: `0 0 ${tokens.spacingVerticalM}`,
-    padding: tokens.spacingHorizontalM,
-    borderRadius: tokens.borderRadiusLarge,
-    backgroundColor: tokens.colorBrandBackground2,
-    color: tokens.colorNeutralForeground1,
-  },
-  byHand: { marginTop: tokens.spacingVerticalM },
 });
 
 /** One source of the copy, with whether and when it was last read or imported. */
@@ -257,105 +246,6 @@ function CopyCard({ account, navigate }: { account: Account; navigate: PageProps
   );
 }
 
-/** What the archive card says about the archive Xomoni is getting from X (#186), or null when there is nothing to say. */
-function archiveLine(status: ArchiveStatus, now: number): string | null {
-  const { request, importedAt } = status;
-  if (!request) return null;
-  if (request.downloadedAt != null) {
-    if (importedAt != null && importedAt >= request.downloadedAt) return null;
-    return `Downloaded from X ${fmtAgo(request.downloadedAt, now)}. Xomoni imports it as soon as the ZIP is in your Downloads folder.`;
-  }
-  if (archiveOverdue(request, now)) {
-    return `X hasn’t made the archive Xomoni asked for on ${fmtDate(request.requestedAt)}. Ask X again.`;
-  }
-  const next = nextArchiveLook(request, now);
-  const when = next == null || next <= now ? 'soon' : fmtFinish(next - now, now);
-  return `Asked X ${fmtAgo(request.requestedAt, now)}. X is making it; Xomoni looks again ${when} and downloads it.`;
-}
-
-/**
- * X's archive (#186, ADR-0022): one button gets it. Xomoni asks X for it on X's own page and downloads it when X has
- * made it; the person only types their password there if X asks. What it is doing shows here; the Downloads folder
- * watch and the drop zone bring the ZIP in, and X's page stays one click away for doing it by hand.
- */
-function XArchiveCard({ account, navigate }: { account: Account; navigate: PageProps['navigate'] }) {
-  const s = useStyles();
-  const status = useArchiveStatus(account.id);
-  const run = useRunner();
-  const busy = run.status !== 'idle';
-  const now = useNow(30_000);
-  const line = status ? archiveLine(status, now) : null;
-  const waiting = !!status?.request && nextArchiveLook(status.request, now) != null;
-
-  const get = async (mode: ArchiveMode) => {
-    try {
-      const job = await archiveJob(account.id, mode);
-      void startJob(job.id);
-      navigate('jobs');
-    } catch (err) {
-      toast(`The job could not be saved: ${errorMessage(err)}`, 'critical');
-    }
-  };
-
-  return (
-    <Card
-      title="X’s archive"
-      subtitle="X’s own copy, the only complete one: every post, reply and like, even those X no longer shows."
-      actions={
-        status?.imported ? (
-          <Badge tone="good">{status.importedAt ? `Imported ${fmtDate(status.importedAt)}` : 'Imported'}</Badge>
-        ) : undefined
-      }
-    >
-      {line && (
-        <Caption1 as="p" role="status" className={s.status}>
-          {line}
-        </Caption1>
-      )}
-      <div className={s.actions}>
-        {status?.openJob ? (
-          <Button variant="primary" icon={<TaskListLtr20Regular />} onClick={() => navigate('jobs')}>
-            See it in Jobs
-          </Button>
-        ) : waiting ? (
-          <Button icon={<ArrowSync16Regular />} disabled={busy} onClick={() => void get('look')}>
-            Look now
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            icon={<ArrowDownload16Regular />}
-            disabled={busy || !status}
-            onClick={() => void get('get')}
-          >
-            Get my archive
-          </Button>
-        )}
-        {/* A real link, so the browser opens X in a new tab; Fluent styles it as a button. */}
-        <FluentButton
-          as="a"
-          href={X_ARCHIVE_URL}
-          target="_blank"
-          rel="noreferrer"
-          appearance="subtle"
-          icon={<Open16Regular />}
-        >
-          Open X’s page
-        </FluentButton>
-      </div>
-      <Caption1 as="p" className={s.note}>
-        Xomoni opens X’s archive page in its X window and presses X’s own buttons. If X asks for your password or a
-        code, type it there: Xomoni never sees it. X takes a day or more to make the archive; Xomoni looks again by
-        itself and downloads it.
-      </Caption1>
-      <DownloadsWatch account={account} />
-      <div className={s.byHand}>
-        <ArchiveImport account={account} />
-      </div>
-    </Card>
-  );
-}
-
 /**
  * The Library (#185), which replaces the Archive and Inventory pages: how complete Xomoni's copy of the account is
  * and how to complete it, getting X's archive (#186), everything in it to browse, and *Download a copy* for any
@@ -377,7 +267,7 @@ export function LibraryPage({ account, navigate }: PageProps) {
       />
       <div className={s.columns}>
         <CopyCard account={account} navigate={navigate} />
-        <XArchiveCard account={account} navigate={navigate} />
+        <XArchiveCard account={account} />
       </div>
       <div className={s.below}>
         <ItemBrowser accountId={account.id} handle={account.handle} />

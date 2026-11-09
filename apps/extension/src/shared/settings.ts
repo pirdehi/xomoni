@@ -89,6 +89,18 @@ export const ACTION_LABELS: Record<ActionKind, string> = {
   read: 'Page loads & scrolls',
 };
 
+/**
+ * The first moment at or after `at` (epoch ms) within the person's active hours: `at` itself when it is inside, else
+ * the next start of the active hours, on this computer's clock.
+ */
+export function nextActiveTime(hours: Settings['activeHours'], at: number): number {
+  if (withinActiveHours(hours, new Date(at))) return at;
+  const next = new Date(at);
+  next.setHours(hours.start, 0, 0, 0);
+  if (next.getTime() <= at) next.setDate(next.getDate() + 1);
+  return next.getTime();
+}
+
 /** Whether `date` falls within the person's active hours: always, when they are off or start and end are the same. */
 export function withinActiveHours(hours: Settings['activeHours'], date: Date): boolean {
   const { enabled, start, end } = hours;

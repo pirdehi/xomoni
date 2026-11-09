@@ -392,11 +392,11 @@ export function CleanupPage({ account, navigate }: PageProps) {
             <p className={styles.noticeText}>
               X search doesn’t show posts older than about a week that have no likes, and your profile shows only your
               newest ~3,200 posts. Without your X archive, this cleanup can miss many old posts, replies and likes, and
-              report fewer than you have. Download your archive from X and import it first.
+              report fewer than you have. Get your archive first: in the Library, Xomoni asks X for it and imports it.
             </p>
             <div className={styles.noticeActions}>
               <Button size="sm" variant="primary" onClick={() => navigate('library')}>
-                Import your archive
+                Get my archive
               </Button>
               <Toggle
                 checked={missAcknowledged}

@@ -49,7 +49,7 @@ export const CONSENT_SECTIONS: readonly ConsentSection[] = [
   },
   {
     title: 'Download your archive first',
-    text: 'Before you delete anything, request your X archive (on X: Settings, Your account, Download an archive of your data). It is your only copy, and Xomoni can read it to find your oldest posts.',
+    text: 'Before you delete anything, get your X archive: press Get my archive in the Library, and Xomoni asks X for it on X’s own page. It is your only copy, and Xomoni can read it to find your oldest posts.',
   },
   {
     title: 'What Xomoni never does',

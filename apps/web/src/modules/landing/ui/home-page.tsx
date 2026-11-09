@@ -670,8 +670,9 @@ function ClosingCta() {
               Start with your archive.
             </h2>
             <p className={s.closingText}>
-              Request it from X today (Settings → Your account → Download an archive of your data). It can take a day to
-              arrive, and it is your backup before anything is deleted.
+              Request it from X today (Settings → Your account → Download an archive of your data), or let Xomoni ask X
+              for it once it is installed. It can take a day to arrive, and it is your backup before anything is
+              deleted.
             </p>
           </div>
           <div className={mergeClasses(s.actions, s.closingActions)}>

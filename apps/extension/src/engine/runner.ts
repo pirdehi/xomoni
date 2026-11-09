@@ -214,8 +214,9 @@ export class Runner {
           ? `${job.stats.scanned.toLocaleString()} posts seen`
           : job.kind === 'watch'
             ? `${done.toLocaleString()} searches, ${job.stats.scanned.toLocaleString()} posts seen`
-            : job.kind === 'archive'
-              ? `${done} ${done === 1 ? 'button' : 'buttons'} pressed on X’s archive page`
+            : // An archive job is told by its reason alone: what X's page showed and what Xomoni did there.
+              job.kind === 'archive'
+              ? ''
               : `${done} done, ${skipped} skipped, ${failed} failed`;
       await ctx.log(
         final.state === 'completed'
@@ -224,7 +225,7 @@ export class Runner {
             ? 'info'
             : 'error',
         'system',
-        `${STATE_VERB[final.state]} “${job.title}” — ${summary}${final.reason ? `. ${final.reason}` : ''}`,
+        `${STATE_VERB[final.state]} “${job.title}”${summary ? ` — ${summary}` : ''}${final.reason ? `${summary ? '.' : ':'} ${final.reason}` : ''}`,
       );
       if (job.health) {
         await ctx.log(
@@ -237,7 +238,7 @@ export class Runner {
         void this.ports.notifier.notify(
           FINISHED_ID,
           `Xomoni: ${STATE_VERB[final.state].replace(/:$/, '')} “${job.title}”`,
-          `${summary}. ${final.reason || job.health?.summary || ''}`.trim(),
+          [summary, final.reason || job.health?.summary || ''].filter(Boolean).join('. '),
         );
       }
     } finally {

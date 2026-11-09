@@ -135,7 +135,7 @@ describe('Cleanup page', () => {
 
     it('sends the person to the Library to import the archive', async () => {
       const props = await renderPage();
-      await userEvent.click(await screen.findByRole('button', { name: 'Import your archive' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
       expect(props.navigate).toHaveBeenCalledWith('library');
     });
 

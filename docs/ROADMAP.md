@@ -11,7 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:** Phase 11, getting X's archive into Xomoni without leaving it: built, and one check on X's real archive page left ([report](PHASE-11-REPORT.md)); Phase 4, the pilot on the maintainer's account; Phase 6, the first release (v0.2.0, waiting for the maintainer's go). Phases 5, 7 and 8 are done, and Phase 9 is done except what waits on the maintainer.
-**Last updated:** 2026-11-09
+**Last updated:** 2026-11-12 · Status report: [English](STATUS-2026-11-12.md) · [فارسی](STATUS-2026-11-12.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 

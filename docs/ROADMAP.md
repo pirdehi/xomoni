@@ -182,7 +182,7 @@ A UX review of the whole dashboard found more places than tasks, numbers without
 | --- | --- | --- | --- |
 | ✅ | Settings: presets first, the pacing table only under Custom | [#198](https://github.com/pirdehi/xomoni/issues/198) | [#209](https://github.com/pirdehi/xomoni/pull/209) |
 | ✅ | Cleanup in three questions; *How to find them* under Advanced | [#199](https://github.com/pirdehi/xomoni/issues/199) | [#210](https://github.com/pirdehi/xomoni/pull/210) |
-| ⬜ | A banner on every page when X needs you | [#200](https://github.com/pirdehi/xomoni/issues/200) | |
+| ✅ | A banner on every page when X needs you | [#200](https://github.com/pirdehi/xomoni/issues/200) | [#211](https://github.com/pirdehi/xomoni/pull/211) |
 | ⬜ | Home: one status, one next step, a first-run checklist | [#201](https://github.com/pirdehi/xomoni/issues/201) | |
 | ⬜ | Jobs and Activity log in one Activity page | [#202](https://github.com/pirdehi/xomoni/issues/202) | |
 | ⬜ | Library: one card for your copy | [#203](https://github.com/pirdehi/xomoni/issues/203) | |

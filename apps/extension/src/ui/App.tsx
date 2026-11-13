@@ -44,6 +44,7 @@ import {
 import { type ReactNode, useEffect, useState } from 'react';
 import { runner } from '../engine/platform';
 import { workerTab } from '../engine/worker-tab';
+import { type Need, NEED_TITLE, needMessage, pageNeed } from '../shared/attention';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, type Tone } from './components/ui';
@@ -281,6 +282,7 @@ export function App() {
       <Sidebar page={page} navigate={navigate} account={account ?? null} worker={worker} />
       <main className={styles.main}>
         <RunnerBanner />
+        {account && <IdleNeedBanner account={account} worker={worker} />}
         <div className={styles.content}>
           <UpdateNotice />
           {account === undefined ? null : !account ? (
@@ -363,21 +365,69 @@ function Sidebar({
 /** The tones the worker chip uses. */
 type WorkerTone = Exclude<Tone, 'serious'>;
 
-/** What the worker chip says, and its tone, for the worker's state; the first matching problem wins. */
-function workerState({ open, info }: WorkerStatus): { text: string; tone: WorkerTone } {
-  if (open && !info) return { text: 'X worker loading…', tone: 'accent' };
+/**
+ * What the X window's chip says, and its tone, for the window's state; the first matching problem wins. A covered
+ * window only matters while a job runs (`running`), since Chrome pauses pages it doesn't show; otherwise it is ready
+ * (#200).
+ */
+export function workerState({ open, info }: WorkerStatus, running: boolean): { text: string; tone: WorkerTone } {
+  if (open && !info) return { text: 'Opening the X window…', tone: 'accent' };
   if (info?.locked) return { text: 'X account locked', tone: 'critical' };
-  if (info && !info.loggedIn) return { text: 'Log in to X in the worker', tone: 'warn' };
-  if (info?.challenge) return { text: 'X wants you to confirm it’s you', tone: 'warn' };
-  if (info?.hidden) return { text: 'Keep the X worker visible', tone: 'warn' };
-  if (info) return { text: 'X worker connected', tone: 'good' };
-  return { text: 'X worker not open', tone: 'neutral' };
+  if (info && !info.loggedIn) return { text: 'Sign in to X', tone: 'warn' };
+  if (info?.challenge) return { text: 'Confirm it’s you on X', tone: 'warn' };
+  if (info?.hidden && running) return { text: 'Keep the X window visible', tone: 'warn' };
+  if (info) return { text: 'X window ready', tone: 'good' };
+  return { text: 'X window closed', tone: 'neutral' };
+}
+
+/**
+ * What X needs from the person while no job runs, worth a banner on every page. Another account in the X window
+ * isn't one: the dashboard follows the account the window is signed in to.
+ */
+const IDLE_NEEDS: readonly Need[] = ['login', 'verify'];
+
+/**
+ * A banner at the top of every page when X needs the person and no job runs (#200): signed out, or an X check or
+ * lock. A running job shows its own banner instead. It goes once X is ready.
+ */
+function IdleNeedBanner({ account, worker }: { account: Account; worker: WorkerStatus }) {
+  const styles = useStyles();
+  const state = useRunner();
+  const need = state.status === 'idle' && worker.info ? pageNeed(worker.info, account.id) : null;
+  if (!need || !IDLE_NEEDS.includes(need)) return null;
+  return (
+    <section role="status" aria-label="X needs you" className={mergeClasses(styles.banner, styles.attention)}>
+      <span className={styles.attentionBar} />
+      <div className={mergeClasses(styles.bannerRow, styles.attentionRow)}>
+        <div className={mergeClasses(styles.bannerText, styles.bannerTextTop)}>
+          <AlertUrgent20Regular className={styles.attentionIcon} aria-hidden />
+          <div className={styles.stack}>
+            <Body1Strong>{NEED_TITLE[need]}</Body1Strong>
+            <Body1 className={styles.secondary}>
+              {needMessage(need, account.handle)} Jobs wait until then; Xomoni never sees what you type.
+            </Body1>
+          </div>
+        </div>
+        <div className={styles.actions}>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={<Open16Regular />}
+            onClick={() => void workerTab.focus().catch((e: unknown) => toast(errorMessage(e), 'critical'))}
+          >
+            Open X window
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function WorkerChip({ worker }: { worker: WorkerStatus }) {
   const styles = useStyles();
   const toneStyles = useToneStyles();
-  const { text, tone } = workerState(worker);
+  const run = useRunner();
+  const { text, tone } = workerState(worker, run.status !== 'idle');
   const icon: ReactNode =
     tone === 'accent' ? (
       <Spinner size="extra-tiny" aria-hidden />
@@ -388,12 +438,12 @@ function WorkerChip({ worker }: { worker: WorkerStatus }) {
     ) : (
       <Warning16Filled aria-hidden />
     );
-  const title = worker.open ? 'Show the X worker window' : 'Open the X worker window';
+  const title = worker.open ? 'Show the X window' : 'Open the X window';
   return (
     <div className={styles.chip} data-tone={tone}>
       <span className={styles.chipStatus}>
         <span className={mergeClasses(styles.chipIcon, toneStyles[tone])}>{icon}</span>
-        <Caption1 className={styles.truncate}>{text}</Caption1>
+        <Caption1>{text}</Caption1>
       </span>
       <FluentButton
         appearance="subtle"

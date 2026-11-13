@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createScanJob } from '../../src/engine/runner';
 import { runner } from '../../src/engine/platform';
-import { needMessage } from '../../src/shared/attention';
+import { NEED_TITLE, needMessage } from '../../src/shared/attention';
 import { db, upsertAccount } from '../../src/shared/db';
 import type { PageInfo } from '../../src/shared/messages';
 import { App } from '../../src/ui/App';
@@ -45,7 +45,7 @@ describe('App before an account is known', () => {
 
     expect(await pageHeading('Welcome to Xomoni')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
-    expect(within(sidebar()).getByText('X worker not open')).toBeInTheDocument();
+    expect(within(sidebar()).getByText('X window closed')).toBeInTheDocument();
   });
 
   it('switches to the dashboard once the worker reports the signed-in account', async () => {
@@ -54,7 +54,7 @@ describe('App before an account is known', () => {
 
     expect(await pageHeading('Overview')).toBeInTheDocument();
     expect(within(sidebar()).getByText('@newbie')).toBeInTheDocument();
-    expect(within(sidebar()).getByText('X worker connected')).toBeInTheDocument();
+    expect(within(sidebar()).getByText('X window ready')).toBeInTheDocument();
   });
 });
 
@@ -147,12 +147,13 @@ describe('App navigation', () => {
 
 describe('App worker status', () => {
   const states: [string, PageInfo | null, string][] = [
-    ['X worker loading…', null, 'accent'],
+    ['Opening the X window…', null, 'accent'],
     ['X account locked', pageInfo({ locked: true, loggedIn: true }), 'critical'],
-    ['Log in to X in the worker', pageInfo({ loggedIn: false, viewerId: null }), 'warn'],
-    ['X wants you to confirm it’s you', pageInfo({ challenge: true }), 'warn'],
-    ['Keep the X worker visible', pageInfo({ hidden: true }), 'warn'],
-    ['X worker connected', pageInfo(), 'good'],
+    ['Sign in to X', pageInfo({ loggedIn: false, viewerId: null }), 'warn'],
+    ['Confirm it’s you on X', pageInfo({ challenge: true }), 'warn'],
+    // A covered window matters only while a job runs (#200).
+    ['X window ready', pageInfo({ hidden: true }), 'good'],
+    ['X window ready', pageInfo(), 'good'],
   ];
 
   it.each(states)('says “%s”', async (text, info, tone) => {
@@ -165,8 +166,20 @@ describe('App worker status', () => {
 
   it('shows a neutral status while no worker is open', async () => {
     render(<App />);
-    const text = await within(sidebar()).findByText('X worker not open');
+    const text = await within(sidebar()).findByText('X window closed');
     expect(text.closest('[data-tone]')).toHaveAttribute('data-tone', 'neutral');
+  });
+
+  it('asks to keep the X window visible only while a job runs (#200)', async () => {
+    await upsertAccount(account());
+    const fake = fakeRunner({ status: 'idle', jobId: null });
+    openWorker(chrome, pageInfo({ hidden: true }));
+    render(<App />);
+    expect(await within(sidebar()).findByText('X window ready')).toBeInTheDocument();
+
+    act(() => fake.set({ status: 'running', jobId: 'job-x' }));
+    const text = await within(sidebar()).findByText('Keep the X window visible');
+    expect(text.closest('[data-tone]')).toHaveAttribute('data-tone', 'warn');
   });
 
   it('warns about a locked account before anything else', async () => {
@@ -177,9 +190,9 @@ describe('App worker status', () => {
 
   it('opens the worker window when none is open', async () => {
     render(<App />);
-    await screen.findByText('X worker not open');
+    await screen.findByText('X window closed');
 
-    await userEvent.click(workerButton('Open the X worker window'));
+    await userEvent.click(workerButton('Open the X window'));
     await waitFor(() => {
       expect(chrome.windows.create).toHaveBeenCalled();
     });
@@ -189,9 +202,9 @@ describe('App worker status', () => {
     await upsertAccount(account());
     openWorker(chrome, pageInfo());
     render(<App />);
-    await screen.findByText('X worker connected');
+    await screen.findByText('X window ready');
 
-    await userEvent.click(workerButton('Show the X worker window'));
+    await userEvent.click(workerButton('Show the X window'));
     await waitFor(() => {
       expect(chrome.windows.update).toHaveBeenCalledWith(WORKER_TAB.windowId, { focused: true });
     });
@@ -201,9 +214,9 @@ describe('App worker status', () => {
   it('shows a toast when the worker window cannot be opened', async () => {
     chrome.windows.create.mockRejectedValue(new Error('No more windows'));
     render(<App />);
-    await screen.findByText('X worker not open');
+    await screen.findByText('X window closed');
 
-    await userEvent.click(workerButton('Open the X worker window'));
+    await userEvent.click(workerButton('Open the X window'));
     expect(await screen.findByText('No more windows')).toBeInTheDocument();
   });
 });
@@ -295,7 +308,7 @@ describe('App job banner', () => {
     expect(alert).toHaveTextContent('Xomoni needs its X window on screen to continue “Scan: likes”');
     expect(alert).not.toHaveTextContent('X needs you');
     expect(alert).toHaveTextContent(/Chrome pauses pages it doesn’t show/);
-    expect(within(sidebar()).getByText('Keep the X worker visible')).toBeInTheDocument();
+    expect(within(sidebar()).getByText('Keep the X window visible')).toBeInTheDocument();
 
     await userEvent.click(within(alert).getByRole('button', { name: 'Open X window' }));
     await waitFor(() => {
@@ -529,5 +542,45 @@ describe('App running hidden (#140)', () => {
 
     expect(track.stop).not.toHaveBeenCalled();
     expect(tabShare.sharing()).toBe(true);
+  });
+});
+
+describe('App banner when X needs you and no job runs (#200)', () => {
+  beforeEach(async () => {
+    await upsertAccount(account());
+  });
+
+  it.each([
+    ['login', pageInfo({ loggedIn: false, viewerId: null })],
+    ['verify', pageInfo({ challenge: true })],
+    ['verify', pageInfo({ locked: true })],
+  ] as const)('says what X needs (%s) on every page, with Open X window', async (need, info) => {
+    window.location.hash = '#/settings';
+    openWorker(chrome, info);
+    render(<App />);
+    await pageHeading('Settings');
+
+    const banner = await screen.findByRole('status', { name: 'X needs you' });
+    expect(banner).toHaveTextContent(NEED_TITLE[need]);
+    expect(banner).toHaveTextContent(needMessage(need, account().handle));
+    await userEvent.click(within(banner).getByRole('button', { name: 'Open X window' }));
+    await waitFor(() => {
+      expect(chrome.tabs.update).toHaveBeenCalledWith(WORKER_TAB.id, { active: true });
+    });
+  });
+
+  it('shows nothing when X is ready, the window is only covered, or no X window is open', async () => {
+    openWorker(chrome, pageInfo({ hidden: true }));
+    render(<App />);
+    await screen.findByText('X window ready');
+    expect(screen.queryByRole('status', { name: 'X needs you' })).not.toBeInTheDocument();
+  });
+
+  it('leaves it to the job’s own banner while a job runs', async () => {
+    fakeRunner({ status: 'running', jobId: 'job-x' });
+    openWorker(chrome, pageInfo({ loggedIn: false, viewerId: null }));
+    render(<App />);
+    await screen.findByText('Job running');
+    expect(screen.queryByRole('status', { name: 'X needs you' })).not.toBeInTheDocument();
   });
 });

@@ -24,7 +24,7 @@ import { DAY } from '../../shared/time';
 import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/types';
 import { X_PUBLISHED_LIMITS, capCeilings, share } from '../../shared/x-limits';
 import type { PageProps } from '../navigation';
-import { Button, Callout, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
+import { Button, Callout, Card, Disclosure, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
 import { downloadFile, errorMessage, toDateInput } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
@@ -88,6 +88,22 @@ const useStyles = makeStyles({
   secondary: { color: tokens.colorNeutralForeground2 },
   strong: { fontWeight: tokens.fontWeightSemibold },
   limitsNote: { margin: `${tokens.spacingVerticalS} 0 0`, color: tokens.colorNeutralForeground3 },
+  pace: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalXXL}`,
+    margin: 0,
+    '@media (min-width: 720px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
+  },
+  paceRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    paddingBottom: tokens.spacingVerticalS,
+    borderBottom: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  paceAction: { margin: 0, color: tokens.colorNeutralForeground2 },
+  paceValue: { margin: 0, fontWeight: tokens.fontWeightSemibold, fontVariantNumeric: 'tabular-nums' },
   // Lines up with the text of the active-hours switch above it, as the kit's Toggle does for its description.
   hours: {
     display: 'grid',
@@ -130,9 +146,10 @@ const save = (s: Settings) => {
 
 /**
  * Pacing presets and per-action rules, active hours, notifications, the failure limit, theme, and
- * export or wipe of local data, drawn with Fluent UI (ADR-0019). Each change is saved to the `kv` table at once; a
- * running job keeps the settings it read when it started. Each pacing field is named by its action and column
- * (such as "Unlike, Per hour") for screen readers.
+ * export or wipe of local data, drawn with Fluent UI (ADR-0019). Presets come first (#198): *Careful* reads as a few
+ * daily caps, and the table of every pacing value shows only under *Custom*; the failure limit sits under *Advanced*.
+ * Each change is saved to the `kv` table at once; a running job keeps the settings it read when it started. Each
+ * pacing field is named by its action and column (such as "Unlike, Per hour") for screen readers.
  */
 export function SettingsPage({ worker }: PageProps) {
   const styles = useStyles();
@@ -141,6 +158,7 @@ export function SettingsPage({ worker }: PageProps) {
   const [theme, setThemeState] = useState<ThemeChoice>(getStoredTheme);
   const [wiping, setWiping] = useState(false);
   if (!settings) return null;
+  const custom = settings.preset === 'custom';
 
   const setPreset = (preset: PresetName) =>
     save({ ...settings, preset, pacing: preset === 'custom' ? settings.pacing : PRESETS.careful });
@@ -182,7 +200,11 @@ export function SettingsPage({ worker }: PageProps) {
       <div className={styles.stack}>
         <Card
           title="Pacing"
-          subtitle="Xomoni uses at most one fifth of every limit X publishes, and of the live limits X reports. Custom values can be slower, never faster."
+          subtitle={
+            custom
+              ? 'Your own pace: slower than Careful if you like, never faster than one fifth of what X allows.'
+              : 'How fast Xomoni works. Careful never uses more than one fifth of what X allows, with varied pauses and breaks.'
+          }
           actions={
             <Segmented
               value={settings.preset}
@@ -194,51 +216,58 @@ export function SettingsPage({ worker }: PageProps) {
             />
           }
         >
-          <div className={styles.scroll}>
-            <Table size="small" className={styles.table}>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell className={styles.headCell}>Action</TableHeaderCell>
-                  {COLUMNS.map((c) => (
-                    <TableHeaderCell key={c.key} className={styles.headCell}>
-                      {c.label}
-                    </TableHeaderCell>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ACTIONS.map((action) => (
-                  <TableRow key={action}>
-                    <TableCell className={styles.actionCell}>{ACTION_LABELS[action]}</TableCell>
-                    {COLUMNS.map((c) => (
-                      <TableCell key={c.key}>
-                        <Input
-                          size="small"
-                          type="number"
-                          className={styles.numberField}
-                          input={{ className: styles.number }}
-                          aria-label={`${ACTION_LABELS[action]}, ${c.label}${c.unit ? ' (seconds)' : ''}`}
-                          min={c.unit ? 0 : 1}
-                          max={c.key === 'hourlyCap' || c.key === 'dailyCap' ? capCeilings(action)[c.key] : undefined}
-                          step={c.unit ? 0.5 : 1}
-                          value={String(settings.pacing[action][c.key])}
-                          contentAfter={c.unit ? <span className={styles.unit}>{c.unit}</span> : undefined}
-                          onChange={(_, data) =>
-                            setRule(action, c.key, Math.max(c.unit ? 0 : 1, Number(data.value) || 0))
-                          }
-                        />
-                      </TableCell>
+          {!custom && <CarefulPace />}
+          {custom && (
+            <>
+              <div className={styles.scroll}>
+                <Table size="small" className={styles.table}>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHeaderCell className={styles.headCell}>Action</TableHeaderCell>
+                      {COLUMNS.map((c) => (
+                        <TableHeaderCell key={c.key} className={styles.headCell}>
+                          {c.label}
+                        </TableHeaderCell>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ACTIONS.map((action) => (
+                      <TableRow key={action}>
+                        <TableCell className={styles.actionCell}>{ACTION_LABELS[action]}</TableCell>
+                        {COLUMNS.map((c) => (
+                          <TableCell key={c.key}>
+                            <Input
+                              size="small"
+                              type="number"
+                              className={styles.numberField}
+                              input={{ className: styles.number }}
+                              aria-label={`${ACTION_LABELS[action]}, ${c.label}${c.unit ? ' (seconds)' : ''}`}
+                              min={c.unit ? 0 : 1}
+                              max={
+                                c.key === 'hourlyCap' || c.key === 'dailyCap' ? capCeilings(action)[c.key] : undefined
+                              }
+                              step={c.unit ? 0.5 : 1}
+                              value={String(settings.pacing[action][c.key])}
+                              contentAfter={c.unit ? <span className={styles.unit}>{c.unit}</span> : undefined}
+                              onChange={(_, data) =>
+                                setRule(action, c.key, Math.max(c.unit ? 0 : 1, Number(data.value) || 0))
+                              }
+                            />
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <Caption1 as="p" block className={styles.note}>
-            Delays vary around the middle of min–max, with an occasional longer pause. After each batch Xomoni takes a
-            longer break, and after every 25–50 minutes of work it rests 10–30 minutes. Caps use rolling 1-hour and
-            24-hour windows and can't be set above one fifth of X's limits.
-          </Caption1>
+                  </TableBody>
+                </Table>
+              </div>
+              <Caption1 as="p" block className={styles.note}>
+                Delays vary around the middle of min–max, with an occasional longer pause. After each batch Xomoni takes
+                a longer break, and after every 25–50 minutes of work it rests 10–30 minutes. Caps use rolling 1-hour
+                and 24-hour windows and can't be set above one fifth of X's limits.
+              </Caption1>
+            </>
+          )}
           <XLimitsTable />
         </Card>
 
@@ -301,19 +330,24 @@ export function SettingsPage({ worker }: PageProps) {
                 label="Keep going while I’m away"
                 description="Keeps the display on while a job runs. After two minutes without keyboard or mouse, a covered X window comes forward and the job continues. On a locked screen it waits."
               />
-              <Field label="Pause after this many failures in a row">
-                <Input
-                  type="number"
-                  className={styles.failures}
-                  input={{ className: styles.number }}
-                  min={1}
-                  max={3}
-                  value={String(settings.maxConsecutiveFailures)}
-                  onChange={(_, data) =>
-                    save({ ...settings, maxConsecutiveFailures: Math.max(1, Number(data.value) || 1) })
-                  }
-                />
-              </Field>
+              <Disclosure
+                label="Advanced"
+                summary={`A job pauses after ${settings.maxConsecutiveFailures} failed ${settings.maxConsecutiveFailures === 1 ? 'action' : 'actions'} in a row.`}
+              >
+                <Field label="Pause after this many failures in a row">
+                  <Input
+                    type="number"
+                    className={styles.failures}
+                    input={{ className: styles.number }}
+                    min={1}
+                    max={3}
+                    value={String(settings.maxConsecutiveFailures)}
+                    onChange={(_, data) =>
+                      save({ ...settings, maxConsecutiveFailures: Math.max(1, Number(data.value) || 1) })
+                    }
+                  />
+                </Field>
+              </Disclosure>
               <Callout tone="good" icon={<ShieldCheckmark16Regular className={styles.goodIcon} />} title="Always on">
                 <ul className={styles.rules}>
                   <li>Waits out X rate limits (HTTP 429 / code 88) and daily limits</li>
@@ -385,6 +419,26 @@ export function SettingsPage({ worker }: PageProps) {
         on X is changed.
       </Modal>
     </>
+  );
+}
+
+/** What *Careful* comes to for each action, in the words people use: how many a day, and how many an hour (#198). */
+function CarefulPace() {
+  const styles = useStyles();
+  return (
+    <dl className={styles.pace} aria-label="Careful pace">
+      {ACTIONS.map((action) => {
+        const rule = PRESETS.careful[action];
+        return (
+          <div key={action} className={styles.paceRow}>
+            <dt className={styles.paceAction}>{ACTION_LABELS[action]}</dt>
+            <dd className={styles.paceValue}>
+              up to {rule.dailyCap.toLocaleString('en')} a day · {rule.hourlyCap} an hour
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
   );
 }
 

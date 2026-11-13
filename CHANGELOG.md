@@ -24,6 +24,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- A cleanup takes three choices (#199): what, how old, and the review with *Start*. What to keep is folded under *Exceptions*, with a line saying what is kept, such as *Keeps posts with 50+ likes*. How Xomoni finds the posts moved under *Advanced*, with a line saying what it will do; both ways stay on by default.
 - Settings open on the pace most people keep (#198). *Careful* now reads as a few lines, such as *Delete posts & replies: up to 960 a day · 40 an hour*, instead of a table of 35 number fields. The table shows only when you choose *Custom*, and *Pause after this many failures in a row* moved under *Advanced*.
 - The archive card in the Library was redesigned after a review of the whole journey (#186). Four steps show where getting the archive stands, and one line says what is happening or what X needs from you, with *Open X window* when X asks for your password. *Get my archive* asks for the Downloads folder in the same click, so the archive comes in by itself, and keeps you in the Library instead of sending you to Jobs; declining the risks dialog no longer leaves a job behind. The time Xomoni looks again respects your active hours, and says it needs Xomoni open. *Look now* appears only once a look is due, and importing a ZIP by hand is folded under *Already have the ZIP?*. The job card shows what X needs from you in full, and the risks text, the Cleanup warning and the README now point to *Get my archive*.
 

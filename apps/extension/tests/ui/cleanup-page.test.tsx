@@ -7,11 +7,11 @@ import type { RunnerState } from '../../src/engine/runner';
 import { db, kvSet, markArchiveImported } from '../../src/shared/db';
 import { estimateDuration } from '../../src/shared/filter';
 import { PRESETS } from '../../src/shared/settings';
-import type { Item } from '../../src/shared/types';
+import type { CleanupFilter, Item } from '../../src/shared/types';
 import type * as Format from '../../src/ui/format';
 import { fmtDate, fmtDuration, fmtNumber, fromDateInput, toDateInput } from '../../src/ui/format';
 import type * as Hooks from '../../src/ui/hooks';
-import { CleanupPage } from '../../src/ui/pages/Cleanup';
+import { CleanupPage, exceptionsSummary, findingSummary } from '../../src/ui/pages/Cleanup';
 import { stubChrome } from '../support/chrome';
 import { DAY_MS, draft, seed, watchNetwork } from '../support/cleanup-pages';
 import { ME, pageProps, resetDb } from '../support/fixtures';
@@ -86,6 +86,13 @@ async function renderWithArchive(count = 3) {
 }
 
 /** Opens the confirmation and waits until its DELETE field has the focus, as it does for the person. */
+
+/** Opens the folded *Exceptions* (#199). */
+const openExceptions = () => userEvent.click(screen.getByRole('button', { name: 'Choose what to keep' }));
+
+/** Opens the folded *Advanced: how Xomoni finds them* (#199). */
+const openAdvanced = () => userEvent.click(screen.getByRole('button', { name: 'Advanced: how Xomoni finds them' }));
+
 async function openConfirm() {
   // Found, not got: right after a modal dialog closes, Fluent keeps the page aria-hidden for a moment.
   await userEvent.click(await screen.findByRole('button', { name: 'Start cleanup' }));
@@ -281,6 +288,7 @@ describe('Cleanup page', () => {
 
     it('does not mention the sweep when only the inventory is cleaned', async () => {
       await renderWithArchive();
+      await openAdvanced();
       await userEvent.click(screen.getByRole('switch', { name: /^Sweep X search/ }));
       const modal = await openConfirm();
       expect(modal).toHaveTextContent('3 known items match. Removed posts and likes cannot be restored');
@@ -288,8 +296,10 @@ describe('Cleanup page', () => {
   });
 
   describe('what can be started', () => {
-    it('needs at least one way to find items', async () => {
+    it('needs at least one way to find items, and says so while Advanced is folded', async () => {
       await renderWithArchive();
+      expect(screen.getByText('Xomoni searches X and visits each known one.')).toBeInTheDocument();
+      await openAdvanced();
       const sweep = screen.getByRole('switch', { name: /^Sweep X search/ });
       const deep = screen.getByRole('switch', { name: /^Deep clean from inventory/ });
 
@@ -297,7 +307,10 @@ describe('Cleanup page', () => {
       expect(startButton()).toBeEnabled();
       await userEvent.click(deep);
       expect(startButton()).toBeDisabled();
-      await userEvent.click(sweep);
+      await openAdvanced();
+      expect(screen.getByText('Neither way is on: turn one on to start.')).toBeInTheDocument();
+      await openAdvanced();
+      await userEvent.click(screen.getByRole('switch', { name: /^Sweep X search/ }));
       expect(startButton()).toBeEnabled();
     });
 
@@ -307,6 +320,7 @@ describe('Cleanup page', () => {
       await waitFor(() => expect(matching()).toHaveTextContent(/^0$/));
       expect(startButton()).toBeEnabled();
 
+      await openAdvanced();
       await userEvent.click(screen.getByRole('switch', { name: /^Sweep X search/ }));
       expect(startButton()).toBeDisabled();
     });
@@ -377,6 +391,8 @@ describe('Cleanup page', () => {
 
     it('keeps posts by likes, keywords and ids, and passes the keep rules to the job', async () => {
       const props = await renderWithArchive();
+      expect(screen.getByText('Nothing is kept: everything that matches is removed.')).toBeInTheDocument();
+      await openExceptions();
 
       const minLikes = screen.getByLabelText(/Keep if it has at least/);
       await userEvent.type(minLikes, '1x0');
@@ -390,6 +406,12 @@ describe('Cleanup page', () => {
         target: { value: 'https://x.com/me/status/1000000001\n12345678901234' },
       });
       await waitFor(() => expect(matching()).toHaveTextContent(/^0$/));
+
+      // Folded again, the exceptions read as one line.
+      await openExceptions();
+      expect(
+        screen.getByText('Keeps posts with 10+ likes, text with “launch”, “#mytag” and 2 chosen posts.'),
+      ).toBeInTheDocument();
 
       await openConfirm();
       expect(dialog()).toHaveTextContent('0 known items match, plus any the sweep finds on X.');
@@ -407,6 +429,7 @@ describe('Cleanup page', () => {
 
     it('ignores a minimum of zero likes', async () => {
       await renderWithArchive();
+      await openExceptions();
       await userEvent.type(screen.getByLabelText(/Keep if it has at least/), '0');
       await openConfirm();
       await userEvent.type(confirmInput(), 'DELETE');
@@ -488,6 +511,8 @@ describe('Cleanup page', () => {
       await userEvent.click(screen.getByRole('button', { name: /^Replies/ }));
       expect(screen.getByRole('button', { name: /^Replies/ })).toHaveTextContent('2 known');
       await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
+      expect(screen.getByText('Keeps replies in your own threads.')).toBeInTheDocument();
+      await openExceptions();
       const keepThreads = screen.getByRole('switch', { name: /^Keep replies in my own threads/ });
       expect(keepThreads).toBeChecked();
 
@@ -511,7 +536,10 @@ describe('Cleanup page', () => {
 
       await userEvent.click(screen.getByRole('button', { name: /^Likes/ }));
       expect(screen.getByText('How like dates work')).toBeInTheDocument();
+      await openExceptions();
       expect(screen.queryByLabelText(/Keep if it has at least/)).not.toBeInTheDocument();
+      expect(screen.getByText('Xomoni goes through your Likes page and visits each known one.')).toBeInTheDocument();
+      await openAdvanced();
       expect(screen.getByRole('switch', { name: /^Sweep your Likes page/ })).toBeInTheDocument();
       // The recent like on an old post is dated by the like itself, so only the old like matches.
       await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
@@ -524,6 +552,8 @@ describe('Cleanup page', () => {
       expect(screen.queryByText('Authors may be notified')).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('switch', { name: /^Remove “ghost” likes/ }));
       expect(screen.getByText('Authors may be notified')).toBeInTheDocument();
+      await openAdvanced();
+      expect(screen.getByText(/Ghost likes are removed too\.$/)).toBeInTheDocument();
       const relike = PRESETS.careful.relike;
       expect(
         screen.getByText(`${relike.minDelay}–${relike.maxDelay}s · max ${fmtNumber(relike.dailyCap)}/day`),
@@ -543,7 +573,9 @@ describe('Cleanup page', () => {
     it('sweeps the profile for reposts', async () => {
       await renderWithArchive();
       await userEvent.click(screen.getByRole('button', { name: /^Reposts/ }));
+      await openAdvanced();
       expect(screen.getByRole('switch', { name: /^Sweep your profile/ })).toBeInTheDocument();
+      await openExceptions();
       expect(screen.queryByLabelText(/Keep if it has at least/)).not.toBeInTheDocument();
       await openConfirm();
       expect(within(dialog()).getByText(`Undo reposts older than ${fmtDate(oneYearAgo())}`)).toBeVisible();
@@ -632,5 +664,44 @@ describe('Cleanup page', () => {
     expect(network.calls()).toBe(0);
     expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('the folded parts’ summaries (#199)', () => {
+  const filter = (over: Partial<CleanupFilter> = {}): CleanupFilter => ({
+    target: 'post',
+    before: 0,
+    after: null,
+    keepMinLikes: null,
+    keepKeywords: [],
+    keepIds: [],
+    skipSelfReplies: true,
+    ...over,
+  });
+
+  it('says what a cleanup keeps, exactly as the filter does', () => {
+    expect(exceptionsSummary(filter())).toBe('Nothing is kept: everything that matches is removed.');
+    expect(exceptionsSummary(filter({ keepIds: ['1'] }))).toBe('Keeps 1 chosen post.');
+    expect(exceptionsSummary(filter({ keepMinLikes: 1500, keepKeywords: ['launch'] }))).toBe(
+      'Keeps posts with 1,500+ likes and text with “launch”.',
+    );
+    // A like threshold means nothing for likes and reposts, and self-replies only for replies.
+    expect(exceptionsSummary(filter({ target: 'like', keepMinLikes: 5 }))).toBe(
+      'Nothing is kept: everything that matches is removed.',
+    );
+    expect(exceptionsSummary(filter({ target: 'reply' }))).toBe('Keeps replies in your own threads.');
+  });
+
+  it('says how Xomoni finds what it removes, for each kind', () => {
+    const both = { sweep: true, deep: true, ghostLikes: false };
+    expect(findingSummary('reply', both)).toBe('Xomoni searches X and visits each known one.');
+    expect(findingSummary('repost', { ...both, deep: false })).toBe('Xomoni goes through your profile.');
+    expect(findingSummary('post', { ...both, sweep: false })).toBe('Xomoni visits each known one.');
+    expect(findingSummary('like', { ...both, ghostLikes: true })).toBe(
+      'Xomoni goes through your Likes page and visits each known one. Ghost likes are removed too.',
+    );
+    expect(findingSummary('post', { sweep: false, deep: false, ghostLikes: false })).toBe(
+      'Neither way is on: turn one on to start.',
+    );
   });
 });

@@ -21,6 +21,11 @@ export function fmtDateTime(ms: number | null | undefined) {
   return new Date(ms).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+/** The time of day in local time, 24-hour (`01:32`), for the ends of a run of log entries (#204). */
+export function fmtTime(ms: number) {
+  return new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
 /** Formats a duration given in ms with its two largest units (`2d 3h`, `5m 12s`); `0s` for zero or less. */
 export function fmtDuration(ms: number) {
   if (ms <= 0) return '0s';

@@ -219,7 +219,8 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
     [account.id],
   );
   const logs = useLiveQuery(
-    () => db.logs.where('[accountId+ts]').between([account.id, 0], [account.id, Infinity]).reverse().limit(6).toArray(),
+    () =>
+      db.logs.where('[accountId+ts]').between([account.id, 0], [account.id, Infinity]).reverse().limit(60).toArray(),
     [account.id],
   );
   const removed = counts ? Object.values(counts).reduce((s, c) => s + c.deleted, 0) : 0;
@@ -298,7 +299,7 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
             />
           ) : (
             <div className={styles.log}>
-              <LogList entries={logs} />
+              <LogList entries={logs} grouped maxRows={6} />
             </div>
           )}
         </Card>

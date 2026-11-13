@@ -24,6 +24,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- The Activity log reads like a summary (#204). A run of the same action within one job and one day is one line, such as *Deleted 31 posts and replies, 01:01–01:32*, and opens to its entries. Each entry shows the post's text when Xomoni has it. Warnings and errors are never folded away.
 - The Library shows your copy in one card (#203). How complete it is and where it came from sit at the top, with X's archive below as the recommended way to complete it. Reading from X is folded under *Other ways*, with a line saying when it last ran. Two cards with two main buttons used to say the same thing.
 - Jobs and the Activity log are one page, *Activity*, with two tabs: *Jobs* and *Log* (#202). The menu goes from seven places to six, and links and notifications land on the right tab.
 - Overview is now *Home*, and it answers "what now?" first (#201). One status at the top says whether all is well, what is running, or what X needs, with the one button that does something about it (*Resume*, *Open X window*). A new person sees three steps to get started (sign in, get the archive, a first cleanup) until they are done. The counts sit in one row above the chart. *Limits & pacing* moved to Settings, folded under *Today's use of X's limits*.

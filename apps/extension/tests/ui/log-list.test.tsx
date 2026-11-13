@@ -1,10 +1,14 @@
 // @vitest-environment happy-dom
+import 'fake-indexeddb/auto';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { db } from '../../src/shared/db';
 import type { LogEntry } from '../../src/shared/types';
 import { LogList } from '../../src/ui/components/LogList';
 import { fmtDate, fmtDateTime } from '../../src/ui/format';
-import { ME } from '../support/fixtures';
+import { ME, resetDb } from '../support/fixtures';
+import { item } from '../support/shell';
 
 const MINUTE = 60_000;
 
@@ -86,5 +90,43 @@ describe('LogList', () => {
     render(<LogList absolute entries={[entry({ message: 'Done', ts })]} />);
     expect(screen.getByText(fmtDateTime(ts))).toBeInTheDocument();
     expect(screen.queryByText('5m ago')).not.toBeInTheDocument();
+  });
+});
+
+describe('LogList, grouped and with the posts’ text (#204)', () => {
+  const deleted = (i: number) =>
+    entry({ level: 'success', action: 'delete', message: 'Deleted', targetId: `90${i}`, ts: Date.now() - i * MINUTE });
+
+  it('folds a run of deletions into one line that opens to its entries', async () => {
+    render(<LogList entries={[1, 2, 3, 4].map(deleted)} grouped absolute />);
+
+    const rows = screen.getAllByRole('listitem');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent('Deleted 4 posts and replies');
+    expect(rows[0]).toHaveAttribute('data-group', '4');
+    const show = within(rows[0]!).getByRole('button', { name: 'Show' });
+    expect(show).toHaveAttribute('aria-expanded', 'false');
+
+    await userEvent.click(show);
+    expect(within(rows[0]!).getAllByRole('listitem')).toHaveLength(4);
+    await userEvent.click(within(rows[0]!).getByRole('button', { name: 'Hide' }));
+    expect(within(rows[0]!).queryAllByRole('listitem')).toHaveLength(0);
+  });
+
+  it('shows at most the lines asked for, a group counting as one', () => {
+    render(<LogList entries={[...[1, 2, 3].map(deleted), entry(), entry(), entry()]} grouped maxRows={2} />);
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('shows the post’s text when this browser has it', async () => {
+    await resetDb();
+    await db.items.add(item('post', 'deleted', { id: '777', targetId: '777', text: 'An old hot take' }));
+    render(
+      <LogList
+        entries={[entry({ level: 'success', action: 'delete', message: 'Deleted', targetId: '777' }), entry()]}
+        withText
+      />,
+    );
+    expect(await screen.findByText('“An old hot take”')).toBeInTheDocument();
   });
 });

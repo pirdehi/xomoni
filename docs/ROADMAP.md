@@ -180,7 +180,7 @@ A UX review of the whole dashboard found more places than tasks, numbers without
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| ⬜ | Settings: presets first, the pacing table only under Custom | [#198](https://github.com/pirdehi/xomoni/issues/198) | |
+| ✅ | Settings: presets first, the pacing table only under Custom | [#198](https://github.com/pirdehi/xomoni/issues/198) | [#209](https://github.com/pirdehi/xomoni/pull/209) |
 | ⬜ | Cleanup in three questions; *How to find them* under Advanced | [#199](https://github.com/pirdehi/xomoni/issues/199) | |
 | ⬜ | A banner on every page when X needs you | [#200](https://github.com/pirdehi/xomoni/issues/200) | |
 | ⬜ | Home: one status, one next step, a first-run checklist | [#201](https://github.com/pirdehi/xomoni/issues/201) | |

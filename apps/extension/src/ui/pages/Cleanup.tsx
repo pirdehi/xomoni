@@ -476,7 +476,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
                     </span>
                     <Body1Strong>{t.label}</Body1Strong>
                     <Caption1 className={styles.targetCount}>
-                      {fmtNumber(counts?.[t.value].present ?? 0)} known
+                      {fmtNumber(counts?.[t.value].present ?? 0)} in your copy
                     </Caption1>
                   </button>
                 );
@@ -732,7 +732,7 @@ export function CleanupPage({ account, navigate }: PageProps) {
 }
 
 /**
- * The last step before a cleanup starts: names the job, says how many known items match and that removals can't be
+ * The last step before a cleanup starts: names the job, says how many posts in your copy match and that removals can't be
  * undone, and enables Start only once DELETE is typed (any case, spaces around it ignored). The typed word is
  * forgotten whenever the dialog closes, so it never stays armed for the next opening.
  */
@@ -787,7 +787,7 @@ function ConfirmStart({
         </Body1Strong>
       </div>
       <Text as="p" className={styles.paragraph}>
-        {fmtNumber(count)} known items match{sweep ? ', plus any the sweep finds on X' : ''}. Removed posts and likes
+        {fmtNumber(count)} in your copy match{sweep ? ', plus any that searching X finds' : ''}. Removed posts and likes
         cannot be restored by Xomoni or X.
       </Text>
       <Text as="p" className={styles.paragraph}>

@@ -47,6 +47,10 @@ const MEDIUM = '@media (min-width: 640px)';
 
 const useStyles = makeStyles({
   section: { marginTop: tokens.spacingVerticalL },
+  countsNote: {
+    margin: `${tokens.spacingVerticalXL} 0 ${tokens.spacingVerticalS}`,
+    color: tokens.colorNeutralForeground3,
+  },
   // As many tiles in a row as fit, so the five counts share one row on a laptop.
   counts: {
     display: 'grid',
@@ -250,7 +254,10 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
       {status && <StatusCard status={status} navigate={navigate} />}
       {steps && <GettingStarted steps={steps} navigate={navigate} />}
 
-      <section aria-label="Counts" className={mergeClasses(styles.counts, styles.section)}>
+      <Caption1 as="p" className={styles.countsNote}>
+        In your copy: what Xomoni knows is still on X, and what it removed. X’s own count is in the Library.
+      </Caption1>
+      <section aria-label="Counts" className={styles.counts}>
         <StatTile label="Removed by Xomoni" icon={<Delete16Regular />} value={fmtNumber(removed)} sub="all kinds" />
         <StatTile
           label="Posts"

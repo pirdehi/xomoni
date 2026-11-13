@@ -17,8 +17,8 @@ import {
 } from '@fluentui/react-components';
 import {
   AlertUrgent20Regular,
-  Board20Filled,
-  Board20Regular,
+  Home20Filled,
+  Home20Regular,
   CheckmarkCircle16Filled,
   Eye16Regular,
   EyeOff16Regular,
@@ -78,7 +78,7 @@ import { startCloudSync } from '../cloud/sync';
 
 // Each page's icon: Fluent's Nav shows the filled one for the current page and the outline for the others.
 const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
-  { id: 'overview', label: 'Overview', icon: bundleIcon(Board20Filled, Board20Regular) },
+  { id: 'overview', label: 'Home', icon: bundleIcon(Home20Filled, Home20Regular) },
   { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
   { id: 'library', label: 'Library', icon: bundleIcon(Library20Filled, Library20Regular) },
   { id: 'watch', label: 'Watch', icon: bundleIcon(Search20Filled, Search20Regular) },

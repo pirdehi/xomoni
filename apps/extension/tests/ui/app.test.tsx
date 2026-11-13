@@ -52,7 +52,7 @@ describe('App before an account is known', () => {
     openWorker(chrome, pageInfo({ viewerId: 'acct-new', handle: 'newbie' }));
     render(<App />);
 
-    expect(await pageHeading('Overview')).toBeInTheDocument();
+    expect(await pageHeading('Home')).toBeInTheDocument();
     expect(within(sidebar()).getByText('@newbie')).toBeInTheDocument();
     expect(within(sidebar()).getByText('X window ready')).toBeInTheDocument();
   });
@@ -69,10 +69,10 @@ describe('App navigation', () => {
     expect(await pageHeading('Activity log')).toBeInTheDocument();
   });
 
-  it('opens Overview for an empty or unknown hash', async () => {
+  it('opens Home for an empty or unknown hash', async () => {
     window.location.hash = '#/nowhere';
     render(<App />);
-    expect(await pageHeading('Overview')).toBeInTheDocument();
+    expect(await pageHeading('Home')).toBeInTheDocument();
   });
 
   it.each(['#/archive', '#/inventory'])('opens the Library for %s, the pages it replaced (#185)', async (hash) => {
@@ -83,7 +83,7 @@ describe('App navigation', () => {
 
   it('moves between pages from the sidebar and marks them in the URL', async () => {
     render(<App />);
-    await pageHeading('Overview');
+    await pageHeading('Home');
 
     for (const [label, id] of [
       ['Cleanup', 'cleanup'],
@@ -92,7 +92,7 @@ describe('App navigation', () => {
       ['Jobs', 'jobs'],
       ['Activity log', 'activity'],
       ['Settings', 'settings'],
-      ['Overview', 'overview'],
+      ['Home', 'overview'],
     ] as const) {
       await userEvent.click(within(sidebar()).getByRole('button', { name: label }));
       expect(window.location.hash).toBe(`#/${id}`);
@@ -107,7 +107,7 @@ describe('App navigation', () => {
 
     const nav = within(sidebar()).getByRole('navigation');
     expect(within(nav).getByRole('button', { name: 'Jobs' })).toHaveAttribute('aria-current', 'page');
-    expect(within(nav).getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-current', 'false');
+    expect(within(nav).getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'false');
 
     await userEvent.click(within(nav).getByRole('button', { name: 'Settings' }));
     await pageHeading('Settings');
@@ -117,7 +117,7 @@ describe('App navigation', () => {
 
   it('follows the hash when it changes from outside, as with the Back button', async () => {
     render(<App />);
-    await pageHeading('Overview');
+    await pageHeading('Home');
 
     act(() => {
       window.location.hash = '#/settings';
@@ -228,7 +228,7 @@ describe('App job banner', () => {
 
   it('shows no banner while idle', async () => {
     render(<App />);
-    await pageHeading('Overview');
+    await pageHeading('Home');
     expect(screen.queryByText(/Keep this tab open/)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -353,7 +353,7 @@ describe('App toasts and consent', () => {
 
   it('shows toasts from anywhere', async () => {
     render(<App />);
-    await pageHeading('Overview');
+    await pageHeading('Home');
 
     act(() => {
       toast('Archive imported', 'good');
@@ -365,7 +365,7 @@ describe('App toasts and consent', () => {
 
   it('colors toasts by tone, without making them alerts', async () => {
     render(<App />);
-    await pageHeading('Overview');
+    await pageHeading('Home');
 
     // The toast store outlives a test, so these texts are new to this one.
     act(() => {
@@ -388,7 +388,7 @@ describe('App toasts and consent', () => {
     const start = vi.spyOn(runner, 'start').mockResolvedValue(undefined);
     const job = await createScanJob(ME, 'Scan: posts', 'posts');
     render(<App />);
-    await pageHeading('Overview');
+    await pageHeading('Home');
 
     let started!: Promise<void>;
     act(() => {

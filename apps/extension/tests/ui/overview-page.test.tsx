@@ -3,14 +3,15 @@ import 'fake-indexeddb/auto';
 import { cleanup, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCleanupJob, createScanJob } from '../../src/engine/runner';
-import { db } from '../../src/shared/db';
+import { createCleanupJob } from '../../src/engine/runner';
+import { db, markArchiveImported } from '../../src/shared/db';
 import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
+import type * as Hooks from '../../src/ui/hooks';
 import type { WorkerStatus } from '../../src/ui/hooks';
 import { useToasts } from '../../src/ui/hooks';
 import { OverviewPage } from '../../src/ui/pages/Overview';
 import { WORKER_TAB, stubChrome } from '../support/chrome';
-import { ME, account, pageProps, resetDb } from '../support/fixtures';
+import { ME, pageProps, resetDb } from '../support/fixtures';
 import { item, logEntry, openWorker, pageInfo } from '../support/shell';
 
 const FILTER: CleanupFilter = {
@@ -25,6 +26,12 @@ const FILTER: CleanupFilter = {
 const OPTIONS: CleanupOptions = { sweep: false, deep: true, ghostLikes: false };
 
 const CLOSED: WorkerStatus = { open: false, info: null };
+
+const mocks = vi.hoisted(() => ({ startJob: vi.fn((_jobId: string) => Promise.resolve()) }));
+vi.mock('../../src/ui/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof Hooks>()),
+  startJob: mocks.startJob,
+}));
 
 let chrome: ReturnType<typeof stubChrome>;
 
@@ -120,8 +127,8 @@ describe('Overview onboarding (no account yet)', () => {
   });
 });
 
-describe('Overview dashboard', () => {
-  it('shows the counts from the inventory and from X', async () => {
+describe('Home (#201)', () => {
+  it('shows the counts in one row, under a heading and the account', async () => {
     await db.items.bulkAdd([
       ...Array.from({ length: 3 }, () => item('post', 'present')),
       item('post', 'deleted'),
@@ -135,76 +142,90 @@ describe('Overview dashboard', () => {
     render(<OverviewPage {...await pageProps()} />);
 
     expect(await screen.findByText('2 removed')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
-    const tile = (label: string) => screen.getByText(label, { selector: 'div' }).parentElement!;
-    expect(tile('Posts')).toHaveTextContent('Posts3');
+    expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByText(/@me · everything Xomoni knows stays in this browser/)).toBeInTheDocument();
+    const counts = screen.getByRole('region', { name: 'Counts' });
+    const tile = (label: string) => within(counts).getByText(label, { selector: 'div' }).parentElement!;
+    expect(tile('Removed by Xomoni')).toHaveTextContent('Removed by Xomoni4all kinds');
+    expect(tile('Posts')).toHaveTextContent('Posts32 removed');
     expect(tile('Replies')).toHaveTextContent('Replies11 removed');
     expect(tile('Reposts')).toHaveTextContent('Reposts01 undone');
     // A like X no longer shows (gone) is neither present nor removed.
     expect(tile('Likes')).toHaveTextContent('Likes10 removed');
-    expect(screen.getByText(/@me · everything Xomoni knows is stored only in this browser/)).toBeInTheDocument();
-    const removed = screen.getByText('Removed by Xomoni').parentElement!;
-    expect(removed).toHaveTextContent('Removed by Xomoni4');
-    expect(screen.getByText(/X shows/).closest('div')).toHaveTextContent(
-      'X shows 1,200 posts on your profile and 3,400 likes.',
-    );
   });
 
-  it('leaves out X’s counts until a profile was seen', async () => {
-    render(<OverviewPage {...await pageProps({ account: account({ postsCount: null, likesCount: null }) })} />);
-    expect(await screen.findByText('Removed by Xomoni')).toBeInTheDocument();
-    expect(screen.queryByText(/X shows/)).not.toBeInTheDocument();
+  it('says all is well when nothing runs, with no action to take', async () => {
+    render(<OverviewPage {...await pageProps()} />);
+    const status = await screen.findByRole('region', { name: 'Status' });
+    expect(status).toHaveAttribute('data-tone', 'good');
+    expect(within(status).getByRole('heading', { name: 'All is well' })).toBeInTheDocument();
+    expect(status).toHaveTextContent('Nothing is running, and X has raised no warning.');
+    expect(within(status).queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('shows the post count alone when X’s like count is unknown', async () => {
-    render(<OverviewPage {...await pageProps({ account: account({ postsCount: 7, likesCount: null }) })} />);
-    const line = (await screen.findByText(/X shows/)).closest('div')!;
-    expect(line).toHaveTextContent('X shows 7 posts on your profile.');
-    expect(line).not.toHaveTextContent('likes');
-  });
-
-  it('offers a first cleanup while nothing has happened yet', async () => {
-    const props = await pageProps();
-    render(<OverviewPage {...props} />);
-
-    expect(await screen.findByText('No jobs in progress')).toBeInTheDocument();
-    expect(screen.getByText('Nothing yet')).toBeInTheDocument();
-    const buttons = screen.getAllByRole('button', { name: 'New cleanup' });
-    expect(buttons).toHaveLength(2);
-    for (const button of buttons) await userEvent.click(button);
-    expect(props.navigate).toHaveBeenCalledTimes(2);
-    expect(props.navigate).toHaveBeenCalledWith('cleanup');
-  });
-
-  it('links to all jobs and the full log', async () => {
-    const props = await pageProps();
-    render(<OverviewPage {...props} />);
-
-    await userEvent.click(await screen.findByRole('button', { name: 'All jobs' }));
-    expect(props.navigate).toHaveBeenLastCalledWith('jobs');
-    await userEvent.click(screen.getByRole('button', { name: 'Full log' }));
-    expect(props.navigate).toHaveBeenLastCalledWith('activity');
-  });
-
-  it('lists up to three unfinished jobs of this account', async () => {
-    for (const title of ['Job A', 'Job B', 'Job C', 'Job D']) await createCleanupJob(ME, title, FILTER, OPTIONS);
-    const done = await createScanJob(ME, 'Finished scan', 'posts');
-    await db.jobs.update(done.id, { state: 'completed' });
-    const cancelled = await createScanJob(ME, 'Cancelled scan', 'likes');
-    await db.jobs.update(cancelled.id, { state: 'cancelled' });
+  it('offers to resume this account’s paused job, the newest first', async () => {
+    const older = await createCleanupJob(ME, 'Older job', FILTER, OPTIONS);
+    await db.jobs.update(older.id, { state: 'paused', updatedAt: 1 });
+    const job = await createCleanupJob(ME, 'Delete old posts', FILTER, OPTIONS);
+    await db.jobs.update(job.id, {
+      state: 'paused',
+      updatedAt: 2,
+      stats: { ...job.stats, matched: 200, done: 50 },
+    });
     await createCleanupJob('someone-else', 'Not mine', FILTER, OPTIONS);
     render(<OverviewPage {...await pageProps()} />);
 
-    await waitFor(() => {
-      expect(screen.getAllByText(/^Job [A-D]$/)).toHaveLength(3);
-    });
-    expect(screen.queryByText('No jobs in progress')).not.toBeInTheDocument();
-    expect(screen.queryByText('Finished scan')).not.toBeInTheDocument();
-    expect(screen.queryByText('Cancelled scan')).not.toBeInTheDocument();
-    expect(screen.queryByText('Not mine')).not.toBeInTheDocument();
+    const status = await screen.findByRole('region', { name: 'Status' });
+    await waitFor(() => expect(status).toHaveTextContent('“Delete old posts” is paused'));
+    expect(status).toHaveTextContent('25% done. It carries on from where it stopped.');
+    await userEvent.click(within(status).getByRole('button', { name: 'Resume' }));
+    expect(mocks.startJob).toHaveBeenCalledWith(job.id);
   });
 
-  it('shows the 8 latest entries of this account’s activity', async () => {
+  it('walks a new person through getting started, then goes away', async () => {
+    const props = await pageProps();
+    const { unmount } = render(<OverviewPage {...props} />);
+
+    const started = await screen.findByRole('region', { name: 'Getting started' });
+    const [signIn, archive, first] = within(started).getAllByRole('listitem');
+    expect(signIn).toHaveAttribute('data-state', 'done');
+    expect(archive).toHaveAttribute('aria-current', 'step');
+    expect(first).toHaveAttribute('data-state', 'next');
+    await userEvent.click(within(archive!).getByRole('button', { name: 'Get my archive' }));
+    expect(props.navigate).toHaveBeenCalledWith('library');
+    unmount();
+
+    await markArchiveImported(ME);
+    await createCleanupJob(ME, 'First cleanup', FILTER, OPTIONS);
+    render(<OverviewPage {...props} />);
+    await screen.findByRole('region', { name: 'Status' });
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Getting started' })).not.toBeInTheDocument());
+  });
+
+  it('offers the first cleanup once the archive is in', async () => {
+    await markArchiveImported(ME);
+    const props = await pageProps();
+    render(<OverviewPage {...props} />);
+
+    const started = await screen.findByRole('region', { name: 'Getting started' });
+    const first = within(started).getAllByRole('listitem')[2]!;
+    await waitFor(() => expect(first).toHaveAttribute('aria-current', 'step'));
+    await userEvent.click(within(first).getByRole('button', { name: 'New cleanup' }));
+    expect(props.navigate).toHaveBeenCalledWith('cleanup');
+  });
+
+  it('links to the full log, and starts a cleanup from the header', async () => {
+    const props = await pageProps();
+    render(<OverviewPage {...props} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Full log' }));
+    expect(props.navigate).toHaveBeenLastCalledWith('activity');
+    await userEvent.click(screen.getAllByRole('button', { name: 'New cleanup' })[0]!);
+    expect(props.navigate).toHaveBeenLastCalledWith('cleanup');
+    expect(screen.getByText('Nothing yet')).toBeInTheDocument();
+  });
+
+  it('shows the 6 latest entries of this account’s activity', async () => {
     const now = Date.now();
     await db.logs.bulkAdd([
       ...Array.from({ length: 10 }, (_, i) => logEntry({ ts: now - (10 - i) * 1_000, message: `Step ${i}` })),
@@ -213,9 +234,8 @@ describe('Overview dashboard', () => {
     render(<OverviewPage {...await pageProps()} />);
 
     expect(await screen.findByText('Step 9')).toBeInTheDocument();
-    expect(screen.getByText('Step 2')).toBeInTheDocument();
-    expect(screen.queryByText('Step 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Step 4')).toBeInTheDocument();
+    expect(screen.queryByText('Step 3')).not.toBeInTheDocument();
     expect(screen.queryByText('Not mine')).not.toBeInTheDocument();
-    expect(screen.queryByText('Nothing yet')).not.toBeInTheDocument();
   });
 });

@@ -65,8 +65,8 @@ const startButton = () => screen.getByRole('button', { name: 'Start cleanup' });
 const dialog = () => screen.getByRole('dialog');
 const confirmButton = () => within(dialog()).getByRole('button', { name: 'Start cleanup' });
 const confirmInput = () => within(dialog()).getByRole('textbox');
-/** The "Matching in your inventory" number in the Review card. */
-const matching = () => screen.getByText('Matching in your inventory').nextElementSibling;
+/** The "Matching in your copy" number in the Review card. */
+const matching = () => screen.getByText('Matching in your copy').nextElementSibling;
 const jobs = () => db.jobs.toArray();
 
 async function renderPage() {
@@ -301,7 +301,7 @@ describe('Cleanup page', () => {
       expect(screen.getByText('Xomoni searches X and visits each known one.')).toBeInTheDocument();
       await openAdvanced();
       const sweep = screen.getByRole('switch', { name: /^Sweep X search/ });
-      const deep = screen.getByRole('switch', { name: /^Deep clean from inventory/ });
+      const deep = screen.getByRole('switch', { name: /^Visit each known post/ });
 
       await userEvent.click(sweep);
       expect(startButton()).toBeEnabled();

@@ -112,7 +112,7 @@ async function guarded(id: string, action: () => Promise<ActionResult>): Promise
   const info = pageInfo();
   if (info.locked) return { outcome: 'locked', message: 'X is asking you to unlock the account' };
   if (info.restriction) return { outcome: 'restricted', message: `X shows: ${info.restriction}` };
-  if (!info.loggedIn) return { outcome: 'logged_out', message: 'Not logged in to X in the worker window' };
+  if (!info.loggedIn) return { outcome: 'logged_out', message: 'Not signed in to X in the X window' };
   try {
     return await action();
   } catch (err) {

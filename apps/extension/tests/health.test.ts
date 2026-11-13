@@ -40,7 +40,7 @@ describe('healthReport (#25)', () => {
     const health = report([ev('rate_limited')]);
     expect(health).toMatchObject({ level: 1, restHours: 1, signals: { rate_limited: 1 } });
     expect(health.summary).toBe(
-      'Risk level 1 (Caution): X rate-limited Xomoni in the last hour. During this run X sent one rate limit. Rest at least 1 h before the next run.',
+      'Caution: X rate-limited Xomoni in the last hour. During this run X sent one rate limit. Rest at least 1 h before the next run.',
     );
   });
 
@@ -54,7 +54,7 @@ describe('healthReport (#25)', () => {
   it('asks the person to check the account after a silent block, with the sample checks', () => {
     const health = report([ev('silent_block')], { checks: { applied: 3, notApplied: 1, unclear: 0, pending: 2 } });
     expect(health).toMatchObject({ level: 4, restHours: 72 });
-    expect(health.summary).toContain('Sample checks: 3 confirmed, 1 not applied by X and 2 still to run.');
+    expect(health.summary).toContain('Removals checked again on X: 3 confirmed, 1 not done by X and 2 still to check.');
     expect(health.summary).toMatch(/Check the account on X before deciding to resume\.$/);
   });
 

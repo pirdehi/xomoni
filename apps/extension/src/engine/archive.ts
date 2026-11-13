@@ -15,7 +15,7 @@ const PAGE_TIMEOUT_MS = 20_000;
 
 /** Why the job pauses on an archive page it doesn't recognize, having pressed nothing. */
 export const UNKNOWN_ARCHIVE_PAGE =
-  'X’s archive page doesn’t look as Xomoni expects, so it pressed nothing. In the Xomoni window, ask X for the archive yourself, or download it if X has made it; Xomoni imports the ZIP from Downloads › Xomoni.';
+  'X’s archive page doesn’t look as Xomoni expects, so it pressed nothing. In the X window, ask X for the archive yourself, or download it if X has made it; Xomoni imports the ZIP from Downloads › Xomoni.';
 
 /** What the job ends with while X makes the archive. */
 export const ARCHIVE_PREPARING =
@@ -37,7 +37,7 @@ const BUTTON_NAME: Record<ArchiveButton, string> = {
 
 /** Why the job pauses when a press didn't work, having pressed nothing else. */
 export const pressFailed = (button: ArchiveButton) =>
-  `Xomoni couldn’t press X’s ${BUTTON_NAME[button]}, so it pressed nothing else. Press it yourself in the Xomoni window; Xomoni imports the ZIP from Downloads › Xomoni.`;
+  `Xomoni couldn’t press X’s ${BUTTON_NAME[button]}, so it pressed nothing else. Press it yourself in the X window; Xomoni imports the ZIP from Downloads › Xomoni.`;
 
 /**
  * Runs an archive job: opens X's archive page (unless the worker is already on it, as after X asked for the

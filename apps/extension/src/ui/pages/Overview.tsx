@@ -421,15 +421,15 @@ function Onboarding({ worker }: { worker: WorkerStatus }) {
       </div>
       <Card>
         <ol className={styles.steps}>
-          <Step n={1} done={worker.open} title="Open the X worker window">
+          <Step n={1} done={worker.open} title="Open the X window">
             A normal Chrome window on x.com that Xomoni drives for you, like a careful assistant clicking the buttons.
             <div className={styles.stepAction}>
               <Button variant="primary" size="sm" icon={<Open16Regular />} onClick={open}>
-                {worker.open ? 'Show X worker' : 'Open X worker'}
+                {worker.open ? 'Show X window' : 'Open X window'}
               </Button>
             </div>
           </Step>
-          <Step n={2} done={loggedIn} title="Log in to X there">
+          <Step n={2} done={loggedIn} title="Sign in to X there">
             Use your normal login, including 2FA. Xomoni never sees your password or session cookies.
           </Step>
           <Step n={3} done={false} active={loggedIn} title="Xomoni detects your account">

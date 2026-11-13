@@ -190,7 +190,7 @@ export class Runner {
       if (stoppedByYou) final = this.requestedStop() ?? { state: 'paused', reason: 'Stopped.' };
       else if (err instanceof Stop) final = { state: err.state, reason: err.message };
       else if (err instanceof WorkerGone)
-        final = { state: 'paused', reason: 'The X worker window was closed. Resume to reopen it.' };
+        final = { state: 'paused', reason: 'The X window was closed. Resume to open it again.' };
       else if (err instanceof PageError)
         final = {
           state: 'paused',

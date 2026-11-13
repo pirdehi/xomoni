@@ -47,17 +47,17 @@ export function needMessage(need: Need, handle: string): string {
   const who = handle ? `@${handle}` : 'your account';
   switch (need) {
     case 'login':
-      return `Log in to X as ${who} in the Xomoni window (including 2FA).`;
+      return `Log in to X as ${who} in the X window (including 2FA).`;
     case 'verify':
-      return 'X wants to confirm it’s you (captcha, code or account unlock). Complete it in the Xomoni window.';
+      return 'X wants to confirm it’s you (captcha, code or account unlock). Complete it in the X window.';
     case 'account':
-      return `The Xomoni window is signed in to another X account. Switch back to ${who}.`;
+      return `The X window is signed in to another X account. Switch back to ${who}.`;
     case 'identity':
-      return 'X asks you to confirm it’s you: type your password, and the code X sends you if it asks, on X’s page in the Xomoni window. Xomoni never sees them.';
+      return 'X asks you to confirm it’s you: type your password, and the code X sends you if it asks, on X’s page in the X window. Xomoni never sees them.';
     case 'hidden':
-      return 'The Xomoni window is hidden, and Chrome pauses pages it doesn’t show. Keep part of it on screen: not minimized, not fully covered by other windows, with its X tab selected. Or press Run hidden on the dashboard and share its X tab.';
+      return 'The X window is hidden, and Chrome pauses pages it doesn’t show. Keep part of it on screen (not minimized, not fully covered), or press Run hidden and share its X tab.';
     case 'obstruction':
-      return 'Something on X’s page is in the way, and Xomoni couldn’t close it. Close it in the Xomoni window; Xomoni continues by itself.';
+      return 'Something on X’s page is in the way, and Xomoni couldn’t close it. Close it in the X window; Xomoni continues by itself.';
   }
 }
 
@@ -92,6 +92,6 @@ export const NEED_TITLE: Record<Need, string> = {
   verify: 'Confirm it’s you on X',
   account: 'Switch X account',
   identity: 'Type your password on X',
-  hidden: 'Show the Xomoni window',
+  hidden: 'Show the X window',
   obstruction: 'Close what covers X’s page',
 };

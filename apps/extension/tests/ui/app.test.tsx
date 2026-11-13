@@ -332,7 +332,7 @@ describe('App job banner', () => {
     render(<App />);
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/Or press Run hidden on the dashboard and share its X tab\./);
+    expect(alert).toHaveTextContent(/or press Run hidden and share its X tab\./);
     const runHidden = within(alert).getByRole('button', { name: 'Run hidden' });
     expect(runHidden).toHaveAttribute('data-variant', 'primary');
     expect(within(alert).getByRole('button', { name: 'Open X window' })).toHaveAttribute('data-variant', 'secondary');

@@ -75,7 +75,7 @@ const TITLE = 'Delete old posts';
 const HEALTHY = 'Healthy: no warnings from X.';
 const NOTHING_DONE = '0 done, 0 skipped, 0 failed';
 const LOGGED_OUT = page({ loggedIn: false, viewerId: null, path: '/i/flow/login' });
-const LOGIN = 'Log in to X as @me in the Xomoni window (including 2FA).';
+const LOGIN = 'Log in to X as @me in the X window (including 2FA).';
 const IDLE: RunnerState = {
   jobId: null,
   status: 'idle',
@@ -507,7 +507,7 @@ describe('runner: stops for safety, problems and errors', () => {
     [
       'the worker window was closed',
       () => worker.waitReady.mockRejectedValue(new WorkerGone()),
-      'The X worker window was closed. Resume to reopen it.',
+      'The X window was closed. Resume to open it again.',
     ],
     [
       'the X page reported a problem',
@@ -626,7 +626,7 @@ describe('runner: X needs the person, interruptions', () => {
 
   it('rests 60 to 90 minutes after X checked the account', async () => {
     const job = await newCleanup();
-    const verify = 'X wants to confirm it’s you. Complete it in the Xomoni window.';
+    const verify = 'X wants to confirm it’s you. Complete it in the X window.';
     runCleanup.mockRejectedValueOnce(new NeedsYou('verify', verify));
 
     expect((await run(job)).state).toBe('completed');
@@ -665,7 +665,7 @@ describe('runner: X needs the person, interruptions', () => {
 
   it('connects again when the worker page did not answer', async () => {
     const job = await newCleanup();
-    worker.waitReady.mockRejectedValueOnce(new NotReady('The X worker tab did not finish loading'));
+    worker.waitReady.mockRejectedValueOnce(new NotReady('The X window did not finish loading'));
 
     const done = await run(job);
 

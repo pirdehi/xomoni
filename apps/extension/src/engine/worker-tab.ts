@@ -77,7 +77,7 @@ export class WorkerTab implements XTab {
     if (existing != null) return existing;
     const win = await chrome.windows.create({ url, focused: true, type: 'popup', ...workerBounds() });
     const tabId = win?.tabs?.[0]?.id;
-    if (tabId == null) throw new Error('Could not open the X worker window');
+    if (tabId == null) throw new Error('Could not open the X window');
     this.tabId = tabId;
     await chrome.storage.session.set({ [TAB_KEY]: tabId });
     await this.keepLoaded();
@@ -161,7 +161,7 @@ export class WorkerTab implements XTab {
       }
       await sleep(500, signal);
     }
-    throw new NotReady('The X worker tab did not finish loading');
+    throw new NotReady('The X window did not finish loading');
   }
 
   /** Full navigation; X re-renders from scratch, which keeps state predictable. */

@@ -4,7 +4,7 @@ import { CloudError, pairDevice, reportStatus, unpairDevice } from '../src/cloud
 import { CLOUD_KEY, CLOUD_URL } from '../src/cloud/config';
 import { clearConnection, getConnection, saveConnection, watchConnection } from '../src/cloud/connection';
 import { currentUpdateNotice } from '../src/cloud/release';
-import { jobReport } from '../src/cloud/summary';
+import { jobReport, phaseWords } from '../src/cloud/summary';
 import { HEARTBEAT_MS, confirmConnection, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
 import { createCleanupJob, watchJob } from '../src/engine/runner';
 import { db, recordRisk, upsertAccount } from '../src/shared/db';
@@ -111,6 +111,14 @@ describe('a job report (ADR-0004)', () => {
     ...over,
   });
 
+  it('words the engine’s phase for the website (#205)', () => {
+    expect(phaseWords('sweep')).toBe('Searching X');
+    expect(phaseWords('deep')).toBe('Visiting each known post');
+    expect(phaseWords('3/12')).toBe('Page 3 of 12');
+    expect(phaseWords('')).toBe('');
+    expect(phaseWords('preparing')).toBe('preparing');
+  });
+
   it('carries Xomoni’s own status and never the reason, which can quote X', () => {
     expect(jobReport(job(), 'pirdehi', 2)).toEqual({
       local_id: 'job-1',
@@ -118,7 +126,7 @@ describe('a job report (ADR-0004)', () => {
       kind: 'cleanup',
       title: 'Delete posts older than Jan 1, 2018',
       state: 'blocked',
-      phase: 'deep',
+      phase: 'Visiting each known post',
       state_reason: '',
       matched: 39,
       done: 3,

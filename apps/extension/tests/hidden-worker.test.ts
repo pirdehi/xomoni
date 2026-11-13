@@ -76,7 +76,7 @@ describe('pageNeed: a hidden X window needs the person (#118, PLAYBOOK F5)', () 
   it('says what to do and why', () => {
     expect(needMessage('hidden', 'me')).toMatch(/Chrome pauses pages it doesn’t show/);
     expect(needMessage('hidden', 'me')).toMatch(/not minimized, not fully covered/);
-    expect(NEED_TITLE.hidden).toBe('Show the Xomoni window');
+    expect(NEED_TITLE.hidden).toBe('Show the X window');
   });
 });
 
@@ -111,7 +111,7 @@ describe('settle: a failure in a hidden window is not the post’s (#118)', () =
     expect((err as NeedsYou).need).toBe('hidden');
     expect(job.stats.failed).toBe(0);
     expect(await messages()).toEqual([
-      'Not counted as failed: the Xomoni window was hidden — Another menu is open on the X page',
+      'Not counted as failed: the X window was hidden — Another menu is open on the X page',
     ]);
   });
 
@@ -158,7 +158,7 @@ describe('waitForYou: a hidden window (#118)', () => {
     const err = await ctx.waitForYou(hidden()).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(Stop);
     expect((err as Stop).state).toBe('paused');
-    expect((err as Stop).message).toMatch(/^Waited a day for you\. The Xomoni window is hidden/);
+    expect((err as Stop).message).toMatch(/^Waited a day for you\. The X window is hidden/);
     expect(Date.now() - started).toBeGreaterThan(23 * 60 * MINUTE);
   });
 });

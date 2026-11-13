@@ -40,7 +40,7 @@ export type Reply<C extends ActorCommand['cmd']> = C extends 'ping'
 /** The worker tab was closed. The runner pauses the job; resuming opens a new worker. */
 export class WorkerGone extends Error {
   constructor() {
-    super('The X worker window was closed');
+    super('The X window was closed');
   }
 }
 

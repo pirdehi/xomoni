@@ -610,8 +610,8 @@ export function CleanupPage({ account, navigate }: PageProps) {
                 <Toggle
                   checked={options.deep}
                   onChange={(deep) => setOptions({ ...options, deep })}
-                  label="Deep clean from inventory"
-                  description="Visits each remaining matching item one by one — needed for items only found in your archive."
+                  label="Visit each known post"
+                  description="Opens each remaining post Xomoni knows of, one by one: needed for posts only in your archive."
                 />
                 {target === 'like' && (
                   <>
@@ -636,11 +636,11 @@ export function CleanupPage({ account, navigate }: PageProps) {
 
         <div className={styles.aside}>
           <Card title="Review">
-            <Caption1 className={styles.reviewLabel}>Matching in your inventory</Caption1>
+            <Caption1 className={styles.reviewLabel}>Matching in your copy</Caption1>
             <div className={styles.reviewCount}>{candidates ? fmtNumber(candidates.length) : '…'}</div>
             <Caption1 as="p" className={styles.reviewScope}>
               {TARGET_PLURAL[target]} before {fmtDate(before)}
-              {options.sweep && ' · the sweep may find more that aren’t in your inventory yet'}
+              {options.sweep && ' · searching X may find more that aren’t in your copy yet'}
             </Caption1>
 
             {!!candidates?.length && (

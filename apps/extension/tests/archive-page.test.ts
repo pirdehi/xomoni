@@ -174,6 +174,6 @@ describe('the person confirming it’s them (#186)', () => {
 
   it('tells the person to type it on X, where Xomoni never sees it', () => {
     expect(NEED_TITLE.identity).toBe('Type your password on X');
-    expect(needMessage('identity', 'me')).toMatch(/on X’s page in the Xomoni window\. Xomoni never sees them\./);
+    expect(needMessage('identity', 'me')).toMatch(/on X’s page in the X window\. Xomoni never sees them\./);
   });
 });

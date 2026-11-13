@@ -261,7 +261,7 @@ export class JobContext {
 
   /** Opens the worker if needed and verifies it is signed in to the right account. */
   async connect(): Promise<PageInfo> {
-    this.status('Connecting to the X worker window…');
+    this.status('Connecting to the X window…');
     if ((await this.xTab.current()) == null) await this.xTab.open();
     await this.xTab.keepLoaded();
     const account = await db.accounts.get(this.job.accountId);
@@ -270,10 +270,7 @@ export class JobContext {
     this.handle = info.handle || this.handle;
     // The handle goes into post URLs and decides which posts are the person's own (#144).
     if (!isHandle(this.handle))
-      throw new Stop(
-        'blocked',
-        'Could not determine your @handle from X. Open your profile once in the worker window.',
-      );
+      throw new Stop('blocked', 'Could not determine your @handle from X. Open your profile once in the X window.');
     return info;
   }
 
@@ -307,7 +304,7 @@ export class JobContext {
       if (this.repeatNeeds > MAX_REPEAT_NEEDS) {
         throw new Stop(
           'blocked',
-          `X keeps asking for the same thing: ${request.message} Check the Xomoni window, then resume.`,
+          `X keeps asking for the same thing: ${request.message} Check the X window, then resume.`,
         );
       }
     }
@@ -643,13 +640,7 @@ export class JobContext {
         }
         // In a hidden window X's menus don't finish opening or closing: that is Chrome, not the post (#118).
         if ((await this.xTab.ping())?.hidden) {
-          await this.log(
-            'warn',
-            action,
-            `Not counted as failed: the Xomoni window was hidden${detail}`,
-            target,
-            outcome,
-          );
+          await this.log('warn', action, `Not counted as failed: the X window was hidden${detail}`, target, outcome);
           throw new NeedsYou('hidden', needMessage('hidden', this.handle));
         }
         this.consecutiveFailures++;
@@ -660,7 +651,7 @@ export class JobContext {
         if (this.consecutiveFailures >= this.settings.maxConsecutiveFailures) {
           throw new Stop(
             'paused',
-            `${this.consecutiveFailures} failures in a row. X may have changed its page, or the worker window is not visible. Check it, then resume.`,
+            `${this.consecutiveFailures} failures in a row. X may have changed its page, or the X window is not visible. Check it, then resume.`,
           );
         }
         return true;

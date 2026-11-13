@@ -14,19 +14,26 @@ import type { EnginePorts } from '../src/engine/ports';
 import { ARCHIVE_TITLE, archiveJob } from '../src/engine/runner';
 import type * as Timers from '../src/engine/timers';
 import { needMessage } from '../src/shared/attention';
-import { archiveRequest, db, saveArchiveRequest } from '../src/shared/db';
+import { archiveDownloadTarget } from '../src/background/archive-downloads';
+import { archiveRequest, db, expectingArchive, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { ActorCommand, ArchivePressResult, ArchiveState } from '../src/shared/messages';
 import { DEFAULT_SETTINGS } from '../src/shared/settings';
 import { DAY, HOUR } from '../src/shared/time';
 import type { Job } from '../src/shared/types';
 import {
+  ARCHIVE_FOLDER,
   ARCHIVE_PAGE_URL,
+  FOLDER_NOTE,
+  FOLDER_NOTE_URL,
   type ArchiveMode,
   type ArchiveRequest,
   FIRST_LOOK_AFTER_MS,
+  IMPORT_WINDOW_MS,
   LOOK_EVERY_MS,
   STOP_LOOKING_AFTER_MS,
+  archiveDownloadPath,
   archiveOverdue,
+  expectsArchive,
   nextArchiveLook,
 } from '../src/shared/x-archive';
 import { ACCOUNT, page } from './support/engine';
@@ -223,6 +230,70 @@ describe('when Xomoni looks again for the archive (#186)', () => {
   it('ignores a stored request that isn’t one', async () => {
     await db.kv.put({ key: `archiveRequest:${ACCOUNT}`, value: { nonsense: true } });
     expect(await archiveRequest(ACCOUNT)).toBeNull();
+  });
+});
+
+describe('where X’s archive is saved (#196)', () => {
+  const ARCHIVE = 'twitter-2026-11-15-0a1b2c3d.zip';
+  const asked = (over: Partial<ArchiveRequest> = {}): ArchiveRequest => ({
+    requestedAt: NOW - HOUR,
+    checkedAt: NOW - HOUR,
+    downloadedAt: null,
+    ...over,
+  });
+
+  beforeEach(async () => {
+    await db.kv.clear();
+  });
+
+  it('expects an archive while one is asked for, for 12 hours after the download, or with the folder chosen', () => {
+    expect(expectsArchive([], false, NOW)).toBe(false);
+    expect(expectsArchive([asked()], false, NOW)).toBe(true);
+    expect(expectsArchive([asked({ downloadedAt: NOW - IMPORT_WINDOW_MS })], false, NOW)).toBe(true);
+    expect(expectsArchive([asked({ downloadedAt: NOW - IMPORT_WINDOW_MS - 1 })], false, NOW)).toBe(false);
+    expect(expectsArchive([], true, NOW)).toBe(true);
+  });
+
+  it('saves only a file named like X’s archive in the Xomoni folder, and only while expected', () => {
+    expect(archiveDownloadPath(ARCHIVE, true)).toBe(`${ARCHIVE_FOLDER}/${ARCHIVE}`);
+    expect(archiveDownloadPath(`C:\\Users\\me\\Downloads\\${ARCHIVE}`, true)).toBe(`Xomoni/${ARCHIVE}`);
+    expect(archiveDownloadPath(ARCHIVE, false)).toBeNull();
+    expect(archiveDownloadPath('invoice.zip', true)).toBeNull();
+    expect(archiveDownloadPath(`${ARCHIVE}.crdownload`, true)).toBeNull();
+  });
+
+  it('reads what it expects from the database, for every account', async () => {
+    expect(await expectingArchive(NOW)).toBe(false);
+    await saveArchiveRequest('acct-2', asked());
+    expect(await expectingArchive(NOW)).toBe(true);
+    await saveArchiveRequest('acct-2', asked({ downloadedAt: NOW - 2 * DAY }));
+    expect(await expectingArchive(NOW)).toBe(false);
+    await setArchiveFolderChosen(true);
+    expect(await expectingArchive(NOW)).toBe(true);
+  });
+
+  it('answers the service worker without reading the database for other downloads', async () => {
+    const read = vi.spyOn(db.kv, 'where');
+    expect(await archiveDownloadTarget({ filename: '/tmp/report.pdf' }, 'own', NOW)).toBeNull();
+    expect(read).not.toHaveBeenCalled();
+    await saveArchiveRequest('acct-2', asked());
+    expect(await archiveDownloadTarget({ filename: `/tmp/${ARCHIVE}` }, 'own', NOW)).toEqual({
+      filename: `Xomoni/${ARCHIVE}`,
+      conflictAction: 'uniquify',
+    });
+    read.mockRestore();
+  });
+
+  it('places Xomoni’s own note in the folder, since Chrome forgets the name it was given', async () => {
+    const note = { filename: 'download.txt', url: FOLDER_NOTE_URL, byExtensionId: 'own' };
+    expect(await archiveDownloadTarget(note, 'own', NOW)).toEqual({
+      filename: `Xomoni/${FOLDER_NOTE}`,
+      conflictAction: 'overwrite',
+    });
+    // The same address from anyone else, or another file of Xomoni's, is left alone.
+    expect(await archiveDownloadTarget({ ...note, byExtensionId: 'other' }, 'own', NOW)).toBeNull();
+    expect(await archiveDownloadTarget({ ...note, url: 'data:text/plain,hi' }, 'own', NOW)).toBeNull();
+    expect(decodeURIComponent(FOLDER_NOTE_URL)).toContain('Xomoni saves X’s archive here');
   });
 });
 

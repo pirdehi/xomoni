@@ -1,5 +1,10 @@
 import { Caption1, Link, Spinner, makeStyles, tokens } from '@fluentui/react-components';
-import { ErrorCircle16Regular, FolderArrowRight16Regular, FolderSearch16Regular } from '@fluentui/react-icons';
+import {
+  ErrorCircle16Regular,
+  FolderArrowRight16Regular,
+  FolderSearch16Regular,
+  Warning16Regular,
+} from '@fluentui/react-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Account } from '../../shared/types';
 import {
@@ -7,9 +12,10 @@ import {
   type FolderPickerHost,
   type FolderStore,
   canRead,
-  chooseFolder,
   importNewestArchive,
+  isArchiveFolder,
   kvFolderStore,
+  pickArchiveFolder,
 } from '../downloads-folder';
 import { fmtNumber } from '../format';
 import { toast } from '../hooks';
@@ -44,25 +50,30 @@ type Watch =
   | { state: 'importing'; folder: FolderHandle; name: string; progress: string };
 
 /**
- * X's archive found in Downloads by itself (#187). Once the person lets Xomoni read their Downloads folder, a ZIP
- * named like X's archive that lands there is imported with no drop and no picker, while this is on screen. A file is
- * imported once, even if it fails (it says why). When the browser wants the reading allowed again, one click does it.
- * Browsers without the folder picker show nothing; the drop zone above still works.
+ * X's archive found in Downloads by itself (#187, #196). Chrome saves X's archive in Downloads › Xomoni; once the
+ * person lets Xomoni read that folder, a ZIP named like X's archive that lands there is imported with no drop and no
+ * picker, while this is on screen. Any other folder is refused, saying why. A file is imported once, even if it fails
+ * (it says why). When the browser wants the reading allowed again, one click does it. Browsers without the folder
+ * picker show nothing; the drop zone still works.
  */
 export function DownloadsWatch({
   account,
   store = kvFolderStore,
   host,
+  makeFolder,
   intervalMs = 10_000,
 }: {
   account: Account;
   store?: FolderStore;
   host?: FolderPickerHost;
+  /** Makes Downloads/Xomoni before the picker opens; `chrome.downloads` by default, a stand-in in tests. */
+  makeFolder?: () => Promise<boolean>;
   intervalMs?: number;
 }) {
   const s = useStyles();
   const [watch, setWatch] = useState<Watch>({ state: 'loading' });
   const [error, setError] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   const checking = useRef(false);
   const pickerHost = host ?? (window as unknown as FolderPickerHost);
   const supported = typeof pickerHost.showDirectoryPicker === 'function';
@@ -70,7 +81,8 @@ export function DownloadsWatch({
   useEffect(() => {
     let live = true;
     void store.get().then((folder) => {
-      if (live) setWatch(folder ? { state: 'watching', folder } : { state: 'off' });
+      // A folder chosen before #196 is never where Chrome saves the archive, so it counts as none.
+      if (live) setWatch(folder && isArchiveFolder(folder) ? { state: 'watching', folder } : { state: 'off' });
     });
     return () => {
       live = false;
@@ -121,10 +133,9 @@ export function DownloadsWatch({
   }, [folder, check, intervalMs]);
 
   const connect = async () => {
-    const chosen = await chooseFolder(pickerHost);
-    if (!chosen) return;
-    await store.set(chosen);
-    setWatch({ state: 'watching', folder: chosen });
+    const pick = await pickArchiveFolder(store, pickerHost, makeFolder);
+    setProblem(pick.problem ?? null);
+    if (pick.folder) setWatch({ state: 'watching', folder: pick.folder });
   };
   const stop = async () => {
     await store.set(null);
@@ -138,29 +149,32 @@ export function DownloadsWatch({
       <div className={s.row} data-state={watch.state}>
         {watch.state === 'off' && (
           <>
-            <Caption1 className={s.text}>Let Xomoni find it in your Downloads folder and import it by itself.</Caption1>
+            <Caption1 className={s.text}>
+              Chrome saves X’s archive in Downloads › Xomoni. Let Xomoni read that folder, and the archive comes in by
+              itself.
+            </Caption1>
             <Button size="sm" icon={<FolderSearch16Regular />} onClick={() => void connect()}>
-              Choose Downloads folder
+              Choose the Xomoni folder
             </Button>
           </>
         )}
         {watch.state === 'blocked' && (
           <>
-            <Caption1 className={s.text}>Chrome asks again before Xomoni reads “{watch.folder.name}”.</Caption1>
+            <Caption1 className={s.text}>Chrome asks again before Xomoni reads Downloads › Xomoni.</Caption1>
             <Button
               size="sm"
               variant="primary"
               icon={<FolderArrowRight16Regular />}
               onClick={() => void check(watch.folder, true)}
             >
-              Allow reading Downloads
+              Allow reading the folder
             </Button>
           </>
         )}
         {watch.state === 'watching' && (
           <>
             <Caption1 className={s.text}>
-              Watching “{watch.folder.name}” for X’s archive. When it lands there, it is imported by itself.
+              Watching Downloads › Xomoni for X’s archive. When it lands there, it is imported by itself.
             </Caption1>
             <Link as="button" onClick={() => void stop()}>
               Stop
@@ -169,6 +183,11 @@ export function DownloadsWatch({
         )}
         {watch.state === 'importing' && <Spinner size="tiny" label={`Importing ${watch.name}: ${watch.progress}`} />}
       </div>
+      {problem && watch.state === 'off' && (
+        <div className={s.error}>
+          <Callout icon={<Warning16Regular />}>{problem}</Callout>
+        </div>
+      )}
       {error && (
         <div className={s.error}>
           <Callout tone="critical" icon={<ErrorCircle16Regular />}>

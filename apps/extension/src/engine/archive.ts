@@ -2,7 +2,7 @@
 // window, the way a person would. It presses X's *Request archive* and, once X has made the archive, *Download
 // archive*, and nothing else. When X asks for the password or a code, it waits for the person, who types it on X;
 // Xomoni never sees it (ADR-0003). The download is the browser's own, and the dashboard imports the ZIP from the
-// Downloads folder (#187). Between the two, the dashboard looks again by itself (`nextArchiveLook`).
+// Xomoni folder in Downloads (#187, #196). Between the two, the dashboard looks again by itself (`nextArchiveLook`).
 import { needMessage } from '../shared/attention';
 import { archiveRequest, saveArchiveRequest } from '../shared/db';
 import type { ArchiveButton } from '../shared/messages';
@@ -15,7 +15,7 @@ const PAGE_TIMEOUT_MS = 20_000;
 
 /** Why the job pauses on an archive page it doesn't recognize, having pressed nothing. */
 export const UNKNOWN_ARCHIVE_PAGE =
-  'X’s archive page doesn’t look as Xomoni expects, so it pressed nothing. In the Xomoni window, ask X for the archive yourself, or download it if X has made it; Xomoni imports the ZIP from your Downloads folder.';
+  'X’s archive page doesn’t look as Xomoni expects, so it pressed nothing. In the Xomoni window, ask X for the archive yourself, or download it if X has made it; Xomoni imports the ZIP from Downloads › Xomoni.';
 
 /** What the job ends with while X makes the archive. */
 export const ARCHIVE_PREPARING =
@@ -23,7 +23,7 @@ export const ARCHIVE_PREPARING =
 
 /** What the job ends with once it pressed *Download archive*. */
 export const ARCHIVE_DOWNLOADING =
-  'Pressed X’s “Download archive”. Chrome saves the ZIP in Downloads, and Xomoni imports it from there.';
+  'Pressed X’s “Download archive”. Chrome saves the ZIP in Downloads › Xomoni, and Xomoni imports it from there.';
 
 /** What the dashboard's own look ends with when X shows no archive at all: it expired, or X dropped the request. */
 export const ARCHIVE_NOTHING_ON_X =
@@ -37,7 +37,7 @@ const BUTTON_NAME: Record<ArchiveButton, string> = {
 
 /** Why the job pauses when a press didn't work, having pressed nothing else. */
 export const pressFailed = (button: ArchiveButton) =>
-  `Xomoni couldn’t press X’s ${BUTTON_NAME[button]}, so it pressed nothing else. Press it yourself in the Xomoni window; Xomoni imports the ZIP from your Downloads folder.`;
+  `Xomoni couldn’t press X’s ${BUTTON_NAME[button]}, so it pressed nothing else. Press it yourself in the Xomoni window; Xomoni imports the ZIP from Downloads › Xomoni.`;
 
 /**
  * Runs an archive job: opens X's archive page (unless the worker is already on it, as after X asked for the

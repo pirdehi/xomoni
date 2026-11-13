@@ -6,6 +6,7 @@ import {
   WORKER_SIZE,
   WorkerGone,
   WorkerTab,
+  notAnswered,
   workerBounds,
   workerTab,
 } from '../src/engine/worker-tab';
@@ -183,6 +184,25 @@ describe('WorkerTab.focus', () => {
   });
 });
 
+describe('notAnswered (#196)', () => {
+  it('turns Chrome’s messaging errors into words for the Activity log', () => {
+    expect(
+      notAnswered(
+        new Error(
+          'A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received',
+        ),
+      ),
+    ).toBe('The X page changed while Xomoni was reading it');
+    expect(notAnswered(new Error('The message port closed before a response was received.'))).toBe(
+      'The X page changed while Xomoni was reading it',
+    );
+    expect(notAnswered(new Error('Could not establish connection. Receiving end does not exist.'))).toBe(
+      'The X page didn’t answer Xomoni',
+    );
+    expect(notAnswered(undefined)).toBe('The X page didn’t answer Xomoni');
+  });
+});
+
 describe('WorkerTab.send', () => {
   it('throws WorkerGone without a worker tab, sending nothing', async () => {
     await expect(worker.send({ cmd: 'ping' })).rejects.toBeInstanceOf(WorkerGone);
@@ -213,14 +233,28 @@ describe('WorkerTab.send', () => {
     const error = await worker.send({ cmd: 'ping' }).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(NotReady);
-    expect((error as NotReady).message).toBe('Could not establish connection');
+    // Chrome's own words never reach the Activity log (#196).
+    expect((error as NotReady).message).toBe('The X page didn’t answer Xomoni');
   });
 
-  it('keeps a failure that is not an Error as the NotReady message', async () => {
+  it('says the page changed when Chrome closed the channel for a page going away (#196)', async () => {
+    openTab();
+    chrome.tabs.sendMessage.mockRejectedValue(
+      new Error(
+        'The page keeping the extension port is moved into back/forward cache, so the message channel is closed.',
+      ),
+    );
+
+    await expect(worker.send({ cmd: 'ping' })).rejects.toThrow(
+      new NotReady('The X page changed while Xomoni was reading it'),
+    );
+  });
+
+  it('words a failure that is not an Error the same way', async () => {
     openTab();
     chrome.tabs.sendMessage.mockRejectedValue('port closed');
 
-    await expect(worker.send({ cmd: 'ping' })).rejects.toThrow(new NotReady('port closed'));
+    await expect(worker.send({ cmd: 'ping' })).rejects.toThrow(new NotReady('The X page didn’t answer Xomoni'));
   });
 
   it('throws WorkerGone when the tab was closed while the command was on its way', async () => {

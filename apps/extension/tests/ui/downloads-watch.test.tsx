@@ -5,7 +5,14 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { archiveImported, db } from '../../src/shared/db';
 import { DownloadsWatch } from '../../src/ui/components/DownloadsWatch';
-import { type FolderHandle, type FolderStore, fileKey, seenArchives } from '../../src/ui/downloads-folder';
+import {
+  FOLDER_NOT_CHOSEN,
+  type FolderHandle,
+  type FolderStore,
+  fileKey,
+  seenArchives,
+  wrongFolder,
+} from '../../src/ui/downloads-folder';
 import type * as Hooks from '../../src/ui/hooks';
 import { accountJs, likeJs, tweetsJs } from '../support/cleanup-pages';
 import { ME, account, resetDb } from '../support/fixtures';
@@ -50,6 +57,9 @@ async function archive(owner = ME, name = 'twitter-2026-11-08-abc.zip') {
 
 const picker = (folder: FolderHandle) => ({ showDirectoryPicker: vi.fn(() => Promise.resolve(folder)) });
 
+/** Stands in for making Downloads/Xomoni with `chrome.downloads`. */
+const makeFolder = vi.fn(() => Promise.resolve(true));
+
 describe('DownloadsWatch (#187)', () => {
   beforeEach(async () => {
     await resetDb();
@@ -59,17 +69,63 @@ describe('DownloadsWatch (#187)', () => {
     vi.clearAllMocks();
   });
 
-  it('offers to watch the Downloads folder, and keeps the folder chosen', async () => {
+  it('makes Downloads › Xomoni, offers to watch it, and keeps it chosen (#196)', async () => {
     const folder = folderWith([]);
     const store = memoryStore();
     const host = picker(folder);
-    render(<DownloadsWatch account={account()} store={store} host={host} intervalMs={20} />);
+    render(<DownloadsWatch account={account()} store={store} host={host} makeFolder={makeFolder} intervalMs={20} />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Choose Downloads folder' }));
+    expect(await screen.findByText(/Chrome saves X’s archive in Downloads › Xomoni/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Choose the Xomoni folder' }));
 
+    expect(makeFolder).toHaveBeenCalledOnce();
     expect(host.showDirectoryPicker).toHaveBeenCalledWith({ id: 'downloads', startIn: 'downloads', mode: 'read' });
     expect(store.current).toBe(folder);
-    expect(await screen.findByText(/Watching “Downloads” for X’s archive/)).toBeInTheDocument();
+    expect(await screen.findByText(/Watching Downloads › Xomoni for X’s archive/)).toBeInTheDocument();
+  });
+
+  it('refuses another folder, saying where X’s archive is saved (#196)', async () => {
+    const store = memoryStore();
+    const host = picker(folderWith([], 'granted', 'Downloads'));
+    render(<DownloadsWatch account={account()} store={store} host={host} makeFolder={makeFolder} intervalMs={20} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose the Xomoni folder' }));
+
+    expect(await screen.findByText(wrongFolder('Downloads'))).toBeInTheDocument();
+    expect(store.current).toBeNull();
+    expect(screen.getByRole('button', { name: 'Choose the Xomoni folder' })).toBeInTheDocument();
+  });
+
+  it('explains Chrome’s rule when no folder came back, as after Chrome refused Downloads itself (#196)', async () => {
+    const host = {
+      showDirectoryPicker: vi.fn(() => Promise.reject(new DOMException('The user aborted a request.', 'AbortError'))),
+    };
+    render(<DownloadsWatch account={account()} store={memoryStore()} host={host} makeFolder={makeFolder} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose the Xomoni folder' }));
+
+    expect(await screen.findByText(FOLDER_NOT_CHOSEN)).toBeInTheDocument();
+  });
+
+  it('still opens the picker when the folder couldn’t be made', async () => {
+    const folder = folderWith([]);
+    const host = picker(folder);
+    const failing = vi.fn(() => Promise.reject(new Error('Download failed')));
+    render(<DownloadsWatch account={account()} store={memoryStore()} host={host} makeFolder={failing} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose the Xomoni folder' }));
+
+    expect(host.showDirectoryPicker).toHaveBeenCalledOnce();
+    expect(await screen.findByText(/Watching Downloads › Xomoni/)).toBeInTheDocument();
+  });
+
+  it('counts a folder chosen before #196, never where the archive lands, as none', async () => {
+    const old = folderWith([await archive()], 'granted', 'Downloads');
+    render(<DownloadsWatch account={account()} store={memoryStore(old)} host={picker(old)} intervalMs={20} />);
+
+    expect(await screen.findByRole('button', { name: 'Choose the Xomoni folder' })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(mocks.toast).not.toHaveBeenCalled();
   });
 
   it('shows nothing where the browser has no folder picker', async () => {
@@ -98,7 +154,8 @@ describe('DownloadsWatch (#187)', () => {
     const folder = folderWith([await archive()], 'prompt');
     render(<DownloadsWatch account={account()} store={memoryStore(folder)} host={picker(folder)} intervalMs={20} />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Allow reading Downloads' }));
+    expect(await screen.findByText('Chrome asks again before Xomoni reads Downloads › Xomoni.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Allow reading the folder' }));
 
     expect(folder.requestPermission).toHaveBeenCalledWith({ mode: 'read' });
     await waitFor(() => expect(mocks.toast).toHaveBeenCalledOnce());
@@ -128,14 +185,14 @@ describe('DownloadsWatch (#187)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
 
     expect(store.current).toBeNull();
-    expect(await screen.findByRole('button', { name: 'Choose Downloads folder' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Choose the Xomoni folder' })).toBeInTheDocument();
   });
 
   it('keeps looking after the folder can’t be listed for a moment', async () => {
     const zip = await archive();
     let fail = true;
     const folder: FolderHandle = {
-      name: 'Downloads',
+      name: 'Xomoni',
       async *values() {
         if (fail) {
           fail = false;

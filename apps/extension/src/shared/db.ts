@@ -11,7 +11,7 @@ import {
   normalizeQuery,
   normalizeTabs,
 } from './watch';
-import type { ArchiveRequest } from './x-archive';
+import { type ArchiveRequest, expectsArchive } from './x-archive';
 import type { ViewCap } from './x-limits';
 import { CONSENT_VERSION } from '@xomoni/consent';
 import type {
@@ -338,6 +338,25 @@ export async function archiveRequest(accountId: string): Promise<ArchiveRequest 
 /** Keeps what the archive job saw of a request on X (#186); null forgets it. */
 export async function saveArchiveRequest(accountId: string, request: ArchiveRequest | null) {
   await kvSet(archiveRequestKey(accountId), request);
+}
+
+const ARCHIVE_FOLDER_CHOSEN = 'archiveFolderChosen';
+
+/** Remembers whether the person chose the Xomoni folder in Downloads for the archive's import (#196). */
+export async function setArchiveFolderChosen(chosen: boolean) {
+  await kvSet(ARCHIVE_FOLDER_CHOSEN, chosen);
+}
+
+/**
+ * Whether Xomoni is waiting for X's archive to land in Downloads (`expectsArchive`), read from the database: the
+ * service worker asks it for each download named like X's archive, to save that one in the Xomoni folder (#196).
+ */
+export async function expectingArchive(now = Date.now()): Promise<boolean> {
+  const rows = await db.kv.where('key').startsWith(archiveRequestKey('')).toArray();
+  const requests = rows
+    .map((row) => row.value as ArchiveRequest | null)
+    .filter((r): r is ArchiveRequest => !!r && typeof r.requestedAt === 'number');
+  return expectsArchive(requests, (await kvGet<unknown>(ARCHIVE_FOLDER_CHOSEN, false)) === true, now);
 }
 
 /**

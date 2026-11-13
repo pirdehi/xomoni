@@ -56,7 +56,31 @@ describe('the manifest locks the extension down (#143)', () => {
     expect(manifest).not.toHaveProperty('host_permissions');
     expect(manifest).not.toHaveProperty('web_accessible_resources');
     expect(manifest).not.toHaveProperty('externally_connectable');
-    expect(manifest.permissions).toEqual(['storage', 'unlimitedStorage', 'notifications', 'idle', 'power']);
+    // `downloads` only saves X's archive in Downloads/Xomoni, the one folder Chrome lets Xomoni read (#196).
+    expect(manifest.permissions).toEqual([
+      'storage',
+      'unlimitedStorage',
+      'notifications',
+      'idle',
+      'power',
+      'downloads',
+    ]);
+  });
+
+  it('uses the downloads permission only to choose where X’s archive is saved', () => {
+    const uses = Object.entries(sources).filter(([, text]) => /chrome\.downloads\./.test(text));
+    expect(uses.map(([file]) => file).sort()).toEqual(
+      Object.keys(sources)
+        .filter((file) => /background\/sw\.ts$|ui\/downloads-folder\.ts$/.test(file))
+        .sort(),
+    );
+    const calls = Object.values(sources).flatMap((text) => text.match(/chrome\.downloads\.\w+/g) ?? []);
+    expect([...new Set(calls)].sort()).toEqual([
+      'chrome.downloads.download',
+      'chrome.downloads.erase',
+      'chrome.downloads.onDeterminingFilename',
+      'chrome.downloads.search',
+    ]);
   });
 
   it('listens to no other extension or web page', () => {

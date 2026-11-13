@@ -8,9 +8,10 @@ import {
 } from '@fluentui/react-icons';
 import { useEffect, useRef, useState } from 'react';
 import type { Account } from '../../shared/types';
+import { ARCHIVE_FILE } from '../../shared/x-archive';
+import { markArchiveSeen } from '../downloads-folder';
 import { fmtNumber } from '../format';
 import { toast } from '../hooks';
-import { ARCHIVE_FILE, markArchiveSeen } from '../downloads-folder';
 import { importArchive } from '../importArchive';
 import { pickZipInDownloads } from '../pick-zip';
 import { Button, Callout } from './ui';

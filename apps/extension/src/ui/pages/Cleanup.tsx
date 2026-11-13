@@ -40,7 +40,7 @@ import { actionFor, estimateDuration, findCandidates, normalizeKeywords, parseId
 import { DAY } from '../../shared/time';
 import type { CleanupFilter, CleanupOptions, CleanupTarget } from '../../shared/types';
 import type { PageProps } from '../navigation';
-import { Button, Callout, Card, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
+import { Button, Callout, Card, Disclosure, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
 import {
   TARGET_PLURAL,
   downloadFile,
@@ -287,9 +287,51 @@ const useStyles = makeStyles({
   },
 });
 
+/** Joins phrases as people write them: "a", "a and b", "a, b and c". */
+const listed = (parts: readonly string[]) =>
+  parts.length < 2 ? (parts[0] ?? '') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1) ?? ''}`;
+
+/**
+ * What a cleanup keeps, in one line, for the folded *Exceptions* (#199): what the filter's keep rules come to, or
+ * that nothing is kept. Mirrors the filter, so it says exactly what the job will spare.
+ */
+export function exceptionsSummary(filter: CleanupFilter): string {
+  const kept = [
+    filter.keepMinLikes && (filter.target === 'post' || filter.target === 'reply')
+      ? `posts with ${fmtNumber(filter.keepMinLikes)}+ likes`
+      : null,
+    filter.keepKeywords.length ? `text with ${filter.keepKeywords.map((k) => `“${k}”`).join(', ')}` : null,
+    filter.keepIds.length
+      ? `${fmtNumber(filter.keepIds.length)} chosen ${filter.keepIds.length === 1 ? 'post' : 'posts'}`
+      : null,
+    filter.target === 'reply' && filter.skipSelfReplies ? 'replies in your own threads' : null,
+  ].filter((part): part is string => !!part);
+  return kept.length ? `Keeps ${listed(kept)}.` : 'Nothing is kept: everything that matches is removed.';
+}
+
+/**
+ * How a cleanup finds what it removes, in one line, for the folded *Advanced* (#199). Says when neither way is on,
+ * since Start stays off then.
+ */
+export function findingSummary(target: CleanupTarget, options: CleanupOptions): string {
+  const sweep =
+    target === 'post' || target === 'reply'
+      ? 'searches X'
+      : target === 'like'
+        ? 'goes through your Likes page'
+        : 'goes through your profile';
+  const ways = [options.sweep ? sweep : null, options.deep ? 'visits each known one' : null].filter(
+    (way): way is string => !!way,
+  );
+  if (!ways.length) return 'Neither way is on: turn one on to start.';
+  const ghost = target === 'like' && options.ghostLikes ? ' Ghost likes are removed too.' : '';
+  return `Xomoni ${listed(ways)}.${ghost}`;
+}
+
 /**
  * Builds a cleanup filter (what, older than when, what to keep, how to find it), previews the
- * matching inventory items with a time estimate from the current pacing, and offers a JSON backup.
+ * matching inventory items with a time estimate from the current pacing, and offers a JSON backup. The exceptions
+ * and how Xomoni finds the items are folded, each with a one-line summary, so a cleanup takes three choices (#199).
  * Without an imported archive it warns that old posts can be missed (PLAYBOOK E2) and starts only once the
  * person acknowledges it. The job is created and started only after the user types DELETE in the
  * confirmation dialog. Drawn with Fluent UI (ADR-0019): the targets are selectable cards (`aria-pressed`).
@@ -359,6 +401,9 @@ export function CleanupPage({ account, navigate }: PageProps) {
     (options.sweep || options.deep) &&
     (!!candidates?.length || options.sweep) &&
     (!needsArchive || missAcknowledged);
+
+  const keepSummary = exceptionsSummary(filter);
+  const findSummary = findingSummary(target, options);
 
   const backup = () => {
     if (!candidates?.length) return;
@@ -495,94 +540,98 @@ export function CleanupPage({ account, navigate }: PageProps) {
             )}
           </Card>
 
-          <Card title="3 · Keep" subtitle="Anything matching these rules is never touched.">
-            <div className={styles.fieldGrid}>
-              {(target === 'post' || target === 'reply') && (
-                <Field label="Keep if it has at least … likes" hint="Leave empty to ignore">
-                  <Input
+          <Card title="3 · Exceptions" subtitle="Optional: what to keep even when it matches.">
+            <Disclosure label="Choose what to keep" summary={keepSummary}>
+              <div className={styles.fieldGrid}>
+                {(target === 'post' || target === 'reply') && (
+                  <Field label="Keep if it has at least … likes" hint="Leave empty to ignore">
+                    <Input
+                      className={styles.control}
+                      inputMode="numeric"
+                      placeholder="e.g. 50"
+                      value={minLikes}
+                      onChange={(_, data) => setMinLikes(data.value.replace(/\D/g, ''))}
+                    />
+                  </Field>
+                )}
+                <Field label="Keep if the text contains" hint="Comma or line separated, case-insensitive">
+                  <Textarea
                     className={styles.control}
-                    inputMode="numeric"
-                    placeholder="e.g. 50"
-                    value={minLikes}
-                    onChange={(_, data) => setMinLikes(data.value.replace(/\D/g, ''))}
+                    resize="vertical"
+                    rows={2}
+                    placeholder="launch, #mytag"
+                    value={keywords}
+                    onChange={(_, data) => setKeywords(data.value)}
                   />
                 </Field>
-              )}
-              <Field label="Keep if the text contains" hint="Comma or line separated, case-insensitive">
-                <Textarea
-                  className={styles.control}
-                  resize="vertical"
-                  rows={2}
-                  placeholder="launch, #mytag"
-                  value={keywords}
-                  onChange={(_, data) => setKeywords(data.value)}
-                />
-              </Field>
-              <Field label="Always keep these posts" hint="Paste post links or ids">
-                <Textarea
-                  className={styles.control}
-                  resize="vertical"
-                  rows={2}
-                  placeholder="https://x.com/you/status/…"
-                  value={ids}
-                  onChange={(_, data) => setIds(data.value)}
-                />
-              </Field>
-            </div>
-            {target === 'reply' && (
-              <div className={styles.spaced}>
-                <Toggle
-                  checked={skipSelfReplies}
-                  onChange={setSkipSelfReplies}
-                  label="Keep replies in my own threads"
-                  description="Thread continuations are replies to yourself; keep them so threads stay whole."
-                />
+                <Field label="Always keep these posts" hint="Paste post links or ids">
+                  <Textarea
+                    className={styles.control}
+                    resize="vertical"
+                    rows={2}
+                    placeholder="https://x.com/you/status/…"
+                    value={ids}
+                    onChange={(_, data) => setIds(data.value)}
+                  />
+                </Field>
               </div>
-            )}
+              {target === 'reply' && (
+                <div className={styles.spaced}>
+                  <Toggle
+                    checked={skipSelfReplies}
+                    onChange={setSkipSelfReplies}
+                    label="Keep replies in my own threads"
+                    description="Thread continuations are replies to yourself; keep them so threads stay whole."
+                  />
+                </div>
+              )}
+            </Disclosure>
           </Card>
 
-          <Card title="4 · How to find them">
-            <div className={mergeClasses(styles.stack, styles.roomy)}>
-              <Toggle
-                checked={options.sweep}
-                onChange={(sweep) => setOptions({ ...options, sweep })}
-                label={
-                  target === 'post' || target === 'reply'
-                    ? 'Sweep X search'
-                    : target === 'like'
-                      ? 'Sweep your Likes page'
-                      : 'Sweep your profile'
-                }
-                description={
-                  target === 'post' || target === 'reply'
-                    ? 'Searches X for your matching posts (reaches far beyond the ~3,200 your profile shows) and removes them in place. If you have fewer than ~3,200 posts, your profile is swept first, since search leaves out old posts without likes.'
-                    : 'Scrolls the page and removes matching items in place — the fewest page loads per item.'
-                }
-              />
-              <Toggle
-                checked={options.deep}
-                onChange={(deep) => setOptions({ ...options, deep })}
-                label="Deep clean from inventory"
-                description="Visits each remaining matching item one by one — needed for items only found in your archive."
-              />
-              {target === 'like' && (
-                <>
-                  <Toggle
-                    checked={options.ghostLikes}
-                    onChange={(ghostLikes) => setOptions({ ...options, ghostLikes })}
-                    label="Remove “ghost” likes"
-                    description="Old likes X no longer displays can only be removed by liking again, then unliking."
-                  />
-                  {options.ghostLikes && (
-                    <Callout tone="warn" icon={<Warning16Regular />} title="Authors may be notified">
-                      Re-liking can send a like notification to the author before it’s removed, and it uses your daily
-                      like budget. Xomoni paces this much more slowly.
-                    </Callout>
-                  )}
-                </>
-              )}
-            </div>
-          </Card>
+          <Disclosure label="Advanced: how Xomoni finds them" summary={findSummary}>
+            <Card>
+              <div className={mergeClasses(styles.stack, styles.roomy)}>
+                <Toggle
+                  checked={options.sweep}
+                  onChange={(sweep) => setOptions({ ...options, sweep })}
+                  label={
+                    target === 'post' || target === 'reply'
+                      ? 'Sweep X search'
+                      : target === 'like'
+                        ? 'Sweep your Likes page'
+                        : 'Sweep your profile'
+                  }
+                  description={
+                    target === 'post' || target === 'reply'
+                      ? 'Searches X for your matching posts (reaches far beyond the ~3,200 your profile shows) and removes them in place. If you have fewer than ~3,200 posts, your profile is swept first, since search leaves out old posts without likes.'
+                      : 'Scrolls the page and removes matching items in place — the fewest page loads per item.'
+                  }
+                />
+                <Toggle
+                  checked={options.deep}
+                  onChange={(deep) => setOptions({ ...options, deep })}
+                  label="Deep clean from inventory"
+                  description="Visits each remaining matching item one by one — needed for items only found in your archive."
+                />
+                {target === 'like' && (
+                  <>
+                    <Toggle
+                      checked={options.ghostLikes}
+                      onChange={(ghostLikes) => setOptions({ ...options, ghostLikes })}
+                      label="Remove “ghost” likes"
+                      description="Old likes X no longer displays can only be removed by liking again, then unliking."
+                    />
+                    {options.ghostLikes && (
+                      <Callout tone="warn" icon={<Warning16Regular />} title="Authors may be notified">
+                        Re-liking can send a like notification to the author before it’s removed, and it uses your daily
+                        like budget. Xomoni paces this much more slowly.
+                      </Callout>
+                    )}
+                  </>
+                )}
+              </div>
+            </Card>
+          </Disclosure>
         </div>
 
         <div className={styles.aside}>

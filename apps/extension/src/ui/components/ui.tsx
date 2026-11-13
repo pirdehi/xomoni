@@ -19,7 +19,7 @@ import {
   mergeClasses,
   tokens,
 } from '@fluentui/react-components';
-import { Dismiss20Regular } from '@fluentui/react-icons';
+import { ChevronDown16Regular, ChevronUp16Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 const useStyles = makeStyles({
@@ -122,6 +122,10 @@ const useStyles = makeStyles({
     border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
   },
   segment: { minWidth: 'auto' },
+  disclosure: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', rowGap: tokens.spacingVerticalXS },
+  disclosureButton: { paddingLeft: 0, minWidth: 'auto', fontWeight: tokens.fontWeightSemibold },
+  disclosureSummary: { color: tokens.colorNeutralForeground3 },
+  disclosureBody: { alignSelf: 'stretch' },
   dialogText: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalM },
   dialogBody: { position: 'relative' },
   dialogActions: { whiteSpace: 'nowrap' },
@@ -404,6 +408,46 @@ export function Toggle({
           {description}
         </Caption1>
       )}
+    </div>
+  );
+}
+
+/**
+ * A part of a page that opens on demand (#198): a quiet button with a chevron (`aria-expanded`, `aria-controls`) and,
+ * while closed, an optional one-line summary of what is inside. The content is rendered only while open, so what
+ * most people never change stays out of their way and out of the page's tab order.
+ */
+export function Disclosure({
+  label,
+  summary,
+  defaultOpen = false,
+  children,
+}: {
+  label: ReactNode;
+  summary?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const styles = useStyles();
+  const [open, setOpen] = useState(defaultOpen);
+  const bodyId = useId();
+  return (
+    <div className={styles.disclosure}>
+      <FluentButton
+        appearance="transparent"
+        size="small"
+        icon={open ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
+        aria-expanded={open}
+        aria-controls={bodyId}
+        className={styles.disclosureButton}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {label}
+      </FluentButton>
+      {!open && summary && <Caption1 className={styles.disclosureSummary}>{summary}</Caption1>}
+      <div id={bodyId} className={styles.disclosureBody}>
+        {open && children}
+      </div>
     </div>
   );
 }

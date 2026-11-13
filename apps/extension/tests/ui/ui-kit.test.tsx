@@ -8,6 +8,7 @@ import {
   Button,
   Callout,
   Card,
+  Disclosure,
   EmptyState,
   Field,
   Meter,
@@ -265,6 +266,39 @@ describe('Toggle', () => {
   it('has no description line without a description', () => {
     render(<Toggle checked onChange={vi.fn()} label="Active hours" />);
     expect(screen.getByRole('switch', { name: 'Active hours' })).toBeChecked();
+  });
+});
+
+describe('Disclosure (#198)', () => {
+  it('stays closed with its summary, and renders its content only while open', async () => {
+    render(
+      <Disclosure label="Advanced" summary="A job pauses after 2 failures.">
+        <input aria-label="Failures" />
+      </Disclosure>,
+    );
+    const button = screen.getByRole('button', { name: 'Advanced', expanded: false });
+    expect(screen.getByText('A job pauses after 2 failures.')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Failures' })).toBeNull();
+    expect(document.getElementById(button.getAttribute('aria-controls')!)).toBeEmptyDOMElement();
+
+    await userEvent.click(button);
+
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('textbox', { name: 'Failures' })).toBeInTheDocument();
+    expect(screen.queryByText('A job pauses after 2 failures.')).toBeNull();
+
+    await userEvent.click(button);
+    expect(screen.queryByRole('textbox', { name: 'Failures' })).toBeNull();
+  });
+
+  it('can start open, and needs no summary', () => {
+    render(
+      <Disclosure label="Exceptions" defaultOpen>
+        <p>Kept posts</p>
+      </Disclosure>,
+    );
+    expect(screen.getByRole('button', { name: 'Exceptions', expanded: true })).toBeInTheDocument();
+    expect(screen.getByText('Kept posts')).toBeInTheDocument();
   });
 });
 

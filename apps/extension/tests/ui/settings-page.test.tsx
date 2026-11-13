@@ -54,6 +54,13 @@ async function renderPage() {
   return props;
 }
 
+/** Renders the page and chooses *Custom*, where the table of every pacing value shows (#198). */
+async function renderCustom() {
+  await renderPage();
+  await userEvent.click(screen.getByRole('button', { name: 'Custom' }));
+  await screen.findByRole('spinbutton', { name: `${ACTION_LABELS.delete}, Per day` });
+}
+
 let chrome: ReturnType<typeof stubChrome>;
 
 describe('Settings page', () => {
@@ -71,17 +78,31 @@ describe('Settings page', () => {
   });
 
   describe('pacing', () => {
-    it('starts on Careful, at the preset’s numbers', async () => {
+    it('starts on Careful, told as daily and hourly caps, with no table to fill in (#198)', async () => {
       await renderPage();
 
       expect(screen.getByRole('button', { name: 'Careful (⅕ of X)', pressed: true })).toBeInTheDocument();
+      const pace = screen.getByLabelText('Careful pace');
+      for (const action of ACTIONS) {
+        const rule = PRESETS.careful[action];
+        expect(within(pace).getByText(ACTION_LABELS[action]).nextElementSibling).toHaveTextContent(
+          `up to ${rule.dailyCap.toLocaleString('en')} a day · ${rule.hourlyCap} an hour`,
+        );
+      }
+      expect(screen.queryAllByRole('spinbutton', { name: /, Per day$/ })).toHaveLength(0);
+    });
+
+    it('shows the table under Custom, at Careful’s numbers', async () => {
+      await renderCustom();
+
+      expect(screen.queryByLabelText('Careful pace')).not.toBeInTheDocument();
       for (const action of ACTIONS) {
         for (const key of COLUMNS) expect(cell(action, key)).toHaveValue(PRESETS.careful[action][key]);
       }
     });
 
     it('marks each cap field with its one-fifth ceiling', async () => {
-      await renderPage();
+      await renderCustom();
       for (const action of ACTIONS) {
         expect(cell(action, 'hourlyCap')).toHaveAttribute('max', String(capCeilings(action).hourlyCap));
         expect(cell(action, 'dailyCap')).toHaveAttribute('max', String(capCeilings(action).dailyCap));
@@ -89,7 +110,7 @@ describe('Settings page', () => {
     });
 
     it('names each pacing field by its action and column, with the unit of delays', async () => {
-      await renderPage();
+      await renderCustom();
 
       expect(screen.getByRole('spinbutton', { name: `${ACTION_LABELS.unlike}, Per hour` })).toBe(
         cell('unlike', 'hourlyCap'),
@@ -105,8 +126,8 @@ describe('Settings page', () => {
       expect(new Set(names).size).toBe(ACTIONS.length * COLUMNS.length);
     });
 
-    it('saves an edited value at once and switches to Custom', async () => {
-      await renderPage();
+    it('saves an edited value at once, staying on Custom', async () => {
+      await renderCustom();
 
       fireEvent.change(cell('delete', 'maxDelay'), { target: { value: '200' } });
 
@@ -125,7 +146,7 @@ describe('Settings page', () => {
     });
 
     it.each(ACTIONS)('never saves %s caps above one fifth of X’s limits', async (action) => {
-      await renderPage();
+      await renderCustom();
       const ceiling = capCeilings(action);
 
       fireEvent.change(cell(action, 'hourlyCap'), { target: { value: String(ceiling.hourlyCap * 10) } });
@@ -144,7 +165,7 @@ describe('Settings page', () => {
     });
 
     it('saves caps below the ceiling as they are', async () => {
-      await renderPage();
+      await renderCustom();
 
       fireEvent.change(cell('delete', 'hourlyCap'), { target: { value: '5' } });
       await waitForStored((s) => {
@@ -153,7 +174,7 @@ describe('Settings page', () => {
     });
 
     it('keeps every minimum at most its maximum', async () => {
-      await renderPage();
+      await renderCustom();
 
       fireEvent.change(cell('unlike', 'minDelay'), { target: { value: '500' } });
       await waitForStored((s) => {
@@ -167,7 +188,7 @@ describe('Settings page', () => {
     });
 
     it('turns empty or negative values into safe ones, never faster than Careful', async () => {
-      await renderPage();
+      await renderCustom();
 
       // A delay below Careful's would let actions burst within the hourly cap: it comes back as Careful's.
       fireEvent.change(cell('delete', 'minDelay'), { target: { value: '-3' } });
@@ -185,7 +206,7 @@ describe('Settings page', () => {
     });
 
     it('keeps slower custom values as they are', async () => {
-      await renderPage();
+      await renderCustom();
       fireEvent.change(cell('delete', 'minDelay'), { target: { value: '300' } });
       await waitForStored((s) => {
         expect(s.pacing.delete).toMatchObject({ minDelay: 300, maxDelay: 300 });
@@ -224,6 +245,8 @@ describe('Settings page', () => {
         expect(s.preset).toBe('careful');
         expect(s.pacing).toEqual(PRESETS.careful);
       });
+      expect(await screen.findByLabelText('Careful pace')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Custom' }));
       await waitFor(() => {
         expect(cell('read', 'minDelay')).toHaveValue(PRESETS.careful.read.minDelay);
       });
@@ -251,7 +274,7 @@ describe('Settings page', () => {
     });
 
     it('shows a toast when a change cannot be saved', async () => {
-      await renderPage();
+      await renderCustom();
       const toasts = renderHook(() => useToasts());
       vi.spyOn(db.kv, 'put').mockRejectedValue(new Error('The disk is full'));
 
@@ -329,8 +352,11 @@ describe('Settings page', () => {
       });
     });
 
-    it('keeps the failure limit between 1 and 3', async () => {
+    it('keeps the failure limit, under Advanced, between 1 and 3 (#198)', async () => {
       await renderPage();
+      expect(screen.getByText('A job pauses after 2 failed actions in a row.')).toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton', { name: 'Pause after this many failures in a row' })).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Advanced', expanded: false }));
       const field = screen.getByRole('spinbutton', { name: 'Pause after this many failures in a row' });
       expect(field).toHaveValue(DEFAULT_SETTINGS.maxConsecutiveFailures);
 

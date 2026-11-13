@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCleanupJob, createScanJob } from '../../src/engine/runner';
 import { db } from '../../src/shared/db';
 import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
-import { JobsPage } from '../../src/ui/pages/Jobs';
+import { ActivityPage } from '../../src/ui/pages/Activity';
+import { JobsPanel } from '../../src/ui/pages/Jobs';
 import { stubChrome } from '../support/chrome';
 import { ME, pageProps, resetDb } from '../support/fixtures';
 import { logEntry } from '../support/shell';
@@ -35,18 +36,38 @@ describe('Jobs page', () => {
 
   it('says there are no open jobs and offers a new cleanup', async () => {
     const props = await pageProps();
-    render(<JobsPage {...props} />);
+    render(<ActivityPage {...props} tab="jobs" />);
 
     expect(await screen.findByText('No open jobs')).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole('button', { name: 'New cleanup' })[0]!);
     expect(props.navigate).toHaveBeenCalledWith('cleanup');
   });
 
+  it('works as a panel on its own, without the page around it (#202)', async () => {
+    const props = await pageProps();
+    render(<JobsPanel account={props.account} navigate={props.navigate} />);
+
+    expect(await screen.findByText('No open jobs')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'New cleanup' }));
+    expect(props.navigate).toHaveBeenCalledWith('cleanup');
+  });
+
+  it('says on the page which tab is open, and switches tabs through the address', async () => {
+    const props = await pageProps();
+    render(<ActivityPage {...props} tab="jobs" />);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Activity' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /^Jobs/, selected: true })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /^Log/ }));
+    expect(props.navigate).toHaveBeenCalledWith('activity');
+  });
+
   it('lists open jobs and keeps finished ones under All', async () => {
     await createCleanupJob(ME, 'Delete posts older than Jan 1, 2018', FILTER, OPTIONS);
     const done = await createScanJob(ME, 'Scan: replies', 'replies');
     await db.jobs.update(done.id, { state: 'completed', finishedAt: Date.now() });
-    render(<JobsPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="jobs" />);
 
     expect(await screen.findByText('Delete posts older than Jan 1, 2018')).toBeInTheDocument();
     expect(screen.queryByText('Scan: replies')).not.toBeInTheDocument();
@@ -63,7 +84,7 @@ describe('Jobs page', () => {
       logEntry({ jobId: job.id, ts: Date.UTC(2024, 4, 1, 11), level: 'success', message: 'Deleted a post' }),
       logEntry({ jobId: 'another-job', message: 'Not this job' }),
     ]);
-    render(<JobsPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="jobs" />);
     await screen.findByText('Delete posts older than Jan 1, 2018');
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
 
@@ -86,7 +107,7 @@ describe('Jobs page', () => {
 
   it('says when a job’s log has no entries yet', async () => {
     await createCleanupJob(ME, 'Delete posts older than Jan 1, 2018', FILTER, OPTIONS);
-    render(<JobsPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="jobs" />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Show log' }));
     expect(await screen.findByText('No entries yet.')).toBeInTheDocument();
@@ -94,7 +115,7 @@ describe('Jobs page', () => {
 
   it('shows only this account’s jobs', async () => {
     await createCleanupJob('someone-else', 'Not mine', FILTER, OPTIONS);
-    render(<JobsPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="jobs" />);
 
     expect(await screen.findByText('No open jobs')).toBeInTheDocument();
     expect(screen.queryByText('Not mine')).not.toBeInTheDocument();

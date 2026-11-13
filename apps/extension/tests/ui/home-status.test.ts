@@ -49,8 +49,8 @@ describe('homeStatus (#201)', () => {
     ).toEqual({
       tone: 'critical',
       title: 'Stopped to keep your account safe',
-      text: 'X suspended the account. Xomoni won’t carry on by itself: check X, then decide in Jobs.',
-      action: { kind: 'jobs', label: 'Go to Jobs' },
+      text: 'X suspended the account. Xomoni won’t carry on by itself: check X, then decide in Activity.',
+      action: { kind: 'jobs', label: 'Go to Activity' },
     });
   });
 

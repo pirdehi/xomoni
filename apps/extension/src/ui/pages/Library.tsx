@@ -240,7 +240,7 @@ function CopyCard({ account, navigate }: { account: Account; navigate: PageProps
       </div>
       <Caption1 as="p" className={s.note}>
         A read only looks: nothing on X changes. It goes at the same careful pace as everything else, within your active
-        hours, and you can follow it in Jobs.
+        hours, and you can follow it in Activity.
       </Caption1>
     </Card>
   );

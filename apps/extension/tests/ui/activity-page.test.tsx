@@ -39,7 +39,7 @@ describe('Activity page', () => {
   });
 
   it('says there is no activity yet', async () => {
-    render(<ActivityPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="log" />);
     expect(await screen.findByText('No activity')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
   });
@@ -51,7 +51,7 @@ describe('Activity page', () => {
       logEntry({ ts: T0 + 1_000, message: 'Middle entry' }),
       logEntry({ ts: T0 + 3_000, accountId: 'someone-else', message: 'Not mine' }),
     ]);
-    render(<ActivityPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="log" />);
 
     await screen.findByText('Newest entry');
     const rows = screen.getAllByRole('listitem').map((li) => li.textContent);
@@ -69,7 +69,7 @@ describe('Activity page', () => {
       logEntry({ ts: T0 + 2, level: 'warn', message: 'Rate limited' }),
       logEntry({ ts: T0 + 3, level: 'error', message: 'Delete failed' }),
     ]);
-    render(<ActivityPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="log" />);
     await screen.findByText('Job started');
     expect(screen.getByRole('button', { name: 'All', pressed: true })).toBeInTheDocument();
 
@@ -94,7 +94,7 @@ describe('Activity page', () => {
 
   it('says there is no activity when the filter matches nothing', async () => {
     await db.logs.add(logEntry({ level: 'success', message: 'Deleted a post' }));
-    render(<ActivityPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="log" />);
     await screen.findByText('Deleted a post');
 
     await userEvent.click(screen.getByRole('button', { name: 'Warnings & errors' }));
@@ -105,7 +105,7 @@ describe('Activity page', () => {
     await db.logs.bulkAdd(
       Array.from({ length: 301 }, (_, i) => logEntry({ ts: T0 + i * 1_000, message: `Entry ${i}` })),
     );
-    render(<ActivityPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="log" />);
 
     await screen.findByText('Entry 300');
     expect(screen.getAllByRole('listitem')).toHaveLength(100);
@@ -127,7 +127,7 @@ describe('Activity page', () => {
 
   it('links an entry to its post on X', async () => {
     await db.logs.add(logEntry({ targetId: '1234567890123', message: 'Deleted a post' }));
-    render(<ActivityPage {...await pageProps()} />);
+    render(<ActivityPage {...await pageProps()} tab="log" />);
 
     const link = await screen.findByRole('link', { name: /890123/ });
     expect(link).toHaveAttribute('href', 'https://x.com/i/web/status/1234567890123');
@@ -147,7 +147,7 @@ describe('Activity page', () => {
         }),
         logEntry({ ts: T0, level: 'info', action: 'system', message: 'Job started', jobId: 'job-1' }),
       ]);
-      render(<ActivityPage {...await pageProps()} />);
+      render(<ActivityPage {...await pageProps()} tab="log" />);
       await screen.findByText('Deleted');
 
       const { file, text } = await exportCsv();
@@ -168,7 +168,7 @@ describe('Activity page', () => {
         logEntry({ ts: T0 + 3, message: '"quoted", and\nsplit' }),
         logEntry({ ts: T0 + 4, message: 'plain text' }),
       ]);
-      render(<ActivityPage {...await pageProps()} />);
+      render(<ActivityPage {...await pageProps()} tab="log" />);
       await screen.findByText('plain text');
 
       const { text } = await exportCsv();
@@ -193,7 +193,7 @@ describe('Activity page', () => {
     // RFC 4180 quotes every field with a line break; a lone carriage return is one in Excel and most parsers.
     it('quotes cells with a carriage return', async () => {
       await db.logs.add(logEntry({ ts: T0, message: 'before\rafter' }));
-      render(<ActivityPage {...await pageProps()} />);
+      render(<ActivityPage {...await pageProps()} tab="log" />);
       await screen.findByText(/before/);
 
       const { text } = await exportCsv();
@@ -206,7 +206,7 @@ describe('Activity page', () => {
         logEntry({ ts: T0 + 500, level: 'warn', message: 'A warning' }),
         logEntry({ ts: T0 + 600, accountId: 'someone-else', message: 'Not mine' }),
       ]);
-      render(<ActivityPage {...await pageProps()} />);
+      render(<ActivityPage {...await pageProps()} tab="log" />);
       await screen.findByText('A warning');
       await userEvent.click(screen.getByRole('button', { name: 'Warnings & errors' }));
       await waitFor(() => {
@@ -233,7 +233,7 @@ describe('Activity page', () => {
         logEntry({ ts: T0, level: 'info', action: 'system', message: 'Job started', jobId: 'job-1' }),
         logEntry({ ts: T0 + 2, accountId: 'someone-else', message: 'Not mine' }),
       ]);
-      render(<ActivityPage {...await pageProps()} />);
+      render(<ActivityPage {...await pageProps()} tab="log" />);
       await screen.findByText('Deleted');
       const downloads = captureDownloads();
 
@@ -254,7 +254,7 @@ describe('Activity page', () => {
     });
 
     it('exports just the header when there is nothing to export', async () => {
-      render(<ActivityPage {...await pageProps()} />);
+      render(<ActivityPage {...await pageProps()} tab="log" />);
       await screen.findByText('No activity');
 
       const { text } = await exportCsv();

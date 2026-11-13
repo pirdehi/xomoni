@@ -36,8 +36,6 @@ import {
   Settings20Regular,
   Sparkle20Filled,
   Sparkle20Regular,
-  TaskListLtr20Filled,
-  TaskListLtr20Regular,
   Warning16Filled,
   bundleIcon,
 } from '@fluentui/react-icons';
@@ -68,7 +66,6 @@ import { tabShare } from './tab-share';
 import { ActivityPage } from './pages/Activity';
 import { CleanupPage } from './pages/Cleanup';
 import { LibraryPage } from './pages/Library';
-import { JobsPage } from './pages/Jobs';
 import { OverviewPage } from './pages/Overview';
 import { SettingsPage } from './pages/Settings';
 import { WatchPage } from './pages/Watch';
@@ -81,11 +78,17 @@ const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
   { id: 'overview', label: 'Home', icon: bundleIcon(Home20Filled, Home20Regular) },
   { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
   { id: 'library', label: 'Library', icon: bundleIcon(Library20Filled, Library20Regular) },
+  // Jobs and the log are one Activity page with two tabs (#202); the item opens its Jobs tab.
+  { id: 'jobs', label: 'Activity', icon: bundleIcon(History20Filled, History20Regular) },
   { id: 'watch', label: 'Watch', icon: bundleIcon(Search20Filled, Search20Regular) },
-  { id: 'jobs', label: 'Jobs', icon: bundleIcon(TaskListLtr20Filled, TaskListLtr20Regular) },
-  { id: 'activity', label: 'Activity log', icon: bundleIcon(History20Filled, History20Regular) },
   { id: 'settings', label: 'Settings', icon: bundleIcon(Settings20Filled, Settings20Regular) },
 ];
+
+/** Every page the hash can address: the menu's, and Activity's log tab, which has no menu item of its own. */
+const PAGES: readonly PageId[] = [...NAV.map((n) => n.id), 'activity'];
+
+/** The menu item a page belongs to: Activity's log tab marks the Activity item. */
+const navItemOf = (page: PageId): PageId => (page === 'activity' ? 'jobs' : page);
 
 /** Fluent's message bar intent for each toast tone. */
 const TOAST_INTENT = {
@@ -250,7 +253,7 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
   const read = () => {
     const hash = location.hash.replace(/^#\/?/, '');
     const id = MOVED_PAGES[hash] ?? hash;
-    return NAV.find((n) => n.id === id)?.id ?? 'overview';
+    return PAGES.find((p) => p === id) ?? 'overview';
   };
   const [page, setPage] = useState<PageId>(read);
   useEffect(() => {
@@ -308,9 +311,9 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
     case 'watch':
       return <WatchPage {...props} />;
     case 'jobs':
-      return <JobsPage {...props} />;
+      return <ActivityPage {...props} tab="jobs" />;
     case 'activity':
-      return <ActivityPage {...props} />;
+      return <ActivityPage {...props} tab="log" />;
     case 'settings':
       return <SettingsPage {...props} />;
     default:
@@ -340,14 +343,14 @@ function Sidebar({
         </div>
       </div>
       <nav className={styles.nav}>
-        <Nav selectedValue={page} className={styles.navList}>
+        <Nav selectedValue={navItemOf(page)} className={styles.navList}>
           {NAV.map(({ id, label, icon: Icon }) => (
             <NavItem
               key={id}
               value={id}
               icon={<Icon />}
               onClick={() => navigate(id)}
-              className={mergeClasses(styles.navItem, page === id && styles.navItemCurrent)}
+              className={mergeClasses(styles.navItem, navItemOf(page) === id && styles.navItemCurrent)}
             >
               {label}
             </NavItem>

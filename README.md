@@ -137,7 +137,7 @@ On macOS, allow notifications for your browser in *System Settings → Notificat
    1. Pick a type, a date and keep rules.
    2. Review the matches and download a backup.
    3. Type `DELETE` to start.
-5. **Watch.** **Overview** and **Jobs** show progress, time remaining, X's reported limits and a live log. Pause or resume any time.
+5. **Watch.** **Home** says what runs and what X needs, and **Activity** shows each job's progress, time remaining and a live log. Pause or resume any time.
 
 **Tips**
 

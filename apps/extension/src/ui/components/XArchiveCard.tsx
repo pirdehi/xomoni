@@ -1,6 +1,7 @@
 import {
   Body1Strong,
   Caption1,
+  Subtitle2,
   Button as FluentButton,
   makeStyles,
   mergeClasses,
@@ -171,6 +172,17 @@ const useStyles = makeStyles({
   note: { display: 'block', margin: `${tokens.spacingVerticalS} 0 0`, color: tokens.colorNeutralForeground3 },
   byHand: { marginTop: tokens.spacingVerticalM },
   noWrap: { whiteSpace: 'nowrap' },
+  bare: {
+    display: 'flex',
+    flexDirection: 'column',
+    paddingTop: tokens.spacingVerticalL,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  bareHead: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
+  bareSubtitle: {
+    margin: `${tokens.spacingVerticalXXS} 0 ${tokens.spacingVerticalM}`,
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 /** The four steps, the ones done ticked and the one under way marked as the current step. */
@@ -211,10 +223,13 @@ export function XArchiveCard({
   store = kvFolderStore,
   host,
   makeFolder,
+  bare = false,
 }: {
   account: Account;
   store?: FolderStore;
   host?: FolderPickerHost;
+  /** Drawn as a part of another card (the Library's *Your copy*, #203), with its own heading, not as a card. */
+  bare?: boolean;
   /** Makes Downloads/Xomoni before the picker opens; `chrome.downloads` by default, a stand-in in tests. */
   makeFolder?: () => Promise<boolean>;
 }) {
@@ -225,6 +240,7 @@ export function XArchiveCard({
   const run = useRunner();
   const now = useNow(30_000);
   const panelId = useId();
+  const headingId = useId();
   const pickerHost = host ?? (window as unknown as FolderPickerHost);
   const canWatch = typeof pickerHost.showDirectoryPicker === 'function';
   const [byHand, setByHand] = useState(!canWatch);
@@ -257,16 +273,14 @@ export function XArchiveCard({
     }
   };
 
-  return (
-    <Card
-      title="X’s archive"
-      subtitle="X’s own copy, the only complete one: every post, reply and like, even those X no longer shows."
-      actions={
-        status?.imported ? (
-          <Badge tone="good">{status.importedAt ? `Last imported ${fmtDate(status.importedAt)}` : 'Imported'}</Badge>
-        ) : undefined
-      }
-    >
+  const badge = status?.imported ? (
+    <Badge tone="good">{status.importedAt ? `Last imported ${fmtDate(status.importedAt)}` : 'Imported'}</Badge>
+  ) : (
+    <Badge tone="accent">Recommended</Badge>
+  );
+  const subtitle = 'X’s own copy, the only complete one: every post, reply and like, even those X no longer shows.';
+  const body = (
+    <>
       <Steps done={progress.done} busy={progress.busy} />
       {line && (
         <div className={mergeClasses(s.status, line.tone === 'attention' && s.attention)}>
@@ -359,6 +373,26 @@ export function XArchiveCard({
         </FluentButton>
         <div id={panelId}>{showByHand && <ArchiveImport account={account} />}</div>
       </div>
+    </>
+  );
+
+  // A variable, not a component made here: a new component type each render would remount everything inside.
+  return bare ? (
+    <section aria-labelledby={headingId} className={s.bare}>
+      <div className={s.bareHead}>
+        <Subtitle2 as="h3" id={headingId}>
+          X’s archive
+        </Subtitle2>
+        {badge}
+      </div>
+      <Caption1 as="p" className={s.bareSubtitle}>
+        {subtitle}
+      </Caption1>
+      {body}
+    </section>
+  ) : (
+    <Card title="X’s archive" subtitle={subtitle} actions={status?.imported ? badge : undefined}>
+      {body}
     </Card>
   );
 }

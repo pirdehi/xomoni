@@ -185,7 +185,7 @@ A UX review of the whole dashboard found more places than tasks, numbers without
 | ✅ | A banner on every page when X needs you | [#200](https://github.com/pirdehi/xomoni/issues/200) | [#211](https://github.com/pirdehi/xomoni/pull/211) |
 | ✅ | Home: one status, one next step, a first-run checklist | [#201](https://github.com/pirdehi/xomoni/issues/201) | [#212](https://github.com/pirdehi/xomoni/pull/212) |
 | ✅ | Jobs and Activity log in one Activity page | [#202](https://github.com/pirdehi/xomoni/issues/202) | [#213](https://github.com/pirdehi/xomoni/pull/213) |
-| ⬜ | Library: one card for your copy | [#203](https://github.com/pirdehi/xomoni/issues/203) | |
+| ✅ | Library: one card for your copy | [#203](https://github.com/pirdehi/xomoni/issues/203) | [#214](https://github.com/pirdehi/xomoni/pull/214) |
 | ⬜ | An Activity log grouped and readable | [#204](https://github.com/pirdehi/xomoni/issues/204) | |
 | ⬜ | Plain words across the dashboard | [#205](https://github.com/pirdehi/xomoni/issues/205) | |
 | ⬜ | One set of numbers | [#206](https://github.com/pirdehi/xomoni/issues/206) | |

@@ -6,7 +6,7 @@
   "description": "Clean up your own X account — delete old posts, replies, reposts and likes from a local dashboard. No API keys, rate-limit aware.",
   "homepage_url": "https://github.com/pirdehi/xomoni",
   "minimum_chrome_version": "116",
-  "permissions": ["storage", "unlimitedStorage", "notifications", "idle", "power"],
+  "permissions": ["storage", "unlimitedStorage", "notifications", "idle", "power", "downloads"],
   "incognito": "not_allowed",
   "content_security_policy": {
     "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pbs.twimg.com https://abs.twimg.com; connect-src 'self' https://ueegjwwmuuxlxyibgokx.supabase.co"

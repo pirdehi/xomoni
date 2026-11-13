@@ -3,6 +3,7 @@ import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID } from '../shared/notify';
+import { suggestArchivePath } from './archive-downloads';
 
 const DASHBOARD = chrome.runtime.getURL('dashboard.html');
 
@@ -40,6 +41,9 @@ chrome.notifications.onClicked.addListener((id) => {
   void chrome.notifications.clear(id);
   void (id === ATTENTION_ID ? focusWorker() : openDashboard());
 });
+
+// X's archive goes into Downloads/Xomoni while Xomoni expects it, since Chrome won't let Xomoni read Downloads (#196).
+chrome.downloads.onDeterminingFilename.addListener(suggestArchivePath);
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') void openDashboard();

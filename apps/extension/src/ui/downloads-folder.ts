@@ -1,14 +1,13 @@
-// Finding X's archive in the Downloads folder by itself (#187). The person lets Xomoni read that folder once, through
-// the browser's own folder picker (File System Access: read-only, no extension permission). Xomoni then looks there
-// for a ZIP named like X's archive and imports it, so nobody has to find the file and drop it. Only files named like
-// X's archive are ever opened; nothing leaves this computer (ADR-0004).
+// Finding X's archive in Downloads by itself (#187, #196). Chrome never lets an extension read Downloads itself, only a
+// folder inside it, so X's archive is saved in Downloads/Xomoni (see `background/archive-downloads.ts`). Xomoni makes
+// that folder, and the person lets Xomoni read it once, through the browser's own folder picker (File System Access,
+// read-only). Xomoni then looks there for a ZIP named like X's archive and imports it, so nobody has to find the file
+// and drop it. Only files named like X's archive are ever opened; nothing leaves this computer (ADR-0004).
 
-import { kvGet, kvSet } from '../shared/db';
+import { kvGet, kvSet, setArchiveFolderChosen } from '../shared/db';
 import type { Account } from '../shared/types';
+import { ARCHIVE_FILE, ARCHIVE_FOLDER, FOLDER_NOTE, FOLDER_NOTE_URL } from '../shared/x-archive';
 import { type ImportResult, importArchive } from './importArchive';
-
-/** How X names its archive: `twitter-2026-11-08-<hash>.zip`, or `x-…` should X rename it. */
-export const ARCHIVE_FILE = /^(?:twitter|x)-\d{4}-\d{2}-\d{2}-[\w-]+\.zip$/i;
 
 /** The parts of a folder handle Xomoni uses; `FileSystemDirectoryHandle` in the browser, a stand-in in tests. */
 export interface FolderHandle {
@@ -47,13 +46,19 @@ const FOLDER_KEY = 'downloadsFolder';
 export const kvFolderStore: FolderStore = {
   /** Reads the handle back; the browser keeps it, with its permission, between visits. */
   get: () => kvGet<FolderHandle | null>(FOLDER_KEY, null),
-  /** Stores the handle as it is (handles survive IndexedDB's structured clone). */
-  set: (folder) => kvSet(FOLDER_KEY, folder),
+  /**
+   * Stores the handle as it is (handles survive IndexedDB's structured clone), and whether there is one, which tells
+   * the service worker to save X's archive in the Xomoni folder.
+   */
+  set: async (folder) => {
+    await kvSet(FOLDER_KEY, folder);
+    await setArchiveFolderChosen(!!folder);
+  },
 };
 
 /**
- * Asks the person for their Downloads folder, read-only, the picker opening there. Returns the folder; `null` when
- * they closed the picker; `undefined` when this browser has no such picker.
+ * Asks the person for a folder, read-only, the picker opening in Downloads. Returns the folder; `null` when they closed
+ * the picker, or Chrome refused the folder they chose; `undefined` when this browser has no such picker.
  */
 export async function chooseFolder(
   host: FolderPickerHost = window as unknown as FolderPickerHost,
@@ -66,6 +71,78 @@ export async function chooseFolder(
     if (err instanceof DOMException && err.name === 'AbortError') return null;
     return undefined;
   }
+}
+
+/** The part of `chrome.downloads` that makes the folder; a stand-in in tests. */
+export interface DownloadsApi {
+  download(options: { url: string; filename: string; conflictAction: 'overwrite'; saveAs: false }): Promise<number>;
+  search(query: { id: number }): Promise<readonly { state?: string }[]>;
+  erase(query: { id: number }): Promise<unknown>;
+}
+
+const chromeDownloads: DownloadsApi = {
+  download: (options) => chrome.downloads.download(options),
+  search: (query) => chrome.downloads.search(query),
+  erase: (query) => chrome.downloads.erase(query),
+};
+
+/**
+ * Makes Downloads/Xomoni, if it isn't there yet, by saving a short note in it (`FOLDER_NOTE`, from its fixed address,
+ * which the service worker places in the folder), so the person can open it in the picker. The note is left out of
+ * Chrome's list of downloads. Returns whether the note was saved within `waitMs`.
+ */
+export async function makeArchiveFolder(api: DownloadsApi = chromeDownloads, waitMs = 3000): Promise<boolean> {
+  const id = await api.download({
+    url: FOLDER_NOTE_URL,
+    filename: `${ARCHIVE_FOLDER}/${FOLDER_NOTE}`,
+    conflictAction: 'overwrite',
+    saveAs: false,
+  });
+  for (let waited = 0; waited <= waitMs; waited += 100) {
+    const [item] = await api.search({ id });
+    if (item?.state === 'complete') {
+      await api.erase({ id });
+      return true;
+    }
+    if (item?.state === 'interrupted') return false;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
+
+/** Whether a chosen folder is the Xomoni folder, where Chrome saves X's archive (#196). */
+export const isArchiveFolder = (folder: Pick<FolderHandle, 'name'>) => folder.name === ARCHIVE_FOLDER;
+
+/** What the card says when no folder came back: Chrome refuses Downloads itself, so that is the likely reason. */
+export const FOLDER_NOT_CHOSEN =
+  'No folder chosen. Chrome doesn’t let extensions read Downloads itself: in the window that opens, open the Xomoni folder inside Downloads, then press Select.';
+
+/** What the card says when the person chose another folder than the Xomoni one. */
+export const wrongFolder = (name: string) =>
+  `“${name}” isn’t the Xomoni folder. Chrome saves X’s archive in Downloads › Xomoni: open that folder in the picker, then press Select.`;
+
+/**
+ * What choosing the folder came to: the Xomoni folder, kept; or why not, with null when this browser has no picker.
+ */
+export type FolderPick = { folder: FolderHandle; problem?: undefined } | { folder?: undefined; problem: string | null };
+
+/**
+ * Makes Downloads/Xomoni, then asks the person for it in the browser's picker, opened in Downloads, and keeps it.
+ * Any other folder is refused with the reason, since X's archive never lands there.
+ */
+export async function pickArchiveFolder(
+  store: FolderStore,
+  host: FolderPickerHost = window as unknown as FolderPickerHost,
+  makeFolder: () => Promise<boolean> = makeArchiveFolder,
+): Promise<FolderPick> {
+  if (typeof host.showDirectoryPicker !== 'function') return { problem: null };
+  await makeFolder().catch(() => false);
+  const chosen = await chooseFolder(host);
+  if (chosen === undefined) return { problem: null };
+  if (chosen === null) return { problem: FOLDER_NOT_CHOSEN };
+  if (!isArchiveFolder(chosen)) return { problem: wrongFolder(chosen.name) };
+  await store.set(chosen);
+  return { folder: chosen };
 }
 
 /**

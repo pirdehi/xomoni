@@ -14,8 +14,8 @@ import {
 } from '../../src/shared/db';
 import { DEFAULT_SETTINGS, nextActiveTime, withinActiveHours } from '../../src/shared/settings';
 import { DAY, HOUR } from '../../src/shared/time';
-import type { ArchiveRequest } from '../../src/shared/x-archive';
-import { IMPORT_WINDOW_MS, type LookRunner, importIfDownloaded, lookIfDue } from '../../src/ui/archive-follow-up';
+import { type ArchiveRequest, IMPORT_WINDOW_MS } from '../../src/shared/x-archive';
+import { type LookRunner, importIfDownloaded, lookIfDue } from '../../src/ui/archive-follow-up';
 import { ArchiveFollowUp } from '../../src/ui/components/ArchiveFollowUp';
 import type { FolderHandle, FolderStore } from '../../src/ui/downloads-folder';
 import type * as Hooks from '../../src/ui/hooks';

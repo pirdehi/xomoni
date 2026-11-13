@@ -131,7 +131,7 @@ On macOS, allow notifications for your browser in *System Settings → Notificat
 ## Usage
 
 1. **Connect.** In the dashboard, click **Open X worker**. A normal x.com window opens. Log in there as usual, including 2FA, and Xomoni detects your account.
-2. **Get your archive (recommended).** In **Library**, press *Get my archive*. Xomoni asks X for it on X's own page and downloads it when X has made it (a day or more); if X asks for your password, type it there, since Xomoni never sees it. Choose your Downloads folder once and the ZIP is imported by itself. A ZIP you already have can be dropped on the Library as it is, with no unzipping. Only `account.js`, `tweets.js` and `like.js` are read, and Xomoni checks that the archive belongs to the connected account.
+2. **Get your archive (recommended).** In **Library**, press *Get my archive*. Xomoni asks X for it on X's own page and downloads it when X has made it (a day or more); if X asks for your password, type it there, since Xomoni never sees it. Chrome saves the ZIP in **Downloads › Xomoni**; choose that folder once (Xomoni makes it, and Chrome doesn't let extensions read Downloads itself) and the ZIP is imported by itself. A ZIP you already have can be dropped on the Library as it is, with no unzipping. Only `account.js`, `tweets.js` and `like.js` are read, and Xomoni checks that the archive belongs to the connected account.
 3. **Complete your copy.** **Library** shows how much of your account Xomoni has. *Complete my copy* reads your posts, replies, likes and full history from X in one job; *Download a copy* saves any dates as a page or as JSON.
 4. **Clean up.** In **Cleanup**:
    1. Pick a type, a date and keep rules.

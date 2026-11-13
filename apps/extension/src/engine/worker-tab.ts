@@ -126,7 +126,7 @@ export class WorkerTab implements XTab {
       reply = await chrome.tabs.sendMessage(id, { type: 'actor', command }, { frameId: 0 });
     } catch (err) {
       if ((await this.current()) == null) throw new WorkerGone();
-      throw new NotReady(String(err instanceof Error ? err.message : err));
+      throw new NotReady(notAnswered(err));
     }
     if (reply && typeof reply === 'object' && 'error' in reply) throw new PageError(String(reply.error));
     return reply as Reply<C['cmd']>;
@@ -178,6 +178,17 @@ export class WorkerTab implements XTab {
 }
 
 // The errors are part of the port; re-exported for code that imports them from here.
+/**
+ * Chrome's error for a message no page answered, in words for the Activity log: Chrome's own text names its
+ * internals (ports, the back/forward cache), which tell the person nothing.
+ */
+export function notAnswered(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  return /back\/forward cache|message channel (?:is )?closed|message port closed|page was unloaded/i.test(raw)
+    ? 'The X page changed while Xomoni was reading it'
+    : 'The X page didn’t answer Xomoni';
+}
+
 export { NotReady, PageError, WorkerGone };
 
 /** The worker handle shared by the engine (through `platform.ts`) and the dashboard UI. */

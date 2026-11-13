@@ -37,6 +37,11 @@ export function stubChrome() {
       get: vi.fn(() => Promise.resolve({ id: WORKER_TAB.windowId, state: 'normal' })),
       update: vi.fn(() => Promise.resolve(undefined)),
     },
+    downloads: {
+      download: vi.fn(() => Promise.resolve(1)),
+      search: vi.fn(() => Promise.resolve([{ state: 'complete' }])),
+      erase: vi.fn(() => Promise.resolve([1])),
+    },
     notifications: {
       create: vi.fn(() => Promise.resolve('')),
       clear: vi.fn(() => Promise.resolve(true)),

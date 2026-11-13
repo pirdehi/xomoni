@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db, itemKey, kvGet } from '../src/shared/db';
+import { db, itemKey, kvGet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { RuntimeMessage } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
+import { FOLDER_NOTE, FOLDER_NOTE_URL } from '../src/shared/x-archive';
 import type { ItemDraft, RateObservation } from '../src/shared/types';
 import { account, resetDb } from './support/fixtures';
 
@@ -12,6 +13,10 @@ type Listeners = {
   notification?: (id: string) => void;
   installed?: (details: { reason: string }) => void;
   message?: (message: RuntimeMessage, sender: Sender) => unknown;
+  filename?: (
+    item: { filename: string; url?: string; byExtensionId?: string },
+    suggest: (s?: { filename: string; conflictAction: string }) => void,
+  ) => unknown;
 };
 type Context = { documentUrl?: string; tabId: number; windowId: number };
 
@@ -35,6 +40,9 @@ const chrome = {
     onMessage: { addListener: (listener: Listeners['message']) => (on.message = listener) },
   },
   action: { onClicked: { addListener: (listener: Listeners['action']) => (on.action = listener) } },
+  downloads: {
+    onDeterminingFilename: { addListener: (listener: Listeners['filename']) => (on.filename = listener) },
+  },
   notifications: {
     onClicked: { addListener: (listener: Listeners['notification']) => (on.notification = listener) },
     clear: vi.fn((): Promise<boolean> => Promise.resolve(true)),
@@ -354,5 +362,58 @@ describe('service worker: observations from x.com tabs', () => {
 
     on.message!(ingest('me'), FROM_TAB);
     await vi.waitFor(async () => expect(await db.items.count()).toBe(1));
+  });
+});
+
+describe('service worker: where X’s archive is saved (#196)', () => {
+  const ARCHIVE = 'twitter-2026-11-15-0a1b2c3d.zip';
+
+  /** What the service worker answers Chrome for a download about to be saved, once it has answered. */
+  async function suggestionFor(filename: string, more: { url?: string; byExtensionId?: string } = {}) {
+    const suggest = vi.fn();
+    expect(on.filename!({ filename, ...more }, suggest)).toBe(true);
+    await vi.waitFor(() => expect(suggest).toHaveBeenCalledTimes(1));
+    return suggest.mock.calls[0] as unknown[];
+  }
+
+  it('saves X’s archive in Downloads/Xomoni while an archive is asked for', async () => {
+    await saveArchiveRequest(X_ME, { requestedAt: Date.now(), checkedAt: Date.now(), downloadedAt: null });
+
+    expect(await suggestionFor(ARCHIVE)).toEqual([{ filename: `Xomoni/${ARCHIVE}`, conflictAction: 'uniquify' }]);
+  });
+
+  it('saves it there once the person chose the Xomoni folder, with no request open', async () => {
+    await setArchiveFolderChosen(true);
+
+    expect(await suggestionFor(`/Users/me/Downloads/${ARCHIVE}`)).toEqual([
+      { filename: `Xomoni/${ARCHIVE}`, conflictAction: 'uniquify' },
+    ]);
+  });
+
+  it('leaves X’s archive where Chrome puts it when Xomoni expects none', async () => {
+    expect(await suggestionFor(ARCHIVE)).toEqual([]);
+  });
+
+  it('leaves every other download alone, even while an archive is asked for', async () => {
+    await saveArchiveRequest(X_ME, { requestedAt: Date.now(), checkedAt: Date.now(), downloadedAt: null });
+
+    expect(await suggestionFor('holiday-photos.zip')).toEqual([]);
+    expect(await suggestionFor('twitter-2026-11-15-0a1b2c3d.zip.exe')).toEqual([]);
+  });
+
+  it('places Xomoni’s own folder note in the Xomoni folder, whatever name Chrome gave it', async () => {
+    expect(await suggestionFor('download.txt', { url: FOLDER_NOTE_URL, byExtensionId: EXTENSION_ID })).toEqual([
+      { filename: `Xomoni/${FOLDER_NOTE}`, conflictAction: 'overwrite' },
+    ]);
+    expect(await suggestionFor('download.txt', { url: FOLDER_NOTE_URL, byExtensionId: 'someone-else' })).toEqual([]);
+  });
+
+  it('still answers Chrome when the database can’t be read, so no download hangs', async () => {
+    const read = vi.spyOn(db.kv, 'where').mockImplementation(() => {
+      throw new Error('IndexedDB closed');
+    });
+
+    expect(await suggestionFor(ARCHIVE)).toEqual([]);
+    read.mockRestore();
   });
 });

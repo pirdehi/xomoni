@@ -202,7 +202,7 @@ describe('Library page (#185)', () => {
       'Ask XOn X’s own page',
       'X makes itUsually 1 to 3 days',
       'DownloadXomoni presses it on X',
-      'ImportFrom your Downloads',
+      'ImportFrom Downloads › Xomoni',
     ]);
     expect(screen.getByRole('button', { name: 'Get my archive' })).toBeInTheDocument();
   });

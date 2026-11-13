@@ -23,7 +23,14 @@ import { getSettings } from '../../shared/db';
 import { nextActiveTime } from '../../shared/settings';
 import type { Account } from '../../shared/types';
 import { ARCHIVE_PAGE_URL, FIRST_LOOK_AFTER_MS, archiveOverdue, nextArchiveLook } from '../../shared/x-archive';
-import { type FolderPickerHost, type FolderStore, chooseFolder, kvFolderStore } from '../downloads-folder';
+import {
+  FOLDER_NOT_CHOSEN,
+  type FolderPickerHost,
+  type FolderStore,
+  isArchiveFolder,
+  kvFolderStore,
+  pickArchiveFolder,
+} from '../downloads-folder';
 import { errorMessage, fmtAgo, fmtDate, fmtFinish } from '../format';
 import { ensureConsent, startJob, toast, useRunner } from '../hooks';
 import { type ArchiveStatus, useArchiveStatus } from '../queries';
@@ -36,7 +43,7 @@ export const ARCHIVE_STEPS = [
   { title: 'Ask X', detail: 'On X’s own page' },
   { title: 'X makes it', detail: 'Usually 1 to 3 days' },
   { title: 'Download', detail: 'Xomoni presses it on X' },
-  { title: 'Import', detail: 'From your Downloads' },
+  { title: 'Import', detail: 'From Downloads › Xomoni' },
 ] as const;
 
 /**
@@ -104,8 +111,8 @@ export function archiveLine(
     return {
       tone: 'info',
       text: folder
-        ? `Downloaded from X ${ago}. Xomoni imports it from your Downloads folder as soon as Chrome has saved it.`
-        : `Downloaded from X ${ago}. Choose your Downloads folder below, or drop the ZIP, to import it.`,
+        ? `Downloaded from X ${ago}. Xomoni imports it from Downloads › Xomoni as soon as Chrome has saved it.`
+        : `Downloaded from X ${ago} into Downloads › Xomoni. Choose that folder below, or drop the ZIP, to import it.`,
     };
   }
   if (archiveOverdue(request, now)) {
@@ -115,7 +122,7 @@ export function archiveLine(
     };
   }
   const when = lookAt == null || lookAt <= now ? 'soon' : fmtFinish(lookAt - now, now);
-  const folderNote = folder ? '' : ' Choose your Downloads folder below so it comes in by itself.';
+  const folderNote = folder ? '' : ' Choose the Xomoni folder below so it comes in by itself.';
   return {
     tone: 'info',
     text: `Asked X ${fmtAgo(request.requestedAt, now)}. X is making it; Xomoni looks again ${when}, while Xomoni is open, and downloads it.${folderNote}`,
@@ -195,18 +202,21 @@ function Steps({ done, busy }: { done: number; busy: boolean }) {
 
 /**
  * X's archive (#186, ADR-0022), in four steps the person can follow without leaving the Library: *Get my archive*
- * asks for the Downloads folder in the same click (once), then runs the archive job; what it is doing, and what X
- * needs from the person, shows here. Consent comes before the job exists, so closing the dialog leaves nothing
- * behind. Doing it by hand stays one click away, folded unless it is the way left to import.
+ * makes Downloads › Xomoni and asks for it in the same click (once, #196), then runs the archive job; what it is
+ * doing, and what X needs from the person, shows here. Consent comes before the job exists, so closing the dialog
+ * leaves nothing behind. Doing it by hand stays one click away, folded unless it is the way left to import.
  */
 export function XArchiveCard({
   account,
   store = kvFolderStore,
   host,
+  makeFolder,
 }: {
   account: Account;
   store?: FolderStore;
   host?: FolderPickerHost;
+  /** Makes Downloads/Xomoni before the picker opens; `chrome.downloads` by default, a stand-in in tests. */
+  makeFolder?: () => Promise<boolean>;
 }) {
   const s = useStyles();
   const status = useArchiveStatus(account.id);
@@ -220,7 +230,7 @@ export function XArchiveCard({
   const [byHand, setByHand] = useState(!canWatch);
 
   const busy = run.status !== 'idle';
-  const hasFolder = !!folder;
+  const hasFolder = !!folder && isArchiveFolder(folder);
   const due = status?.request ? nextArchiveLook(status.request, now) : null;
   const lookAt = due != null && settings ? nextActiveTime(settings.activeHours, due) : due;
   const line = status ? archiveLine(status, { now, run, folder: hasFolder, lookAt }) : null;
@@ -237,8 +247,8 @@ export function XArchiveCard({
       if (!(await ensureConsent(account.id))) return;
       // Asked in the same click, once, so the ZIP comes in by itself later; the job starts either way.
       if (mode === 'get' && canWatch && !hasFolder) {
-        const chosen = await chooseFolder(pickerHost);
-        if (chosen) await store.set(chosen);
+        const pick = await pickArchiveFolder(store, pickerHost, makeFolder);
+        if (pick.problem) toast(pick.problem, pick.problem === FOLDER_NOT_CHOSEN ? 'neutral' : 'critical');
       }
       const job = await archiveJob(account.id, mode);
       await startJob(job.id);
@@ -325,10 +335,17 @@ export function XArchiveCard({
           {!busy &&
             canWatch &&
             !hasFolder &&
-            ' Chrome then asks once for your Downloads folder, so the archive comes in by itself.'}
+            ' Chrome then opens your Downloads once: open the Xomoni folder there and press Select, so the archive comes in by itself.'}
         </Caption1>
       )}
-      <DownloadsWatch account={account} store={store} host={host} />
+      {/* Mounted again once the Get click chose the folder, so it starts watching at once. */}
+      <DownloadsWatch
+        key={hasFolder ? 'folder' : 'none'}
+        account={account}
+        store={store}
+        host={host}
+        makeFolder={makeFolder}
+      />
       <div className={s.byHand}>
         <FluentButton
           appearance="transparent"

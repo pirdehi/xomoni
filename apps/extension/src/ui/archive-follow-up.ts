@@ -1,16 +1,12 @@
 // What the dashboard does by itself after the person asked for X's archive (#186, ADR-0022), so nobody has to come
 // back for it: while X makes the archive it looks at X's page now and then, as a short job of its own, and once the
-// job pressed *Download archive* it imports the ZIP from the Downloads folder, wherever the dashboard is.
+// job pressed *Download archive* it imports the ZIP from Downloads/Xomoni (#196), wherever the dashboard is.
 import { archiveJob } from '../engine/runner';
 import { archiveImportedAt, archiveRequest, getSettings, hasConsent, saveArchiveRequest } from '../shared/db';
 import { withinActiveHours } from '../shared/settings';
-import { HOUR } from '../shared/time';
 import type { Account, Job } from '../shared/types';
-import { nextArchiveLook } from '../shared/x-archive';
+import { IMPORT_WINDOW_MS, nextArchiveLook } from '../shared/x-archive';
 import { type FolderImport, type FolderStore, canRead, importNewestArchive, kvFolderStore } from './downloads-folder';
-
-/** How long after *Download archive* the dashboard keeps looking in Downloads for the ZIP. */
-export const IMPORT_WINDOW_MS = 12 * HOUR;
 
 /** The part of the runner the look needs: whether a job runs in this tab, and how to start one. */
 export interface LookRunner {
@@ -39,7 +35,7 @@ export async function lookIfDue(accountId: string, runner: LookRunner, now = Dat
 }
 
 /**
- * Imports X's archive from the Downloads folder after the archive job pressed *Download archive*, until it is
+ * Imports X's archive from the Xomoni folder after the archive job pressed *Download archive*, until it is
  * imported or `IMPORT_WINDOW_MS` passed. Only with a folder the person chose and Chrome lets Xomoni read without
  * asking; otherwise the Library shows how. Returns what it did, or null.
  */

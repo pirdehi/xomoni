@@ -9,7 +9,7 @@ import { DAY, HOUR } from '../../src/shared/time';
 import type { Job } from '../../src/shared/types';
 import type { ArchiveRequest } from '../../src/shared/x-archive';
 import { ARCHIVE_STEPS, XArchiveCard, archiveLine, archiveProgress } from '../../src/ui/components/XArchiveCard';
-import type { FolderHandle, FolderStore } from '../../src/ui/downloads-folder';
+import { FOLDER_NOT_CHOSEN, type FolderHandle, type FolderStore, wrongFolder } from '../../src/ui/downloads-folder';
 import type * as Hooks from '../../src/ui/hooks';
 import type { ArchiveStatus } from '../../src/ui/queries';
 import { folderWith } from '../support/folder';
@@ -55,6 +55,9 @@ const status = (over: Partial<ArchiveStatus> = {}): ArchiveStatus => ({
   ...over,
 });
 const idle = { jobId: null, status: 'idle', need: null, message: '' } as const;
+
+/** Stands in for making Downloads/Xomoni with `chrome.downloads`. */
+const makeFolder = vi.fn(() => Promise.resolve(true));
 
 /** A folder store in memory, holding `folder`. */
 function memoryStore(folder: FolderHandle | null = null): FolderStore & { set: ReturnType<typeof vi.fn> } {
@@ -144,7 +147,7 @@ describe('where getting X’s archive stands (#186)', () => {
       lookAt: at.getTime(),
     });
     expect(line?.text).toMatch(
-      /^Asked X 2h ago\. X is making it; Xomoni looks again around 08:00( tomorrow)?, while Xomoni is open, and downloads it\. Choose your Downloads folder below so it comes in by itself\.$/,
+      /^Asked X 2h ago\. X is making it; Xomoni looks again around 08:00( tomorrow)?, while Xomoni is open, and downloads it\. Choose the Xomoni folder below so it comes in by itself\.$/,
     );
     const soon = archiveLine(status({ request: asked() }), { now: NOW, run: idle, folder: true, lookAt: NOW });
     expect(soon?.text).toBe(
@@ -155,10 +158,10 @@ describe('where getting X’s archive stands (#186)', () => {
   it('follows the download until it is imported', () => {
     const downloaded = status({ request: asked({ downloadedAt: NOW - 5 * 60_000 }) });
     expect(archiveLine(downloaded, { now: NOW, run: idle, folder: true, lookAt: null })?.text).toBe(
-      'Downloaded from X 5m ago. Xomoni imports it from your Downloads folder as soon as Chrome has saved it.',
+      'Downloaded from X 5m ago. Xomoni imports it from Downloads › Xomoni as soon as Chrome has saved it.',
     );
     expect(archiveLine(downloaded, { now: NOW, run: idle, folder: false, lookAt: null })?.text).toBe(
-      'Downloaded from X 5m ago. Choose your Downloads folder below, or drop the ZIP, to import it.',
+      'Downloaded from X 5m ago into Downloads › Xomoni. Choose that folder below, or drop the ZIP, to import it.',
     );
     expect(
       archiveLine({ ...downloaded, importedAt: NOW }, { now: NOW, run: idle, folder: true, lookAt: null }),
@@ -185,21 +188,24 @@ describe('XArchiveCard (#186)', () => {
     expect(steps.querySelector('[aria-current="step"]')).toBeNull();
   });
 
-  it('asks for Downloads in the same click, then starts the archive job, staying here', async () => {
-    const downloads = folderWith([]);
+  it('makes Downloads › Xomoni and asks for it in the same click, then starts the archive job, staying here', async () => {
+    const xomoni = folderWith([]);
     const store = memoryStore();
-    const host = pickerHost(downloads);
-    render(<XArchiveCard account={account()} store={store} host={host} />);
+    const host = pickerHost(xomoni);
+    render(<XArchiveCard account={account()} store={store} host={host} makeFolder={makeFolder} />);
     expect(
-      await screen.findByText(/Chrome then asks once for your Downloads folder, so the archive comes in by itself\./),
+      await screen.findByText(/Chrome then opens your Downloads once: open the Xomoni folder there and press Select/),
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Get my archive' }));
 
     await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce());
     expect(mocks.consent).toHaveBeenCalledWith(ME);
+    expect(makeFolder).toHaveBeenCalledOnce();
+    expect(makeFolder.mock.invocationCallOrder[0]).toBeLessThan(host.showDirectoryPicker.mock.invocationCallOrder[0]!);
     expect(host.showDirectoryPicker).toHaveBeenCalledWith({ id: 'downloads', startIn: 'downloads', mode: 'read' });
-    expect(store.set).toHaveBeenCalledWith(downloads);
+    expect(store.set).toHaveBeenCalledWith(xomoni);
+    expect(mocks.toast).not.toHaveBeenCalled();
     const [job] = await db.jobs.toArray();
     expect(job).toMatchObject({ kind: 'archive', archive: 'get' });
     expect(mocks.startJob).toHaveBeenCalledWith(job!.id);
@@ -219,19 +225,35 @@ describe('XArchiveCard (#186)', () => {
   it('starts the job even when the folder picker is closed, and doesn’t ask again once a folder is chosen', async () => {
     const closed = pickerHost(null);
     const store = memoryStore();
-    render(<XArchiveCard account={account()} store={store} host={closed} />);
+    render(<XArchiveCard account={account()} store={store} host={closed} makeFolder={makeFolder} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
     await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce());
     expect(store.set).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith(FOLDER_NOT_CHOSEN, 'neutral');
     cleanup();
     await db.jobs.clear();
 
     const chosen = pickerHost(folderWith([]));
-    render(<XArchiveCard account={account()} store={memoryStore(folderWith([]))} host={chosen} />);
-    await waitFor(() => expect(screen.queryByText(/Chrome then asks once/)).not.toBeInTheDocument());
+    render(
+      <XArchiveCard account={account()} store={memoryStore(folderWith([]))} host={chosen} makeFolder={makeFolder} />,
+    );
+    await waitFor(() => expect(screen.queryByText(/Chrome then opens your Downloads/)).not.toBeInTheDocument());
     await userEvent.click(screen.getByRole('button', { name: 'Get my archive' }));
     await waitFor(() => expect(mocks.startJob).toHaveBeenCalledTimes(2));
     expect(chosen.showDirectoryPicker).not.toHaveBeenCalled();
+  });
+
+  it('refuses another folder in the same click, saying why, and still starts the job (#196)', async () => {
+    const store = memoryStore();
+    const host = pickerHost(folderWith([], 'granted', 'Downloads'));
+    render(<XArchiveCard account={account()} store={store} host={host} makeFolder={makeFolder} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
+
+    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce());
+    expect(store.set).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith(wrongFolder('Downloads'), 'critical');
+    expect(await screen.findByRole('button', { name: 'Choose the Xomoni folder' })).toBeInTheDocument();
   });
 
   it('waits while another job runs, and says so', async () => {

@@ -9,6 +9,32 @@ export const ARCHIVE_PAGE_URL = 'https://x.com/settings/download_your_data';
 /** The path of `ARCHIVE_PAGE_URL`, which the content script checks before it reads or presses anything. */
 export const ARCHIVE_PATH = '/settings/download_your_data';
 
+/** How X names its archive: `twitter-2026-11-08-<hash>.zip`, or `x-…` should X rename it. */
+export const ARCHIVE_FILE = /^(?:twitter|x)-\d{4}-\d{2}-\d{2}-[\w-]+\.zip$/i;
+
+/**
+ * The folder inside Downloads where Chrome saves X's archive for Xomoni (#196). Chrome lets an extension read a
+ * folder inside Downloads, never Downloads itself, so the archive can't stay at the top of Downloads.
+ */
+export const ARCHIVE_FOLDER = 'Xomoni';
+
+/** The note Xomoni saves in the Xomoni folder, which is what makes the folder. */
+export const FOLDER_NOTE = 'About this folder.txt';
+
+const NOTE_TEXT = `Xomoni saves X’s archive here (a ZIP named twitter-….zip) and imports it into its Library by itself.
+It reads only files named like X’s archive in this folder, and nothing leaves this computer.
+You can delete this note. Keep the folder while Xomoni gets your archive.
+`;
+
+/**
+ * The note's fixed address. The service worker knows the note by it: once Xomoni listens to where downloads go, Chrome
+ * forgets the name `downloads.download` gave a file, so the worker names the note itself.
+ */
+export const FOLDER_NOTE_URL = `data:text/plain;charset=utf-8,${encodeURIComponent(NOTE_TEXT)}`;
+
+/** How long after *Download archive* the dashboard keeps looking for the ZIP, and Chrome keeps saving it for Xomoni. */
+export const IMPORT_WINDOW_MS = 12 * HOUR;
+
 /**
  * What the job does on X's archive page. `get`: the person asked for the archive, so it presses *Request archive*
  * when X offers it, or *Download archive* when one is ready. `look`: the dashboard's own look while X makes it, which
@@ -48,4 +74,22 @@ export function nextArchiveLook(request: ArchiveRequest | null, now: number): nu
 /** Whether Xomoni gave up looking for an archive X never made (`STOP_LOOKING_AFTER_MS`). */
 export function archiveOverdue(request: ArchiveRequest | null, now: number): boolean {
   return !!request && request.downloadedAt == null && now - request.requestedAt > STOP_LOOKING_AFTER_MS;
+}
+
+/**
+ * Whether Xomoni is waiting for X's archive to land in Downloads: an archive asked for and not yet downloaded, or
+ * downloaded less than `IMPORT_WINDOW_MS` ago, for any account, or the Xomoni folder chosen for the import.
+ */
+export function expectsArchive(requests: readonly ArchiveRequest[], folderChosen: boolean, now: number): boolean {
+  if (folderChosen) return true;
+  return requests.some((r) => r.downloadedAt == null || now - r.downloadedAt <= IMPORT_WINDOW_MS);
+}
+
+/**
+ * Where Chrome should save a download, relative to Downloads (#196): `Xomoni/<name>` for a file named like X's
+ * archive while Xomoni expects one, or null to leave it where Chrome would put it. Only the file's name is looked at.
+ */
+export function archiveDownloadPath(filename: string, expecting: boolean): string | null {
+  const name = filename.split(/[\\/]/).pop() ?? '';
+  return expecting && ARCHIVE_FILE.test(name) ? `${ARCHIVE_FOLDER}/${name}` : null;
 }

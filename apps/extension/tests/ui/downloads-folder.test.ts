@@ -6,8 +6,10 @@ import {
   type DownloadsApi,
   type FolderHandle,
   FOLDER_NOT_CHOSEN,
+  FOLDER_READY,
   canRead,
   chooseFolder,
+  ensureArchiveFolder,
   fileKey,
   isArchiveFolder,
   kvFolderStore,
@@ -181,6 +183,43 @@ describe('the Xomoni folder in Downloads (#196)', () => {
       problem: FOLDER_NOT_CHOSEN,
     });
     expect(await kvGet('archiveFolderChosen', false)).toBe(false);
+  });
+
+  it('makes the folder once, and tries again only after it couldn’t (#220)', async () => {
+    const failing = vi.fn(() => Promise.resolve(false));
+    expect(await ensureArchiveFolder(failing)).toBe(false);
+    const make = vi.fn(() => Promise.resolve(true));
+    expect(await ensureArchiveFolder(make)).toBe(true);
+    expect(await ensureArchiveFolder(make)).toBe(true);
+    expect(failing).toHaveBeenCalledOnce();
+    expect(make).toHaveBeenCalledOnce();
+  });
+
+  it('waits for another click when making the folder used up this one, then skips making it (#220)', async () => {
+    const folder = { name: 'Xomoni' } as unknown as FolderHandle;
+    const showDirectoryPicker = vi.fn(() => Promise.resolve(folder));
+    const make = vi.fn(() => Promise.resolve(true));
+    const userActivation = { isActive: false };
+    const host = { showDirectoryPicker, navigator: { userActivation } };
+
+    expect(await pickArchiveFolder(kvFolderStore, host, make)).toEqual({ problem: FOLDER_READY });
+    expect(showDirectoryPicker).not.toHaveBeenCalled();
+    expect(await kvGet('archiveFolderChosen', false)).toBe(false);
+
+    userActivation.isActive = true;
+    expect(await pickArchiveFolder(kvFolderStore, host, make)).toEqual({ folder });
+    expect(make).toHaveBeenCalledOnce();
+    expect(showDirectoryPicker).toHaveBeenCalledOnce();
+  });
+
+  it('makes the folder again after a failed choice, in case it was deleted (#220)', async () => {
+    const make = vi.fn(() => Promise.resolve(true));
+    const closed = () => Promise.reject(new DOMException('closed', 'AbortError'));
+    const other = folderWith([], 'granted', 'Downloads');
+    await pickArchiveFolder(kvFolderStore, { showDirectoryPicker: closed }, make);
+    await pickArchiveFolder(kvFolderStore, { showDirectoryPicker: () => Promise.resolve(other) }, make);
+    await pickArchiveFolder(kvFolderStore, { showDirectoryPicker: closed }, make);
+    expect(make).toHaveBeenCalledTimes(3);
   });
 
   it('makes nothing and says nothing where the browser has no folder picker, or the picker fails', async () => {

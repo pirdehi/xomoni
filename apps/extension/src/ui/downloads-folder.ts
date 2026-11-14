@@ -30,6 +30,11 @@ type DirectoryPicker = (options: { id?: string; startIn?: 'downloads'; mode?: 'r
 /** Where the picker lives: `window` in the dashboard, a stand-in in tests. */
 export interface FolderPickerHost {
   showDirectoryPicker?: DirectoryPicker;
+  /**
+   * Whether the click that asked for the folder still lets the page open a picker (User Activation API). A picker
+   * opened after it ran out fails with `SecurityError`, as when Chrome asked where to save the folder note (#220).
+   */
+  navigator?: { userActivation?: { isActive: boolean } };
 }
 
 /** Where the chosen folder's handle is kept between visits; IndexedDB in the dashboard, memory in tests. */
@@ -60,9 +65,7 @@ export const kvFolderStore: FolderStore = {
  * Asks the person for a folder, read-only, the picker opening in Downloads. Returns the folder; `null` when they closed
  * the picker, or Chrome refused the folder they chose; `undefined` when this browser has no such picker.
  */
-export async function chooseFolder(
-  host: FolderPickerHost = window as unknown as FolderPickerHost,
-): Promise<FolderHandle | null | undefined> {
+export async function chooseFolder(host: FolderPickerHost = window): Promise<FolderHandle | null | undefined> {
   const picker = host.showDirectoryPicker;
   if (typeof picker !== 'function') return undefined;
   try {
@@ -110,12 +113,32 @@ export async function makeArchiveFolder(api: DownloadsApi = chromeDownloads, wai
   return false;
 }
 
+const FOLDER_MADE_KEY = 'archiveFolderMade';
+
+/**
+ * Makes Downloads/Xomoni once (#220): the note is saved again only when it wasn't before, or a choice since then
+ * failed (`pickArchiveFolder` forgets it), as when the folder was deleted. Each save may make Chrome ask where to save.
+ */
+export async function ensureArchiveFolder(make: () => Promise<boolean> = makeArchiveFolder): Promise<boolean> {
+  if (await kvGet<unknown>(FOLDER_MADE_KEY, false)) return true;
+  const made = await make();
+  if (made) await kvSet(FOLDER_MADE_KEY, true);
+  return made;
+}
+
 /** Whether a chosen folder is the Xomoni folder, where Chrome saves X's archive (#196). */
 export const isArchiveFolder = (folder: Pick<FolderHandle, 'name'>) => folder.name === ARCHIVE_FOLDER;
 
 /** What the card says when no folder came back: Chrome refuses Downloads itself, so that is the likely reason. */
 export const FOLDER_NOT_CHOSEN =
   'No folder chosen. Chrome doesn’t let extensions read Downloads itself: in the window that opens, open the Xomoni folder inside Downloads, then press Select.';
+
+/**
+ * What the card says when the folder is made but the click can't open the picker any more (#220): Chrome asked where
+ * to save the folder note, and will ask the same for X's archive.
+ */
+export const FOLDER_READY =
+  'The Xomoni folder is ready in Downloads. Press Choose the Xomoni folder once more to open it. If Chrome asks where to save X’s archive, press Save: the Xomoni folder is already chosen there.';
 
 /** What the card says when the person chose another folder than the Xomoni one. */
 export const wrongFolder = (name: string) =>
@@ -127,20 +150,25 @@ export const wrongFolder = (name: string) =>
 export type FolderPick = { folder: FolderHandle; problem?: undefined } | { folder?: undefined; problem: string | null };
 
 /**
- * Makes Downloads/Xomoni, then asks the person for it in the browser's picker, opened in Downloads, and keeps it.
- * Any other folder is refused with the reason, since X's archive never lands there.
+ * Makes Downloads/Xomoni (once, `ensureArchiveFolder`), then asks the person for it in the browser's picker, opened in
+ * Downloads, and keeps it. Any other folder is refused with the reason, since X's archive never lands there. When
+ * making the folder used up the click (Chrome asked where to save the note), the picker waits for the next click
+ * (`FOLDER_READY`, #220). A failed choice makes the folder again next time, in case it was deleted.
  */
 export async function pickArchiveFolder(
   store: FolderStore,
-  host: FolderPickerHost = window as unknown as FolderPickerHost,
+  host: FolderPickerHost = window,
   makeFolder: () => Promise<boolean> = makeArchiveFolder,
 ): Promise<FolderPick> {
   if (typeof host.showDirectoryPicker !== 'function') return { problem: null };
-  await makeFolder().catch(() => false);
+  await ensureArchiveFolder(makeFolder).catch(() => false);
+  if (host.navigator?.userActivation?.isActive === false) return { problem: FOLDER_READY };
   const chosen = await chooseFolder(host);
   if (chosen === undefined) return { problem: null };
-  if (chosen === null) return { problem: FOLDER_NOT_CHOSEN };
-  if (!isArchiveFolder(chosen)) return { problem: wrongFolder(chosen.name) };
+  if (chosen === null || !isArchiveFolder(chosen)) {
+    await kvSet(FOLDER_MADE_KEY, false);
+    return { problem: chosen ? wrongFolder(chosen.name) : FOLDER_NOT_CHOSEN };
+  }
   await store.set(chosen);
   return { folder: chosen };
 }

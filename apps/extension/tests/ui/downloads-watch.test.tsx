@@ -7,6 +7,7 @@ import { archiveImported, db } from '../../src/shared/db';
 import { DownloadsWatch } from '../../src/ui/components/DownloadsWatch';
 import {
   FOLDER_NOT_CHOSEN,
+  FOLDER_READY,
   type FolderHandle,
   type FolderStore,
   fileKey,
@@ -78,10 +79,10 @@ describe('DownloadsWatch (#187)', () => {
     expect(await screen.findByText(/Chrome saves X’s archive in Downloads › Xomoni/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Choose the Xomoni folder' }));
 
+    expect(await screen.findByText(/Watching Downloads › Xomoni for X’s archive/)).toBeInTheDocument();
     expect(makeFolder).toHaveBeenCalledOnce();
     expect(host.showDirectoryPicker).toHaveBeenCalledWith({ id: 'downloads', startIn: 'downloads', mode: 'read' });
     expect(store.current).toBe(folder);
-    expect(await screen.findByText(/Watching Downloads › Xomoni for X’s archive/)).toBeInTheDocument();
   });
 
   it('refuses another folder, saying where X’s archive is saved (#196)', async () => {
@@ -107,6 +108,27 @@ describe('DownloadsWatch (#187)', () => {
     expect(await screen.findByText(FOLDER_NOT_CHOSEN)).toBeInTheDocument();
   });
 
+  it('asks for one more click when Chrome asked where to save the folder note, then opens the picker (#220)', async () => {
+    const folder = folderWith([]);
+    const store = memoryStore();
+    const userActivation = { isActive: false };
+    const host = { ...picker(folder), navigator: { userActivation } };
+    render(<DownloadsWatch account={account()} store={store} host={host} makeFolder={makeFolder} intervalMs={20} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose the Xomoni folder' }));
+
+    expect(await screen.findByText(FOLDER_READY)).toBeInTheDocument();
+    expect(host.showDirectoryPicker).not.toHaveBeenCalled();
+
+    userActivation.isActive = true;
+    await userEvent.click(screen.getByRole('button', { name: 'Choose the Xomoni folder' }));
+
+    expect(await screen.findByText(/Watching Downloads › Xomoni/)).toBeInTheDocument();
+    expect(makeFolder).toHaveBeenCalledOnce();
+    expect(host.showDirectoryPicker).toHaveBeenCalledOnce();
+    expect(store.current).toBe(folder);
+  });
+
   it('still opens the picker when the folder couldn’t be made', async () => {
     const folder = folderWith([]);
     const host = picker(folder);
@@ -115,8 +137,8 @@ describe('DownloadsWatch (#187)', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Choose the Xomoni folder' }));
 
-    expect(host.showDirectoryPicker).toHaveBeenCalledOnce();
     expect(await screen.findByText(/Watching Downloads › Xomoni/)).toBeInTheDocument();
+    expect(host.showDirectoryPicker).toHaveBeenCalledOnce();
   });
 
   it('counts a folder chosen before #196, never where the archive lands, as none', async () => {

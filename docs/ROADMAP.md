@@ -199,7 +199,7 @@ Signing out of Xomoni as cleanly as signing in, and fewer steps from install to 
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| ✅ | Sign out of Xomoni in the extension: one dialog, a signed-out page, the account's data removed on request ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)) | [#226](https://github.com/pirdehi/xomoni/issues/226) | PR_SIGN_OUT |
+| ✅ | Sign out of Xomoni in the extension: one dialog, a signed-out page, the account's data removed on request ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)) | [#226](https://github.com/pirdehi/xomoni/issues/226) | [#227](https://github.com/pirdehi/xomoni/pull/227) |
 
 ## Dropped
 

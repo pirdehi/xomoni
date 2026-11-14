@@ -93,7 +93,7 @@ export function archiveLine(
           action: 'open-x',
           text:
             run.need === 'identity'
-              ? 'X asks you to confirm it’s you. Type your password on X’s page in the Xomoni window; Xomoni never sees it.'
+              ? 'X asks you to confirm it’s you. Type your password on X’s page in the X window; Xomoni never sees it.'
               : run.message,
         };
       }

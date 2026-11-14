@@ -24,6 +24,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- Plain words across the extension (#205). The window Xomoni works in is always *the X window*, never *X worker*, *worker window* or *Xomoni window*. *Inventory* is now *your copy*. Job cards no longer show the engine's phase. Account health reads *Caution: X rate-limited Xomoni in the last hour. Removals checked again on X: 4 confirmed and 1 still to check.*, without a level number. xomoni.com shows a job's phase in words, such as *Searching X*.
 - The Activity log reads like a summary (#204). A run of the same action within one job and one day is one line, such as *Deleted 31 posts and replies, 01:01–01:32*, and opens to its entries. Each entry shows the post's text when Xomoni has it. Warnings and errors are never folded away.
 - The Library shows your copy in one card (#203). How complete it is and where it came from sit at the top, with X's archive below as the recommended way to complete it. Reading from X is folded under *Other ways*, with a line saying when it last ran. Two cards with two main buttons used to say the same thing.
 - Jobs and the Activity log are one page, *Activity*, with two tabs: *Jobs* and *Log* (#202). The menu goes from seven places to six, and links and notifications land on the right tab.

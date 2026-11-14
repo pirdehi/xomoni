@@ -222,7 +222,7 @@ async function noteSearchGap(ctx: JobContext) {
   const left = (await findCandidates(ctx.job.accountId, rules(ctx).filter)).length;
   if (!left) return;
   await ctx.note(
-    `X search showed none of the ${left.toLocaleString()} matching posts in your inventory: X may be hiding this account from search, or the posts are too old for search to show.${
+    `X search showed none of the ${left.toLocaleString()} matching posts in your copy: X may be hiding this account from search, or the posts are too old for search to show.${
       ctx.job.options?.deep ? ' The deep clean visits them one by one.' : ' Turn on the deep clean to reach them.'
     }`,
   );

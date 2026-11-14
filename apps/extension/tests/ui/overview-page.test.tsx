@@ -65,7 +65,7 @@ describe('Overview onboarding (no account yet)', () => {
 
     expect(screen.getByRole('heading', { name: 'Welcome to Xomoni' })).toBeInTheDocument();
     const [open, login, detect] = steps();
-    expect(within(open!).getByText('Open the X worker window')).toBeInTheDocument();
+    expect(within(open!).getByText('Open the X window')).toBeInTheDocument();
     expect(isDone(open!, 1)).toBe(false);
     expect(isDone(login!, 2)).toBe(false);
     expect(isDone(detect!, 3)).toBe(false);
@@ -73,7 +73,7 @@ describe('Overview onboarding (no account yet)', () => {
     expect(within(detect!).getByText('Your dashboard appears here as soon as you are signed in.')).toBeInTheDocument();
     expect(screen.getByText('No servers. Your data stays in this browser.')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Open X worker' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open X window' }));
     await waitFor(() => {
       expect(chrome.windows.create).toHaveBeenCalledWith(
         expect.objectContaining({ url: 'https://x.com/home', focused: true }),
@@ -92,7 +92,7 @@ describe('Overview onboarding (no account yet)', () => {
     expect(isDone(detect!, 3)).toBe(false);
     expect([open!, login!, detect!].map(markerTone)).toEqual(['good', 'neutral', 'neutral']);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show X worker' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Show X window' }));
     await waitFor(() => {
       expect(chrome.windows.update).toHaveBeenCalledWith(WORKER_TAB.windowId, { focused: true });
     });
@@ -117,7 +117,7 @@ describe('Overview onboarding (no account yet)', () => {
     const toasts = renderHook(() => useToasts());
     render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Open X worker' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open X window' }));
 
     await waitFor(() => {
       expect(toasts.result.current).toContainEqual(

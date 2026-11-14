@@ -111,7 +111,7 @@ describe('where getting X’s archive stands (#186)', () => {
     expect(line).toEqual({
       tone: 'attention',
       action: 'open-x',
-      text: 'X asks you to confirm it’s you. Type your password on X’s page in the Xomoni window; Xomoni never sees it.',
+      text: 'X asks you to confirm it’s you. Type your password on X’s page in the X window; Xomoni never sees it.',
     });
     const login = archiveLine(status({ openJob }), {
       now: NOW,

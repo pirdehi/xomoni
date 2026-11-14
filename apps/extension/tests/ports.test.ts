@@ -6,7 +6,7 @@ import * as Notify from '../src/shared/notify';
 
 describe('the engine’s ports (#11)', () => {
   it('defines the X tab’s errors once, and the adapter re-exports the same classes', () => {
-    expect(new WorkerGone().message).toBe('The X worker window was closed');
+    expect(new WorkerGone().message).toBe('The X window was closed');
     expect(new NotReady('loading')).toBeInstanceOf(Error);
     expect(new PageError('bad')).toBeInstanceOf(Error);
     // The runner's `instanceof` checks must hold whichever module a thrower imported them from.

@@ -33,6 +33,17 @@ export interface JobReport {
 const iso = (ms: number | null) => (ms == null ? null : new Date(ms).toISOString());
 
 /**
+ * The engine's phase in the words the website shows (#205): `sweep` and `deep` name how a cleanup finds posts, and a
+ * read's `3/12` is the page it reached. Anything else, such as the archive's states, is sent as it is.
+ */
+export function phaseWords(phase: string): string {
+  if (phase === 'sweep') return 'Searching X';
+  if (phase === 'deep') return 'Visiting each known post';
+  const page = /^(\d+)\/(\d+)$/.exec(phase);
+  return page ? `Page ${page[1]} of ${page[2]}` : phase;
+}
+
+/**
  * The report for `job` of the X account `handle` at risk level `riskLevel` (0–4), or null when the handle isn't
  * one X allows (the account was never seen with its handle), since the website groups jobs by handle, or when the
  * job is a Watch or an archive job, which the website doesn't show (`ReportedKind`).
@@ -46,7 +57,7 @@ export function jobReport(job: Job, handle: string, riskLevel: number | null): J
     kind: job.kind,
     title: job.title.slice(0, 200) || 'Job',
     state: job.state,
-    phase: job.phase.slice(0, 200),
+    phase: phaseWords(job.phase).slice(0, 200),
     state_reason: '',
     matched,
     done,

@@ -182,9 +182,10 @@ describe('JobCard', () => {
       expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument();
     });
 
-    it('shows the phase a job stopped in', async () => {
+    it('keeps the engine’s phase out of the card: only when the job was made shows (#205)', async () => {
       await show(job({ state: 'paused', phase: 'deep' }), true);
-      expect(await screen.findByText(/· phase: deep/)).toBeInTheDocument();
+      expect(await screen.findByText(/^Created /)).toBeInTheDocument();
+      expect(screen.queryByText(/phase/)).not.toBeInTheDocument();
     });
 
     it('offers Resume for a paused job and shows why it paused', async () => {
@@ -341,7 +342,7 @@ describe('JobCard', () => {
         }),
       );
       expect(await screen.findByText('X is making your archive.')).toBeInTheDocument();
-      expect(screen.getByText(/phase: preparing/)).toBeInTheDocument();
+      expect(screen.queryByText(/phase/)).not.toBeInTheDocument();
       expect(screen.queryByText(/posts looked at/)).not.toBeInTheDocument();
       expect(screen.queryByText(/removed/)).not.toBeInTheDocument();
       expect(ring()).toBeNull();

@@ -124,7 +124,7 @@ describe('WorkerTab.open', () => {
   it('fails clearly when Chrome opened a window without a tab', async () => {
     chrome.windows.create.mockResolvedValue({ id: WORKER_TAB.windowId, tabs: [] });
 
-    await expect(worker.open()).rejects.toThrow('Could not open the X worker window');
+    await expect(worker.open()).rejects.toThrow('Could not open the X window');
     expect(chrome.storage.session.set).not.toHaveBeenCalled();
   });
 });
@@ -346,7 +346,7 @@ describe('WorkerTab.waitReady', () => {
     openTab();
 
     await expect(worker.waitReady(signal(), undefined, 5_000)).rejects.toThrow(
-      new NotReady('The X worker tab did not finish loading'),
+      new NotReady('The X window did not finish loading'),
     );
     expect(Date.now()).toBe(NOW + 5_000);
     expect(reload).not.toHaveBeenCalled();
@@ -405,7 +405,7 @@ describe('WorkerTab.navigate', () => {
 describe('worker errors and the shared handle', () => {
   it('names a closed worker window', () => {
     expect(new WorkerGone()).toBeInstanceOf(Error);
-    expect(new WorkerGone().message).toBe('The X worker window was closed');
+    expect(new WorkerGone().message).toBe('The X window was closed');
     expect(new NotReady('x')).toBeInstanceOf(Error);
     expect(new PageError('x')).toBeInstanceOf(Error);
   });

@@ -224,10 +224,7 @@ export function JobCard({ job, compact = false }: { job: Job; compact?: boolean 
               {state.label}
             </Badge>
           </div>
-          <Caption1 className={styles.meta}>
-            Created {fmtAgo(job.createdAt, now)}
-            {job.phase && ` · phase: ${job.phase}`}
-          </Caption1>
+          <Caption1 className={styles.meta}>Created {fmtAgo(job.createdAt, now)}</Caption1>
           {eta != null && !TERMINAL.has(job.state) && (
             <Caption1 className={styles.eta}>
               <Clock16Regular aria-hidden />

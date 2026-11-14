@@ -76,7 +76,7 @@ export function healthReport(input: {
     return n ? [count(n, one, many)] : [];
   });
   if (risk.level === 0 && !seen.length && !notice) parts.push('Healthy: no warnings from X.');
-  else if (risk.level > 0) parts.push(`Risk level ${risk.level} (${RISK_LABELS[risk.level]}): ${risk.reason}.`);
+  else if (risk.level > 0) parts.push(`${RISK_LABELS[risk.level]}: ${risk.reason}.`);
   if (seen.length) parts.push(`During this run X sent ${list(seen)}.`);
   if (notice) parts.push(`X shows: “${notice}”.`);
 
@@ -84,11 +84,11 @@ export function healthReport(input: {
   if (ran || checks.pending) {
     const found = [
       checks.applied ? `${checks.applied} confirmed` : '',
-      checks.notApplied ? `${checks.notApplied} not applied by X` : '',
+      checks.notApplied ? `${checks.notApplied} not done by X` : '',
       checks.unclear ? `${checks.unclear} unclear` : '',
-      checks.pending ? `${checks.pending} still to run` : '',
+      checks.pending ? `${checks.pending} still to check` : '',
     ].filter(Boolean);
-    parts.push(`Sample checks: ${list(found)}.`);
+    parts.push(`Removals checked again on X: ${list(found)}.`);
   }
 
   if (risk.fullStop) parts.push('Check the account on X before deciding to resume.');

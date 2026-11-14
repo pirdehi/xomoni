@@ -388,7 +388,7 @@ export function SettingsPage({ account, worker }: PageProps) {
             </Field>
             <div className={styles.data}>
               <Caption1 as="p" block className={styles.dataNote}>
-                Your inventory, jobs and log live only in this browser profile.
+                Your copy, jobs and log live only in this browser.
               </Caption1>
               <div className={styles.buttons}>
                 <Button icon={<ArrowDownload20Regular />} onClick={() => void exportAll()}>

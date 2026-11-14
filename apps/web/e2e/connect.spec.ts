@@ -83,7 +83,8 @@ test.describe('connecting a browser with one click (#228, ADR-0024)', () => {
     await page.goto(OPENED_BY_XOMONI);
     await page.getByRole('button', { name: 'Connect this browser' }).click();
 
-    await expect(page.getByRole('alert')).toContainText('Xomoni didn’t answer in this browser.');
+    // Next.js's route announcer is an alert too, so the message is found by its text.
+    await expect(page.getByRole('alert').filter({ hasText: 'Xomoni didn’t answer in this browser.' })).toBeVisible();
   });
 
   test('opened without a request, it says to start from Xomoni', async ({ page }) => {

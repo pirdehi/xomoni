@@ -90,39 +90,71 @@ const chromeDownloads: DownloadsApi = {
 };
 
 /**
+ * What making the folder came to: `true` when the note is saved, `false` when it couldn't be, and `'asking'` while
+ * Chrome asks the person where to save it (a Chrome set to ask where to save each file, #220).
+ */
+export type FolderMade = boolean | 'asking';
+
+const FOLDER_MADE_KEY = 'archiveFolderMade';
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
  * Makes Downloads/Xomoni, if it isn't there yet, by saving a short note in it (`FOLDER_NOTE`, from its fixed address,
  * which the service worker places in the folder), so the person can open it in the picker. The note is left out of
- * Chrome's list of downloads. Returns whether the note was saved within `waitMs`.
+ * Chrome's list of downloads.
+ *
+ * A note saved by itself takes a moment. One still under way after `quickMs` means Chrome is asking where to save it:
+ * then this answers `'asking'` at once, so no folder picker opens behind Chrome's dialog, where macOS never shows it
+ * (#220). It keeps watching the note, every `stepMs` for up to `waitMs`, and remembers the folder as made once it is
+ * saved.
  */
-export async function makeArchiveFolder(api: DownloadsApi = chromeDownloads, waitMs = 3000): Promise<boolean> {
+export async function makeArchiveFolder(
+  api: DownloadsApi = chromeDownloads,
+  quickMs = 1500,
+  waitMs = 120_000,
+  stepMs = 500,
+): Promise<FolderMade> {
   const id = await api.download({
     url: FOLDER_NOTE_URL,
     filename: `${ARCHIVE_FOLDER}/${FOLDER_NOTE}`,
     conflictAction: 'overwrite',
     saveAs: false,
   });
-  for (let waited = 0; waited <= waitMs; waited += 100) {
+  const look = async (): Promise<FolderMade> => {
     const [item] = await api.search({ id });
     if (item?.state === 'complete') {
       await api.erase({ id });
       return true;
     }
-    if (item?.state === 'interrupted') return false;
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (item?.state === 'in_progress') return 'asking';
+    return false;
+  };
+  let state: FolderMade = false;
+  for (let waited = 0; waited <= quickMs; waited += 100) {
+    state = await look();
+    if (state !== 'asking') return state;
+    await pause(100);
   }
-  return false;
+  void (async () => {
+    for (let waited = 0; waited <= waitMs; waited += stepMs) {
+      await pause(stepMs);
+      const later = await look();
+      if (later === true) await kvSet(FOLDER_MADE_KEY, true);
+      if (later !== 'asking') return;
+    }
+  })().catch(() => undefined);
+  return state;
 }
-
-const FOLDER_MADE_KEY = 'archiveFolderMade';
 
 /**
  * Makes Downloads/Xomoni once (#220): the note is saved again only when it wasn't before, or a choice since then
  * failed (`pickArchiveFolder` forgets it), as when the folder was deleted. Each save may make Chrome ask where to save.
  */
-export async function ensureArchiveFolder(make: () => Promise<boolean> = makeArchiveFolder): Promise<boolean> {
+export async function ensureArchiveFolder(make: () => Promise<FolderMade> = makeArchiveFolder): Promise<FolderMade> {
   if (await kvGet<unknown>(FOLDER_MADE_KEY, false)) return true;
   const made = await make();
-  if (made) await kvSet(FOLDER_MADE_KEY, true);
+  if (made === true) await kvSet(FOLDER_MADE_KEY, true);
   return made;
 }
 
@@ -132,6 +164,13 @@ export const isArchiveFolder = (folder: Pick<FolderHandle, 'name'>) => folder.na
 /** What the card says when no folder came back: Chrome refuses Downloads itself, so that is the likely reason. */
 export const FOLDER_NOT_CHOSEN =
   'No folder chosen. Chrome doesn’t let extensions read Downloads itself: in the window that opens, open the Xomoni folder inside Downloads, then press Select.';
+
+/**
+ * What the card says while Chrome asks where to save the folder note (#220): the picker waits for the next click, since
+ * one opened behind Chrome's dialog never shows.
+ */
+export const FOLDER_SAVING =
+  'Chrome asks where to save Xomoni’s folder note: press Save there, with the Xomoni folder already chosen. Then press Choose the Xomoni folder again. Chrome will ask the same for X’s archive: press Save then too.';
 
 /**
  * What the card says when the folder is made but the click can't open the picker any more (#220): Chrome asked where
@@ -152,16 +191,17 @@ export type FolderPick = { folder: FolderHandle; problem?: undefined } | { folde
 /**
  * Makes Downloads/Xomoni (once, `ensureArchiveFolder`), then asks the person for it in the browser's picker, opened in
  * Downloads, and keeps it. Any other folder is refused with the reason, since X's archive never lands there. When
- * making the folder used up the click (Chrome asked where to save the note), the picker waits for the next click
- * (`FOLDER_READY`, #220). A failed choice makes the folder again next time, in case it was deleted.
+ * Chrome is asking where to save the note, or that used up the click, the picker waits for the next click
+ * (`FOLDER_SAVING`, `FOLDER_READY`, #220). A failed choice makes the folder again next time, in case it was deleted.
  */
 export async function pickArchiveFolder(
   store: FolderStore,
   host: FolderPickerHost = window,
-  makeFolder: () => Promise<boolean> = makeArchiveFolder,
+  makeFolder: () => Promise<FolderMade> = makeArchiveFolder,
 ): Promise<FolderPick> {
   if (typeof host.showDirectoryPicker !== 'function') return { problem: null };
-  await ensureArchiveFolder(makeFolder).catch(() => false);
+  const made = await ensureArchiveFolder(makeFolder).catch(() => false);
+  if (made === 'asking') return { problem: FOLDER_SAVING };
   if (host.navigator?.userActivation?.isActive === false) return { problem: FOLDER_READY };
   const chosen = await chooseFolder(host);
   if (chosen === undefined) return { problem: null };

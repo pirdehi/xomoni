@@ -9,6 +9,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 - A connected browser hears that 0.2.0 is out (#151).
 - An install guide at xomoni.com/install: download the latest release, load it in Chrome, Edge or Brave, and connect it with a code. The site's install buttons lead there (#44).
 
+### Fixed
+
+- *Choose the Xomoni folder* still did nothing in a Chrome that asks where to save each file (#220). Xomoni opened the folder picker while Chrome's *Save As* dialog for its folder note was still up, and macOS never showed it. Now, while Chrome asks, the card says to press Save there and then the button again; the folder is remembered once the note is saved.
+
 ## [0.2.0] - 2026-11-14
 
 The first release since the pilot began. Cleanups now really delete, and keep going while you work in other windows. *Get my archive* asks X for your archive and imports it by itself. The dashboard is simpler: Home says what to do next, the Library shows your copy in one card, and Activity has jobs and the log in one place. xomoni.com and the release pipeline went through a security review.

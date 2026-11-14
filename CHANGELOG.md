@@ -6,6 +6,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- A connected browser hears that 0.2.0 is out (#151).
 - An install guide at xomoni.com/install: download the latest release, load it in Chrome, Edge or Brave, and connect it with a code. The site's install buttons lead there (#44).
 
 ## [0.2.0] - 2026-11-14

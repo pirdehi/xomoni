@@ -30,16 +30,17 @@ insert into paired select device_id, token from public.pair_device((select code 
 reset role;
 select throws_ok($$ insert into public.extension_releases (version) values ('1.0') $$, '23514', null,
   'a version must be three numbers');
-insert into public.extension_releases (version, security) values ('0.2.0', false), ('0.10.0', true), ('0.9.0', false);
+-- Far above any real release, so the releases recorded by migrations don't change the answers.
+insert into public.extension_releases (version, security) values ('90.2.0', false), ('90.10.0', true), ('90.9.0', false);
 
 set local role anon;
 select is(public.device_report((select token from paired), '0.1.0', '[]'),
-  '{"latest": "0.10.0", "security": true}'::jsonb, 'the newest release is 0.10.0, after 0.9.0, and fixes a vulnerability');
-select is(public.device_report((select token from paired), '0.9.0', '[]') ->> 'security', 'true',
+  '{"latest": "90.10.0", "security": true}'::jsonb, 'the newest release is 90.10.0, after 90.9.0, and fixes a vulnerability');
+select is(public.device_report((select token from paired), '90.9.0', '[]') ->> 'security', 'true',
   'a security release newer than the reporting version is flagged');
-select is(public.device_report((select token from paired), '0.10.0', '[]'),
-  '{"latest": "0.10.0", "security": false}'::jsonb, 'nothing is flagged to the newest version');
-select is(public.device_report((select token from paired), '0.11.0', '[]') ->> 'security', 'false',
+select is(public.device_report((select token from paired), '90.10.0', '[]'),
+  '{"latest": "90.10.0", "security": false}'::jsonb, 'nothing is flagged to the newest version');
+select is(public.device_report((select token from paired), '90.11.0', '[]') ->> 'security', 'false',
   'nor to a version newer than every release, such as a build of main');
 select is(public.device_report((select token from paired), 'dev', '[]') ->> 'security', 'true',
   'a version that isn''t three numbers counts as older than every release');

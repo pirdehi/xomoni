@@ -16,7 +16,7 @@ Both roadmaps are updated together: a pull request that finishes a task ticks it
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.2.0 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-14 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md)
+**Last updated:** 2026-11-14 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -75,7 +75,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Delete the account only after a recent sign-in | [#80](https://github.com/pirdehi/xomoni/issues/80) | [#85](https://github.com/pirdehi/xomoni/pull/85) |
 | ✅ | Cap devices and jobs per account | [#82](https://github.com/pirdehi/xomoni/issues/82) | [#88](https://github.com/pirdehi/xomoni/pull/88) |
 | ✅ | Sign out of every session | [#83](https://github.com/pirdehi/xomoni/issues/83) | [#87](https://github.com/pirdehi/xomoni/pull/87) |
-| ⏸ | Realtime channel private to each user (code merged; the maintainer turns off public access in Supabase) | [#81](https://github.com/pirdehi/xomoni/issues/81) | [#89](https://github.com/pirdehi/xomoni/pull/89) |
+| ✅ | Realtime channel private to each user; public access to channels off in Supabase since 14 November | [#81](https://github.com/pirdehi/xomoni/issues/81) | [#89](https://github.com/pirdehi/xomoni/pull/89) |
 | ⏸ | Google brand verification, so the consent screen says Xomoni | [#9](https://github.com/pirdehi/xomoni/issues/9) | |
 
 ## Phase 4 · Extension: real-account pilot
@@ -151,7 +151,7 @@ From the security review of 2026-11-04 of the extension, xomoni.com, the databas
 | ✅ | Trust only Xomoni's own messages: sender checks, payload validation, a sealed page-world channel | [#145](https://github.com/pirdehi/xomoni/issues/145) | [#165](https://github.com/pirdehi/xomoni/pull/165) |
 | ✅ | Read X's restriction notices only from X's own banners, not from post text | [#146](https://github.com/pirdehi/xomoni/issues/146) | [#154](https://github.com/pirdehi/xomoni/pull/154) |
 | ✅ | xomoni.com: Trusted Types, CSP reports, tighter images, CORP, Origin check on sign-out | [#147](https://github.com/pirdehi/xomoni/issues/147) | [#160](https://github.com/pirdehi/xomoni/pull/160) |
-| ⬜ | Account security: current password checked by the server, MFA, session age, email quota | [#148](https://github.com/pirdehi/xomoni/issues/148) | |
+| 🔄 | Account security: current password checked by the server (on since 14 November), MFA ([#173](https://github.com/pirdehi/xomoni/issues/173)), session age and email quota (paid plans) | [#148](https://github.com/pirdehi/xomoni/issues/148) | |
 | ✅ | Database: private Realtime, no auto-exposed tables, SSL only, expiring device tokens, account shown on pairing | [#149](https://github.com/pirdehi/xomoni/issues/149) | [#170](https://github.com/pirdehi/xomoni/pull/170), [#171](https://github.com/pirdehi/xomoni/pull/171), [#172](https://github.com/pirdehi/xomoni/pull/172) |
 | ✅ | Security monitoring: CodeQL, secret-scanning options, security.txt, alerts (alerts need paid plans: [#161](https://github.com/pirdehi/xomoni/issues/161)) | [#150](https://github.com/pirdehi/xomoni/issues/150) | [#162](https://github.com/pirdehi/xomoni/pull/162) |
 | ✅ | Local data hygiene: token storage, complete wipe, archive size limits, update notice | [#151](https://github.com/pirdehi/xomoni/issues/151) | [#166](https://github.com/pirdehi/xomoni/pull/166), [#167](https://github.com/pirdehi/xomoni/pull/167) |

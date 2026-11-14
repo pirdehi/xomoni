@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-14
+
+The first release since the pilot began. Cleanups now really delete, and keep going while you work in other windows. *Get my archive* asks X for your archive and imports it by itself. The dashboard is simpler: Home says what to do next, the Library shows your copy in one card, and Activity has jobs and the log in one place. xomoni.com and the release pipeline went through a security review.
+
 ### Added
 
 - *Get my archive* in the Library gets X's archive for you (#186). Xomoni opens X's archive page in its X window and presses X's own *Request archive*, then *Download archive* once X has made it, and nothing else. If X asks for your password or a code, Xomoni waits while you type it on X's page; it never sees it. While X makes the archive (a day or more), Xomoni looks again by itself and downloads it, and the ZIP is imported from your Downloads folder on whichever page of the dashboard is open. A page Xomoni doesn't recognize stops the job with nothing pressed, and says which button to press yourself.

@@ -30,7 +30,7 @@ const answers =
 (globalThis as unknown as { chrome: unknown }).chrome = {
   runtime: {
     getURL: (p: string) => `/${p}`,
-    getManifest: () => ({ version: '0.1.0' }),
+    getManifest: () => ({ version: '0.2.0' }),
     sendMessage: answers(undefined),
     onMessage: { addListener() {} },
   },

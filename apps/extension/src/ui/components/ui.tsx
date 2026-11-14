@@ -13,7 +13,7 @@ import {
   DialogSurface,
   DialogTitle,
   Switch,
-  Title3,
+  Title2,
   ToggleButton,
   makeStyles,
   mergeClasses,
@@ -23,10 +23,11 @@ import { ChevronDown16Regular, ChevronUp16Regular, Dismiss20Regular } from '@flu
 import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 const useStyles = makeStyles({
+  // A light edge and a soft shadow on the page's grey, with room inside (#207).
   card: {
     backgroundColor: tokens.colorNeutralBackground1,
-    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusXLarge,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke3}`,
+    borderRadius: tokens.borderRadius2XLarge,
     boxShadow: tokens.shadow2,
   },
   cardHeader: {
@@ -34,18 +35,19 @@ const useStyles = makeStyles({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: tokens.spacingHorizontalL,
-    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL} 0`,
+    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL} 0`,
   },
   cardTitle: {
     margin: 0,
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase400,
+    lineHeight: tokens.lineHeightBase400,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground1,
   },
-  cardSubtitle: { margin: `${tokens.spacingVerticalXXS} 0 0`, color: tokens.colorNeutralForeground2 },
+  cardSubtitle: { margin: `${tokens.spacingVerticalXXS} 0 0`, color: tokens.colorNeutralForeground3 },
   row: { display: 'flex', flexShrink: 0, alignItems: 'center', gap: tokens.spacingHorizontalS },
   minW0: { minWidth: 0 },
-  padded: { padding: tokens.spacingHorizontalXL },
+  padded: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}` },
   paddedBelowHeader: { paddingTop: tokens.spacingVerticalL },
   danger: {
     backgroundColor: tokens.colorStatusDangerBackground3,
@@ -54,16 +56,17 @@ const useStyles = makeStyles({
     ':hover:active': { backgroundColor: tokens.colorStatusDangerForeground1 },
   },
   stat: {
-    padding: tokens.spacingHorizontalL,
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL}`,
     backgroundColor: tokens.colorNeutralBackground1,
-    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusXLarge,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke3}`,
+    borderRadius: tokens.borderRadius2XLarge,
+    boxShadow: tokens.shadow2,
   },
   statLabel: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
     fontWeight: tokens.fontWeightSemibold,
   },
@@ -79,7 +82,7 @@ const useStyles = makeStyles({
   statSub: {
     marginTop: tokens.spacingVerticalXS,
     fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground3,
   },
   meter: {
     height: '6px',
@@ -180,11 +183,11 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalL,
     marginBottom: tokens.spacingVerticalXXL,
   },
-  pageTitle: { margin: 0, color: tokens.colorNeutralForeground1 },
+  pageTitle: { margin: 0, color: tokens.colorNeutralForeground1, letterSpacing: '-0.01em' },
   pageDescription: {
     margin: `${tokens.spacingVerticalXS} 0 0`,
     maxWidth: '42rem',
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground3,
   },
 });
 
@@ -606,9 +609,9 @@ export function PageHeader({
   return (
     <div className={styles.pageHeader}>
       <div>
-        <Title3 as="h1" block className={styles.pageTitle}>
+        <Title2 as="h1" block className={styles.pageTitle}>
           {title}
-        </Title3>
+        </Title2>
         {description && (
           <Body1 as="p" block className={styles.pageDescription}>
             {description}

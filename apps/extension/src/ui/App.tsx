@@ -139,6 +139,7 @@ const useStyles = makeStyles({
   navItemCurrent: {
     backgroundColor: tokens.colorBrandBackground2,
     color: tokens.colorBrandForeground2,
+    fontWeight: tokens.fontWeightSemibold,
     ':hover': { backgroundColor: tokens.colorBrandBackground2Hover, color: tokens.colorBrandForeground2 },
     ':active': { backgroundColor: tokens.colorBrandBackground2Pressed },
   },

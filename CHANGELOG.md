@@ -24,6 +24,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- A cleaner, more modern look, in light and dark (#207). Cards have a lighter edge, a soft shadow and more room inside. Page titles are larger, explanations are quieter, and the page you are on is bold in the menu. Only Fluent UI's own tokens are used (ADR-0019).
 - Each count says what it counts (#206). Home's counters are *in your copy*: what Xomoni knows is still on X, and what it removed. X's own count, which can be larger, is in the Library with how much of it Xomoni has. Cleanup says *1,222 in your copy* instead of *known*.
 - Plain words across the extension (#205). The window Xomoni works in is always *the X window*, never *X worker*, *worker window* or *Xomoni window*. *Inventory* is now *your copy*. Job cards no longer show the engine's phase. Account health reads *Caution: X rate-limited Xomoni in the last hour. Removals checked again on X: 4 confirmed and 1 still to check.*, without a level number. xomoni.com shows a job's phase in words, such as *Searching X*.
 - The Activity log reads like a summary (#204). A run of the same action within one job and one day is one line, such as *Deleted 31 posts and replies, 01:01–01:32*, and opens to its entries. Each entry shows the post's text when Xomoni has it. Warnings and errors are never folded away.

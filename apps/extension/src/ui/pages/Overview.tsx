@@ -254,9 +254,11 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
       {status && <StatusCard status={status} navigate={navigate} />}
       {steps && <GettingStarted steps={steps} navigate={navigate} />}
 
-      <Caption1 as="p" className={styles.countsNote}>
-        In your copy: what Xomoni knows is still on X, and what it removed. X’s own count is in the Library.
-      </Caption1>
+      <div className={styles.countsNote}>
+        <Caption1>
+          In your copy: what Xomoni knows is still on X, and what it removed. X’s own count is in the Library.
+        </Caption1>
+      </div>
       <section aria-label="Counts" className={styles.counts}>
         <StatTile label="Removed by Xomoni" icon={<Delete16Regular />} value={fmtNumber(removed)} sub="all kinds" />
         <StatTile

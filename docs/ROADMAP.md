@@ -11,7 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
-- Phase 12, a simpler dashboard ([UX review](UX-REVIEW-2026-11-14.md)).
+- Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
 - Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](PHASE-11-REPORT.md)).
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6, the first release (v0.2.0, waiting for the maintainer's go).
@@ -174,7 +174,7 @@ Getting X's archive into Xomoni took more than ten steps by hand. This phase bri
 | ⏸ | Get X's archive as a job through X's own settings page: request, wait, notify, download; the password is typed on X only. Checked live on 13 and 14 November: asking X works on the real page; the download and the import wait for X to make the archive (1 to 3 days) | [#186](https://github.com/pirdehi/xomoni/issues/186) | [#191](https://github.com/pirdehi/xomoni/pull/191) |
 | ✅ | Import the downloaded archive by itself from the Downloads folder, with one click as the fallback. Chrome refuses Downloads itself, so X's archive is saved in Downloads › Xomoni (#196) | [#187](https://github.com/pirdehi/xomoni/issues/187), [#196](https://github.com/pirdehi/xomoni/issues/196) | [#190](https://github.com/pirdehi/xomoni/pull/190), [#197](https://github.com/pirdehi/xomoni/pull/197) |
 
-## Phase 12 · A simpler dashboard
+## Phase 12 · A simpler dashboard ✅
 
 A UX review of the whole dashboard found more places than tasks, numbers without a next step, expert settings up front and engine words in the interface. This phase brings each page down to one primary action, in plain words, with a modern look; every number and setting stays reachable. Review: [English](UX-REVIEW-2026-11-14.md) · [فارسی](UX-REVIEW-2026-11-14.fa.md).
 
@@ -189,7 +189,7 @@ A UX review of the whole dashboard found more places than tasks, numbers without
 | ✅ | An Activity log grouped and readable | [#204](https://github.com/pirdehi/xomoni/issues/204) | [#215](https://github.com/pirdehi/xomoni/pull/215) |
 | ✅ | Plain words across the dashboard | [#205](https://github.com/pirdehi/xomoni/issues/205) | [#216](https://github.com/pirdehi/xomoni/pull/216) |
 | ✅ | One set of numbers | [#206](https://github.com/pirdehi/xomoni/issues/206) | [#217](https://github.com/pirdehi/xomoni/pull/217) |
-| ⬜ | A modern look, light and dark | [#207](https://github.com/pirdehi/xomoni/issues/207) | |
+| ✅ | A modern look, light and dark | [#207](https://github.com/pirdehi/xomoni/issues/207) | [#218](https://github.com/pirdehi/xomoni/pull/218) |
 
 ## Dropped
 

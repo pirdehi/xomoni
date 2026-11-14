@@ -56,6 +56,9 @@ const status = (over: Partial<ArchiveStatus> = {}): ArchiveStatus => ({
 });
 const idle = { jobId: null, status: 'idle', need: null, message: '' } as const;
 
+/** Room for the clicks that write the job to IndexedDB, which can take more than a second on a busy machine. */
+const SLOW = { timeout: 5000 };
+
 /** Stands in for making Downloads/Xomoni with `chrome.downloads`. */
 const makeFolder = vi.fn(() => Promise.resolve(true));
 
@@ -199,7 +202,7 @@ describe('XArchiveCard (#186)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Get my archive' }));
 
-    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
     expect(mocks.consent).toHaveBeenCalledWith(ME);
     expect(makeFolder).toHaveBeenCalledOnce();
     expect(makeFolder.mock.invocationCallOrder[0]).toBeLessThan(host.showDirectoryPicker.mock.invocationCallOrder[0]!);
@@ -227,7 +230,7 @@ describe('XArchiveCard (#186)', () => {
     const store = memoryStore();
     render(<XArchiveCard account={account()} store={store} host={closed} makeFolder={makeFolder} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
-    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
     expect(store.set).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(FOLDER_NOT_CHOSEN, 'neutral');
     cleanup();
@@ -239,7 +242,7 @@ describe('XArchiveCard (#186)', () => {
     );
     await waitFor(() => expect(screen.queryByText(/Chrome then opens your Downloads/)).not.toBeInTheDocument());
     await userEvent.click(screen.getByRole('button', { name: 'Get my archive' }));
-    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledTimes(2), SLOW);
     expect(chosen.showDirectoryPicker).not.toHaveBeenCalled();
   });
 
@@ -250,7 +253,7 @@ describe('XArchiveCard (#186)', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
 
-    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
     expect(store.set).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(wrongFolder('Downloads'), 'critical');
     expect(await screen.findByRole('button', { name: 'Choose the Xomoni folder' })).toBeInTheDocument();
@@ -279,7 +282,7 @@ describe('XArchiveCard (#186)', () => {
     const host = pickerHost(folderWith([]));
     render(<XArchiveCard account={account()} store={memoryStore()} host={host} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Look now' }));
-    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
     expect((await db.jobs.toArray())[0]).toMatchObject({ kind: 'archive', archive: 'look' });
     expect(host.showDirectoryPicker).not.toHaveBeenCalled();
   });

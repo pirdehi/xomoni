@@ -29,6 +29,7 @@ import { downloadFile, errorMessage, toDateInput } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
 import { CloudCard } from '../components/CloudCard';
+import { LimitsPanel } from '../components/LimitsPanel';
 import { xLinkOf } from '../components/ConnectionMap';
 
 const ACTIONS: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
@@ -148,10 +149,11 @@ const save = (s: Settings) => {
  * Pacing presets and per-action rules, active hours, notifications, the failure limit, theme, and
  * export or wipe of local data, drawn with Fluent UI (ADR-0019). Presets come first (#198): *Careful* reads as a few
  * daily caps, and the table of every pacing value shows only under *Custom*; the failure limit sits under *Advanced*.
+ * Today's use of the limits, once on Home, is folded here (#201).
  * Each change is saved to the `kv` table at once; a running job keeps the settings it read when it started. Each
  * pacing field is named by its action and column (such as "Unlike, Per hour") for screen readers.
  */
-export function SettingsPage({ worker }: PageProps) {
+export function SettingsPage({ account, worker }: PageProps) {
   const styles = useStyles();
   const settings = useLiveQuery(getSettings, []);
   const run = useRunner();
@@ -270,6 +272,13 @@ export function SettingsPage({ worker }: PageProps) {
           )}
           <XLimitsTable />
         </Card>
+
+        <Disclosure
+          label="Today’s use of X’s limits"
+          summary="How much of each cap Xomoni used in the last hour and day, and X’s own 15-minute counts."
+        >
+          <LimitsPanel accountId={account.id} />
+        </Disclosure>
 
         <div className={styles.columns}>
           <Card title="Schedule & safety">

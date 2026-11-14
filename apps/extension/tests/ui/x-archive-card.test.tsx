@@ -194,6 +194,21 @@ describe('XArchiveCard (#186)', () => {
     vi.clearAllMocks();
   });
 
+  it('draws as a part of another card, recommended until imported (#203)', async () => {
+    const { unmount } = render(<XArchiveCard account={account()} store={memoryStore()} host={{}} bare />);
+    const part = await screen.findByRole('region', { name: 'X’s archive' });
+    expect(within(part).getByRole('heading', { level: 3, name: 'X’s archive' })).toBeInTheDocument();
+    expect(within(part).getByText('Recommended')).toBeInTheDocument();
+    expect(within(part).getByRole('list', { name: 'Getting X’s archive' })).toBeInTheDocument();
+    unmount();
+
+    await markArchiveImported(ME);
+    render(<XArchiveCard account={account()} store={memoryStore()} host={{}} bare />);
+    const imported = await screen.findByRole('region', { name: 'X’s archive' });
+    await waitFor(() => expect(within(imported).getByText(/^Last imported /)).toBeInTheDocument());
+    expect(within(imported).queryByText('Recommended')).not.toBeInTheDocument();
+  });
+
   it('shows the four steps before anything started', async () => {
     render(<XArchiveCard account={account()} store={memoryStore()} host={{}} />);
     const steps = await screen.findByRole('list', { name: 'Getting X’s archive' });

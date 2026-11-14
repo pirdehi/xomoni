@@ -27,7 +27,7 @@ import { ARCHIVE_PAGE_URL } from '../../shared/x-archive';
 import { DownloadCopyDialog } from '../components/DownloadCopy';
 import { ItemBrowser } from '../components/ItemBrowser';
 import { XArchiveCard } from '../components/XArchiveCard';
-import { Badge, Button, Card, PageHeader } from '../components/ui';
+import { Badge, Button, Card, Disclosure, PageHeader } from '../components/ui';
 import { errorMessage, fmtAgo, fmtNumber } from '../format';
 import { startJob, toast, useRunner } from '../hooks';
 import type { PageProps } from '../navigation';
@@ -48,49 +48,41 @@ const PARTS: { target: ScanTarget; label: string }[] = [
 ];
 
 const useStyles = makeStyles({
-  columns: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr)',
-    gap: tokens.spacingHorizontalL,
-    '@media (min-width: 1024px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
-  },
   below: { marginTop: tokens.spacingVerticalL },
   progress: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalXS },
   muted: { color: tokens.colorNeutralForeground3 },
+  // The sources as one row of chips, so the archive below is what stands out (#203).
   sources: {
     listStyleType: 'none',
-    margin: `${tokens.spacingVerticalL} 0`,
+    margin: `${tokens.spacingVerticalM} 0 ${tokens.spacingVerticalL}`,
     padding: 0,
     display: 'flex',
-    flexDirection: 'column',
-    rowGap: tokens.spacingVerticalS,
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalS,
   },
   source: {
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    padding: tokens.spacingHorizontalM,
-    borderRadius: tokens.borderRadiusLarge,
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderRadius: tokens.borderRadiusCircular,
     border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground2,
   },
-  sourceIcon: {
-    display: 'grid',
-    placeItems: 'center',
-    flexShrink: 0,
-    width: '32px',
-    height: '32px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorBrandBackground2,
-    color: tokens.colorBrandForeground1,
+  sourceIcon: { display: 'inline-flex', flexShrink: 0, color: tokens.colorBrandForeground1 },
+  sourceText: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  other: {
+    marginTop: tokens.spacingVerticalL,
+    paddingTop: tokens.spacingVerticalM,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
   },
-  sourceText: { display: 'flex', flexDirection: 'column', minWidth: 0, flexGrow: 1 },
+  otherText: { display: 'block', margin: `0 0 ${tokens.spacingVerticalM}`, color: tokens.colorNeutralForeground2 },
   badge: { flexShrink: 0, whiteSpace: 'nowrap' },
   actions: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalS },
   note: { display: 'block', margin: `${tokens.spacingVerticalM} 0 0`, color: tokens.colorNeutralForeground3 },
 });
 
-/** One source of the copy, with whether and when it was last read or imported. */
+/** One source of the copy as a chip, with whether and when it was last read or imported; `detail` is its tooltip. */
 function Source({
   icon,
   title,
@@ -108,13 +100,12 @@ function Source({
 }) {
   const s = useStyles();
   return (
-    <li className={s.source} data-done={done}>
+    <li className={s.source} data-done={done} title={detail}>
       <span className={s.sourceIcon} aria-hidden>
         {icon}
       </span>
       <span className={s.sourceText}>
         <Body1Strong>{title}</Body1Strong>
-        <Caption1 className={s.muted}>{detail}</Caption1>
       </span>
       <span className={s.badge}>
         {done ? <Badge tone="good">{at ? `${doneLabel} ${fmtAgo(at)}` : doneLabel}</Badge> : <Badge>Not yet</Badge>}
@@ -153,9 +144,10 @@ function Coverage({ status, handle }: { status: CopyStatus; handle: string }) {
 }
 
 /**
- * How complete Xomoni's copy is (#185): X's count against what Xomoni has, each source with when it was last read,
- * and one action that reads everything a read can reach in one job (`complete`). A read already under way is shown
- * instead of a second one; one part can still be read alone.
+ * How complete Xomoni's copy is, in one card (#185, #203): X's count against what Xomoni has, each source with when it
+ * was last read, X's archive as the recommended way to complete it, and reading from X folded under *Other ways*:
+ * one job that reads everything a read can reach (`complete`), or one part alone. A read already under way is shown
+ * instead of a second one.
  */
 function CopyCard({ account, navigate }: { account: Account; navigate: PageProps['navigate'] }) {
   const s = useStyles();
@@ -174,11 +166,14 @@ function CopyCard({ account, navigate }: { account: Account; navigate: PageProps
   };
 
   const readBefore = !!status && (status.recentAt != null || status.historyAt != null);
+  const lastRead = Math.max(status?.recentAt ?? 0, status?.historyAt ?? 0);
+  const readsSummary = status?.openRead
+    ? 'A read from X is under way.'
+    : readBefore
+      ? `Last read from X ${fmtAgo(lastRead)}.`
+      : 'Xomoni can also read your account straight from X, while X makes the archive.';
   return (
-    <Card
-      title="Your copy"
-      subtitle="Xomoni reads your account from X and from X’s archive, and keeps what it finds on this computer."
-    >
+    <Card title="Your copy" subtitle={`Everything Xomoni has of @${account.handle}, kept on this computer.`}>
       {status && <Coverage status={status} handle={account.handle} />}
       <ul className={s.sources} aria-label="Sources">
         <Source
@@ -206,42 +201,51 @@ function CopyCard({ account, navigate }: { account: Account; navigate: PageProps
           doneLabel="Imported"
         />
       </ul>
-      <div className={s.actions}>
-        {status?.openRead ? (
-          <Button variant="primary" icon={<TaskListLtr20Regular />} onClick={() => navigate('jobs')}>
-            See the read under way
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            icon={readBefore ? <ArrowSync16Regular /> : <ArrowDownload16Regular />}
-            disabled={busy || !status}
-            onClick={() => void read('complete', COMPLETE_TITLE)}
-          >
-            {readBefore ? 'Read X again' : 'Complete my copy'}
-          </Button>
-        )}
-        <Menu>
-          <MenuTrigger disableButtonEnhancement>
-            <FluentButton appearance="subtle" icon={<ChevronDown16Regular />} iconPosition="after" disabled={busy}>
-              Read one part
-            </FluentButton>
-          </MenuTrigger>
-          <MenuPopover>
-            <MenuList>
-              {PARTS.map((part) => (
-                <MenuItem key={part.target} onClick={() => void read(part.target, `Read: ${part.label}`)}>
-                  {part.label}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </MenuPopover>
-        </Menu>
+      <XArchiveCard account={account} bare />
+      <div className={s.other}>
+        <Disclosure label="Other ways: read from X" summary={readsSummary}>
+          <Caption1 as="p" className={s.otherText}>
+            Xomoni reads your profile, replies and likes, and X search back to when you joined. It misses old posts
+            nobody liked, which only X’s archive has.
+          </Caption1>
+          <div className={s.actions}>
+            {status?.openRead ? (
+              <Button variant="primary" icon={<TaskListLtr20Regular />} onClick={() => navigate('jobs')}>
+                See the read under way
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                icon={readBefore ? <ArrowSync16Regular /> : <ArrowDownload16Regular />}
+                disabled={busy || !status}
+                onClick={() => void read('complete', COMPLETE_TITLE)}
+              >
+                {readBefore ? 'Read X again' : 'Complete my copy'}
+              </Button>
+            )}
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <FluentButton appearance="subtle" icon={<ChevronDown16Regular />} iconPosition="after" disabled={busy}>
+                  Read one part
+                </FluentButton>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  {PARTS.map((part) => (
+                    <MenuItem key={part.target} onClick={() => void read(part.target, `Read: ${part.label}`)}>
+                      {part.label}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </MenuPopover>
+            </Menu>
+          </div>
+          <Caption1 as="p" className={s.note}>
+            A read only looks: nothing on X changes. It goes at the same careful pace as everything else, within your
+            active hours, and you can follow it in Activity.
+          </Caption1>
+        </Disclosure>
       </div>
-      <Caption1 as="p" className={s.note}>
-        A read only looks: nothing on X changes. It goes at the same careful pace as everything else, within your active
-        hours, and you can follow it in Activity.
-      </Caption1>
     </Card>
   );
 }
@@ -265,10 +269,7 @@ export function LibraryPage({ account, navigate }: PageProps) {
           </Button>
         }
       />
-      <div className={s.columns}>
-        <CopyCard account={account} navigate={navigate} />
-        <XArchiveCard account={account} />
-      </div>
+      <CopyCard account={account} navigate={navigate} />
       <div className={s.below}>
         <ItemBrowser accountId={account.id} handle={account.handle} />
       </div>

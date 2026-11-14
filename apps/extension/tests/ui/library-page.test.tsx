@@ -82,10 +82,14 @@ describe('Library page (#185)', () => {
       await db.jobs.update(job.id, { state: 'completed', finishedAt: Date.now() - ago });
     }
     const sources = () => screen.getByRole('list', { name: 'Sources' });
+    /** Opens the folded *Other ways: read from X* (#203). */
+    const openOtherWays = async () =>
+      userEvent.click(await screen.findByRole('button', { name: 'Other ways: read from X' }));
 
     it('reads everything a read can reach in one job, starts it and opens Jobs', async () => {
       const props = await pageProps();
       render(<LibraryPage {...props} />);
+      await openOtherWays();
       const complete = await screen.findByRole('button', { name: 'Complete my copy' });
       // Enabled once the copy's status has loaded.
       await waitFor(() => expect(complete).toBeEnabled());
@@ -106,6 +110,7 @@ describe('Library page (#185)', () => {
     ] as const)('reads one part only: “%s”', async (label, scan) => {
       const props = await pageProps();
       render(<LibraryPage {...props} />);
+      await openOtherWays();
       await userEvent.click(screen.getByRole('button', { name: 'Read one part' }));
       await userEvent.click(await screen.findByRole('menuitem', { name: label }));
 
@@ -116,6 +121,7 @@ describe('Library page (#185)', () => {
     it('waits while another job is running', async () => {
       mocks.runStatus.current = 'running';
       render(<LibraryPage {...await pageProps()} />);
+      await openOtherWays();
       expect(await screen.findByRole('button', { name: 'Complete my copy' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Read one part' })).toBeDisabled();
     });
@@ -124,6 +130,8 @@ describe('Library page (#185)', () => {
       await createScanJob(ME, COMPLETE_TITLE, 'complete');
       const props = await pageProps();
       render(<LibraryPage {...props} />);
+      expect(await screen.findByText('A read from X is under way.')).toBeInTheDocument();
+      await openOtherWays();
       await userEvent.click(await screen.findByRole('button', { name: 'See the read under way' }));
       expect(props.navigate).toHaveBeenCalledWith('jobs');
       expect(screen.queryByRole('button', { name: 'Complete my copy' })).not.toBeInTheDocument();
@@ -139,6 +147,8 @@ describe('Library page (#185)', () => {
       render(<LibraryPage {...await pageProps()} />);
       await waitFor(() => expect(within(sources()).getByText('Read 2h ago')).toBeInTheDocument());
       expect(within(sources()).getAllByText('Not yet')).toHaveLength(2);
+      expect(screen.getByText('Last read from X 2h ago.')).toBeInTheDocument();
+      await openOtherWays();
       expect(screen.getByRole('button', { name: 'Read X again' })).toBeEnabled();
       cleanup();
 
@@ -217,6 +227,7 @@ describe('Library page (#185)', () => {
     await waitFor(() => expect(exportButton).toBeEnabled());
     await userEvent.click(exportButton);
     await waitFor(() => expect(mocks.downloadFile).toHaveBeenCalledOnce());
+    await userEvent.click(screen.getByRole('button', { name: 'Other ways: read from X' }));
     const complete = screen.getByRole('button', { name: 'Complete my copy' });
     await waitFor(() => expect(complete).toBeEnabled());
     await userEvent.click(complete);

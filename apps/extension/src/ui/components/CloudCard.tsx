@@ -2,19 +2,24 @@ import { Body1, Input, Link, makeStyles, tokens } from '@fluentui/react-componen
 import {
   Checkmark20Regular,
   CloudOff20Regular,
+  Dismiss20Regular,
   ErrorCircle16Regular,
   Link20Regular,
   Open12Regular,
+  Open20Regular,
 } from '@fluentui/react-icons';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { CloudError } from '../../cloud/client';
 import { PAIRING_PAGE } from '../../cloud/config';
+import { suggestedDeviceName } from '../../cloud/device-name';
 import { type CloudConnection, getConnection, watchConnection } from '../../cloud/connection';
 import { ConnectionMap, type XLink } from './ConnectionMap';
 import { FORGOTTEN_HERE, confirmConnection, connect, disconnect } from '../../cloud/sync';
+import { cancelWebConnect, pendingWebConnect, startWebConnect } from '../../cloud/web-connect';
 import { errorMessage, fmtDateTime } from '../format';
 import { toast } from '../hooks';
-import { Button, Card, Field } from './ui';
+import { Button, Card, Disclosure, Field } from './ui';
 
 const useStyles = makeStyles({
   connected: {
@@ -51,21 +56,6 @@ const useStyles = makeStyles({
   map: { maxWidth: '440px', marginBottom: tokens.spacingVerticalL },
 });
 
-/** "Chrome on macOS", from the browser's own description of itself, as a default name for this device. */
-export function suggestedDeviceName(userAgent = navigator.userAgent): string {
-  const browser = /Edg\//.test(userAgent) ? 'Edge' : /Brave/.test(userAgent) ? 'Brave' : 'Chrome';
-  const os = /Mac OS X/.test(userAgent)
-    ? 'macOS'
-    : /Windows/.test(userAgent)
-      ? 'Windows'
-      : /CrOS/.test(userAgent)
-        ? 'ChromeOS'
-        : /Linux/.test(userAgent)
-          ? 'Linux'
-          : '';
-  return os ? `${browser} on ${os}` : browser;
-}
-
 /** The stored xomoni.com connection, kept current as it changes; undefined while loading. */
 export function useConnection(): CloudConnection | null | undefined {
   const [connection, setConnection] = useState<CloudConnection | null | undefined>(undefined);
@@ -91,8 +81,21 @@ export function useConnection(): CloudConnection | null | undefined {
 }
 
 /**
- * Settings card that connects this browser to a xomoni.com account with a one-time code (ADR-0018), so its jobs'
- * status shows on the website; or shows the connection and disconnects it. After pairing it names the account,
+ * Opens xomoni.com/connect to connect this browser with one click there (#228, ADR-0024); says why when Chrome
+ * refuses to open the tab. Call it from a click.
+ */
+export async function connectOnWebsite(): Promise<void> {
+  try {
+    await chrome.tabs.create({ url: await startWebConnect(), active: true });
+  } catch (err) {
+    toast(errorMessage(err), 'critical');
+  }
+}
+
+/**
+ * Settings card that connects this browser to a xomoni.com account, so its jobs' status shows on the website; or
+ * shows the connection and disconnects it. Connecting is one click on xomoni.com (#228, ADR-0024): the card opens the
+ * page and waits while it is finished there; a one-time code typed here (ADR-0018) stays as the fallback, folded. After pairing it names the account,
  * masked, and sends nothing until the person confirms it is theirs (#149). A `ConnectionMap` on top shows the link as
  * it stands, and moves while a code is being checked. It says what is sent: status only. Drawn
  * with Fluent UI (ADR-0019); a refused code is announced as an alert (`role="alert"`).
@@ -104,6 +107,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
   const [name, setName] = useState(() => suggestedDeviceName());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const waiting = useLiveQuery(() => pendingWebConnect(), []);
 
   const onConnect = async () => {
     setBusy(true);
@@ -184,37 +188,76 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
         </div>
       ) : connection === null ? (
         <div className={styles.form}>
-          <Body1 as="p" block className={styles.text}>
-            Sign in on xomoni.com and get a one-time code, then type it here.{' '}
-            <Link href={PAIRING_PAGE} target="_blank" rel="noreferrer" inline className={styles.external}>
-              Get a code <Open12Regular />
-            </Link>
-          </Body1>
-          <div className={styles.fields}>
-            <Field label="Code">
-              <Input
-                className={styles.input}
-                input={{ className: styles.code }}
-                value={code}
-                placeholder="XXXXX-XXXXX"
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(_, data) => setCode(data.value)}
-              />
-            </Field>
-            <Field label="This browser’s name">
-              <Input className={styles.input} value={name} maxLength={80} onChange={(_, data) => setName(data.value)} />
-            </Field>
-          </div>
-          <Button
-            variant="primary"
-            icon={<Link20Regular />}
-            className={styles.action}
-            disabled={busy || code.replace(/[\s-]/g, '').length !== 10}
-            onClick={() => void onConnect()}
-          >
-            Connect
-          </Button>
+          {waiting ? (
+            <>
+              <Body1 as="p" block className={styles.text} role="status">
+                Finish on xomoni.com: sign in there and press <strong>Connect this browser</strong>. It opened in a new
+                tab.
+              </Body1>
+              <div className={styles.actions}>
+                <Button variant="primary" icon={<Open20Regular />} onClick={() => void connectOnWebsite()}>
+                  Open xomoni.com again
+                </Button>
+                <Button variant="ghost" icon={<Dismiss20Regular />} onClick={() => void cancelWebConnect()}>
+                  Cancel
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Body1 as="p" block className={styles.text}>
+                Sign in on xomoni.com and press Connect there. No code to type.
+              </Body1>
+              <Button
+                variant="primary"
+                icon={<Link20Regular />}
+                className={styles.action}
+                onClick={() => void connectOnWebsite()}
+              >
+                Connect to xomoni.com
+              </Button>
+            </>
+          )}
+          <Disclosure label="Use a one-time code instead" summary="For a code from xomoni.com’s dashboard.">
+            <div className={styles.form}>
+              <Body1 as="p" block className={styles.text}>
+                Sign in on xomoni.com and get a one-time code, then type it here.{' '}
+                <Link href={PAIRING_PAGE} target="_blank" rel="noreferrer" inline className={styles.external}>
+                  Get a code <Open12Regular />
+                </Link>
+              </Body1>
+              <div className={styles.fields}>
+                <Field label="Code">
+                  <Input
+                    className={styles.input}
+                    input={{ className: styles.code }}
+                    value={code}
+                    placeholder="XXXXX-XXXXX"
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(_, data) => setCode(data.value)}
+                  />
+                </Field>
+                <Field label="This browser’s name">
+                  <Input
+                    className={styles.input}
+                    value={name}
+                    maxLength={80}
+                    onChange={(_, data) => setName(data.value)}
+                  />
+                </Field>
+              </div>
+              <Button
+                variant="secondary"
+                icon={<Link20Regular />}
+                className={styles.action}
+                disabled={busy || code.replace(/[\s-]/g, '').length !== 10}
+                onClick={() => void onConnect()}
+              >
+                Connect
+              </Button>
+            </div>
+          </Disclosure>
           {error && (
             <p role="alert" className={styles.error} data-tone="critical">
               <ErrorCircle16Regular className={styles.errorIcon} />

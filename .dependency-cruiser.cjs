@@ -160,9 +160,10 @@ module.exports = {
     {
       name: 'ext-background-is-thin',
       severity: 'error',
-      comment: 'The service worker stores observations and opens the dashboard; it does not import UI or page scripts.',
+      comment:
+        'The service worker stores observations, opens the dashboard and takes the code xomoni.com hands over (ADR-0024, cloud/web-connect.ts only); it does not import UI or page scripts.',
       from: { path: `${EXT}/background/` },
-      to: { path: `${EXT}/(?!background/|shared/|engine/)` },
+      to: { path: `${EXT}/(?!background/|shared/|engine/|cloud/web-connect\\.ts$)` },
     },
     {
       name: 'ext-cloud-is-isolated',

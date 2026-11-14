@@ -16,8 +16,14 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - also sign out of X, on X's own page.
 - A signed-out page. Signing in again takes *Continue as @handle*, so an X session left open doesn't sign you straight back in.
 
+- **Connect a browser to xomoni.com with one click** (#228, ADR-0024). In Xomoni, press *Connect to xomoni.com* (Settings) or *Connect this browser* (account menu). xomoni.com opens: sign in if needed, then press *Connect this browser* on the page that names your account. No code to copy or type.
+  - The website hands the one-time code to the extension that asked, and only that one.
+  - The extension accepts it only from xomoni.com, with a nonce it made in the last 15 minutes, once.
+  - A typed code still works, folded under *Use a one-time code instead*.
+
 ### Changed
 
+- The manifest lets xomoni.com's pages message the extension (`externally_connectable`, no new permission warning). The service worker takes only a one-time code from them (ADR-0024).
 - *Disconnect* from xomoni.com asks to confirm. *Sign out of X* moved from the account menu into the sign-out dialog (#226).
 
 ## [0.2.1] - 2026-11-14

@@ -25,7 +25,7 @@ import { FORGOTTEN_HERE, disconnect } from '../../cloud/sync';
 import type { Account } from '../../shared/types';
 import { type WorkerStatus, toast } from '../hooks';
 import type { PageId } from '../navigation';
-import { useConnection } from './CloudCard';
+import { connectOnWebsite, useConnection } from './CloudCard';
 import { type CloudLink, ConnectionMap, xLinkOf } from './ConnectionMap';
 import { openSignOut } from './SignOutDialog';
 import { Badge, Button, Modal } from './ui';
@@ -104,8 +104,9 @@ const useStyles = makeStyles({
  * The account corner of the sidebar and the panel it opens. The panel shows how this browser links X and
  * xomoni.com (`ConnectionMap`), then one card for each, with its state and what can be done:
  * - X: the account Xomoni works on and its profile. Xomoni never handles X's password.
- * - xomoni.com: which account this browser reports to, its dashboard and Disconnect (after a confirmation); or, when
- *   not connected or not confirmed, the way to Settings to do so.
+ * - xomoni.com: which account this browser reports to, its dashboard and Disconnect (after a confirmation); when not
+ *   connected, *Connect this browser* opens xomoni.com to finish with one click (#228); when not confirmed, the way
+ *   to Settings.
  * At its foot, *Sign out of Xomoni* opens the sign-out dialog (`SignOutDialog`, #226).
  */
 export function AccountPanel({
@@ -125,6 +126,10 @@ export function AccountPanel({
   const x = xLinkOf(worker);
   const cloud: CloudLink = !connection ? 'off' : connection.confirmed ? 'connected' : 'pending';
 
+  const connectOnline = () => {
+    setOpen(false);
+    void connectOnWebsite();
+  };
   const goToSettings = () => {
     setOpen(false);
     navigate('settings');
@@ -263,10 +268,10 @@ export function AccountPanel({
             {cloud === 'off' && (
               <>
                 <Caption1 className={s.note}>
-                  Get a one-time code on xomoni.com, then type it in Settings. Only job status is sent.
+                  Sign in on xomoni.com and press Connect there: no code to type. Only job status is sent.
                 </Caption1>
                 <div className={s.actions}>
-                  <Button size="sm" variant="primary" icon={<ArrowRight16Regular />} onClick={goToSettings}>
+                  <Button size="sm" variant="primary" icon={<Open16Regular />} onClick={connectOnline}>
                     Connect this browser
                   </Button>
                 </div>

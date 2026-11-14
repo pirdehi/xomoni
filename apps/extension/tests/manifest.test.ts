@@ -52,10 +52,11 @@ describe('the manifest locks the extension down (#143)', () => {
     expect(manifest.incognito).toBe('not_allowed');
   });
 
-  it('asks for no host access and exposes nothing to web pages', () => {
+  it('asks for no host access and exposes nothing to web pages but a channel from xomoni.com (ADR-0024)', () => {
     expect(manifest).not.toHaveProperty('host_permissions');
     expect(manifest).not.toHaveProperty('web_accessible_resources');
-    expect(manifest).not.toHaveProperty('externally_connectable');
+    // Only xomoni.com's own pages may send, and no other extension (no `ids`); it adds no permission warning.
+    expect(manifest.externally_connectable).toEqual({ matches: ['https://xomoni.com/*'] });
     // `downloads` only saves X's archive in Downloads/Xomoni, the one folder Chrome lets Xomoni read (#196).
     expect(manifest.permissions).toEqual([
       'storage',
@@ -83,9 +84,10 @@ describe('the manifest locks the extension down (#143)', () => {
     ]);
   });
 
-  it('listens to no other extension or web page', () => {
+  it('listens to no other extension or web page, but the service worker to xomoni.com’s one-time code (#228)', () => {
     expect(Object.keys(sources).length).toBeGreaterThan(50);
     const external = Object.entries(sources).filter(([, text]) => /onMessageExternal|onConnectExternal/.test(text));
-    expect(external.map(([file]) => file)).toEqual([]);
+    expect(external.map(([file]) => file)).toEqual([expect.stringMatching(/background\/sw\.ts$/)]);
+    expect(Object.values(sources).some((text) => /onConnectExternal/.test(text))).toBe(false);
   });
 });

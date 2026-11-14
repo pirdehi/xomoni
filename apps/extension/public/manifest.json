@@ -8,6 +8,9 @@
   "minimum_chrome_version": "116",
   "permissions": ["storage", "unlimitedStorage", "notifications", "idle", "power", "downloads"],
   "incognito": "not_allowed",
+  "externally_connectable": {
+    "matches": ["https://xomoni.com/*"]
+  },
   "content_security_policy": {
     "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pbs.twimg.com https://abs.twimg.com; connect-src 'self' https://ueegjwwmuuxlxyibgokx.supabase.co"
   },

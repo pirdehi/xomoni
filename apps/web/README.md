@@ -27,7 +27,7 @@ src/
   app/            routes only: pages, layouts, route handlers (thin)
   modules/
     auth/         identity: sign-up and email confirmation, sign-in, password reset, account settings, sessions
-    dashboard/    devices and live job status
+    dashboard/    devices and live job status, and /connect, where a browser connects with one click
     landing/      the landing page at / and the install guide at /install
   shared/
     config/       public site constants, the site URL and the security headers

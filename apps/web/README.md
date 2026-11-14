@@ -1,6 +1,6 @@
 # `apps/web`: xomoni.com
 
-The public website and account area for Xomoni, built with Next.js 16 (App Router, Cache Components) and Supabase, deployed on Vercel. It hosts the landing, legal and risks pages, sign-in, and a live, read-only view of the extension's jobs. It never acts on X ([ADR-0006](../../docs/adr/0006-website-is-view-only.md)).
+The public website and account area for Xomoni, built with Next.js 16 (App Router, Cache Components) and Supabase, deployed on Vercel. It hosts the landing, install, legal and risks pages, sign-in, and a live, read-only view of the extension's jobs. It never acts on X ([ADR-0006](../../docs/adr/0006-website-is-view-only.md)).
 
 ## Run it locally
 
@@ -28,7 +28,7 @@ src/
   modules/
     auth/         identity: sign-up and email confirmation, sign-in, password reset, account settings, sessions
     dashboard/    devices and live job status
-    landing/      the landing page at /
+    landing/      the landing page at / and the install guide at /install
   shared/
     config/       public site constants, the site URL and the security headers
     supabase/     Supabase client factories (server, browser, proxy)

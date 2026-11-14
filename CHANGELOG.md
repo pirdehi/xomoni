@@ -24,6 +24,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- Jobs and the Activity log are one page, *Activity*, with two tabs: *Jobs* and *Log* (#202). The menu goes from seven places to six, and links and notifications land on the right tab.
 - Overview is now *Home*, and it answers "what now?" first (#201). One status at the top says whether all is well, what is running, or what X needs, with the one button that does something about it (*Resume*, *Open X window*). A new person sees three steps to get started (sign in, get the archive, a first cleanup) until they are done. The counts sit in one row above the chart. *Limits & pacing* moved to Settings, folded under *Today's use of X's limits*.
 - When X needs you, it shows at the top of every page, even when no job runs (#200). Being signed out of X, an X check or a locked account each get a banner with *Open X window*, instead of a line cut short at the bottom of the sidebar. The sidebar now names the X window plainly (*X window ready*, *Sign in to X*). A covered window only warns while a job runs, since that is the only time it matters.
 - A cleanup takes three choices (#199): what, how old, and the review with *Start*. What to keep is folded under *Exceptions*, with a line saying what is kept, such as *Keeps posts with 50+ likes*. How Xomoni finds the posts moved under *Advanced*, with a line saying what it will do; both ways stay on by default.

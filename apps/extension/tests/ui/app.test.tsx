@@ -63,10 +63,18 @@ describe('App navigation', () => {
     await upsertAccount(account());
   });
 
-  it('opens the page the hash names', async () => {
+  it('opens the page the hash names, and Activity on the tab it names (#202)', async () => {
     window.location.hash = '#/activity';
     render(<App />);
-    expect(await pageHeading('Activity log')).toBeInTheDocument();
+    expect(await pageHeading('Activity')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /^Log/, selected: true })).toBeInTheDocument();
+
+    // Fluent keeps a hidden copy of an unselected tab's label to reserve its bold width; happy-dom reads both.
+    await userEvent.click(screen.getByRole('tab', { name: /^Jobs/ }));
+    expect(window.location.hash).toBe('#/jobs');
+    expect(await screen.findByRole('tab', { name: /^Jobs/, selected: true })).toBeInTheDocument();
+    // The log tab keeps the Activity item marked in the menu.
+    expect(within(sidebar()).getByRole('button', { name: 'Activity' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('opens Home for an empty or unknown hash', async () => {
@@ -88,9 +96,8 @@ describe('App navigation', () => {
     for (const [label, id] of [
       ['Cleanup', 'cleanup'],
       ['Library', 'library'],
+      ['Activity', 'jobs'],
       ['Watch', 'watch'],
-      ['Jobs', 'jobs'],
-      ['Activity log', 'activity'],
       ['Settings', 'settings'],
       ['Home', 'overview'],
     ] as const) {
@@ -98,21 +105,23 @@ describe('App navigation', () => {
       expect(window.location.hash).toBe(`#/${id}`);
       expect(await pageHeading(label)).toBeInTheDocument();
     }
+    // Six places, not seven: Jobs and the log are one page (#202).
+    expect(within(within(sidebar()).getByRole('navigation')).getAllByRole('button')).toHaveLength(6);
   });
 
   it('marks the current page in the sidebar', async () => {
     window.location.hash = '#/jobs';
     render(<App />);
-    await pageHeading('Jobs');
+    await pageHeading('Activity');
 
     const nav = within(sidebar()).getByRole('navigation');
-    expect(within(nav).getByRole('button', { name: 'Jobs' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('button', { name: 'Activity' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'false');
 
     await userEvent.click(within(nav).getByRole('button', { name: 'Settings' }));
     await pageHeading('Settings');
     expect(within(nav).getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
-    expect(within(nav).getByRole('button', { name: 'Jobs' })).toHaveAttribute('aria-current', 'false');
+    expect(within(nav).getByRole('button', { name: 'Activity' })).toHaveAttribute('aria-current', 'false');
   });
 
   it('follows the hash when it changes from outside, as with the Back button', async () => {

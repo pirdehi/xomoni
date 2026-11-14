@@ -65,8 +65,8 @@ export function homeStatus({ run, openJobs, risk, now }: HomeStatusInput): HomeS
     return {
       tone: 'critical',
       title: 'Stopped to keep your account safe',
-      text: `${risk.reason}. Xomoni won’t carry on by itself: check X, then decide in Jobs.`,
-      action: { kind: 'jobs', label: 'Go to Jobs' },
+      text: `${risk.reason}. Xomoni won’t carry on by itself: check X, then decide in Activity.`,
+      action: { kind: 'jobs', label: 'Go to Activity' },
     };
   }
   if (run.status !== 'idle') {

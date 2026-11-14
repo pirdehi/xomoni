@@ -173,6 +173,16 @@ describe('where getting X’s archive stands (#186)', () => {
   });
 });
 
+/**
+ * Presses *Get my archive* once it is enabled: it stays off until the archive's status is read from the database,
+ * which can take longer than the notes around it on a busy machine, and a click on it before then does nothing.
+ */
+async function clickGet() {
+  const get = await screen.findByRole('button', { name: 'Get my archive' });
+  await waitFor(() => expect(get).toBeEnabled(), SLOW);
+  await userEvent.click(get);
+}
+
 describe('XArchiveCard (#186)', () => {
   beforeEach(async () => {
     await resetDb();
@@ -200,7 +210,7 @@ describe('XArchiveCard (#186)', () => {
       await screen.findByText(/Chrome then opens your Downloads once: open the Xomoni folder there and press Select/),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Get my archive' }));
+    await clickGet();
 
     await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
     expect(mocks.consent).toHaveBeenCalledWith(ME);
@@ -218,7 +228,7 @@ describe('XArchiveCard (#186)', () => {
     mocks.consent.mockResolvedValue(false);
     const host = pickerHost(folderWith([]));
     render(<XArchiveCard account={account()} store={memoryStore()} host={host} />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
+    await clickGet();
     await waitFor(() => expect(mocks.consent).toHaveBeenCalled());
     expect(host.showDirectoryPicker).not.toHaveBeenCalled();
     expect(await db.jobs.count()).toBe(0);
@@ -229,7 +239,7 @@ describe('XArchiveCard (#186)', () => {
     const closed = pickerHost(null);
     const store = memoryStore();
     render(<XArchiveCard account={account()} store={store} host={closed} makeFolder={makeFolder} />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
+    await clickGet();
     await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
     expect(store.set).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(FOLDER_NOT_CHOSEN, 'neutral');
@@ -241,7 +251,7 @@ describe('XArchiveCard (#186)', () => {
       <XArchiveCard account={account()} store={memoryStore(folderWith([]))} host={chosen} makeFolder={makeFolder} />,
     );
     await waitFor(() => expect(screen.queryByText(/Chrome then opens your Downloads/)).not.toBeInTheDocument());
-    await userEvent.click(screen.getByRole('button', { name: 'Get my archive' }));
+    await clickGet();
     await waitFor(() => expect(mocks.startJob).toHaveBeenCalledTimes(2), SLOW);
     expect(chosen.showDirectoryPicker).not.toHaveBeenCalled();
   });
@@ -251,7 +261,7 @@ describe('XArchiveCard (#186)', () => {
     const host = pickerHost(folderWith([], 'granted', 'Downloads'));
     render(<XArchiveCard account={account()} store={store} host={host} makeFolder={makeFolder} />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Get my archive' }));
+    await clickGet();
 
     await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
     expect(store.set).not.toHaveBeenCalled();

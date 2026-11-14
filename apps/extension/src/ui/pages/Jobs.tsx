@@ -1,5 +1,5 @@
 import { Button as FluentButton, Caption1, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
-import { ChevronDown16Regular, Sparkle20Regular, TaskListLtr20Regular } from '@fluentui/react-icons';
+import { ChevronDown16Regular, TaskListLtr20Regular } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useId, useState } from 'react';
 import { db } from '../../shared/db';
@@ -7,7 +7,7 @@ import type { Job } from '../../shared/types';
 import type { PageProps } from '../navigation';
 import { JobCard } from '../components/JobCard';
 import { LogList } from '../components/LogList';
-import { Button, Card, EmptyState, PageHeader, Segmented } from '../components/ui';
+import { Button, Card, EmptyState, Segmented } from '../components/ui';
 
 const OPEN_STATES = new Set(['queued', 'running', 'waiting', 'paused', 'blocked', 'failed']);
 
@@ -38,8 +38,11 @@ const useStyles = makeStyles({
   noEntries: { display: 'block', paddingBlock: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 },
 });
 
-/** The account's jobs, newest first: open ones by default, or all. Each job can show its last 100 log entries. */
-export function JobsPage({ account, navigate }: PageProps) {
+/**
+ * The account's jobs, newest first: open ones by default, or all (#202: the *Jobs* tab of Activity). Each job can
+ * show its last 100 log entries.
+ */
+export function JobsPanel({ account, navigate }: Pick<PageProps, 'account' | 'navigate'>) {
   const styles = useStyles();
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const jobs = useLiveQuery(
@@ -50,15 +53,6 @@ export function JobsPage({ account, navigate }: PageProps) {
 
   return (
     <>
-      <PageHeader
-        title="Jobs"
-        description="Cleanups, reads and X’s archive. Jobs are resumable — pausing, closing the browser or a safety stop never loses progress."
-        actions={
-          <Button variant="primary" icon={<Sparkle20Regular />} onClick={() => navigate('cleanup')}>
-            New cleanup
-          </Button>
-        }
-      />
       <div className={styles.filter}>
         <Segmented
           value={filter}

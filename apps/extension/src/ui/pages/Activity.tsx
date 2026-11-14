@@ -128,7 +128,7 @@ function LogPanel({ account }: { account: Account }) {
           />
         ) : (
           <div className={styles.list}>
-            <LogList entries={entries ?? []} absolute />
+            <LogList entries={entries ?? []} absolute grouped withText />
           </div>
         )}
         {entries && entries.length >= limit && (

@@ -113,7 +113,7 @@ function JobWithLog({ job }: { job: Job }) {
       {open && (
         <div id={logId} className={styles.log}>
           {logs?.length ? (
-            <LogList entries={logs} absolute />
+            <LogList entries={logs} absolute grouped withText />
           ) : (
             <Caption1 className={styles.noEntries}>No entries yet.</Caption1>
           )}

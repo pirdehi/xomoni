@@ -26,6 +26,7 @@ import type { Account } from '../../shared/types';
 import { ARCHIVE_PAGE_URL, FIRST_LOOK_AFTER_MS, archiveOverdue, nextArchiveLook } from '../../shared/x-archive';
 import {
   FOLDER_NOT_CHOSEN,
+  FOLDER_READY,
   type FolderPickerHost,
   type FolderStore,
   isArchiveFolder,
@@ -129,6 +130,9 @@ export function archiveLine(
     text: `Asked X ${fmtAgo(request.requestedAt, now)}. X is making it; Xomoni looks again ${when}, while Xomoni is open, and downloads it.${folderNote}`,
   };
 }
+
+/** What choosing the folder can say that asks for another step rather than reporting a failure (#220). */
+const CALM = new Set([FOLDER_NOT_CHOSEN, FOLDER_READY]);
 
 const useStyles = makeStyles({
   steps: {
@@ -241,7 +245,7 @@ export function XArchiveCard({
   const now = useNow(30_000);
   const panelId = useId();
   const headingId = useId();
-  const pickerHost = host ?? (window as unknown as FolderPickerHost);
+  const pickerHost: FolderPickerHost = host ?? window;
   const canWatch = typeof pickerHost.showDirectoryPicker === 'function';
   const [byHand, setByHand] = useState(!canWatch);
 
@@ -264,7 +268,7 @@ export function XArchiveCard({
       // Asked in the same click, once, so the ZIP comes in by itself later; the job starts either way.
       if (mode === 'get' && canWatch && !hasFolder) {
         const pick = await pickArchiveFolder(store, pickerHost, makeFolder);
-        if (pick.problem) toast(pick.problem, pick.problem === FOLDER_NOT_CHOSEN ? 'neutral' : 'critical');
+        if (pick.problem) toast(pick.problem, CALM.has(pick.problem) ? 'neutral' : 'critical');
       }
       const job = await archiveJob(account.id, mode);
       await startJob(job.id);

@@ -9,7 +9,13 @@ import { DAY, HOUR } from '../../src/shared/time';
 import type { Job } from '../../src/shared/types';
 import type { ArchiveRequest } from '../../src/shared/x-archive';
 import { ARCHIVE_STEPS, XArchiveCard, archiveLine, archiveProgress } from '../../src/ui/components/XArchiveCard';
-import { FOLDER_NOT_CHOSEN, type FolderHandle, type FolderStore, wrongFolder } from '../../src/ui/downloads-folder';
+import {
+  FOLDER_NOT_CHOSEN,
+  FOLDER_READY,
+  type FolderHandle,
+  type FolderStore,
+  wrongFolder,
+} from '../../src/ui/downloads-folder';
 import type * as Hooks from '../../src/ui/hooks';
 import type { ArchiveStatus } from '../../src/ui/queries';
 import { folderWith } from '../support/folder';
@@ -282,6 +288,19 @@ describe('XArchiveCard (#186)', () => {
     expect(store.set).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(wrongFolder('Downloads'), 'critical');
     expect(await screen.findByRole('button', { name: 'Choose the Xomoni folder' })).toBeInTheDocument();
+  });
+
+  it('says calmly to press once more when Chrome asked where to save the folder note, and starts the job (#220)', async () => {
+    const store = memoryStore();
+    const host = { ...pickerHost(folderWith([])), navigator: { userActivation: { isActive: false } } };
+    render(<XArchiveCard account={account()} store={store} host={host} makeFolder={makeFolder} />);
+
+    await clickGet();
+
+    await waitFor(() => expect(mocks.startJob).toHaveBeenCalledOnce(), SLOW);
+    expect(host.showDirectoryPicker).not.toHaveBeenCalled();
+    expect(store.set).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith(FOLDER_READY, 'neutral');
   });
 
   it('waits while another job runs, and says so', async () => {

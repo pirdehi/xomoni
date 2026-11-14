@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-08
 - Amended: 2026-11-09, how the archive job works (#186)
-- Amended: 2026-11-14, the Xomoni folder in Downloads (#196)
+- Amended: 2026-11-14, the Xomoni folder in Downloads (#196), and Chrome's question where to save (#220)
 
 ## Context
 
@@ -35,6 +35,7 @@ The fixed constraints:
    - Xomoni then looks there, while the Library is open, for files named like X's archive. It opens no other file, and imports each one once.
    - The folder handle stays in this browser's database and is forgotten by *Stop* or by wiping local data.
    - *Get my archive* makes the folder and asks for it in the same click, once, after the risks are accepted: without it, nothing would import the download by itself.
+   - In a Chrome set to ask where to save each file, Chrome asks for the note too (`saveAs: false` doesn't stop it), and the click may no longer open a picker once the person has pressed Save. So the folder is made only once (again only after a failed choice), and when the click ran out (`navigator.userActivation.isActive`), the card says the folder is ready and asks for one more click. Chrome asks the same for X's archive, with the Xomoni folder already chosen (#220).
 3. **X's archive page is driven like any other X page (#186).** Requesting and downloading the archive is a job in the worker window, on `x.com/settings/download_your_data`:
    - Xomoni presses X's own *Request archive* and *Download archive* buttons, as it presses Delete. It presses only a button it recognizes, and never one it isn't sure of:
      - the button's whole label must read *Request archive* / *Request data* or *Download archive* / *Download data* (English only; another language counts as a page Xomoni doesn't know);

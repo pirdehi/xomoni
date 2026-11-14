@@ -75,7 +75,7 @@ export function DownloadsWatch({
   const [error, setError] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const checking = useRef(false);
-  const pickerHost = host ?? (window as unknown as FolderPickerHost);
+  const pickerHost: FolderPickerHost = host ?? window;
   const supported = typeof pickerHost.showDirectoryPicker === 'function';
 
   useEffect(() => {

@@ -188,7 +188,7 @@ A UX review of the whole dashboard found more places than tasks, numbers without
 | ✅ | Library: one card for your copy | [#203](https://github.com/pirdehi/xomoni/issues/203) | [#214](https://github.com/pirdehi/xomoni/pull/214) |
 | ✅ | An Activity log grouped and readable | [#204](https://github.com/pirdehi/xomoni/issues/204) | [#215](https://github.com/pirdehi/xomoni/pull/215) |
 | ✅ | Plain words across the dashboard | [#205](https://github.com/pirdehi/xomoni/issues/205) | [#216](https://github.com/pirdehi/xomoni/pull/216) |
-| ⬜ | One set of numbers | [#206](https://github.com/pirdehi/xomoni/issues/206) | |
+| ✅ | One set of numbers | [#206](https://github.com/pirdehi/xomoni/issues/206) | [#217](https://github.com/pirdehi/xomoni/pull/217) |
 | ⬜ | A modern look, light and dark | [#207](https://github.com/pirdehi/xomoni/issues/207) | |
 
 ## Dropped

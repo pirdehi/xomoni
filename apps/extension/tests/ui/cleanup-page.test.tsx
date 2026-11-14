@@ -203,7 +203,7 @@ describe('Cleanup page', () => {
       const title = `Delete posts older than ${fmtDate(oneYearAgo())}`;
       expect(within(modal).getByText('Start this cleanup?')).toBeInTheDocument();
       expect(within(modal).getByText(title)).toBeInTheDocument();
-      expect(modal).toHaveTextContent('3 known items match, plus any the sweep finds on X.');
+      expect(modal).toHaveTextContent('3 in your copy match, plus any that searching X finds.');
       await waitFor(() => expect(confirmInput()).toHaveFocus());
       // The browser never fills in or corrects the word: the person types it.
       expect(confirmInput()).toHaveAttribute('autocomplete', 'off');
@@ -291,7 +291,7 @@ describe('Cleanup page', () => {
       await openAdvanced();
       await userEvent.click(screen.getByRole('switch', { name: /^Sweep X search/ }));
       const modal = await openConfirm();
-      expect(modal).toHaveTextContent('3 known items match. Removed posts and likes cannot be restored');
+      expect(modal).toHaveTextContent('3 in your copy match. Removed posts and likes cannot be restored');
     });
   });
 
@@ -414,7 +414,7 @@ describe('Cleanup page', () => {
       ).toBeInTheDocument();
 
       await openConfirm();
-      expect(dialog()).toHaveTextContent('0 known items match, plus any the sweep finds on X.');
+      expect(dialog()).toHaveTextContent('0 in your copy match, plus any that searching X finds.');
       await userEvent.type(confirmInput(), 'DELETE');
       await userEvent.click(confirmButton());
       await waitFor(() => expect(props.navigate).toHaveBeenCalledWith('jobs'));
@@ -509,7 +509,7 @@ describe('Cleanup page', () => {
       const props = await renderWithArchive();
 
       await userEvent.click(screen.getByRole('button', { name: /^Replies/ }));
-      expect(screen.getByRole('button', { name: /^Replies/ })).toHaveTextContent('2 known');
+      expect(screen.getByRole('button', { name: /^Replies/ })).toHaveTextContent('2 in your copy');
       await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
       expect(screen.getByText('Keeps replies in your own threads.')).toBeInTheDocument();
       await openExceptions();
@@ -597,7 +597,7 @@ describe('Cleanup page', () => {
       expect(entries[3]).toHaveTextContent('(no text)');
       expect(entries[4]).toHaveTextContent('and 1 more');
       expect(within(list).queryByText('Oldest')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^Posts/ })).toHaveTextContent('6 known');
+      expect(screen.getByRole('button', { name: /^Posts/ })).toHaveTextContent('6 in your copy');
     });
 
     it('estimates the time from the current pacing', async () => {

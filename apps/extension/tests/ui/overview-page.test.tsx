@@ -144,6 +144,13 @@ describe('Home (#201)', () => {
     expect(await screen.findByText('2 removed')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
     expect(screen.getByText(/@me · everything Xomoni knows stays in this browser/)).toBeInTheDocument();
+    // Each count says what it counts, and where X's own count is (#206).
+    expect(
+      screen.getByText(
+        'In your copy: what Xomoni knows is still on X, and what it removed. X’s own count is in the Library.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/X shows/)).not.toBeInTheDocument();
     const counts = screen.getByRole('region', { name: 'Counts' });
     const tile = (label: string) => within(counts).getByText(label, { selector: 'div' }).parentElement!;
     expect(tile('Removed by Xomoni')).toHaveTextContent('Removed by Xomoni4all kinds');

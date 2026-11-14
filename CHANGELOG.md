@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-14
+
+Choosing the Xomoni folder works in a Chrome that asks where to save each file, and xomoni.com has an install guide.
+
 ### Added
 
 - A connected browser hears that 0.2.0 is out (#151).

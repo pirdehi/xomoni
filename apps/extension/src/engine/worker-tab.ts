@@ -115,6 +115,17 @@ export class WorkerTab implements XTab {
   }
 
   /**
+   * Closes the X window Xomoni opened, if it is still open, and forgets it (#226: signing out of Xomoni). The
+   * person's own X tabs are never touched: only the worker tab is.
+   */
+  async close() {
+    const id = await this.current();
+    this.tabId = null;
+    await chrome.storage.session.remove(TAB_KEY);
+    if (id != null) await chrome.tabs.remove(id).catch(() => undefined);
+  }
+
+  /**
    * Sends one command to the content script and returns its typed reply. Throws `WorkerGone` if the tab is
    * closed, `NotReady` if no content script answered, and `PageError` if the command itself reported an error.
    */

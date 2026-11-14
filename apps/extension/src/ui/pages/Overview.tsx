@@ -10,6 +10,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
+  ArrowEnter16Regular,
   ArrowRepeatAll16Regular,
   ArrowReply16Regular,
   Checkmark16Filled,
@@ -30,6 +31,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ReactNode } from 'react';
 import { workerTab } from '../../engine/worker-tab';
 import { db } from '../../shared/db';
+import { type SignedOut, signIn } from '../../shared/session';
 import type { Account } from '../../shared/types';
 import type { PageId } from '../navigation';
 import { ActivityChart } from '../components/ActivityChart';
@@ -37,7 +39,7 @@ import { LogList } from '../components/LogList';
 import { Button, Card, EmptyState, PageHeader, StatTile, type Tone, useNow } from '../components/ui';
 import { errorMessage, fmtCompact, fmtNumber } from '../format';
 import { type HomeStatus, type StartStep, gettingStarted, homeStatus } from '../home-status';
-import { type WorkerStatus, startJob, toast, useRisk, useRunner } from '../hooks';
+import { type WorkerStatus, startJob, toast, useRisk, useRunner, useSignedOut } from '../hooks';
 import { useArchiveStatus, useKindCounts } from '../queries';
 
 /** Wide enough for the dashboard's side-by-side layout (Tailwind's former `lg`). */
@@ -413,9 +415,84 @@ function GettingStarted({ steps, navigate }: { steps: StartStep[]; navigate: (p:
 }
 
 function Onboarding({ worker }: { worker: WorkerStatus }) {
+  const signedOut = useSignedOut();
+  if (signedOut === undefined) return null;
+  return signedOut ? <SignedOutPage worker={worker} signedOut={signedOut} /> : <FirstRun worker={worker} />;
+}
+
+/** Opens the X window, or brings it to the front; says why when Chrome refuses. */
+const openWorker = (worker: WorkerStatus) =>
+  void (worker.open ? workerTab.focus() : workerTab.open()).catch((e: unknown) => toast(errorMessage(e), 'critical'));
+
+/**
+ * After signing out of Xomoni (#226): says so, and signs in again in three steps. The account the X window is signed
+ * in to is only taken up when the person presses *Continue as @handle*, so an X session left open doesn't sign them
+ * straight back in.
+ */
+function SignedOutPage({ worker, signedOut }: { worker: WorkerStatus; signedOut: SignedOut }) {
   const styles = useStyles();
-  const open = () =>
-    void (worker.open ? workerTab.focus() : workerTab.open()).catch((e: unknown) => toast(errorMessage(e), 'critical'));
+  const info = worker.info;
+  const ready = !!info?.loggedIn && !!info.viewerId;
+  const was = signedOut.handle ? `@${signedOut.handle}` : 'The account';
+  const continueAs = () => {
+    if (!info?.viewerId) return;
+    void signIn(info.viewerId, info.handle ?? '').then(
+      () => toast(`Signed in as @${info.handle ?? 'your account'}`, 'good'),
+      (e: unknown) => toast(errorMessage(e), 'critical'),
+    );
+  };
+  return (
+    <div className={styles.onboarding}>
+      <div className={styles.intro}>
+        <img src="icons/icon128.png" alt="" className={styles.logo} />
+        <Title2 as="h1" align="center" className={styles.welcome}>
+          You’re signed out
+        </Title2>
+        <Body1 as="p" align="center" className={styles.pitch}>
+          Xomoni isn’t working on any X account in this browser.{' '}
+          {signedOut.dataKept
+            ? `${was}’s data is still here, ready when you sign in again.`
+            : `${was}’s data was removed from this browser.`}
+        </Body1>
+      </div>
+      <Card>
+        <ol className={styles.steps}>
+          <Step n={1} done={worker.open} title="Open the X window">
+            The small window Xomoni works in.
+            <div className={styles.stepAction}>
+              <Button
+                variant={worker.open ? 'secondary' : 'primary'}
+                size="sm"
+                icon={<Open16Regular />}
+                onClick={() => openWorker(worker)}
+              >
+                {worker.open ? 'Show X window' : 'Open X window'}
+              </Button>
+            </div>
+          </Step>
+          <Step n={2} done={ready} title="Sign in to X there">
+            With the account you want Xomoni to work on. Xomoni never sees your password or session cookies.
+          </Step>
+          <Step n={3} done={false} active={ready} title="Sign in to Xomoni">
+            {ready ? (
+              <div className={styles.stepAction}>
+                <Button variant="primary" size="sm" icon={<ArrowEnter16Regular />} onClick={continueAs}>
+                  Continue as @{info.handle ?? 'this account'}
+                </Button>
+              </div>
+            ) : (
+              'The account the X window is signed in to appears here.'
+            )}
+          </Step>
+        </ol>
+      </Card>
+    </div>
+  );
+}
+
+function FirstRun({ worker }: { worker: WorkerStatus }) {
+  const styles = useStyles();
+  const open = () => openWorker(worker);
   const loggedIn = !!worker.info?.loggedIn;
   return (
     <div className={styles.onboarding}>

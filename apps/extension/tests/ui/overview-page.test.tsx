@@ -4,7 +4,8 @@ import { cleanup, render, renderHook, screen, waitFor, within } from '@testing-l
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCleanupJob } from '../../src/engine/runner';
-import { db, markArchiveImported } from '../../src/shared/db';
+import { db, kvGet, markArchiveImported } from '../../src/shared/db';
+import { getSignedOut, markSignedOut } from '../../src/shared/session';
 import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
 import type * as Hooks from '../../src/ui/hooks';
 import type { WorkerStatus } from '../../src/ui/hooks';
@@ -46,9 +47,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** The three onboarding steps, in order. */
-function steps() {
-  const list = screen.getAllByRole('listitem');
+/** The three onboarding steps, in order, once the page has read whether the person signed out (#226). */
+async function steps() {
+  const list = await screen.findAllByRole('listitem');
   expect(list).toHaveLength(3);
   return list;
 }
@@ -63,8 +64,8 @@ describe('Overview onboarding (no account yet)', () => {
   it('starts with the worker window to open', async () => {
     render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
 
-    expect(screen.getByRole('heading', { name: 'Welcome to Xomoni' })).toBeInTheDocument();
-    const [open, login, detect] = steps();
+    expect(await screen.findByRole('heading', { name: 'Welcome to Xomoni' })).toBeInTheDocument();
+    const [open, login, detect] = await steps();
     expect(within(open!).getByText('Open the X window')).toBeInTheDocument();
     expect(isDone(open!, 1)).toBe(false);
     expect(isDone(login!, 2)).toBe(false);
@@ -86,7 +87,7 @@ describe('Overview onboarding (no account yet)', () => {
     openWorker(chrome, pageInfo({ loggedIn: false, viewerId: null }));
     render(<OverviewPage account={null} worker={{ open: true, info: null }} navigate={vi.fn()} />);
 
-    const [open, login, detect] = steps();
+    const [open, login, detect] = await steps();
     expect(isDone(open!, 1)).toBe(true);
     expect(isDone(login!, 2)).toBe(false);
     expect(isDone(detect!, 3)).toBe(false);
@@ -100,10 +101,10 @@ describe('Overview onboarding (no account yet)', () => {
     expect(chrome.windows.create).not.toHaveBeenCalled();
   });
 
-  it('reads the profile once the person is logged in', () => {
+  it('reads the profile once the person is logged in', async () => {
     render(<OverviewPage account={null} worker={{ open: true, info: pageInfo() }} navigate={vi.fn()} />);
 
-    const [open, login, detect] = steps();
+    const [open, login, detect] = await steps();
     expect(isDone(open!, 1)).toBe(true);
     expect(isDone(login!, 2)).toBe(true);
     expect(isDone(detect!, 3)).toBe(false);
@@ -117,13 +118,71 @@ describe('Overview onboarding (no account yet)', () => {
     const toasts = renderHook(() => useToasts());
     render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Open X window' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Open X window' }));
 
     await waitFor(() => {
       expect(toasts.result.current).toContainEqual(
         expect.objectContaining({ text: 'Windows cannot be created', tone: 'critical' }),
       );
     });
+  });
+});
+
+describe('Overview signed out (#226)', () => {
+  it('says the person signed out and that the account’s data is still here, with the X window to open', async () => {
+    await markSignedOut('me', true);
+    render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
+
+    expect(await screen.findByRole('heading', { name: 'You’re signed out' })).toBeInTheDocument();
+    expect(screen.getByText(/@me’s data is still here, ready when you sign in again\./)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Welcome to Xomoni' })).not.toBeInTheDocument();
+    const [open, login, continueStep] = await steps();
+    expect([open!, login!, continueStep!].map(markerTone)).toEqual(['neutral', 'neutral', 'neutral']);
+    expect(continueStep).toHaveTextContent('The account the X window is signed in to appears here.');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Open X window' }));
+    await waitFor(() => expect(chrome.windows.create).toHaveBeenCalled());
+  });
+
+  it('says when the data was removed', async () => {
+    await markSignedOut('me', false);
+    render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
+
+    expect(await screen.findByText(/@me’s data was removed from this browser\./)).toBeInTheDocument();
+  });
+
+  it('waits for the person’s Continue as @handle, then signs in with the X window’s account', async () => {
+    await markSignedOut('me', true);
+    const toasts = renderHook(() => useToasts());
+    const info = pageInfo({ viewerId: '1000', handle: 'other' });
+    render(<OverviewPage account={null} worker={{ open: true, info }} navigate={vi.fn()} />);
+
+    const [, login, continueStep] = await steps();
+    expect(markerTone(login!)).toBe('good');
+    expect(markerTone(continueStep!)).toBe('accent');
+    expect(await getSignedOut()).not.toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Continue as @other' }));
+
+    await waitFor(async () => expect(await getSignedOut()).toBeNull());
+    expect(await kvGet('activeAccount', null)).toBe('1000');
+    expect(toasts.result.current).toContainEqual(
+      expect.objectContaining({ text: 'Signed in as @other', tone: 'good' }),
+    );
+  });
+
+  it('offers no Continue while the X window is signed out', async () => {
+    await markSignedOut('me', true);
+    render(
+      <OverviewPage
+        account={null}
+        worker={{ open: true, info: pageInfo({ loggedIn: false, viewerId: null }) }}
+        navigate={vi.fn()}
+      />,
+    );
+
+    await screen.findByRole('heading', { name: 'You’re signed out' });
+    expect(screen.queryByRole('button', { name: /Continue as/ })).not.toBeInTheDocument();
   });
 });
 

@@ -11,12 +11,13 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
+- Phase 13: signing out of Xomoni is done; next, fewer steps from install to a connected browser.
 - Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
 - Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](PHASE-11-REPORT.md)).
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.2.1 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-14 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
+**Last updated:** 2026-11-15 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -191,6 +192,14 @@ A UX review of the whole dashboard found more places than tasks, numbers without
 | ✅ | Plain words across the dashboard | [#205](https://github.com/pirdehi/xomoni/issues/205) | [#216](https://github.com/pirdehi/xomoni/pull/216) |
 | ✅ | One set of numbers | [#206](https://github.com/pirdehi/xomoni/issues/206) | [#217](https://github.com/pirdehi/xomoni/pull/217) |
 | ✅ | A modern look, light and dark | [#207](https://github.com/pirdehi/xomoni/issues/207) | [#218](https://github.com/pirdehi/xomoni/pull/218) |
+
+## Phase 13 · Sign-out and an easier start
+
+Signing out of Xomoni as cleanly as signing in, and fewer steps from install to a connected browser.
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ✅ | Sign out of Xomoni in the extension: one dialog, a signed-out page, the account's data removed on request ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)) | [#226](https://github.com/pirdehi/xomoni/issues/226) | [#227](https://github.com/pirdehi/xomoni/pull/227) |
 
 ## Dropped
 

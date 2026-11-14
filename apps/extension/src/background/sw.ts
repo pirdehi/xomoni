@@ -3,6 +3,7 @@ import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID } from '../shared/notify';
+import { getSignedOut } from '../shared/session';
 import { suggestArchivePath } from './archive-downloads';
 
 const DASHBOARD = chrome.runtime.getURL('dashboard.html');
@@ -59,6 +60,9 @@ chrome.runtime.onMessage.addListener((raw: unknown, sender) => {
 });
 
 async function handle(message: RuntimeMessage) {
+  // Signed out of Xomoni (#226): what X pages show isn't recorded. X's limits still are: they hold no X content and
+  // keep the next run within them.
+  if (message.type !== 'rate' && (await getSignedOut())) return;
   switch (message.type) {
     case 'ingest': {
       const known = await db.accounts.get(message.accountId);

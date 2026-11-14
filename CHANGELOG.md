@@ -4,6 +4,22 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Added
+
+- **Sign out of Xomoni** in the extension (#226, ADR-0023). It sits at the foot of the account menu and opens a dialog that names the account and says what will happen:
+  - the running job pauses, and continues after signing in again;
+  - this browser disconnects from xomoni.com;
+  - the X window Xomoni opened closes;
+  - nothing more is recorded from X.
+- Two choices in the dialog:
+  - remove the account's data from this browser, with a copy to download first; X's limits still hold;
+  - also sign out of X, on X's own page.
+- A signed-out page. Signing in again takes *Continue as @handle*, so an X session left open doesn't sign you straight back in.
+
+### Changed
+
+- *Disconnect* from xomoni.com asks to confirm. *Sign out of X* moved from the account menu into the sign-out dialog (#226).
+
 ## [0.2.1] - 2026-11-14
 
 Choosing the Xomoni folder works in a Chrome that asks where to save each file, and xomoni.com has an install guide.

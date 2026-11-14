@@ -8,6 +8,7 @@ import { createScanJob } from '../../src/engine/runner';
 import { runner } from '../../src/engine/platform';
 import { NEED_TITLE, needMessage } from '../../src/shared/attention';
 import { db, upsertAccount } from '../../src/shared/db';
+import { markSignedOut } from '../../src/shared/session';
 import type { PageInfo } from '../../src/shared/messages';
 import { App } from '../../src/ui/App';
 import { WRONG_TAB_MS, startJob, toast } from '../../src/ui/hooks';
@@ -55,6 +56,45 @@ describe('App before an account is known', () => {
     expect(await pageHeading('Home')).toBeInTheDocument();
     expect(within(sidebar()).getByText('@newbie')).toBeInTheDocument();
     expect(within(sidebar()).getByText('X window ready')).toBeInTheDocument();
+  });
+});
+
+describe('App sign-out (#226)', () => {
+  beforeEach(async () => {
+    await upsertAccount(account());
+    // No job runs: no dashboard tab holds the runner's lock.
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: { query: () => Promise.resolve({ held: [] }) },
+    });
+  });
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'locks');
+  });
+
+  it('signs out from the account menu and shows the signed-out page, keeping the data', async () => {
+    render(<App />);
+    await pageHeading('Home');
+
+    await userEvent.click(within(sidebar()).getByRole('button', { name: /^Connections: / }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out of Xomoni' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }));
+
+    expect(await pageHeading('You’re signed out')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Sign out of Xomoni?' })).not.toBeInTheDocument());
+    expect(within(sidebar()).queryByRole('button', { name: /^Connections: / })).not.toBeInTheDocument();
+    expect(await screen.findByText('Signed out of Xomoni. @me is no longer used in this browser.')).toBeInTheDocument();
+    expect(await db.accounts.get(ME)).toBeDefined();
+  });
+
+  it('shows only the signed-out page while signed out, whatever the hash says', async () => {
+    await markSignedOut('me', true);
+    window.location.hash = '#/settings';
+    render(<App />);
+
+    expect(await pageHeading('You’re signed out')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
   });
 });
 

@@ -290,6 +290,15 @@ const STATE_VERB: Record<JobState, string> = {
  * only one open dashboard drives the worker.
  */
 
+/**
+ * Whether a job runs now, in this dashboard tab or another one: some runner holds the `xomoni-runner` Web Lock. Signing
+ * out waits for it to be released (#226).
+ */
+export async function jobRunning(): Promise<boolean> {
+  const { held = [] } = await navigator.locks.query();
+  return held.some((lock) => lock.name === LOCK);
+}
+
 /** A job still marked running with no runner holding the lock was interrupted. */
 export async function recoverInterruptedJobs() {
   await navigator.locks.request(LOCK, { ifAvailable: true }, async (lock) => {

@@ -18,7 +18,7 @@ Connects this browser to a xomoni.com account and keeps the website's dashboard 
 
 ## Used by
 
-- `../ui/`: the Settings card that connects and disconnects, and the app shell, which starts the sync. The engine never imports it, so a run on X never waits on the network to xomoni.com.
+- `../ui/`: the Settings card that connects and disconnects, the account menu and the sign-out (#226), which disconnect too, and the app shell, which starts the sync. The engine never imports it, so a run on X never waits on the network to xomoni.com.
 
 ## Tests
 

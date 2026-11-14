@@ -184,6 +184,30 @@ describe('WorkerTab.focus', () => {
   });
 });
 
+describe('WorkerTab.close (#226)', () => {
+  it('closes the X window it opened and forgets it', async () => {
+    openTab();
+    const remove = vi.fn(() => Promise.resolve());
+    Object.assign(chrome.tabs, { remove });
+
+    await worker.close();
+
+    expect(remove).toHaveBeenCalledWith(TAB_ID);
+    expect(chrome.storage.session.remove).toHaveBeenCalledWith('workerTab');
+  });
+
+  it('closes nothing without a worker tab, and doesn’t mind a tab already gone', async () => {
+    const remove = vi.fn(() => Promise.reject(new Error('No tab with id')));
+    Object.assign(chrome.tabs, { remove });
+
+    await worker.close();
+    expect(remove).not.toHaveBeenCalled();
+
+    openTab();
+    await expect(worker.close()).resolves.toBeUndefined();
+  });
+});
+
 describe('notAnswered (#196)', () => {
   it('turns Chrome’s messaging errors into words for the Activity log', () => {
     expect(

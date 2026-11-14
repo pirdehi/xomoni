@@ -50,6 +50,7 @@ import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
 import { ConsentDialog } from './components/ConsentDialog';
+import { SignOutDialog } from './components/SignOutDialog';
 import { errorMessage } from './format';
 import {
   type WorkerStatus,
@@ -58,6 +59,7 @@ import {
   useActiveAccount,
   useRunner,
   useShareGuard,
+  useSignOutGuard,
   useTabShare,
   useToasts,
   useWorkerStatus,
@@ -270,8 +272,9 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
  * `aria-current="page"`, the worker status and the account), the running-job banner, a notice when a newer version
  * is out (#151), the current page and toasts, and the archive follow-up, which gets X's archive the rest of the way
  * by itself once the person asked for it (#186).
- * Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, only the onboarding view is shown,
- * whatever the hash says.
+ * Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, and while signed out of Xomoni (#226),
+ * only the onboarding view or the signed-out page is shown, whatever the hash says. The sign-out dialog lives here, so
+ * it outlives the account menu it was opened from.
  */
 export function App() {
   const styles = useStyles();
@@ -280,6 +283,7 @@ export function App() {
   const worker = useWorkerStatus();
   useCloudSync();
   useShareGuard();
+  useSignOutGuard();
 
   return (
     <div className={styles.shell}>
@@ -298,6 +302,7 @@ export function App() {
       </main>
       <Toasts />
       <ConsentDialog />
+      <SignOutDialog />
       {account && <ArchiveFollowUp account={account} libraryOpen={page === 'library'} />}
     </div>
   );

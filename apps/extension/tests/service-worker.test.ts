@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { db, itemKey, kvGet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { RuntimeMessage } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
+import { markSignedOut } from '../src/shared/session';
 import { FOLDER_NOTE, FOLDER_NOTE_URL } from '../src/shared/x-archive';
 import type { ItemDraft, RateObservation } from '../src/shared/types';
 import { account, resetDb } from './support/fixtures';
@@ -299,6 +300,19 @@ describe('service worker: observations from x.com tabs', () => {
 
     await vi.waitFor(async () => expect(await kvGet('activeAccount', null)).toBe(X_ME));
     expect(await db.accounts.get(X_ME)).toMatchObject({ id: X_ME, handle: '' });
+  });
+
+  it('records nothing X pages show while signed out of Xomoni, but still X’s limits (#226)', async () => {
+    await markSignedOut('me', true);
+
+    on.message!(ingest('me'), FROM_TAB);
+    on.message!({ type: 'rate', obs: { ...OBS, at: Date.now(), reset: Date.now() + 60_000 } }, FROM_TAB);
+
+    await vi.waitFor(async () => expect(await db.limits.get(OBS.key)).toBeDefined());
+    await settle();
+    expect(await db.items.count()).toBe(0);
+    expect(await db.accounts.count()).toBe(0);
+    expect(await kvGet('activeAccount', null)).toBeNull();
   });
 
   it('leaves a known account alone unless its handle changed', async () => {

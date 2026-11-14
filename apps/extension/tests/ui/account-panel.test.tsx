@@ -7,7 +7,8 @@ import { PAIRING_PAGE } from '../../src/cloud/config';
 import { type CloudConnection, getConnection, saveConnection } from '../../src/cloud/connection';
 import { FORGOTTEN_HERE } from '../../src/cloud/sync';
 import type { PageInfo } from '../../src/shared/messages';
-import { AccountPanel, X_SIGN_OUT } from '../../src/ui/components/AccountPanel';
+import { AccountPanel } from '../../src/ui/components/AccountPanel';
+import { SignOutDialog } from '../../src/ui/components/SignOutDialog';
 import { type WorkerStatus, useToasts } from '../../src/ui/hooks';
 import type { PageId } from '../../src/ui/navigation';
 import { stubChrome } from '../support/chrome';
@@ -48,9 +49,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** Renders the corner for @me and opens its panel. */
+/** Renders the corner for @me, with the app shell's sign-out dialog, and opens its panel. */
 async function openPanel(status = worker(true)) {
-  render(<AccountPanel account={account({ name: 'Me', handle: 'me' })} worker={status} navigate={navigate} />);
+  render(
+    <>
+      <AccountPanel account={account({ name: 'Me', handle: 'me' })} worker={status} navigate={navigate} />
+      <SignOutDialog />
+    </>,
+  );
   await userEvent.click(screen.getByRole('button', { name: 'Connections: Me, @me' }));
   return screen.findByRole('dialog', { name: 'Connections' });
 }
@@ -70,21 +76,28 @@ describe('the sidebar’s Connections panel (#182)', () => {
     expect(map).toHaveAccessibleName(/signed in to X.*isn’t connected to xomoni\.com/);
   });
 
-  it('shows the X account with its state, its profile and X’s own sign-out page, each in a new tab', async () => {
+  it('shows the X account with its state and its profile, in a new tab', async () => {
     const panel = await openPanel();
 
     const x = within(panel).getByRole('region', { name: 'X account' });
     expect(x).toHaveTextContent('@me on X');
     expect(x).toHaveTextContent('Signed in');
     const profile = within(x).getByRole('link', { name: 'Open profile' });
-    const signOut = within(x).getByRole('link', { name: 'Sign out of X' });
     expect(profile).toHaveAttribute('href', 'https://x.com/me');
-    expect(signOut).toHaveAttribute('href', X_SIGN_OUT);
-    for (const link of [profile, signOut]) {
-      expect(link).toHaveAttribute('target', '_blank');
-      expect(link).toHaveAttribute('rel', 'noreferrer noopener');
-    }
-    expect(x).toHaveTextContent('Signing out of X pauses jobs until you sign in again.');
+    expect(profile).toHaveAttribute('target', '_blank');
+    expect(profile).toHaveAttribute('rel', 'noreferrer noopener');
+    // Signing out of X is one of the sign-out dialog's choices now (#226).
+    expect(within(x).queryByRole('link', { name: 'Sign out of X' })).not.toBeInTheDocument();
+  });
+
+  it('ends with Sign out of Xomoni, which closes the panel and opens the sign-out dialog (#226)', async () => {
+    const panel = await openPanel();
+
+    expect(panel).toHaveTextContent('Pauses jobs, disconnects this browser and closes the X window.');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Sign out of Xomoni' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' })).toHaveTextContent('@me on X');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Connections' })).not.toBeInTheDocument());
   });
 
   it('says when this browser is signed out of X, and says nothing while no X page has answered', async () => {
@@ -131,16 +144,33 @@ describe('the sidebar’s Connections panel (#182)', () => {
     expect(navigate).toHaveBeenCalledWith('settings');
   });
 
-  it('disconnects from xomoni.com, telling the website', async () => {
+  it('disconnects from xomoni.com after a confirmation, telling the website', async () => {
     await saveConnection(CONNECTED);
     const toasts = renderHook(() => useToasts());
     const panel = await openPanel();
 
     await userEvent.click(await within(panel).findByRole('button', { name: 'Disconnect' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Disconnect from xomoni.com?' });
+    expect(confirm).toHaveTextContent('o•••@example.com');
+    expect(fetch).not.toHaveBeenCalled();
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Disconnect' }));
 
     await waitFor(async () => expect(await getConnection()).toBeNull());
     expect(fetch.mock.calls.at(-1)?.[0]).toMatch(/unpair_device$/);
     expect(toasts.result.current).toContainEqual(expect.objectContaining({ text: 'Disconnected from xomoni.com' }));
+  });
+
+  it('keeps the connection when the confirmation is cancelled', async () => {
+    await saveConnection(CONNECTED);
+    const panel = await openPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Disconnect' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Disconnect from xomoni.com?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Disconnect/ })).not.toBeInTheDocument());
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await getConnection()).toEqual(CONNECTED);
   });
 
   it('says to remove the browser on xomoni.com when the website couldn’t be told', async () => {
@@ -150,6 +180,8 @@ describe('the sidebar’s Connections panel (#182)', () => {
     const panel = await openPanel();
 
     await userEvent.click(await within(panel).findByRole('button', { name: 'Disconnect' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Disconnect from xomoni.com?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Disconnect' }));
 
     await waitFor(() =>
       expect(toasts.result.current).toContainEqual(expect.objectContaining({ text: FORGOTTEN_HERE, tone: 'critical' })),

@@ -104,6 +104,40 @@ export async function wipeLocalData() {
   await db.transaction('rw', wiped, () => Promise.all(wiped.map((table) => table.clear())));
 }
 
+/**
+ * The `kv` values kept for one account (`<name>:<account id>`) that removing its data keeps, like `KEPT_ON_WIPE`:
+ * the daily view cap learned from X (`viewCap`, PLAYBOOK A4) holds no X content and keeps Xomoni within X's limits.
+ */
+const KEPT_ACCOUNT_VALUES: readonly string[] = ['viewCap'];
+
+/**
+ * Removes one X account's data from this browser when the person signs out with *Remove its data* (#226): its
+ * inventory, jobs, activity log, X's observed limits, sampled posts to check again, its consent, every `kv` value
+ * kept for it (Watch, the archive and its request, archive files seen) and the account itself, in one transaction.
+ * Like `wipeLocalData`, it keeps `KEPT_ON_WIPE` and the view cap, so X's limits still hold; other accounts keep
+ * everything. Stop the account's running job first.
+ */
+export async function forgetAccount(accountId: string) {
+  const own = (key: string) => {
+    const at = key.indexOf(':');
+    return at > 0 && key.slice(at + 1) === accountId && !KEPT_ACCOUNT_VALUES.includes(key.slice(0, at));
+  };
+  const tables = [db.accounts, db.items, db.jobs, db.logs, db.limits, db.checks, db.consents, db.kv];
+  await db.transaction('rw', tables, async () => {
+    const whole: [string, number] = [accountId, -Infinity];
+    const end: [string, number] = [accountId, Infinity];
+    await db.items.where('accountId').equals(accountId).delete();
+    await db.jobs.where('accountId').equals(accountId).delete();
+    await db.logs.where('[accountId+ts]').between(whole, end, true, true).delete();
+    await db.limits.where('accountId').equals(accountId).delete();
+    await db.checks.where('[accountId+dueAt]').between(whole, end, true, true).delete();
+    await db.consents.delete(accountId);
+    await db.kv.filter((row) => own(row.key)).delete();
+    if ((await kvGet<string | null>('activeAccount', null)) === accountId) await db.kv.delete('activeAccount');
+    await db.accounts.delete(accountId);
+  });
+}
+
 /** Primary key of an inventory item in the `items` table. */
 export const itemKey = (accountId: string, kind: ItemKind, id: string) => `${accountId}:${kind}:${id}`;
 

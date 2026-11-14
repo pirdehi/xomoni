@@ -196,6 +196,16 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 
 `shared/` is the kernel every area may use. The other areas don't import each other, with two exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), and `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open. The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The engine's core depends on ports, not on Chrome (#11): `engine/ports.ts` defines `XTab` (the worker tab), `Notifier` and `Presence` (whether the person is away, and keeping the display on), `engine/platform.ts` is the composition root that wires the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`, `presence.ts`) and creates the dashboard's `runner`, and `JobContext` and `Runner` receive the ports. Rule `ext-engine-core-uses-ports` and an ESLint rule against `chrome` in the core keep it that way; tests run the engine on fake ports.
 
+The extension has a signed-out state of its own ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)), `signedOut` in `kv`.
+- While it is set, the dashboard has no active account and the service worker records nothing from X pages but X's rate limits.
+- `ui/sign-out.ts` signs out in order:
+  - pause the job and wait for the runner's lock;
+  - disconnect from xomoni.com;
+  - remove the account's data if chosen;
+  - close the X window;
+  - open X's own sign-out page if chosen.
+- Signing in again takes the person's *Continue as @handle*.
+
 ## 6. Data
 
 - **Schema:** [`supabase/migrations`](../supabase/migrations). Two tables, `devices` and `jobs`, both owned by `auth.users` with `on delete cascade`, plus `delete_account()`, which needs a sign-in within the last 10 minutes (read from the JWT's `amr` claim), so a stolen session can't delete the account. Each account connects at most 10 devices, and each device keeps its newest 1,000 jobs (older ones are removed). `jobs.risk_level` carries the X account's risk-ladder level (0–4) as a number only, never X's reason or notice text.

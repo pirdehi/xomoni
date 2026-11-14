@@ -5,6 +5,7 @@ import { type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY } from '../shared/time';
 import { WARMUP_RESET_DAYS, earlierActiveDays, readFactor, spendsQuota, warmup } from '../shared/x-limits';
 import type { PageInfo } from '../shared/messages';
+import { type SignedOut, getSignedOut } from '../shared/session';
 import type { Account } from '../shared/types';
 import { runner } from '../engine/platform';
 import { WorkerGone, workerTab } from '../engine/worker-tab';
@@ -16,9 +17,13 @@ export function useRunner() {
   return useSyncExternalStore(runner.subscribe, runner.getState);
 }
 
-/** The account the dashboard shows: last one seen in the worker, else the most recent. */
+/**
+ * The account the dashboard shows: last one seen in the worker, else the most recent; null while signed out of
+ * Xomoni (#226), whatever accounts are stored.
+ */
 export function useActiveAccount(): Account | null | undefined {
   return useLiveQuery(async () => {
+    if (await getSignedOut()) return null;
     const id = await kvGet<string | null>('activeAccount', null);
     const byId = id ? await db.accounts.get(id) : undefined;
     return byId ?? (await db.accounts.orderBy('updatedAt').last()) ?? null;
@@ -44,7 +49,8 @@ export function useWorkerStatus(intervalMs = 3000): WorkerStatus {
         const info = open ? await workerTab.ping() : null;
         if (!alive) return;
         setStatus({ open, info });
-        if (info?.viewerId) {
+        // Signed out (#226), the account in the X window waits for the person's *Continue as*.
+        if (info?.viewerId && !(await getSignedOut())) {
           const known = await db.accounts.get(info.viewerId);
           if (!known || (info.handle && known.handle !== info.handle))
             await upsertAccount({ id: info.viewerId, handle: info.handle ?? '' });
@@ -117,6 +123,26 @@ export function useShareGuard() {
     }, WRONG_TAB_MS);
     return () => clearTimeout(timer);
   }, [sharing, status, waitingForWindow]);
+}
+
+/** The current sign-out of Xomoni (#226), kept current; null while signed in, undefined while loading. */
+export function useSignedOut(): SignedOut | null | undefined {
+  return useLiveQuery(getSignedOut);
+}
+
+/** Why a job paused when the person signed out of Xomoni (#226); its log and card say so. */
+export const SIGNED_OUT_PAUSE = 'Paused: you signed out of Xomoni. It continues where it stopped when you sign in.';
+
+/**
+ * Pauses this tab's job once the person signs out of Xomoni (#226), whichever dashboard tab they did it in: the job
+ * may run in another tab than the one with the sign-out dialog. The app shell runs it.
+ */
+export function useSignOutGuard() {
+  const signedOut = useSignedOut();
+  const { status } = useRunner();
+  useEffect(() => {
+    if (signedOut && status !== 'idle' && status !== 'stopping') runner.pause(SIGNED_OUT_PAUSE);
+  }, [signedOut, status]);
 }
 
 type Toast = { id: number; tone: 'good' | 'critical' | 'neutral'; text: string };

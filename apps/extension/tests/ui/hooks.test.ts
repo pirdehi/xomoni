@@ -8,6 +8,7 @@ import { runner } from '../../src/engine/platform';
 import { db, hasConsent, kvGet, kvSet, recordConsent, recordRisk } from '../../src/shared/db';
 import type { CleanupFilter, CleanupOptions } from '../../src/shared/types';
 import {
+  SIGNED_OUT_PAUSE,
   ensureConsent,
   resumeAnyway,
   startJob,
@@ -17,9 +18,11 @@ import {
   usePace,
   useRisk,
   useRunner,
+  useSignOutGuard,
   useToasts,
   useWorkerStatus,
 } from '../../src/ui/hooks';
+import { markSignedOut } from '../../src/shared/session';
 import { WORKER_TAB, stubChrome } from '../support/chrome';
 import { ME, account, resetDb } from '../support/fixtures';
 import { fakeRunner, logEntry, openWorker, pageInfo } from '../support/shell';
@@ -71,6 +74,30 @@ describe('useRunner', () => {
   });
 });
 
+describe('useSignOutGuard (#226)', () => {
+  it('pauses a running job once the person signs out, in whichever tab', async () => {
+    fakeRunner({ status: 'running', jobId: 'job-1' });
+    const pause = vi.spyOn(runner, 'pause').mockImplementation(() => undefined);
+    renderHook(() => useSignOutGuard());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(pause).not.toHaveBeenCalled();
+
+    await markSignedOut('me', true);
+
+    await waitFor(() => expect(pause).toHaveBeenCalledWith(SIGNED_OUT_PAUSE));
+  });
+
+  it('leaves an idle runner alone', async () => {
+    fakeRunner({ status: 'idle' });
+    const pause = vi.spyOn(runner, 'pause').mockImplementation(() => undefined);
+    await markSignedOut('me', true);
+    renderHook(() => useSignOutGuard());
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(pause).not.toHaveBeenCalled();
+  });
+});
+
 describe('useActiveAccount', () => {
   it('is null while no account is known', async () => {
     const { result } = renderHook(() => useActiveAccount());
@@ -99,6 +126,16 @@ describe('useActiveAccount', () => {
     const { result } = renderHook(() => useActiveAccount());
     await waitFor(() => {
       expect(result.current?.id).toBe('old');
+    });
+  });
+
+  it('is null while signed out of Xomoni, whatever accounts are stored (#226)', async () => {
+    await db.accounts.put(account());
+    await kvSet('activeAccount', ME);
+    await markSignedOut('me', true);
+    const { result } = renderHook(() => useActiveAccount());
+    await waitFor(() => {
+      expect(result.current).toBeNull();
     });
   });
 
@@ -139,6 +176,19 @@ describe('useWorkerStatus', () => {
       { type: 'actor', command: { cmd: 'ping' } },
       { frameId: 0 },
     );
+  });
+
+  it('doesn’t take up the X window’s account while signed out of Xomoni (#226)', async () => {
+    await markSignedOut('me', true);
+    const info = pageInfo({ viewerId: 'acct-new', handle: 'newbie' });
+    openWorker(chrome, info);
+    const { result } = renderHook(() => useWorkerStatus(60_000));
+
+    await waitFor(() => {
+      expect(result.current).toEqual({ open: true, info });
+    });
+    expect(await db.accounts.count()).toBe(0);
+    expect(await kvGet('activeAccount', null)).toBeNull();
   });
 
   it('leaves a known account as it is', async () => {

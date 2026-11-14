@@ -1,4 +1,5 @@
 import type { Device, JobSummary } from '../domain/model';
+import type { PairMessage } from '../domain/connect';
 import type { PairingResult } from '../domain/pairing';
 
 /** Reads the signed-in person's devices and recent jobs. Row Level Security scopes every read. */
@@ -35,4 +36,10 @@ export interface LiveFeed {
 export interface DevicePairing {
   /** A new code, replacing any earlier one; it works once, for ten minutes. */
   createCode(): Promise<PairingResult>;
+}
+
+/** The Xomoni extension in this browser, reached from xomoni.com's pages (`externally_connectable`, ADR-0024). */
+export interface ExtensionLink {
+  /** Sends `message` to the extension `extensionId` and resolves with its answer; rejects when it can't be reached. */
+  send(extensionId: string, message: PairMessage): Promise<unknown>;
 }

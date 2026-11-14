@@ -3,6 +3,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { db, itemKey, kvGet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { RuntimeMessage } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
+import { getConnection } from '../src/cloud/connection';
+import { PAIR_MESSAGE, startWebConnect } from '../src/cloud/web-connect';
 import { markSignedOut } from '../src/shared/session';
 import { FOLDER_NOTE, FOLDER_NOTE_URL } from '../src/shared/x-archive';
 import type { ItemDraft, RateObservation } from '../src/shared/types';
@@ -14,6 +16,7 @@ type Listeners = {
   notification?: (id: string) => void;
   installed?: (details: { reason: string }) => void;
   message?: (message: RuntimeMessage, sender: Sender) => unknown;
+  external?: (message: unknown, sender: Sender, sendResponse: (answer: unknown) => void) => unknown;
   filename?: (
     item: { filename: string; url?: string; byExtensionId?: string },
     suggest: (s?: { filename: string; conflictAction: string }) => void,
@@ -39,6 +42,8 @@ const chrome = {
     ContextType: { TAB: 'TAB' },
     onInstalled: { addListener: (listener: Listeners['installed']) => (on.installed = listener) },
     onMessage: { addListener: (listener: Listeners['message']) => (on.message = listener) },
+    onMessageExternal: { addListener: (listener: Listeners['external']) => (on.external = listener) },
+    getManifest: vi.fn(() => ({ version: '0.3.0' })),
   },
   action: { onClicked: { addListener: (listener: Listeners['action']) => (on.action = listener) } },
   downloads: {
@@ -48,7 +53,14 @@ const chrome = {
     onClicked: { addListener: (listener: Listeners['notification']) => (on.notification = listener) },
     clear: vi.fn((): Promise<boolean> => Promise.resolve(true)),
   },
-  storage: { session: { get: vi.fn((): Promise<Record<string, unknown>> => Promise.resolve({})) } },
+  storage: {
+    session: { get: vi.fn((): Promise<Record<string, unknown>> => Promise.resolve({})) },
+    // Only for moving a xomoni.com connection an older version kept here (#151).
+    local: {
+      get: vi.fn((): Promise<Record<string, unknown>> => Promise.resolve({})),
+      remove: vi.fn((): Promise<void> => Promise.resolve()),
+    },
+  },
   tabs: {
     get: vi.fn((id: number) => Promise.resolve({ id, windowId: WORKER.windowId })),
     update: vi.fn(() => Promise.resolve({})),
@@ -75,11 +87,14 @@ beforeEach(async () => {
   chrome.runtime.getContexts.mockResolvedValue([]);
   chrome.notifications.clear.mockResolvedValue(true);
   chrome.storage.session.get.mockResolvedValue({});
+  chrome.storage.local.get.mockResolvedValue({});
+  chrome.storage.local.remove.mockResolvedValue(undefined);
   chrome.tabs.get.mockImplementation((id: number) => Promise.resolve({ id, windowId: WORKER.windowId }));
   chrome.tabs.update.mockResolvedValue({});
   chrome.tabs.create.mockResolvedValue({});
   chrome.windows.get.mockResolvedValue({ id: WORKER.windowId, state: 'normal' });
   chrome.windows.update.mockResolvedValue({});
+  chrome.runtime.getManifest.mockReturnValue({ version: '0.3.0' });
   await resetDb();
 });
 
@@ -429,5 +444,73 @@ describe('service worker: where X’s archive is saved (#196)', () => {
 
     expect(await suggestionFor(ARCHIVE)).toEqual([]);
     read.mockRestore();
+  });
+});
+
+describe('service worker: a one-time code from xomoni.com (#228, ADR-0024)', () => {
+  const SITE: Sender = { origin: 'https://xomoni.com', url: 'https://xomoni.com/connect', frameId: 0, tab: { id: 4 } };
+  const CODE = 'AB2CD-EF3GH';
+
+  /** Sends `message` as `sender` and returns what the service worker answered, if anything. */
+  async function send(message: unknown, sender: Sender = SITE) {
+    const sendResponse = vi.fn();
+    const keepOpen = on.external!(message, sender, sendResponse);
+    await vi.waitFor(() => expect(sendResponse.mock.calls.length + (keepOpen === true ? 0 : 1)).toBeGreaterThan(0));
+    return { keepOpen, answer: sendResponse.mock.calls[0]?.[0] as unknown };
+  }
+
+  /** Starts connecting as the dashboard would, and returns the nonce it put in the page's URL. */
+  async function started() {
+    const url = await startWebConnect('xomoni');
+    return new URLSearchParams(new URL(url).hash.slice(1)).get('nonce')!;
+  }
+
+  let fetch: ReturnType<typeof vi.fn<(url: string) => Promise<Response>>>;
+  beforeEach(() => {
+    fetch = vi.fn<(url: string) => Promise<Response>>(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal('fetch', fetch);
+  });
+
+  it('pairs with a code from xomoni.com when this extension asked, and answers with the account', async () => {
+    fetch.mockResolvedValueOnce(
+      new Response(JSON.stringify([{ device_id: 'd1', token: 'secret', account: 'o•••@example.com' }]), {
+        status: 200,
+      }),
+    );
+    const nonce = await started();
+
+    const { keepOpen, answer } = await send({ type: PAIR_MESSAGE, code: CODE, nonce });
+
+    expect(keepOpen).toBe(true);
+    expect(answer).toEqual({ ok: true, account: 'o•••@example.com' });
+    expect(await getConnection()).toMatchObject({ deviceId: 'd1', confirmed: true });
+  });
+
+  it.each<[string, Sender]>([
+    ['another site', { ...SITE, origin: 'https://evil.example', url: 'https://evil.example/' }],
+    ['a look-alike host', { ...SITE, origin: 'https://xomoni.com.evil.example' }],
+    ['a frame inside xomoni.com', { ...SITE, frameId: 1 }],
+  ])('doesn’t answer %s, and pairs nothing', async (_, sender) => {
+    const nonce = await started();
+    const sendResponse = vi.fn();
+
+    expect(on.external!({ type: PAIR_MESSAGE, code: CODE, nonce }, sender, sendResponse)).toBeUndefined();
+    await settle();
+    expect(sendResponse).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('answers invalid to anything but a pairing, such as a request to start a job (ADR-0006)', async () => {
+    const { answer } = await send({ type: 'start-job', jobId: 'j1' });
+
+    expect(answer).toEqual({ ok: false, reason: 'invalid' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('refuses a code when this extension didn’t start connecting', async () => {
+    const { answer } = await send({ type: PAIR_MESSAGE, code: CODE, nonce: 'n'.repeat(22) });
+
+    expect(answer).toEqual({ ok: false, reason: 'not_asked' });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

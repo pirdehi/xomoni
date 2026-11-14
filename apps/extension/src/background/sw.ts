@@ -1,4 +1,6 @@
-// Service worker: stores what the content script observes and opens the dashboard.
+// Service worker: stores what the content script observes, opens the dashboard, and takes the one-time code
+// xomoni.com hands over when the person connects this browser there (#228).
+import { connectFromWebsite, fromWebsite, parseWebPairing } from '../cloud/web-connect';
 import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
@@ -48,6 +50,20 @@ chrome.downloads.onDeterminingFilename.addListener(suggestArchivePath);
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') void openDashboard();
+});
+
+// xomoni.com hands over a one-time code after the person pressed Connect there (#228, ADR-0024). The manifest lets only
+// https://xomoni.com send; the sender is checked again, the message must be exactly a pairing, and its nonce one this
+// extension made when the person started connecting. Anything else gets no answer, or `invalid`.
+chrome.runtime.onMessageExternal.addListener((raw: unknown, sender, sendResponse) => {
+  if (!fromWebsite(sender)) return;
+  const message = parseWebPairing(raw);
+  if (!message) {
+    sendResponse({ ok: false, reason: 'invalid' });
+    return;
+  }
+  void connectFromWebsite(message).then(sendResponse, () => sendResponse({ ok: false, reason: 'refused' }));
+  return true;
 });
 
 // Only Xomoni's own content script in the top frame of an x.com tab is heard, and only with a message whose every

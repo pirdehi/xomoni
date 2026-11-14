@@ -1,16 +1,23 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getConnection, saveConnection } from '../../src/cloud/connection';
-import { CloudCard, suggestedDeviceName } from '../../src/ui/components/CloudCard';
+import { suggestedDeviceName } from '../../src/cloud/device-name';
+import { pendingWebConnect } from '../../src/cloud/web-connect';
+import { CloudCard } from '../../src/ui/components/CloudCard';
+import { useToasts } from '../../src/ui/hooks';
 import { stubChrome } from '../support/chrome';
 import { resetDb } from '../support/fixtures';
 
 type Fetch = Mock<(url: string, init?: RequestInit) => Promise<Response>>;
 const json = (status: number, body: unknown) =>
   Promise.resolve(new Response(body === null ? null : JSON.stringify(body), { status }));
+
+/** Opens the folded code form, the fallback to connecting on xomoni.com (#228). */
+const openCodeForm = async () =>
+  userEvent.click(await screen.findByRole('button', { name: /Use a one-time code instead/ }));
 
 describe('Settings: the xomoni.com card (ADR-0018)', () => {
   let fetch: Fetch;
@@ -31,6 +38,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     render(<CloudCard />);
 
     expect(screen.getByText(/never what you posted or liked/)).toBeInTheDocument();
+    await openCodeForm();
     expect(await screen.findByRole('link', { name: /Get a code/ })).toHaveAttribute(
       'href',
       'https://xomoni.com/dashboard',
@@ -59,6 +67,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
   it('disconnects at once when the account isn’t the person’s, having sent nothing (#149)', async () => {
     fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret', account: 'z•••@attacker.example' }]));
     render(<CloudCard />);
+    await openCodeForm();
     await userEvent.type(await screen.findByLabelText('Code'), 'ab2cd-ef3gh');
     await userEvent.click(screen.getByRole('button', { name: 'Connect' }));
 
@@ -73,6 +82,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
       json(400, { message: 'This code is not valid. Get a new one on xomoni.com.', hint: 'bad_code' }),
     );
     render(<CloudCard />);
+    await openCodeForm();
     await userEvent.type(await screen.findByLabelText('Code'), 'AAAAAAAAAA');
     await userEvent.click(screen.getByRole('button', { name: 'Connect' }));
 
@@ -96,7 +106,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
 
     await waitFor(async () => expect(await getConnection()).toBeNull());
-    expect(await screen.findByLabelText('Code')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Connect to xomoni.com' })).toBeInTheDocument();
     expect(fetch.mock.calls.at(-1)?.[0]).toMatch(/unpair_device$/);
   });
 
@@ -125,12 +135,46 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     await waitFor(() => expect(map()).toHaveAttribute('data-cloud', 'off'));
     expect(map()).toHaveAttribute('data-x', 'signed-in');
 
+    await openCodeForm();
     await userEvent.type(await screen.findByLabelText('Code'), 'ab2cd-ef3gh');
     await userEvent.click(screen.getByRole('button', { name: 'Connect' }));
     await waitFor(() => expect(map()).toHaveAttribute('data-cloud', 'pending'));
 
     await userEvent.click(await screen.findByRole('button', { name: 'Yes, it’s mine' }));
     await waitFor(() => expect(map()).toHaveAttribute('data-cloud', 'connected'));
+  });
+
+  it('connects with one click on xomoni.com: opens its page with this extension’s id and a nonce (#228)', async () => {
+    const chrome = stubChrome();
+    const create = vi.fn((_: { url: string; active: boolean }) => Promise.resolve({}));
+    Object.assign(chrome.tabs, { create });
+    render(<CloudCard />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect to xomoni.com' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![0].url).toMatch(/^https:\/\/xomoni\.com\/connect#ext=test-extension&nonce=[\w-]{22}$/);
+    expect(await screen.findByRole('status')).toHaveTextContent('Finish on xomoni.com');
+    expect(fetch).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByRole('button', { name: 'Connect to xomoni.com' })).toBeInTheDocument();
+    expect(await pendingWebConnect()).toBeNull();
+  });
+
+  it('says why when Chrome won’t open xomoni.com', async () => {
+    const chrome = stubChrome();
+    Object.assign(chrome.tabs, { create: vi.fn(() => Promise.reject(new Error('Tabs cannot be edited right now'))) });
+    const toasts = renderHook(() => useToasts());
+    render(<CloudCard />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect to xomoni.com' }));
+
+    await waitFor(() =>
+      expect(toasts.result.current).toContainEqual(
+        expect.objectContaining({ text: 'Tabs cannot be edited right now', tone: 'critical' }),
+      ),
+    );
   });
 
   it('suggests a name from the browser and the system', () => {

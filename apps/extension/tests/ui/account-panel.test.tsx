@@ -33,10 +33,11 @@ const worker = (loggedIn: boolean | null): WorkerStatus => ({
 });
 
 let fetch: Fetch;
+let chrome: ReturnType<typeof stubChrome>;
 let navigate: Mock<(page: PageId) => void>;
 
 beforeEach(async () => {
-  stubChrome();
+  chrome = stubChrome();
   fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(new Response(null, { status: 204 })),
   );
@@ -110,14 +111,19 @@ describe('the sidebar’s Connections panel (#182)', () => {
     expect(within(unknown).getByRole('region', { name: 'X account' })).not.toHaveTextContent(/Signed (in|out)/);
   });
 
-  it('offers to connect xomoni.com, closing itself on the way to Settings', async () => {
+  it('connects on xomoni.com with one click, closing itself (#228)', async () => {
+    const create = vi.fn((_: { url: string }) => Promise.resolve({}));
+    Object.assign(chrome.tabs, { create });
     const panel = await openPanel();
 
     const cloud = within(panel).getByRole('region', { name: 'xomoni.com' });
     expect(cloud).toHaveTextContent('Not connected');
+    expect(cloud).toHaveTextContent('no code to type');
     await userEvent.click(within(cloud).getByRole('button', { name: 'Connect this browser' }));
 
-    expect(navigate).toHaveBeenCalledWith('settings');
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![0].url).toMatch(/^https:\/\/xomoni\.com\/connect#ext=/);
+    expect(navigate).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Connections' })).not.toBeInTheDocument());
   });
 

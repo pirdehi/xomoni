@@ -44,6 +44,7 @@ import { isOnline, jobProgress, jobStateView, relativeTime, type Tone } from '..
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
+import { PendingConnectNotice } from './connect-panel';
 import { PairingPanel } from './pairing-panel';
 import { useLiveDashboard } from './use-live-dashboard';
 
@@ -347,6 +348,7 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
   return (
     <div className={s.root}>
       <AccountBar viewer={viewer} live={live} />
+      <PendingConnectNotice />
 
       {needsYou.length > 0 && <NeedsYou jobs={needsYou} deviceName={deviceName} />}
       {risks.length > 0 && <AccountRisks risks={risks} deviceName={deviceName} now={now} />}
@@ -554,7 +556,9 @@ function ConnectBrowser({ createCode }: { createCode: () => Promise<PairingResul
         </Step>
         <Step n={2}>
           <span className={s.stepLead}>
-            Get a one-time code, then type it in the extension under{' '}
+            In the extension, press <strong className={s.strong}>Connect to xomoni.com</strong> under Settings, or{' '}
+            <strong className={s.strong}>Connect this browser</strong> in its account menu. This site opens and connects
+            it with one click. Or get a one-time code and type it in the extension under{' '}
             <strong className={s.strong}>Settings → xomoni.com</strong>.
           </span>
           <PairingPanel createCode={createCode} />

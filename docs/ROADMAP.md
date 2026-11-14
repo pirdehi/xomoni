@@ -11,7 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
-- Phase 13: signing out of Xomoni is done; next, fewer steps from install to a connected browser.
+- Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
 - Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
 - Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](PHASE-11-REPORT.md)).
 - Phase 4, the pilot on the maintainer's account.
@@ -200,6 +200,8 @@ Signing out of Xomoni as cleanly as signing in, and fewer steps from install to 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ✅ | Sign out of Xomoni in the extension: one dialog, a signed-out page, the account's data removed on request ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)) | [#226](https://github.com/pirdehi/xomoni/issues/226) | [#227](https://github.com/pirdehi/xomoni/pull/227) |
+| ✅ | Connect a browser to xomoni.com with one click: the extension asks, the website hands over the one-time code ([ADR-0024](adr/0024-connect-a-browser-with-one-click.md)) | [#228](https://github.com/pirdehi/xomoni/issues/228) | PR_CONNECT |
+| ⏸ | One-click install from the Chrome Web Store, with automatic updates (the only way Chrome allows) | [#43](https://github.com/pirdehi/xomoni/issues/43) | Waits for the maintainer's developer account |
 
 ## Dropped
 

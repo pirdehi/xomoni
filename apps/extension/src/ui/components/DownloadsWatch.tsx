@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Account } from '../../shared/types';
 import {
   type FolderHandle,
+  type FolderMade,
   type FolderPickerHost,
   type FolderStore,
   canRead,
@@ -67,7 +68,7 @@ export function DownloadsWatch({
   store?: FolderStore;
   host?: FolderPickerHost;
   /** Makes Downloads/Xomoni before the picker opens; `chrome.downloads` by default, a stand-in in tests. */
-  makeFolder?: () => Promise<boolean>;
+  makeFolder?: () => Promise<FolderMade>;
   intervalMs?: number;
 }) {
   const s = useStyles();

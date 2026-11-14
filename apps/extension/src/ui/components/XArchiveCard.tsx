@@ -27,6 +27,8 @@ import { ARCHIVE_PAGE_URL, FIRST_LOOK_AFTER_MS, archiveOverdue, nextArchiveLook 
 import {
   FOLDER_NOT_CHOSEN,
   FOLDER_READY,
+  FOLDER_SAVING,
+  type FolderMade,
   type FolderPickerHost,
   type FolderStore,
   isArchiveFolder,
@@ -132,7 +134,7 @@ export function archiveLine(
 }
 
 /** What choosing the folder can say that asks for another step rather than reporting a failure (#220). */
-const CALM = new Set([FOLDER_NOT_CHOSEN, FOLDER_READY]);
+const CALM = new Set([FOLDER_NOT_CHOSEN, FOLDER_READY, FOLDER_SAVING]);
 
 const useStyles = makeStyles({
   steps: {
@@ -235,7 +237,7 @@ export function XArchiveCard({
   /** Drawn as a part of another card (the Library's *Your copy*, #203), with its own heading, not as a card. */
   bare?: boolean;
   /** Makes Downloads/Xomoni before the picker opens; `chrome.downloads` by default, a stand-in in tests. */
-  makeFolder?: () => Promise<boolean>;
+  makeFolder?: () => Promise<FolderMade>;
 }) {
   const s = useStyles();
   const status = useArchiveStatus(account.id);

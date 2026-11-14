@@ -8,6 +8,7 @@ import { DownloadsWatch } from '../../src/ui/components/DownloadsWatch';
 import {
   FOLDER_NOT_CHOSEN,
   FOLDER_READY,
+  FOLDER_SAVING,
   type FolderHandle,
   type FolderStore,
   fileKey,
@@ -125,6 +126,25 @@ describe('DownloadsWatch (#187)', () => {
 
     expect(await screen.findByText(/Watching Downloads › Xomoni/)).toBeInTheDocument();
     expect(makeFolder).toHaveBeenCalledOnce();
+    expect(host.showDirectoryPicker).toHaveBeenCalledOnce();
+    expect(store.current).toBe(folder);
+  });
+
+  it('says to press Save in Chrome’s dialog, then opens the picker on the next click (#220)', async () => {
+    const folder = folderWith([]);
+    const store = memoryStore();
+    const host = picker(folder);
+    const asking = vi.fn<() => Promise<boolean | 'asking'>>().mockResolvedValueOnce('asking').mockResolvedValue(true);
+    render(<DownloadsWatch account={account()} store={store} host={host} makeFolder={asking} intervalMs={20} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose the Xomoni folder' }));
+
+    expect(await screen.findByText(FOLDER_SAVING)).toBeInTheDocument();
+    expect(host.showDirectoryPicker).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Choose the Xomoni folder' }));
+
+    expect(await screen.findByText(/Watching Downloads › Xomoni/)).toBeInTheDocument();
     expect(host.showDirectoryPicker).toHaveBeenCalledOnce();
     expect(store.current).toBe(folder);
   });

@@ -7,6 +7,7 @@ import {
   type FolderHandle,
   FOLDER_NOT_CHOSEN,
   FOLDER_READY,
+  FOLDER_SAVING,
   canRead,
   chooseFolder,
   ensureArchiveFolder,
@@ -98,6 +99,7 @@ describe('the Downloads folder (#187)', () => {
 /** `chrome.downloads` as far as making the folder goes: each search answers the next state in `states`. */
 function downloadsApi(states: (string | undefined)[]): DownloadsApi & {
   download: ReturnType<typeof vi.fn>;
+  search: ReturnType<typeof vi.fn>;
   erase: ReturnType<typeof vi.fn>;
 } {
   return {
@@ -142,10 +144,35 @@ describe('the Xomoni folder in Downloads (#196)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('says so when Chrome couldn’t save the note, or took too long', async () => {
+  it('says so when Chrome couldn’t save the note, or lost it', async () => {
     expect(await makeArchiveFolder(downloadsApi(['interrupted']))).toBe(false);
-    expect(await makeArchiveFolder(downloadsApi(['in_progress']), 150)).toBe(false);
     expect(await makeArchiveFolder(downloadsApi([undefined]), 0)).toBe(false);
+  });
+
+  it('answers at once while Chrome asks where to save the note, and remembers the folder once it is saved (#220)', async () => {
+    const api = downloadsApi(['in_progress', 'in_progress', 'in_progress', 'complete']);
+
+    expect(await makeArchiveFolder(api, 100, 1_000, 20)).toBe('asking');
+    expect(await kvGet('archiveFolderMade', false)).toBe(false);
+
+    await vi.waitFor(async () => expect(await kvGet('archiveFolderMade', false)).toBe(true));
+    expect(api.erase).toHaveBeenCalledWith({ id: 41 });
+  });
+
+  it('stops watching the note when the person cancels Chrome’s dialog, or after a while (#220)', async () => {
+    const cancelled = downloadsApi(['in_progress', 'in_progress', 'interrupted']);
+    expect(await makeArchiveFolder(cancelled, 100, 1_000, 20)).toBe('asking');
+    await vi.waitFor(() => expect(cancelled.search).toHaveBeenCalledTimes(3));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(cancelled.search).toHaveBeenCalledTimes(3);
+
+    const forever = downloadsApi(['in_progress']);
+    expect(await makeArchiveFolder(forever, 0, 100, 20)).toBe('asking');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const looks = forever.search.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(forever.search.mock.calls.length).toBe(looks);
+    expect(await kvGet('archiveFolderMade', false)).toBe(false);
   });
 
   it('knows the Xomoni folder by its exact name', () => {
@@ -193,6 +220,18 @@ describe('the Xomoni folder in Downloads (#196)', () => {
     expect(await ensureArchiveFolder(make)).toBe(true);
     expect(failing).toHaveBeenCalledOnce();
     expect(make).toHaveBeenCalledOnce();
+  });
+
+  it('opens no picker while Chrome asks where to save the note, and opens it on the next click (#220)', async () => {
+    const folder = { name: 'Xomoni' } as unknown as FolderHandle;
+    const showDirectoryPicker = vi.fn(() => Promise.resolve(folder));
+    const make = vi.fn<() => Promise<boolean | 'asking'>>().mockResolvedValueOnce('asking').mockResolvedValue(true);
+
+    expect(await pickArchiveFolder(kvFolderStore, { showDirectoryPicker }, make)).toEqual({ problem: FOLDER_SAVING });
+    expect(showDirectoryPicker).not.toHaveBeenCalled();
+
+    expect(await pickArchiveFolder(kvFolderStore, { showDirectoryPicker }, make)).toEqual({ folder });
+    expect(showDirectoryPicker).toHaveBeenCalledOnce();
   });
 
   it('waits for another click when making the folder used up this one, then skips making it (#220)', async () => {

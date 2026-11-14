@@ -200,7 +200,7 @@ Signing out of Xomoni as cleanly as signing in, and fewer steps from install to 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ✅ | Sign out of Xomoni in the extension: one dialog, a signed-out page, the account's data removed on request ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)) | [#226](https://github.com/pirdehi/xomoni/issues/226) | [#227](https://github.com/pirdehi/xomoni/pull/227) |
-| ✅ | Connect a browser to xomoni.com with one click: the extension asks, the website hands over the one-time code ([ADR-0024](adr/0024-connect-a-browser-with-one-click.md)) | [#228](https://github.com/pirdehi/xomoni/issues/228) | PR_CONNECT |
+| ✅ | Connect a browser to xomoni.com with one click: the extension asks, the website hands over the one-time code ([ADR-0024](adr/0024-connect-a-browser-with-one-click.md)) | [#228](https://github.com/pirdehi/xomoni/issues/228) | [#229](https://github.com/pirdehi/xomoni/pull/229) |
 | ⏸ | One-click install from the Chrome Web Store, with automatic updates (the only way Chrome allows) | [#43](https://github.com/pirdehi/xomoni/issues/43) | Waits for the maintainer's developer account |
 
 ## Dropped

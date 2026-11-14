@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-31
 - Amended: 2026-11-05 (#147: Trusted Types, violation reports, tighter images, a resource policy and an Origin check)
+- Amended: 2026-11-14 (the Vercel Toolbar is off for every deployment)
 
 ## Context
 
@@ -41,7 +42,7 @@ The site is mostly static (landing, legal and risks pages, the auth pages' shell
 - Violations are in the Vercel logs as `csp violation` lines; nothing alerts on them yet (#150).
 - Adding a third-party service (analytics, a font host, another captcha) means changing the policy and its unit test; the e2e guard catches a forgotten change.
 - Scanners mark the policy down for `'unsafe-inline'`: Mozilla Observatory gives xomoni.com B+ (80/100) on 2026-10-31, passing 11 of 12 tests, with that −20 as the only deduction. Nonces are the way to A+ if the site ever renders mostly on demand.
-- Vercel's preview toolbar is blocked on preview deployments. We don't use it.
+- The Vercel Toolbar is turned off for production and preview in the Vercel project (Settings › General › Vercel Toolbar), and must stay off. Vercel's build adds a loader that runs before the site's own startup code, and for anyone with the `__vercel_toolbar` cookie (a member of the Vercel team) it sets `script.src` to a string. With Trusted Types required and no default policy in place yet, that throws, so the page never hydrates: on 14 November the sign-in and sign-up forms stayed placeholders in the maintainer's Chrome, while other visitors were fine. Turning the toolbar off takes the loader out of the build.
 - The policy depends on `NEXT_PUBLIC_SUPABASE_URL`; the build fails without it, as it already did.
 
 ## Alternatives considered

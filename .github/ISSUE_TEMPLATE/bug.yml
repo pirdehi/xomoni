@@ -25,7 +25,7 @@ body:
     id: versions
     attributes:
       label: Versions
-      placeholder: Xomoni 0.1.0, Chrome 141, macOS 26
+      placeholder: Xomoni 0.2.0, Chrome 141, macOS 26
   - type: checkboxes
     id: private
     attributes:

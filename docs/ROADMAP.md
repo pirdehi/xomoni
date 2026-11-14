@@ -14,7 +14,7 @@ Both roadmaps are updated together: a pull request that finishes a task ticks it
 - Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
 - Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](PHASE-11-REPORT.md)).
 - Phase 4, the pilot on the maintainer's account.
-- Phase 6, the first release (v0.2.0, waiting for the maintainer's go).
+- Phase 6: 0.2.0 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases); the install page follows.
 
 **Last updated:** 2026-11-14 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md)
 
@@ -113,6 +113,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ✅ | Release process ([releasing](RELEASING.md), [changelog](../CHANGELOG.md)) | [#45](https://github.com/pirdehi/xomoni/issues/45) | [#113](https://github.com/pirdehi/xomoni/pull/113) |
+| ✅ | First release, 0.2.0, on [GitHub Releases](https://github.com/pirdehi/xomoni/releases) | | [#117](https://github.com/pirdehi/xomoni/pull/117) |
 | ⬜ | Real install link on xomoni.com | [#44](https://github.com/pirdehi/xomoni/issues/44) | |
 | ⏸ | Chrome Web Store listing (put off by the maintainer for now) | [#43](https://github.com/pirdehi/xomoni/issues/43) | |
 

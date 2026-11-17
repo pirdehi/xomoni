@@ -500,7 +500,26 @@ describe('service worker: a one-time code from xomoni.com (#228, ADR-0024)', () 
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('answers invalid to anything but a pairing, such as a request to start a job (ADR-0006)', async () => {
+  it('says how the extension stands to a hello from xomoni.com, sending nothing anywhere (#232)', async () => {
+    const { keepOpen, answer } = await send({ type: 'xomoni-hello' });
+
+    expect(keepOpen).toBe(true);
+    expect(answer).toEqual({
+      ok: true,
+      state: { version: '0.3.0', connection: null, signedOutAt: null, leftAt: 0 },
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('answers refused when handling a message fails', async () => {
+    chrome.storage.local.get.mockRejectedValueOnce(new Error('storage broken'));
+
+    const { answer } = await send({ type: 'xomoni-sign-out' });
+
+    expect(answer).toEqual({ ok: false, reason: 'refused' });
+  });
+
+  it('answers invalid to anything but its messages, such as a request to start a job (ADR-0006)', async () => {
     const { answer } = await send({ type: 'start-job', jobId: 'j1' });
 
     expect(answer).toEqual({ ok: false, reason: 'invalid' });

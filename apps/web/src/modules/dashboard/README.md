@@ -21,6 +21,12 @@ Shows the signed-in person which browsers have the extension connected and how t
 4. A browser connects with a code from `PairingPanel`: the extension trades it for a device token (`pair_device`) and reports through `device_report`; the new device and its jobs arrive over the same live feed.
 5. _Needs you_ and _X accounts_ are derived from the jobs on every change, so they update live too. An account appears only once a job reported its level; the level is per browser, because each browser's extension keeps its own risk ladder.
 
+## One sign-in (#232, ADR-0025)
+
+- `/connect`, signed in, signs the extension in at once: no *Connect this browser* click. A failure says why and offers *Try again*. It keeps the extension's id for the site (`rememberExtensionId`, from `modules/extension`).
+- The browser list marks *This browser* when its Xomoni reports as one of the account's devices (`useExtensionLink`), and offers no *Disconnect* for it: signing out disconnects it.
+- *Finish connecting* hides once Xomoni here is signed in.
+
 ## Used by
 
 - `app/dashboard/page.tsx`.

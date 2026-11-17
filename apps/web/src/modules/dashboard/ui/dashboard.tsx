@@ -44,6 +44,7 @@ import { isOnline, jobProgress, jobStateView, relativeTime, type Tone } from '..
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
+import { useExtensionLink } from '@/modules/extension/ui/extension-session-sync';
 import { PendingConnectNotice } from './connect-panel';
 import { PairingPanel } from './pairing-panel';
 import { useLiveDashboard } from './use-live-dashboard';
@@ -340,6 +341,10 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
   const now = useNow(30_000);
   const justConnected = useJustConnected(devices);
   const [leaving, setLeaving] = useState<Device | null>(null);
+  // The browser this page runs in, when its Xomoni is signed in here (#232): signing out disconnects it, since
+  // xomoni.com would sign a disconnected browser straight back in.
+  const link = useExtensionLink();
+  const here = link.status === 'signed-in' ? link.deviceId : null;
 
   const deviceName = new Map(devices.map((d) => [d.id, d.name]));
   const needsYou = jobsNeedingYou(jobs);
@@ -392,6 +397,11 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
                     <div className={s.minW0}>
                       <div className={s.nameRow}>
                         <p className={s.strong}>{device.name}</p>
+                        {device.id === here && (
+                          <Badge appearance="tint" color="brand" size="small">
+                            This browser
+                          </Badge>
+                        )}
                         {isNew && (
                           <Badge appearance="tint" color="success" size="small">
                             Just connected
@@ -407,9 +417,13 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
                       </p>
                     </div>
                   </div>
-                  <Button size="small" icon={<PlugDisconnected20Regular />} onClick={() => setLeaving(device)}>
-                    Disconnect
-                  </Button>
+                  {device.id === here ? (
+                    <p className={s.meta}>Signed in with you: signing out disconnects it.</p>
+                  ) : (
+                    <Button size="small" icon={<PlugDisconnected20Regular />} onClick={() => setLeaving(device)}>
+                      Disconnect
+                    </Button>
+                  )}
                 </li>
               );
             })}
@@ -556,10 +570,9 @@ function ConnectBrowser({ createCode }: { createCode: () => Promise<PairingResul
         </Step>
         <Step n={2}>
           <span className={s.stepLead}>
-            In the extension, press <strong className={s.strong}>Connect to xomoni.com</strong> under Settings, or{' '}
-            <strong className={s.strong}>Connect this browser</strong> in its account menu. This site opens and connects
-            it with one click. Or get a one-time code and type it in the extension under{' '}
-            <strong className={s.strong}>Settings → xomoni.com</strong>.
+            In the extension, press <strong className={s.strong}>Sign in to xomoni.com</strong>, in Settings or its
+            account menu. This site opens and Xomoni signs in with you: one sign-in for both. Or get a one-time code and
+            type it in the extension under <strong className={s.strong}>Settings → xomoni.com</strong>.
           </span>
           <PairingPanel createCode={createCode} />
         </Step>

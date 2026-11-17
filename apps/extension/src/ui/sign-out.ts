@@ -1,10 +1,12 @@
 // Signing out of Xomoni (#226): every step in order, with what can't be done here (X's own sign-out) handed to X.
+// Signing out here also signs xomoni.com out in this browser (#232, ADR-0025), and a sign-out that came from there is
+// finished here (`finishSignOutMadeElsewhere`).
 import { disconnect } from '../cloud/sync';
 import { runner } from '../engine/platform';
 import { jobRunning } from '../engine/runner';
 import { workerTab } from '../engine/worker-tab';
 import { db, forgetAccount } from '../shared/db';
-import { markSignedOut } from '../shared/session';
+import { type SignedOut, markSignedOut } from '../shared/session';
 import type { Account } from '../shared/types';
 import { SIGNED_OUT_PAUSE } from './hooks';
 import { tabShare } from './tab-share';
@@ -50,13 +52,17 @@ const REAL: SignOutDeps = {
   openTab: (url) => chrome.tabs.create({ url, active: true }),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 };
+/** When this tab's dialog last signed out (epoch ms): that sign-out finishes itself. */
+let signedOutHereAt: number | null = null;
 
 /**
  * Signs out of Xomoni in this browser (#226):
  * 1. records the sign-out first, so nothing more from X is recorded and every dashboard tab pauses its job;
  * 2. pauses this tab's job and waits up to `stopWaitMs` for any job to stop, in this tab or another (an action
  *    already sent to X finishes first);
- * 3. stops running hidden and disconnects from xomoni.com, revoking the token there when it can be reached;
+ * 3. stops running hidden and disconnects from xomoni.com, revoking the token there when it can be reached; xomoni.com
+ *    signs out in this browser the next time one of its pages is shown, as the sign-out's time counts as leaving it
+ *    (`extensionState`, #232);
  * 4. removes the account's data if chosen, but only once its jobs stopped, so a finishing job can't write it back;
  * 5. closes the X window Xomoni opened, and opens X's own sign-out page if chosen.
  * A failed disconnect still forgets the token here; the result says so.
@@ -68,7 +74,8 @@ export async function signOut(
   stopWaitMs = 30_000,
 ): Promise<SignOutResult> {
   let stopped = false;
-  await markSignedOut(account.handle, !choice.removeData);
+  signedOutHereAt = Date.now();
+  await markSignedOut(account.handle, !choice.removeData, signedOutHereAt);
   deps.pause(SIGNED_OUT_PAUSE);
   for (let waited = 0; ; waited += 250) {
     if (!(await deps.running())) {
@@ -85,6 +92,25 @@ export async function signOut(
   await deps.closeWorker().catch(() => undefined);
   if (choice.signOutOfX) await deps.openTab(X_SIGN_OUT).catch(() => undefined);
   return { cloud, stopped };
+}
+
+/**
+ * Finishes a sign-out that wasn't made in this tab's dialog (#232): on xomoni.com, which signed the extension out, or
+ * in another dashboard tab. The job pauses by itself (`useSignOutGuard`); once none runs, or after `stopWaitMs`, Xomoni
+ * stops running hidden and closes the X window it opened, as the dialog does.
+ */
+export async function finishSignOut(deps: SignOutDeps = REAL, stopWaitMs = 30_000): Promise<void> {
+  for (let waited = 0; waited < stopWaitMs && (await deps.running()); waited += 250) await deps.sleep(250);
+  deps.stopSharing();
+  await deps.closeWorker().catch(() => undefined);
+}
+
+/**
+ * What the app shell runs when the person signs out of Xomoni while the dashboard is open (`useSignOutGuard`):
+ * `finishSignOut`, unless this tab's dialog made the sign-out, which does the same steps itself.
+ */
+export function finishSignOutMadeElsewhere(signedOut: SignedOut, finish: () => Promise<void> = finishSignOut): void {
+  if (signedOut.at !== signedOutHereAt) void finish();
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { db, hasConsent, kvGet, kvSet, recordRisk, riskEvents, upsertAccount } from '../shared/db';
 import { type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY } from '../shared/time';
@@ -135,14 +135,22 @@ export const SIGNED_OUT_PAUSE = 'Paused: you signed out of Xomoni. It continues 
 
 /**
  * Pauses this tab's job once the person signs out of Xomoni (#226), whichever dashboard tab they did it in: the job
- * may run in another tab than the one with the sign-out dialog. The app shell runs it.
+ * may run in another tab than the one with the sign-out dialog. `onSignedOut` runs on the change from signed in to
+ * signed out while this tab is open, wherever the sign-out was made (#232): not for a dashboard opened signed out, so
+ * an X window opened there to sign in again stays. The app shell runs it.
  */
-export function useSignOutGuard() {
+export function useSignOutGuard(onSignedOut?: (signedOut: SignedOut) => void) {
   const signedOut = useSignedOut();
   const { status } = useRunner();
+  const before = useRef(signedOut);
   useEffect(() => {
     if (signedOut && status !== 'idle' && status !== 'stopping') runner.pause(SIGNED_OUT_PAUSE);
   }, [signedOut, status]);
+  useEffect(() => {
+    const was = before.current;
+    before.current = signedOut;
+    if (was === null && signedOut) onSignedOut?.(signedOut);
+  }, [signedOut, onSignedOut]);
 }
 
 type Toast = { id: number; tone: 'good' | 'critical' | 'neutral'; text: string };

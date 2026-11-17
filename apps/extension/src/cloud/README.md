@@ -9,21 +9,25 @@ Connects this browser to a xomoni.com account and keeps the website's dashboard 
 | `summary.ts`    | `jobReport`: one job as the website stores it, with the reason always empty. Pure. Watch jobs (#158) are never reported: they only read and never end, and the `jobs` table doesn't allow their kind. Nor are archive jobs (#186), which only handle X's archive (ADR-0004). The phase goes in words (`phaseWords`: *Searching X*, *Visiting each known post*, *Page 3 of 12*, #205). |
 | `device-name.ts` | `suggestedDeviceName`: "Chrome on macOS" from the user agent, the name a browser gets when none is typed. |
 | `web-connect.ts` | One-click connecting (#228, [ADR-0024](../../../../docs/adr/0024-connect-a-browser-with-one-click.md)): `startWebConnect` stores a 128-bit nonce and returns `https://xomoni.com/connect#ext=<id>&nonce=<nonce>`; `pendingWebConnect` and `cancelWebConnect`; `parseWebPairing` and `fromWebsite`, which accept exactly `{type: 'xomoni-pair', code, nonce}` from xomoni.com's top frame; `connectFromWebsite`, which uses the nonce up (15 minutes at most), leaves a connected browser alone, pairs, confirms (the website named the account before the click) and answers `{ok, account}` or a reason. |
+| `web-session.ts` | One sign-in with xomoni.com (#232, [ADR-0025](../../../../docs/adr/0025-one-sign-in-for-the-website-and-the-extension.md)): `extensionState` (version, connection without the token, signed-out time, `leftAt`), `signInFromWebsite` (pairs with a code from a signed-in page, replaces only the connection the page names, confirms at once, ends a sign-out of Xomoni), `signOutFromWebsite` (signs out of Xomoni with the data kept and ends the token; a browser without a connection is left alone), `leaveWebsite` (the person signs out of xomoni.com here: remembers when, then disconnects) and `websiteLink` (a xomoni.com page with this extension's id in the fragment). |
+| `website.ts` | `answerWebsite`, the service worker's one entry for xomoni.com: only its top frame is answered, only the four messages of `@xomoni/bridge`, and those that change the connection run one after another. |
 | `connection.ts` | The device id and token in the extension's IndexedDB (`kv`, key `cloud`), where content scripts can't reach them (#151); an older copy in `chrome.storage.local` is moved on first read. `watchConnection` for the UI.                                                                                                                                                  |
 | `release.ts`    | The newest release, from `device_report`'s answer (#151): `parseReleaseNews`, `isNewer` (numbers, so 0.10.0 follows 0.9.0), and the notice the dashboard shows, which can be dismissed unless the release fixes a vulnerability.                                                                                                                                        |
 | `sync.ts`       | `connect` (trade a code; nothing is reported until `confirmConnection`, which then reports the newest 50 jobs), `disconnect`, `syncOnce` (heartbeat plus jobs updated since the last report, 50 at a time) and `startCloudSync` (a report a few seconds after a job changes, and at least every 5 minutes). The person confirms the account pairing named first (#149). |
 
 ## Depends on
 
-- `../shared/` only (rule `ext-cloud-is-isolated`): the database, the risk ladder and the JSON readers.
+- `../shared/` only (rule `ext-cloud-is-isolated`): the database, the session, the risk ladder and the JSON readers.
+- `@xomoni/bridge`: the messages xomoni.com may send and their parsers.
 - `fetch`, `chrome.runtime.getManifest`, and `chrome.storage.local` only to move a connection an earlier version kept there.
 
 ## Used by
 
-- `../background/sw.ts`: `web-connect.ts` only, for the code xomoni.com hands over (rule `ext-background-is-thin`, ADR-0024).
+- `../background/sw.ts`: `website.ts` only, for what xomoni.com asks (rule `ext-background-is-thin`, ADR-0024, ADR-0025).
 - `../ui/`: the Settings card that connects (on xomoni.com, or with a typed code) and disconnects, the account menu and the sign-out (#226), which disconnect too, and the app shell, which starts the sync. The engine never imports it, so a run on X never waits on the network to xomoni.com.
 
 ## Tests
 
 - `../../tests/cloud.test.ts`: the client's requests and error reasons, the job report (no reason, valid handles only), the stored connection (in IndexedDB, moved from `chrome.storage.local`), connecting, reporting changes once, heartbeats, disconnection by the website, and a disconnect the website couldn't be told about (`FORGOTTEN_HERE`, #151).
-- `../../tests/ui/cloud-card.test.tsx`: connecting and disconnecting from Settings, and the refused-code message.
+- `../../tests/ui/cloud-card.test.tsx`: signing in and out of xomoni.com from Settings, and the refused-code message.
+- `../../tests/web-session.test.ts`, `../../tests/website.test.ts`: the state a hello gets, signing in and out from the website, switching accounts, refusals, the sender checks and one message at a time (#232).

@@ -6,6 +6,14 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **One sign-in for xomoni.com and the extension** in the same browser (#232, ADR-0025).
+  - Sign in on xomoni.com, and Xomoni signs in by itself. No code, no extra click.
+  - Press *Sign in to xomoni.com* in Xomoni and sign in once there; both are signed in.
+  - Sign out on either side, and the other signs out too. On xomoni.com, the extension's job pauses and its X window closes. In Xomoni, xomoni.com signs out the next time its page is shown.
+  - Signing in with another account on the website switches Xomoni to it.
+  - The dashboard marks *This browser*.
+  - An account stays optional: Xomoni without one is never signed out by the website.
+
 - **Sign out of Xomoni** in the extension (#226, ADR-0023). It sits at the foot of the account menu and opens a dialog that names the account and says what will happen:
   - the running job pauses, and continues after signing in again;
   - this browser disconnects from xomoni.com;
@@ -22,6 +30,9 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - A typed code still works, folded under *Use a one-time code instead*.
 
 ### Changed
+
+- In Xomoni, *Connect to xomoni.com* and *Connect this browser* are now *Sign in to xomoni.com*, and *Disconnect* is *Sign out of xomoni.com*. The signed-out page offers it first (#232).
+- On xomoni.com/connect, a signed-in person no longer presses *Connect this browser*: Xomoni signs in at once (#232).
 
 - The manifest lets xomoni.com's pages message the extension (`externally_connectable`, no new permission warning). The service worker takes only a one-time code from them (ADR-0024).
 - *Disconnect* from xomoni.com asks to confirm. *Sign out of X* moved from the account menu into the sign-out dialog (#226).

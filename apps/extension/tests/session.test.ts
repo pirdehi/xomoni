@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jobRunning } from '../src/engine/runner';
 import { db, forgetAccount, itemKey, kvGet, kvSet, setViewCap, upsertAccount } from '../src/shared/db';
-import { getSignedOut, markSignedOut, signIn } from '../src/shared/session';
+import { endSignOut, getSignedOut, markSignedOut, signIn } from '../src/shared/session';
 import type { Job } from '../src/shared/types';
 import { account, resetDb } from './support/fixtures';
 
@@ -63,6 +63,16 @@ describe('signing out of Xomoni (#226)', () => {
     expect(await getSignedOut()).toBeNull();
     expect(await kvGet('activeAccount', null)).toBe('1000');
     expect(await db.accounts.get('1000')).toMatchObject({ id: '1000', handle: 'newme' });
+  });
+
+  it('ends a sign-out when the person signed in on xomoni.com, keeping the active account (#232)', async () => {
+    await kvSet('activeAccount', 'kept');
+    await markSignedOut('me', true);
+
+    await endSignOut();
+
+    expect(await getSignedOut()).toBeNull();
+    expect(await kvGet('activeAccount', null)).toBe('kept');
   });
 });
 

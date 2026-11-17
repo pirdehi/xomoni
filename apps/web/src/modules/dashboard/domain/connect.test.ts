@@ -89,7 +89,7 @@ describe('failureMessage (#228)', () => {
     ];
     for (const reason of reasons) expect(failureMessage(reason)).toMatch(/\.$/);
     expect(failureMessage('unreachable')).toContain('chrome://extensions');
-    expect(failureMessage('expired')).toContain('press Connect to xomoni.com again');
+    expect(failureMessage('expired')).toContain('press Sign in to xomoni.com again');
     expect(failureMessage('device_limit')).toContain('10 connected browsers');
   });
 });

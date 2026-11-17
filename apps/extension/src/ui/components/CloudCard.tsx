@@ -11,12 +11,12 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { CloudError } from '../../cloud/client';
-import { PAIRING_PAGE } from '../../cloud/config';
 import { suggestedDeviceName } from '../../cloud/device-name';
 import { type CloudConnection, getConnection, watchConnection } from '../../cloud/connection';
 import { ConnectionMap, type XLink } from './ConnectionMap';
 import { FORGOTTEN_HERE, confirmConnection, connect, disconnect } from '../../cloud/sync';
 import { cancelWebConnect, pendingWebConnect, startWebConnect } from '../../cloud/web-connect';
+import { leaveWebsite, websiteLink } from '../../cloud/web-session';
 import { errorMessage, fmtDateTime } from '../format';
 import { toast } from '../hooks';
 import { Button, Card, Disclosure, Field } from './ui';
@@ -132,11 +132,23 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
     }
   };
 
+  // Someone else's code (#149): only this link ends; the person's own xomoni.com session isn't theirs to end.
   const onDisconnect = async () => {
     setBusy(true);
     try {
       if ((await disconnect()) === 'forgotten-here') setError(FORGOTTEN_HERE);
       else toast('Disconnected from xomoni.com');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The person's own account: signing out of it here signs xomoni.com out in this browser too (#232, ADR-0025).
+  const onSignOut = async () => {
+    setBusy(true);
+    try {
+      if ((await leaveWebsite()) === 'forgotten-here') setError(FORGOTTEN_HERE);
+      else toast('Signed out of xomoni.com in this browser');
     } finally {
       setBusy(false);
     }
@@ -182,8 +194,8 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
             )}{' '}
             since {fmtDateTime(connection.connectedAt)}.
           </Body1>
-          <Button icon={<CloudOff20Regular />} disabled={busy} onClick={() => void onDisconnect()}>
-            Disconnect
+          <Button icon={<CloudOff20Regular />} disabled={busy} onClick={() => void onSignOut()}>
+            Sign out of xomoni.com
           </Button>
         </div>
       ) : connection === null ? (
@@ -191,8 +203,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
           {waiting ? (
             <>
               <Body1 as="p" block className={styles.text} role="status">
-                Finish on xomoni.com: sign in there and press <strong>Connect this browser</strong>. It opened in a new
-                tab.
+                Finish on xomoni.com: sign in there, in the tab that opened. Xomoni here signs in with you.
               </Body1>
               <div className={styles.actions}>
                 <Button variant="primary" icon={<Open20Regular />} onClick={() => void connectOnWebsite()}>
@@ -206,7 +217,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
           ) : (
             <>
               <Body1 as="p" block className={styles.text}>
-                Sign in on xomoni.com and press Connect there. No code to type.
+                Sign in once on xomoni.com: the website and Xomoni here stay signed in together. No code to type.
               </Body1>
               <Button
                 variant="primary"
@@ -214,7 +225,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
                 className={styles.action}
                 onClick={() => void connectOnWebsite()}
               >
-                Connect to xomoni.com
+                Sign in to xomoni.com
               </Button>
             </>
           )}
@@ -222,7 +233,13 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
             <div className={styles.form}>
               <Body1 as="p" block className={styles.text}>
                 Sign in on xomoni.com and get a one-time code, then type it here.{' '}
-                <Link href={PAIRING_PAGE} target="_blank" rel="noreferrer" inline className={styles.external}>
+                <Link
+                  href={websiteLink('/dashboard')}
+                  target="_blank"
+                  rel="noreferrer"
+                  inline
+                  className={styles.external}
+                >
                   Get a code <Open12Regular />
                 </Link>
               </Body1>

@@ -11,6 +11,7 @@ import {
   pendingWebConnect,
   startWebConnect,
 } from '../src/cloud/web-connect';
+import { getSignedOut, markSignedOut } from '../src/shared/session';
 import { stubChrome } from './support/chrome';
 import { resetDb } from './support/fixtures';
 
@@ -52,6 +53,24 @@ describe('starting a connection on xomoni.com (#228)', () => {
     expect(await pendingWebConnect(NOW + REQUEST_TTL_MS + 1)).toBeNull();
     await cancelWebConnect();
     expect(await pendingWebConnect(NOW)).toBeNull();
+  });
+
+  it('is the extension’s Sign in too: a sign-out of Xomoni ends once xomoni.com signed in (#232)', async () => {
+    await markSignedOut('me', true);
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret', account: 'o•••@example.com' }]));
+    const nonce = await start();
+
+    expect(await connectFromWebsite({ code: CODE, nonce }, NOW + 60_000)).toMatchObject({ ok: true });
+    expect(await getSignedOut()).toBeNull();
+  });
+
+  it('stays signed out when the code didn’t work (#232)', async () => {
+    await markSignedOut('me', true);
+    fetch.mockReturnValueOnce(json(400, { hint: 'bad_code' }));
+    const nonce = await start();
+
+    expect(await connectFromWebsite({ code: CODE, nonce }, NOW + 60_000)).toEqual({ ok: false, reason: 'bad_code' });
+    expect(await getSignedOut()).not.toBeNull();
   });
 });
 

@@ -35,6 +35,7 @@ import { type SignedOut, signIn } from '../../shared/session';
 import type { Account } from '../../shared/types';
 import type { PageId } from '../navigation';
 import { ActivityChart } from '../components/ActivityChart';
+import { connectOnWebsite } from '../components/CloudCard';
 import { LogList } from '../components/LogList';
 import { Button, Card, EmptyState, PageHeader, StatTile, type Tone, useNow } from '../components/ui';
 import { errorMessage, fmtCompact, fmtNumber } from '../format';
@@ -169,6 +170,15 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
   },
   stepAction: { marginTop: tokens.spacingVerticalM },
+  account: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    marginBottom: tokens.spacingVerticalL,
+  },
+  or: { display: 'block', marginBottom: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 },
   busy: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalSNudge },
   assurances: {
     display: 'grid',
@@ -425,9 +435,10 @@ const openWorker = (worker: WorkerStatus) =>
   void (worker.open ? workerTab.focus() : workerTab.open()).catch((e: unknown) => toast(errorMessage(e), 'critical'));
 
 /**
- * After signing out of Xomoni (#226): says so, and signs in again in three steps. The account the X window is signed
- * in to is only taken up when the person presses *Continue as @handle*, so an X session left open doesn't sign them
- * straight back in.
+ * After signing out of Xomoni (#226): says so, and signs in again. *Sign in to xomoni.com* signs in there and here
+ * together (#232, ADR-0025); without an account, three steps end with *Continue as @handle*. The account the X window
+ * is signed in to is only taken up when the person presses it, so an X session left open doesn't sign them straight
+ * back in.
  */
 function SignedOutPage({ worker, signedOut }: { worker: WorkerStatus; signedOut: SignedOut }) {
   const styles = useStyles();
@@ -456,6 +467,13 @@ function SignedOutPage({ worker, signedOut }: { worker: WorkerStatus; signedOut:
         </Body1>
       </div>
       <Card>
+        <div className={styles.account}>
+          <Body1>With a xomoni.com account, one sign-in there signs in here too.</Body1>
+          <Button variant="primary" size="sm" icon={<ArrowEnter16Regular />} onClick={() => void connectOnWebsite()}>
+            Sign in to xomoni.com
+          </Button>
+        </div>
+        <Caption1 className={styles.or}>Or without an account:</Caption1>
         <ol className={styles.steps}>
           <Step n={1} done={worker.open} title="Open the X window">
             The small window Xomoni works in.
@@ -476,7 +494,7 @@ function SignedOutPage({ worker, signedOut }: { worker: WorkerStatus; signedOut:
           <Step n={3} done={false} active={ready} title="Sign in to Xomoni">
             {ready ? (
               <div className={styles.stepAction}>
-                <Button variant="primary" size="sm" icon={<ArrowEnter16Regular />} onClick={continueAs}>
+                <Button variant="secondary" size="sm" icon={<ArrowEnter16Regular />} onClick={continueAs}>
                   Continue as @{info.handle ?? 'this account'}
                 </Button>
               </div>

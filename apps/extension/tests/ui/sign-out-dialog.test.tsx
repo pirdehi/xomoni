@@ -71,7 +71,7 @@ describe('the sign-out dialog (#226)', () => {
     expect(within(dialog).getByRole('checkbox', { name: 'Also sign out of X' })).not.toBeChecked();
   });
 
-  it('says a running job pauses and the browser disconnects from xomoni.com, naming the account', async () => {
+  it('says a running job pauses and xomoni.com signs out in this browser too, naming the account', async () => {
     await db.jobs.put({ id: 'j1', accountId: ME.id, state: 'running', title: 'Old posts', createdAt: 1 } as Job);
     await saveConnection(CONNECTED);
     const dialog = await open();
@@ -79,7 +79,7 @@ describe('the sign-out dialog (#226)', () => {
     const effects = within(dialog).getByRole('list', { name: 'What signing out does' });
     await waitFor(() => expect(within(effects).getAllByRole('listitem')).toHaveLength(3));
     expect(effects).toHaveTextContent('“Old posts” pauses. It continues where it stopped when you sign in again.');
-    expect(effects).toHaveTextContent('This browser disconnects from xomoni.com (o•••@example.com)');
+    expect(effects).toHaveTextContent('xomoni.com signs out in this browser too (o•••@example.com)');
   });
 
   it('closes on Cancel, signing nothing out', async () => {

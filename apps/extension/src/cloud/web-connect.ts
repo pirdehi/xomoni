@@ -1,23 +1,25 @@
 // Connecting this browser from xomoni.com with one click (#228, ADR-0024). The extension starts: it remembers a
 // random nonce and opens xomoni.com/connect with its id and the nonce in the URL's fragment. The website finishes:
-// once the signed-in person presses Connect, it makes a one-time code and hands it to the service worker through
-// `externally_connectable`, with the nonce. The code is traded as if typed (ADR-0018). Nothing else can come in
-// this way: a message can only pair, and only after the person asked for it here.
+// once the person is signed in there, it makes a one-time code and hands it to the service worker through
+// `externally_connectable`, with the nonce. The code is traded as if typed (ADR-0018). This is also how the
+// extension's *Sign in* signs in to xomoni.com and the extension together (#232, ADR-0025).
+import { PAIR, type PairMessage, WEBSITE_ORIGIN, parseWebsiteMessage } from '@xomoni/bridge';
 import { db, kvGet, kvSet } from '../shared/db';
 import { asNumber, asObject, asString } from '../shared/json';
+import { endSignOut } from '../shared/session';
 import { CloudError, type CloudErrorReason } from './client';
 import { getConnection } from './connection';
 import { suggestedDeviceName } from './device-name';
 import { confirmConnection, connect } from './sync';
 
 /** The website's origin: the only one `externally_connectable` lets send, checked again on every message. */
-export const WEB_ORIGIN = 'https://xomoni.com';
+export const WEB_ORIGIN = WEBSITE_ORIGIN;
 /** The page that finishes the connection. */
 export const CONNECT_PAGE = `${WEB_ORIGIN}/connect`;
 /** How long a connection started here waits for the website: long enough to sign up and confirm an email. */
 export const REQUEST_TTL_MS = 15 * 60_000;
-/** The only message type the website may send. */
-export const PAIR_MESSAGE = 'xomoni-pair';
+/** The message type that hands over a code this extension asked for. */
+export const PAIR_MESSAGE = PAIR;
 
 const KEY = 'connectRequest';
 
@@ -65,21 +67,12 @@ function parseRequest(stored: unknown): ConnectRequest | null {
 }
 
 /** What the website hands over: a one-time code and the nonce of the connection started here. */
-export interface WebPairing {
-  code: string;
-  nonce: string;
-}
+export type WebPairing = Pick<PairMessage, 'code' | 'nonce'>;
 
-/** `raw` as a pairing message, or null unless it has exactly the expected type and shapes. */
+/** `raw` as a pairing message, or null unless it has exactly the expected type and shapes (`@xomoni/bridge`). */
 export function parseWebPairing(raw: unknown): WebPairing | null {
-  const value = asObject(raw);
-  if (!value || value.type !== PAIR_MESSAGE) return null;
-  if (Object.keys(value).some((key) => !['type', 'code', 'nonce'].includes(key))) return null;
-  const code = asString(value.code);
-  const nonce = asString(value.nonce);
-  if (!code || !/^[0-9A-Za-z]{5}-?[0-9A-Za-z]{5}$/.test(code)) return null;
-  if (!nonce || !/^[A-Za-z0-9_-]{22,64}$/.test(nonce)) return null;
-  return { code, nonce };
+  const message = parseWebsiteMessage(raw);
+  return message?.type === PAIR ? { code: message.code, nonce: message.nonce } : null;
 }
 
 /** Whether a message comes from a page of xomoni.com itself, in its top frame. */
@@ -97,8 +90,9 @@ export type WebPairAnswer = { ok: true; account: string } | { ok: false; reason:
 
 /**
  * Pairs with a code xomoni.com handed over (#228). The nonce must be the one `startWebConnect` remembered, at most
- * `REQUEST_TTL_MS` old; it is used up first, so the same message can't pair twice. The person confirmed the account
- * on the website, where it is named before the click, so the connection is confirmed at once (#149) and reports.
+ * `REQUEST_TTL_MS` old; it is used up first, so the same message can't pair twice. The person signed in to that
+ * account on the website, which names it, so the connection is confirmed at once (#149) and reports. It also ends a
+ * sign-out of Xomoni here: this is the extension's *Sign in* (#232, ADR-0025).
  */
 export async function connectFromWebsite(message: WebPairing, now = Date.now()): Promise<WebPairAnswer> {
   const request = await db.transaction('rw', db.kv, async () => {
@@ -112,6 +106,7 @@ export async function connectFromWebsite(message: WebPairing, now = Date.now()):
   try {
     const connection = await connect(message.code, suggestedDeviceName());
     await confirmConnection();
+    await endSignOut();
     return { ok: true, account: connection.account };
   } catch (err) {
     return { ok: false, reason: err instanceof CloudError ? err.reason : 'refused' };

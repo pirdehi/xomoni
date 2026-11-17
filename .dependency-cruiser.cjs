@@ -43,16 +43,18 @@ module.exports = {
     {
       name: 'web-domain-is-pure',
       severity: 'error',
-      comment: 'Domain code is plain TypeScript: no framework, SDK, I/O or other layers. Only its own domain files.',
+      comment:
+        'Domain code is plain TypeScript: no framework, SDK, I/O or other layers. Only its own domain files, zod, and the pure contract between xomoni.com and the extension (@xomoni/bridge, ADR-0025).',
       from: { path: `${MODULE}/domain/` },
-      to: { pathNot: [`${WEB}/modules/$1/domain/`, 'node_modules/zod/'] },
+      to: { pathNot: [`${WEB}/modules/$1/domain/`, 'node_modules/zod/', '^packages/bridge/'] },
     },
     {
       name: 'web-application-depends-on-domain',
       severity: 'error',
-      comment: 'Use cases see only their own domain and ports; adapters are injected.',
+      comment:
+        'Use cases see only their own domain and ports, and the pure contract @xomoni/bridge (ADR-0025); adapters are injected.',
       from: { path: `${MODULE}/application/` },
-      to: { pathNot: `${WEB}/modules/$1/(domain|application)/` },
+      to: { pathNot: [`${WEB}/modules/$1/(domain|application)/`, '^packages/bridge/'] },
     },
     {
       name: 'web-infrastructure-is-an-adapter',
@@ -161,9 +163,9 @@ module.exports = {
       name: 'ext-background-is-thin',
       severity: 'error',
       comment:
-        'The service worker stores observations, opens the dashboard and takes the code xomoni.com hands over (ADR-0024, cloud/web-connect.ts only); it does not import UI or page scripts.',
+        'The service worker stores observations, opens the dashboard and answers xomoni.com in the same browser (ADR-0024, ADR-0025, cloud/website.ts only); it does not import UI or page scripts.',
       from: { path: `${EXT}/background/` },
-      to: { path: `${EXT}/(?!background/|shared/|engine/|cloud/web-connect\\.ts$)` },
+      to: { path: `${EXT}/(?!background/|shared/|engine/|cloud/website\\.ts$)` },
     },
     {
       name: 'ext-cloud-is-isolated',

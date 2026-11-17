@@ -16,6 +16,7 @@
     "@marsidev/react-turnstile": "^1.6.3",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
+    "@xomoni/bridge": "*",
     "@xomoni/consent": "*",
     "@xomoni/db": "*",
     "@xomoni/fluent-theme": "*",

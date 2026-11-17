@@ -28,3 +28,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0022](0022-get-the-x-archive-without-leaving-xomoni.md) | Get X's archive without leaving Xomoni: X's own page, the person's password on X, the ZIP read here | Accepted |
 | [0023](0023-sign-out-of-xomoni-in-the-extension.md) | Sign out of Xomoni in the extension: a signed-out state, not just a disconnect | Accepted |
 | [0024](0024-connect-a-browser-with-one-click.md) | Connect a browser with one click: the extension asks, xomoni.com hands over the one-time code | Accepted |
+| [0025](0025-one-sign-in-for-the-website-and-the-extension.md) | One sign-in for xomoni.com and the extension in the same browser | Accepted |

@@ -30,6 +30,15 @@ export function markSignedOut(handle: string, dataKept: boolean, at = Date.now()
 }
 
 /**
+ * Ends a sign-out because the person signed in to their xomoni.com account in this browser (#232, ADR-0025): on the
+ * website, or from the extension's *Sign in*, which signs in there. The active X account stays the one from before,
+ * whose data was kept; the X window's account is taken up as on a first run.
+ */
+export async function endSignOut(): Promise<void> {
+  await db.kv.delete(KEY);
+}
+
+/**
  * Signs in again with the account the X window is signed in to: forgets the sign-out and makes that account the
  * active one, in one transaction. Only from the person's own click on the signed-out page.
  */

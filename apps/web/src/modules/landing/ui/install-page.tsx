@@ -178,9 +178,9 @@ export function InstallPage() {
               <strong>Load unpacked</strong> and select the unzipped folder. Pin Xomoni to the toolbar.
             </Step>
             <Step n={4} title="Follow it here (optional)">
-              Xomoni opens by itself once it is loaded. In its account menu, press <strong>Connect this browser</strong>
-              , sign in here, and press <strong>Connect</strong>: no code to type. Only job status is sent; your posts
-              and likes stay on your computer.
+              Xomoni opens by itself once it is loaded. In its account menu, press{' '}
+              <strong>Sign in to xomoni.com</strong> and sign in here: Xomoni signs in with you, and signing out on
+              either side signs out both. Only job status is sent; your posts and likes stay on your computer.
             </Step>
           </ol>
           <div className={mergeClasses(s.card, s.update)}>

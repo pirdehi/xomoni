@@ -67,7 +67,8 @@ const useStyles = makeStyles({
   dateCol: { width: '96px' },
   likesCol: { width: '64px' },
   sourceCol: { width: '112px' },
-  linkCol: { width: '24px' },
+  // The icon (16px) plus the row's end padding (#240): at 24px the icon ran past the card's edge.
+  linkCol: { width: '56px' },
   date: {
     whiteSpace: 'nowrap',
     fontVariantNumeric: 'tabular-nums',

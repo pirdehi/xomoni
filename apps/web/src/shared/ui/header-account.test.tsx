@@ -7,11 +7,14 @@ import { ACCOUNT_PATHS, HeaderAccount } from './header-account';
 
 // The session as this browser's cookie has it, driven by each test.
 const session = vi.hoisted(() => {
-  const state: { emit: (email: string | null) => void; stopped: number } = { emit: () => undefined, stopped: 0 };
+  const state: { emit: (email: string | null, name?: string) => void; stopped: number } = {
+    emit: () => undefined,
+    stopped: 0,
+  };
   return state;
 });
 vi.mock('@/shared/supabase/browser-session', () => ({
-  watchSessionEmail: (onChange: (email: string | null) => void) => {
+  watchSessionEmail: (onChange: (email: string | null, name?: string) => void) => {
     session.emit = onChange;
     return () => {
       session.stopped++;
@@ -27,7 +30,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const signedIn = (email: string) => act(() => session.emit(email));
+const signedIn = (email: string, name?: string) => act(() => session.emit(email, name));
 
 describe('HeaderAccount', () => {
   it('holds its place, showing neither Sign in nor a menu, until the session is read', () => {
@@ -45,6 +48,15 @@ describe('HeaderAccount', () => {
     const signIn = screen.getByRole('link', { name: 'Sign in' });
     expect(signIn).toHaveAttribute('href', ACCOUNT_PATHS.signIn);
     expect(signIn).toHaveAttribute('data-appearance', 'primary');
+  });
+
+  it('shows the display name’s initials, as the dashboard does, and the email’s without a name (#239)', () => {
+    render(<HeaderAccount />);
+    signedIn('ux@example.com', 'Omid Pirdehi');
+    expect(screen.getByRole('button', { name: 'Account menu for ux@example.com' })).toHaveTextContent('OP');
+
+    signedIn('zed@example.com');
+    expect(screen.getByRole('button', { name: 'Account menu for zed@example.com' })).not.toHaveTextContent('OP');
   });
 
   it('gives a signed-in person the dashboard and a menu that names them, with their pages and Sign out', async () => {

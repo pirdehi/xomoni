@@ -1,4 +1,5 @@
 import {
+  Body1,
   Body1Strong,
   Caption1,
   Subtitle2,
@@ -177,6 +178,7 @@ const useStyles = makeStyles({
   actions: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalS },
   note: { display: 'block', margin: `${tokens.spacingVerticalS} 0 0`, color: tokens.colorNeutralForeground3 },
   byHand: { marginTop: tokens.spacingVerticalM },
+  settled: { margin: `0 0 ${tokens.spacingVerticalM}`, color: tokens.colorNeutralForeground2, maxWidth: '68ch' },
   noWrap: { whiteSpace: 'nowrap' },
   bare: {
     display: 'flex',
@@ -222,7 +224,8 @@ function Steps({ done, busy }: { done: number; busy: boolean }) {
  * X's archive (#186, ADR-0022), in four steps the person can follow without leaving the Library: *Get my archive*
  * makes Downloads › Xomoni and asks for it in the same click (once, #196), then runs the archive job; what it is
  * doing, and what X needs from the person, shows here. Consent comes before the job exists, so closing the dialog
- * leaves nothing behind. Doing it by hand stays one click away, folded unless it is the way left to import.
+ * leaves nothing behind. Doing it by hand stays one click away, folded unless it is the way left to import. Once an
+ * archive is imported and nothing is asked of X since, the card says so in one line and offers a newer one (#240).
  */
 export function XArchiveCard({
   account,
@@ -263,6 +266,8 @@ export function XArchiveCard({
   const openJob = status?.openJob ?? null;
   // Folded unless it is the way left to import: a download waiting with no Downloads folder to read it from.
   const showByHand = byHand || (downloadWaiting && !hasFolder);
+  // Imported, with nothing asked of X since (#240): the card says so, and a newer archive is one quiet click.
+  const settled = !!status?.imported && !openJob && (progress.done === 0 || progress.done === 4);
 
   const start = async (mode: 'get' | 'look') => {
     try {
@@ -285,7 +290,48 @@ export function XArchiveCard({
     <Badge tone="accent">Recommended</Badge>
   );
   const subtitle = 'X’s own copy, the only complete one: every post, reply and like, even those X no longer shows.';
-  const body = (
+  const byHandFold = (
+    <div className={s.byHand}>
+      <FluentButton
+        appearance="transparent"
+        size="small"
+        icon={showByHand ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
+        aria-expanded={showByHand}
+        aria-controls={panelId}
+        onClick={() => setByHand((open) => !open)}
+      >
+        Already have the ZIP?
+      </FluentButton>
+      <div id={panelId}>{showByHand && <ArchiveImport account={account} />}</div>
+    </div>
+  );
+  const settledBody = (
+    <>
+      <Body1 as="p" className={s.settled}>
+        {status?.importedAt ? `Imported ${fmtDate(status.importedAt)}` : 'Imported'}: every post, reply and like up to
+        that day. X’s archive is a snapshot, so ask for a newer one when you want what came after.
+      </Body1>
+      <div className={s.actions}>
+        <Button icon={<ArrowDownload16Regular />} disabled={busy} onClick={() => void start('get')}>
+          Get a newer archive
+        </Button>
+        <FluentButton
+          as="a"
+          href={ARCHIVE_PAGE_URL}
+          target="_blank"
+          rel="noreferrer"
+          appearance="subtle"
+          icon={<Open16Regular />}
+        >
+          Open X’s page
+        </FluentButton>
+      </div>
+      {byHandFold}
+    </>
+  );
+  const body = settled ? (
+    settledBody
+  ) : (
     <>
       <Steps done={progress.done} busy={progress.busy} />
       {line && (
@@ -366,19 +412,7 @@ export function XArchiveCard({
         host={host}
         makeFolder={makeFolder}
       />
-      <div className={s.byHand}>
-        <FluentButton
-          appearance="transparent"
-          size="small"
-          icon={showByHand ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
-          aria-expanded={showByHand}
-          aria-controls={panelId}
-          onClick={() => setByHand((open) => !open)}
-        >
-          Already have the ZIP?
-        </FluentButton>
-        <div id={panelId}>{showByHand && <ArchiveImport account={account} />}</div>
-      </div>
+      {byHandFold}
     </>
   );
 

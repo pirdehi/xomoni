@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetNavigation, router, setLocation } from '@test/fakes/navigation';
 import type { SyncOutcome } from '../application/session-sync';
 import type { ExtensionSessionServices } from '../client/extension-session';
-import { ExtensionSessionSync, useExtensionLink } from './extension-session-sync';
+import { renderToString } from 'react-dom/server';
+import { ExtensionSessionSync, UNKNOWN_LINK, useExtensionLink } from './extension-session-sync';
 
 const EXT = 'abcdefghijklmnopabcdefghijklmnop';
 
@@ -178,5 +179,17 @@ describe('useExtensionLink (#232)', () => {
   it('starts unknown, before the first sync', () => {
     const { result } = renderHook(() => useExtensionLink());
     expect(result.current.status).toBeTypeOf('string');
+  });
+
+  it('renders on the server with one cached snapshot, without React’s infinite-loop warning (#239)', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    function Probe() {
+      return <span>{useExtensionLink().status}</span>;
+    }
+
+    expect(renderToString(<Probe />)).toContain('unknown');
+    expect(renderToString(<Probe />)).toContain('unknown');
+    expect(error).not.toHaveBeenCalled();
+    expect(UNKNOWN_LINK).toEqual({ status: 'unknown' });
   });
 });

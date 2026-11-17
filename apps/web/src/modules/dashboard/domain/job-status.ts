@@ -27,6 +27,15 @@ export function jobProgress(job: Pick<JobSummary, 'kind' | 'matched' | 'done' | 
   return Math.min(100, Math.round(((job.done + job.skipped + job.failed) / total) * 100));
 }
 
+/**
+ * Matched items not settled yet (not removed, skipped or failed); 0 for scans. With `removed`, `skipped` and `failed`
+ * it is the extension's set of numbers on a job card (#206, #239), so both say the same.
+ */
+export function jobRemaining(job: Pick<JobSummary, 'kind' | 'matched' | 'done' | 'skipped' | 'failed'>): number {
+  if (job.kind === 'scan') return 0;
+  return Math.max(0, job.matched - job.done - job.skipped - job.failed);
+}
+
 /** A device counts as online if it reported within this window. */
 export const ONLINE_WINDOW_MS = 3 * 60_000;
 

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-type Listener = (event: string, session: { user: { email?: string } } | null) => void;
+type Listener = (
+  event: string,
+  session: { user: { email?: string; user_metadata?: Record<string, unknown> } } | null,
+) => void;
 const auth = vi.hoisted(() => ({
   onAuthStateChange: vi.fn<(listener: Listener) => { data: { subscription: { unsubscribe: () => void } } }>(),
 }));
@@ -16,15 +19,21 @@ describe('watchSessionEmail', () => {
       listener = l;
       return { data: { subscription: { unsubscribe } } };
     });
-    const seen: (string | null)[] = [];
+    const seen: [string | null, string][] = [];
 
-    const stop = watchSessionEmail((email) => seen.push(email));
-    listener('INITIAL_SESSION', { user: { email: 'ada@example.com' } });
+    const stop = watchSessionEmail((email, name) => seen.push([email, name ?? '']));
+    listener('INITIAL_SESSION', { user: { email: 'ada@example.com', user_metadata: { full_name: ' Ada Lovelace ' } } });
     listener('SIGNED_OUT', null);
     listener('SIGNED_IN', { user: {} });
+    listener('TOKEN_REFRESHED', { user: { email: 'g@example.com', user_metadata: { full_name: '', name: 'Grace' } } });
     stop();
 
-    expect(seen).toEqual(['ada@example.com', null, '']);
+    expect(seen).toEqual([
+      ['ada@example.com', 'Ada Lovelace'],
+      [null, ''],
+      ['', ''],
+      ['g@example.com', 'Grace'],
+    ]);
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 });

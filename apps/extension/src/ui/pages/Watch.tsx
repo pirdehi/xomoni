@@ -20,7 +20,7 @@ import {
   Warning20Regular,
 } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { type SyntheticEvent, useState } from 'react';
+import { type SyntheticEvent, useId, useState } from 'react';
 import { runner } from '../../engine/platform';
 import { watchJob } from '../../engine/runner';
 import { addWatchTab, db, removeWatchTab, setWatchQuery, watchResults, watchTabs } from '../../shared/db';
@@ -42,7 +42,10 @@ import { Button, Callout, Card, EmptyState, Field, PageHeader, useNow } from '..
 const useStyles = makeStyles({
   tabs: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: tokens.spacingHorizontalS },
   panel: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalM },
+  // The buttons line up with the input; the hint goes under the whole row, so it doesn't push them down (#240).
   form: { display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
+  hint: { display: 'block', marginTop: `calc(-1 * ${tokens.spacingVerticalS})`, color: tokens.colorNeutralForeground3 },
+  start: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', rowGap: tokens.spacingVerticalXXS },
   query: { flexGrow: 1, minWidth: '240px' },
   input: { width: '100%' },
   meta: { color: tokens.colorNeutralForeground3 },
@@ -108,14 +111,18 @@ export function WatchPage({ account }: PageProps) {
               {run.status === 'stopping' ? 'Stopping…' : 'Pause watching'}
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              icon={<Play16Regular />}
-              onClick={() => void start()}
-              disabled={otherJob || !anyQuery}
-            >
-              Start watching
-            </Button>
+            <div className={styles.start}>
+              <Button
+                variant="primary"
+                icon={<Play16Regular />}
+                onClick={() => void start()}
+                disabled={otherJob || !anyQuery}
+              >
+                Start watching
+              </Button>
+              {/* A disabled button says nothing on its own (#240). */}
+              {!anyQuery && <Caption1 className={styles.meta}>Save a phrase or #hashtag first.</Caption1>}
+            </div>
           )
         }
       />
@@ -188,6 +195,7 @@ function TabPanel({
   const styles = useStyles();
   const now = useNow(5000);
   const [draft, setDraft] = useState(tab.query);
+  const hintId = useId();
   const fresh = result && result.query === tab.query ? result : undefined;
 
   const submit = (event: SyntheticEvent) => {
@@ -199,10 +207,11 @@ function TabPanel({
     <div role="tabpanel" aria-label={tab.query || 'Empty tab'} className={styles.panel}>
       <form className={styles.form} onSubmit={submit}>
         <div className={styles.query}>
-          <Field label="Phrase or #hashtag" hint={'A word, #hashtag or "exact phrase". X’s search operators work too.'}>
+          <Field label="Phrase or #hashtag">
             <Input
               className={styles.input}
               dir="auto"
+              aria-describedby={hintId}
               value={draft}
               maxLength={MAX_QUERY_LENGTH}
               placeholder="#hashtag"
@@ -219,6 +228,9 @@ function TabPanel({
           </Button>
         )}
       </form>
+      <Caption1 id={hintId} className={styles.hint}>
+        A word, #hashtag or "exact phrase". X’s search operators work too.
+      </Caption1>
 
       {!tab.query ? (
         <EmptyState

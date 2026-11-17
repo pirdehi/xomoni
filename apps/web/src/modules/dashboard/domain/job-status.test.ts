@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { isOnline, jobProgress, jobStateView, ONLINE_WINDOW_MS, relativeTime, upsertNewestFirst } from './job-status';
+import {
+  isOnline,
+  jobProgress,
+  jobRemaining,
+  jobStateView,
+  ONLINE_WINDOW_MS,
+  relativeTime,
+  upsertNewestFirst,
+} from './job-status';
+
+describe('jobRemaining (#239)', () => {
+  it('is what is matched and not yet removed, skipped or failed, as the extension counts it', () => {
+    expect(jobRemaining({ kind: 'cleanup', matched: 200, done: 90, skipped: 8, failed: 2 })).toBe(100);
+  });
+
+  it('is never below 0, and 0 for scans', () => {
+    expect(jobRemaining({ kind: 'cleanup', matched: 10, done: 12, skipped: 0, failed: 0 })).toBe(0);
+    expect(jobRemaining({ kind: 'scan', matched: 10, done: 0, skipped: 0, failed: 0 })).toBe(0);
+  });
+});
 
 describe('jobProgress', () => {
   it('counts done, skipped and failed against matched', () => {

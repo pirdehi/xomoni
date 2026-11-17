@@ -309,6 +309,29 @@ describe('Home (#201)', () => {
     expect(screen.getByText('Nothing yet')).toBeInTheDocument();
   });
 
+  it('names each post in recent activity by its text, as the Activity page does (#240)', async () => {
+    const post = item('post', 'deleted', { text: 'Coffee first' });
+    await db.items.put(post);
+    await db.logs.add(
+      logEntry({ level: 'success', action: 'delete', outcome: 'done', targetId: post.targetId, message: 'Deleted' }),
+    );
+    render(<OverviewPage {...await pageProps()} />);
+
+    expect(await screen.findByText('“Coffee first”')).toBeInTheDocument();
+  });
+
+  it('shows a dash, not 0, while the copy is still being counted (#240)', async () => {
+    render(<OverviewPage {...await pageProps()} />);
+
+    // The first render, before IndexedDB answers.
+    const counts = screen.getByRole('region', { name: 'Counts' });
+    expect(counts).toHaveAttribute('aria-busy', 'true');
+    expect(counts).toHaveTextContent('–');
+    expect(counts).not.toHaveTextContent(/\d/);
+    await waitFor(() => expect(counts).toHaveAttribute('aria-busy', 'false'));
+    expect(counts).not.toHaveTextContent('–');
+  });
+
   it('shows the 6 latest entries of this account’s activity', async () => {
     const now = Date.now();
     await db.logs.bulkAdd([

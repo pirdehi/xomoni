@@ -55,7 +55,15 @@ export function HeaderAccount() {
   const s = useStyles();
   const pathname = usePathname();
   const [email, setEmail] = useState<string | null | undefined>(undefined);
-  useEffect(() => watchSessionEmail(setEmail), []);
+  const [name, setName] = useState('');
+  useEffect(
+    () =>
+      watchSessionEmail((nextEmail, nextName = '') => {
+        setEmail(nextEmail);
+        setName(nextName);
+      }),
+    [],
+  );
 
   if (email === undefined) return <span className={s.placeholder} aria-hidden data-testid="account-loading" />;
   if (email === null) {
@@ -74,13 +82,17 @@ export function HeaderAccount() {
           </ButtonLink>
         </span>
       )}
-      <AccountMenu email={email} />
+      <AccountMenu email={email} name={name} />
     </span>
   );
 }
 
-/** The menu of a signed-in person. Signing out posts the form the server expects, from this page (Origin checked). */
-function AccountMenu({ email }: { email: string }) {
+/**
+ * The menu of a signed-in person. Its avatar takes the display name's initial and color, as the dashboard's does, and
+ * the email's when there is no name (#239). Signing out posts the form the server expects, from this page (Origin
+ * checked).
+ */
+function AccountMenu({ email, name: displayName }: { email: string; name: string }) {
   const s = useStyles();
   const signOut = useRef<HTMLFormElement>(null);
   const name = email || 'your account';
@@ -92,7 +104,7 @@ function AccountMenu({ email }: { email: string }) {
             appearance="subtle"
             shape="circular"
             aria-label={`Account menu for ${name}`}
-            icon={<Avatar name={email || undefined} size={28} color="colorful" />}
+            icon={<Avatar name={displayName || email || undefined} size={28} color="colorful" />}
           />
         </MenuTrigger>
         <MenuPopover>

@@ -49,6 +49,8 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr)',
     gap: tokens.spacingVerticalL,
+    // Each card as tall as its content: stretched to its neighbour, the shorter one ended in empty space (#240).
+    alignItems: 'start',
     '@media (min-width: 1024px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
   },
   scroll: { overflowX: 'auto' },
@@ -70,19 +72,12 @@ const useStyles = makeStyles({
   number: { fontVariantNumeric: 'tabular-nums' },
   unit: { fontSize: tokens.fontSizeBase100 },
   note: { margin: `${tokens.spacingVerticalM} 0 0`, color: tokens.colorNeutralForeground3 },
-  limits: {
+  // The pacing card's two folds, below its numbers.
+  folds: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalXS,
     marginTop: tokens.spacingVerticalL,
-    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
-    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusLarge,
-  },
-  summary: {
-    cursor: 'pointer',
-    fontSize: tokens.fontSizeBase200,
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground1,
-    borderRadius: tokens.borderRadiusMedium,
-    ':focus-visible': { outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}` },
   },
   limitsTable: { marginTop: tokens.spacingVerticalS, fontSize: tokens.fontSizeBase200 },
   muted: { color: tokens.colorNeutralForeground3 },
@@ -114,7 +109,7 @@ const useStyles = makeStyles({
   },
   toggleRow: {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: tokens.spacingHorizontalM,
   },
@@ -270,15 +265,17 @@ export function SettingsPage({ account, worker }: PageProps) {
               </Caption1>
             </>
           )}
-          <XLimitsTable />
+          {/* Both folds belong to pacing, in its card (#240): one was a fold of its own between the cards. */}
+          <div className={styles.folds}>
+            <XLimitsTable />
+            <Disclosure
+              label="Today’s use of X’s limits"
+              summary="How much of each cap Xomoni used in the last hour and day, and X’s own 15-minute counts."
+            >
+              <LimitsPanel accountId={account.id} />
+            </Disclosure>
+          </div>
         </Card>
-
-        <Disclosure
-          label="Today’s use of X’s limits"
-          summary="How much of each cap Xomoni used in the last hour and day, and X’s own 15-minute counts."
-        >
-          <LimitsPanel accountId={account.id} />
-        </Disclosure>
 
         <div className={styles.columns}>
           <Card title="Schedule & safety">
@@ -319,7 +316,6 @@ export function SettingsPage({ account, worker }: PageProps) {
                 {settings.notifications && (
                   <Button
                     size="sm"
-                    variant="ghost"
                     className={styles.noShrink}
                     onClick={() =>
                       void notify(
@@ -329,7 +325,7 @@ export function SettingsPage({ account, worker }: PageProps) {
                       )
                     }
                   >
-                    Test
+                    Send a test
                   </Button>
                 )}
               </div>
@@ -359,8 +355,8 @@ export function SettingsPage({ account, worker }: PageProps) {
               </Disclosure>
               <Callout tone="good" icon={<ShieldCheckmark16Regular className={styles.goodIcon} />} title="Always on">
                 <ul className={styles.rules}>
-                  <li>Waits out X rate limits (HTTP 429 / code 88) and daily limits</li>
-                  <li>Stops on “looks automated” (code 226)</li>
+                  <li>Waits when X says “too many requests”, and keeps to X’s daily limits</li>
+                  <li>Stops when X says activity “looks automated”</li>
                   <li>Waits for you on logins, 2FA and X’s checks, then continues by itself</li>
                   <li>Never solves captchas, never touches your password or cookies</li>
                   <li>Counts an action only when X confirms it</li>
@@ -451,12 +447,14 @@ function CarefulPace() {
   );
 }
 
-/** X's published limits next to the share Xomoni allows itself, with links to where X publishes them. */
+/**
+ * X's published limits next to the share Xomoni allows itself, with links to where X publishes them. Folded like every
+ * other fold in the dashboard (#240).
+ */
 function XLimitsTable() {
   const styles = useStyles();
   return (
-    <details className={styles.limits}>
-      <summary className={styles.summary}>X's published limits and Xomoni's share</summary>
+    <Disclosure label="X’s published limits and Xomoni’s share">
       <div className={styles.scroll}>
         <Table size="small" className={mergeClasses(styles.table, styles.limitsTable)}>
           <TableHeader>
@@ -495,6 +493,6 @@ function XLimitsTable() {
         Posting limits are listed for completeness. While a job runs, Xomoni also stops at one fifth of the live limit X
         reports for each request and waits for X's window to reset.
       </Caption1>
-    </details>
+    </Disclosure>
   );
 }

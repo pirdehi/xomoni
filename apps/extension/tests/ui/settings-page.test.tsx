@@ -252,10 +252,30 @@ describe('Settings page', () => {
       });
     });
 
+    it('keeps both of pacing’s folds in its card, below the numbers (#240)', async () => {
+      await renderPage();
+
+      const pacing = screen.getByRole('heading', { level: 2, name: 'Pacing' }).closest('section')!;
+      expect(
+        within(pacing).getByRole('button', { name: 'X’s published limits and Xomoni’s share' }),
+      ).toBeInTheDocument();
+      expect(within(pacing).getByRole('button', { name: 'Today’s use of X’s limits' })).toBeInTheDocument();
+    });
+
+    it('says what is always on in plain words, without HTTP codes (#240)', async () => {
+      await renderPage();
+
+      const always = screen.getByText('Always on').closest('div')!.parentElement!;
+      expect(always).toHaveTextContent('Waits when X says “too many requests”');
+      expect(always).toHaveTextContent('Stops when X says activity “looks automated”');
+      expect(document.body).not.toHaveTextContent(/HTTP 429|code 88|code 226/);
+    });
+
     it('lists X’s published limits next to the one-fifth share Xomoni uses', async () => {
       await renderPage();
 
-      expect(screen.getByText("X's published limits and Xomoni's share")).toBeInTheDocument();
+      // Folded, with the dashboard's own fold (#240).
+      await userEvent.click(screen.getByRole('button', { name: 'X’s published limits and Xomoni’s share' }));
       const table = screen.getByRole('columnheader', { name: 'Xomoni uses at most' }).closest('table')!;
       const rows = within(table).getAllByRole('row').slice(1);
       const limits = Object.values(X_PUBLISHED_LIMITS);
@@ -322,7 +342,7 @@ describe('Settings page', () => {
     it('sends a test notification and turns notifications off', async () => {
       await renderPage();
 
-      await userEvent.click(screen.getByRole('button', { name: 'Test' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Send a test' }));
       await waitFor(() => {
         expect(chrome.notifications.create).toHaveBeenCalledWith(
           FINISHED_ID,
@@ -335,7 +355,7 @@ describe('Settings page', () => {
         expect(s.notifications).toBe(false);
       });
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: 'Test' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Send a test' })).not.toBeInTheDocument();
       });
     });
 

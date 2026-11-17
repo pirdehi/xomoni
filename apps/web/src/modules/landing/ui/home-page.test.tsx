@@ -42,7 +42,7 @@ describe('HomePage', () => {
   it('shows the dashboard in the visitor’s color scheme, light by default and dark on a dark system', () => {
     const { container } = render(<HomePage />);
 
-    const image = screen.getByRole('img', { name: /^The Xomoni dashboard/ });
+    const image = screen.getByRole('img', { name: /^Xomoni’s Home: a paused job/ });
     expect(image).toHaveAttribute('src', expect.stringContaining('overview.png'));
     expect(image).toHaveAttribute('width', '1440');
     expect(image).toHaveAttribute('height', '1000');
@@ -105,7 +105,7 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     const anywhere = region(/^The work happens in your browser/);
-    expect(anywhere).toHaveTextContent('one-time code');
+    expect(anywhere).toHaveTextContent('sign in once');
     expect(anywhere).toHaveTextContent('Does the work');
     expect(anywhere).toHaveTextContent('View only');
     expect(anywhere).toHaveTextContent('The website can’t start a deletion');

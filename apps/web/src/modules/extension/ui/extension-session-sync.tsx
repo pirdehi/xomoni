@@ -24,9 +24,14 @@ const SIGN_OUT_PATH = '/auth/signout';
 /** Where the site goes once a sign-out made in the extension signed it out too. */
 const SIGNED_OUT_LANDING = '/login';
 
+/** The link before the first sync, and on the server: one object, as `useSyncExternalStore` needs. */
+export const UNKNOWN_LINK: ExtensionLinkState = { status: 'unknown' };
+
+const serverLink = () => UNKNOWN_LINK;
+
 /** How the extension in this browser stands with the site, as of the last sync; `unknown` before the first. */
 export function useExtensionLink(): ExtensionLinkState {
-  return useSyncExternalStore(subscribeLink, currentLink, () => ({ status: 'unknown' }) as const);
+  return useSyncExternalStore(subscribeLink, currentLink, serverLink);
 }
 
 /**

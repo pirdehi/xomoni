@@ -210,7 +210,7 @@ The website shows and works with what the extension has, in the same browser. Wo
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| 🔄 | One sign-in: signing in or out on xomoni.com or in the extension does the same on the other ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)) | [#232](https://github.com/pirdehi/xomoni/issues/232) | |
+| ✅ | One sign-in: signing in or out on xomoni.com or in the extension does the same on the other ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)) | [#232](https://github.com/pirdehi/xomoni/issues/232) | [#236](https://github.com/pirdehi/xomoni/pull/236) |
 | ⬜ | The website shows the extension's pages (Home, Activity, Library, Watch, Settings), read from the extension in the same browser | [#233](https://github.com/pirdehi/xomoni/issues/233) | |
 | ⬜ | Settings on the website, applied in the extension | [#234](https://github.com/pirdehi/xomoni/issues/234) | |
 | ⬜ | Plan a cleanup on the website, start it in Xomoni | [#235](https://github.com/pirdehi/xomoni/issues/235) | |

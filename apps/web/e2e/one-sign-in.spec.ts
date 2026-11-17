@@ -129,6 +129,8 @@ test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', (
     await createConfirmedUser(email, PASSWORD);
     const fake = await installFakeExtension(page);
     await page.goto(`/#ext=${EXT}`);
+    // Kept once the page has run its scripts, which clear the fragment.
+    await expect(page).toHaveURL(/\/$/);
     await signIn(page, email, PASSWORD);
     await page.waitForURL(/\/dashboard/);
     await expect(page.getByRole('region', { name: 'Connected browsers' })).toContainText('This browser');

@@ -62,8 +62,7 @@ test.describe('connecting a browser from the extension’s Sign in (#228, ADR-00
 
     await signIn(page, email, PASSWORD, '/login?next=/connect');
     await expect(page).toHaveURL(/\/connect$/);
-    await expect(page.getByText(email)).toBeVisible();
-
+    // Signed in, Xomoni signs in at once: often too fast to see the account named while it does.
     await expect(page.getByText('Xomoni in this browser is signed in as e•••@xomoni.test.')).toBeVisible();
     // Other pages only asked how it stands (#232); the code went once, with the nonce.
     expect(received.filter((m) => (m as { type: string }).type !== 'xomoni-hello')).toEqual([

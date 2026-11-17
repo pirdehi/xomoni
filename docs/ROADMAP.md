@@ -222,8 +222,8 @@ Every page of xomoni.com and of the extension's dashboard, reviewed on screen (d
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| ✅ | xomoni.com: the real pace on the landing page, today's screenshot, the extension's numbers on job cards, one header for the account | [#239](https://github.com/pirdehi/xomoni/issues/239) | |
-| ✅ | The extension: a settled archive card, Settings' folds and layout, Watch's form, Home while it loads | [#240](https://github.com/pirdehi/xomoni/issues/240) | |
+| ✅ | xomoni.com: the real pace on the landing page, today's screenshot, the extension's numbers on job cards, one header for the account | [#239](https://github.com/pirdehi/xomoni/issues/239) | [#241](https://github.com/pirdehi/xomoni/pull/241) |
+| ✅ | The extension: a settled archive card, Settings' folds and layout, Watch's form, Home while it loads | [#240](https://github.com/pirdehi/xomoni/issues/240) | [#241](https://github.com/pirdehi/xomoni/pull/241) |
 
 ## Dropped
 

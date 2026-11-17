@@ -11,13 +11,14 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
+- Phase 14: one Xomoni. The website and the extension sign in and out together (#232); next, the extension's pages on the website, read in the same browser only (#233).
 - Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
 - Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
 - Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](PHASE-11-REPORT.md)).
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.2.1 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-15 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
+**Last updated:** 2026-11-17 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -202,6 +203,17 @@ Signing out of Xomoni as cleanly as signing in, and fewer steps from install to 
 | ✅ | Sign out of Xomoni in the extension: one dialog, a signed-out page, the account's data removed on request ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)) | [#226](https://github.com/pirdehi/xomoni/issues/226) | [#227](https://github.com/pirdehi/xomoni/pull/227) |
 | ✅ | Connect a browser to xomoni.com with one click: the extension asks, the website hands over the one-time code ([ADR-0024](adr/0024-connect-a-browser-with-one-click.md)) | [#228](https://github.com/pirdehi/xomoni/issues/228) | [#229](https://github.com/pirdehi/xomoni/pull/229) |
 | ⏸ | One-click install from the Chrome Web Store, with automatic updates (the only way Chrome allows) | [#43](https://github.com/pirdehi/xomoni/issues/43) | Waits for the maintainer's developer account |
+
+## Phase 14 · One Xomoni: the website and the extension together
+
+The website shows and works with what the extension has, in the same browser. Work on X stays in the extension (ADR-0006), and X content never reaches a server (ADR-0004): the website reads it from the extension in the same browser.
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| 🔄 | One sign-in: signing in or out on xomoni.com or in the extension does the same on the other ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)) | [#232](https://github.com/pirdehi/xomoni/issues/232) | |
+| ⬜ | The website shows the extension's pages (Home, Activity, Library, Watch, Settings), read from the extension in the same browser | [#233](https://github.com/pirdehi/xomoni/issues/233) | |
+| ⬜ | Settings on the website, applied in the extension | [#234](https://github.com/pirdehi/xomoni/issues/234) | |
+| ⬜ | Plan a cleanup on the website, start it in Xomoni | [#235](https://github.com/pirdehi/xomoni/issues/235) | |
 
 ## Dropped
 

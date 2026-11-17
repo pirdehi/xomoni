@@ -15,6 +15,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKSPACES = [
   { dir: 'apps/extension', sources: ['src'], skip: ['src/dev/'], aliases: {} },
   { dir: 'apps/web', sources: ['src/modules', 'src/shared', 'src/proxy.ts'], skip: [], aliases: { '@/': 'src/' } },
+  { dir: 'packages/bridge', sources: ['src'], skip: [], aliases: {} },
   { dir: 'packages/consent', sources: ['src'], skip: [], aliases: {} },
   { dir: 'packages/fluent-theme', sources: ['src'], skip: [], aliases: {} },
   { dir: 'packages/db', sources: ['src'], skip: [], aliases: {} },
@@ -30,6 +31,7 @@ const EXEMPT = {
     'a Web Worker script that only forwards setTimeout; used through timers.ts',
   'apps/web/src/modules/auth/application/ports.ts': 'interfaces only',
   'apps/web/src/modules/dashboard/application/ports.ts': 'interfaces only',
+  'apps/web/src/modules/extension/application/ports.ts': 'interfaces only',
   'packages/db/src/database.types.ts': 'generated from the migrations; checked by the CI types-drift step',
   'packages/db/src/index.ts': 'type re-exports only',
 };

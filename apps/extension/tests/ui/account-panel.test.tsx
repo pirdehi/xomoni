@@ -3,8 +3,8 @@ import 'fake-indexeddb/auto';
 import { cleanup, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PAIRING_PAGE } from '../../src/cloud/config';
 import { type CloudConnection, getConnection, saveConnection } from '../../src/cloud/connection';
+import { kvGet } from '../../src/shared/db';
 import { FORGOTTEN_HERE } from '../../src/cloud/sync';
 import type { PageInfo } from '../../src/shared/messages';
 import { AccountPanel } from '../../src/ui/components/AccountPanel';
@@ -94,7 +94,7 @@ describe('the sidebar’s Connections panel (#182)', () => {
   it('ends with Sign out of Xomoni, which closes the panel and opens the sign-out dialog (#226)', async () => {
     const panel = await openPanel();
 
-    expect(panel).toHaveTextContent('Pauses jobs, disconnects this browser and closes the X window.');
+    expect(panel).toHaveTextContent('Pauses jobs, signs out of xomoni.com in this browser and closes the X window.');
     await userEvent.click(within(panel).getByRole('button', { name: 'Sign out of Xomoni' }));
 
     expect(await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' })).toHaveTextContent('@me on X');
@@ -111,15 +111,15 @@ describe('the sidebar’s Connections panel (#182)', () => {
     expect(within(unknown).getByRole('region', { name: 'X account' })).not.toHaveTextContent(/Signed (in|out)/);
   });
 
-  it('connects on xomoni.com with one click, closing itself (#228)', async () => {
+  it('signs in on xomoni.com with one click, closing itself (#228, #232)', async () => {
     const create = vi.fn((_: { url: string }) => Promise.resolve({}));
     Object.assign(chrome.tabs, { create });
     const panel = await openPanel();
 
     const cloud = within(panel).getByRole('region', { name: 'xomoni.com' });
     expect(cloud).toHaveTextContent('Not connected');
-    expect(cloud).toHaveTextContent('no code to type');
-    await userEvent.click(within(cloud).getByRole('button', { name: 'Connect this browser' }));
+    expect(cloud).toHaveTextContent('Xomoni here signs in with you');
+    await userEvent.click(within(cloud).getByRole('button', { name: 'Sign in to xomoni.com' }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0]![0].url).toMatch(/^https:\/\/xomoni\.com\/connect#ext=/);
@@ -127,7 +127,7 @@ describe('the sidebar’s Connections panel (#182)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Connections' })).not.toBeInTheDocument());
   });
 
-  it('names the account a connected browser reports to, with its dashboard and Disconnect', async () => {
+  it('names the account a connected browser reports to, with its dashboard, which can find this extension', async () => {
     await saveConnection(CONNECTED);
     const panel = await openPanel();
 
@@ -135,7 +135,10 @@ describe('the sidebar’s Connections panel (#182)', () => {
     await waitFor(() => expect(cloud).toHaveTextContent('Connected'));
     expect(cloud).toHaveTextContent('o•••@example.com');
     expect(within(panel).getByRole('img')).toHaveAttribute('data-cloud', 'connected');
-    expect(within(cloud).getByRole('link', { name: 'Open dashboard' })).toHaveAttribute('href', PAIRING_PAGE);
+    expect(within(cloud).getByRole('link', { name: 'Open dashboard' })).toHaveAttribute(
+      'href',
+      'https://xomoni.com/dashboard#ext=test-extension',
+    );
   });
 
   it('asks to confirm an account not confirmed yet, in Settings', async () => {
@@ -150,31 +153,34 @@ describe('the sidebar’s Connections panel (#182)', () => {
     expect(navigate).toHaveBeenCalledWith('settings');
   });
 
-  it('disconnects from xomoni.com after a confirmation, telling the website', async () => {
+  it('signs out of xomoni.com after a confirmation, telling the website and remembering when (#232)', async () => {
     await saveConnection(CONNECTED);
     const toasts = renderHook(() => useToasts());
     const panel = await openPanel();
 
-    await userEvent.click(await within(panel).findByRole('button', { name: 'Disconnect' }));
-    const confirm = await screen.findByRole('dialog', { name: 'Disconnect from xomoni.com?' });
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Sign out of xomoni.com' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Sign out of xomoni.com?' });
     expect(confirm).toHaveTextContent('o•••@example.com');
     expect(fetch).not.toHaveBeenCalled();
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Disconnect' }));
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Sign out of xomoni.com' }));
 
     await waitFor(async () => expect(await getConnection()).toBeNull());
     expect(fetch.mock.calls.at(-1)?.[0]).toMatch(/unpair_device$/);
-    expect(toasts.result.current).toContainEqual(expect.objectContaining({ text: 'Disconnected from xomoni.com' }));
+    expect(toasts.result.current).toContainEqual(
+      expect.objectContaining({ text: 'Signed out of xomoni.com in this browser' }),
+    );
+    expect(await kvGet('webLeftAt', 0)).toBeGreaterThan(0);
   });
 
   it('keeps the connection when the confirmation is cancelled', async () => {
     await saveConnection(CONNECTED);
     const panel = await openPanel();
 
-    await userEvent.click(await within(panel).findByRole('button', { name: 'Disconnect' }));
-    const confirm = await screen.findByRole('dialog', { name: 'Disconnect from xomoni.com?' });
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Sign out of xomoni.com' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Sign out of xomoni.com?' });
     await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Disconnect/ })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Sign out of xomoni/ })).not.toBeInTheDocument());
     expect(fetch).not.toHaveBeenCalled();
     expect(await getConnection()).toEqual(CONNECTED);
   });
@@ -185,9 +191,9 @@ describe('the sidebar’s Connections panel (#182)', () => {
     const toasts = renderHook(() => useToasts());
     const panel = await openPanel();
 
-    await userEvent.click(await within(panel).findByRole('button', { name: 'Disconnect' }));
-    const confirm = await screen.findByRole('dialog', { name: 'Disconnect from xomoni.com?' });
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Disconnect' }));
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Sign out of xomoni.com' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Sign out of xomoni.com?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Sign out of xomoni.com' }));
 
     await waitFor(() =>
       expect(toasts.result.current).toContainEqual(expect.objectContaining({ text: FORGOTTEN_HERE, tone: 'critical' })),

@@ -1,6 +1,6 @@
-// Service worker: stores what the content script observes, opens the dashboard, and takes the one-time code
-// xomoni.com hands over when the person connects this browser there (#228).
-import { connectFromWebsite, fromWebsite, parseWebPairing } from '../cloud/web-connect';
+// Service worker: stores what the content script observes, opens the dashboard, and answers xomoni.com in the same
+// browser: a one-time code the person asked for (#228), and one sign-in for the website and the extension (#232).
+import { answerWebsite } from '../cloud/website';
 import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
@@ -52,17 +52,13 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') void openDashboard();
 });
 
-// xomoni.com hands over a one-time code after the person pressed Connect there (#228, ADR-0024). The manifest lets only
-// https://xomoni.com send; the sender is checked again, the message must be exactly a pairing, and its nonce one this
-// extension made when the person started connecting. Anything else gets no answer, or `invalid`.
+// xomoni.com in this browser (ADR-0024, ADR-0025): a one-time code the person asked for, and the one sign-in, which
+// asks how the extension stands, signs it in or signs it out. The manifest lets only https://xomoni.com send; the
+// sender is checked again (`answerWebsite`), and anything but those exact messages gets no answer, or `invalid`.
 chrome.runtime.onMessageExternal.addListener((raw: unknown, sender, sendResponse) => {
-  if (!fromWebsite(sender)) return;
-  const message = parseWebPairing(raw);
-  if (!message) {
-    sendResponse({ ok: false, reason: 'invalid' });
-    return;
-  }
-  void connectFromWebsite(message).then(sendResponse, () => sendResponse({ ok: false, reason: 'refused' }));
+  const answer = answerWebsite(raw, sender);
+  if (!answer) return;
+  void answer.then(sendResponse, () => sendResponse({ ok: false, reason: 'refused' }));
   return true;
 });
 

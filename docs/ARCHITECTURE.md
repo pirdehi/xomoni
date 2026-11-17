@@ -41,6 +41,7 @@ flowchart LR
   person -- "signs up and in, follows progress" --> web
   ext -- "clicks X's own buttons in a normal tab" --> x
   ext -. "job status only, with a device token (ADR-0018)" .-> sb
+  web <-. "same browser: one sign-in (externally_connectable, ADR-0025)" .-> ext
   web -- "auth, reads status, live updates" --> sb
   web -- "captcha widget on auth forms" --> turnstile
   sb -- "sign-in with Google" --> google
@@ -54,7 +55,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | x.com page | Untrusted | X's JavaScript, X's DOM | Xomoni only reads X's responses and clicks visible controls. The page-world script never sends requests. |
 | Extension | Trusted executor | Engine, inventory, activity log, settings (IndexedDB) | The only component that acts on X. Owns all X data. |
-| Website | View-only | Account, live job status | Can't start, change or approve actions on X. |
+| Website | View-only | Account, live job status | Can't start, change or approve actions on X. In the same browser it may sign the extension in or out (ADR-0025). |
 | Cloud (Supabase) | Status store | Accounts, devices, job counters and states | Never stores post text, likes, X credentials or cookies. Row Level Security on every table. |
 
 ## 2. Containers
@@ -107,9 +108,11 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/web`](../apps/web/README.md) | xomoni.com: landing and legal pages, sign-in, the live dashboard. |
 | [`apps/web/src/modules/auth`](../apps/web/src/modules/auth/README.md) | Identity: sign-up with email confirmation, sign-in (password or Google), password reset, email and password changes, sessions, account deletion. |
 | [`apps/web/src/modules/dashboard`](../apps/web/src/modules/dashboard/README.md) | Devices and live job status. |
+| [`apps/web/src/modules/extension`](../apps/web/src/modules/extension/README.md) | The Xomoni extension in this browser: finding it, and one sign-in for the site and the extension (ADR-0025). |
 | [`apps/web/src/modules/landing`](../apps/web/src/modules/landing/README.md) | The landing page at `/` and the install guide at `/install`: no data, so only a `ui/` layer. |
 | [`apps/web/src/shared`](../apps/web/src/shared/README.md) | Site config, Supabase clients, layout components shared by every module. |
 | [`packages/db`](../packages/db/README.md) | The typed contract of the database, generated from the migrations. |
+| [`packages/bridge`](../packages/bridge/README.md) | The messages xomoni.com and the extension exchange in one browser, with strict parsers: one contract for both apps (ADR-0025). |
 | [`packages/consent`](../packages/consent/README.md) | The informed-consent text shown before an X account's first job: one source for the extension, `/risks` and the README. |
 | [`packages/fluent-theme`](../packages/fluent-theme/README.md) | Xomoni's Fluent UI themes (ADR-0019): the brand ramp and the light and dark themes, one source for the extension and xomoni.com. |
 | [`supabase`](../supabase/README.md) | Migrations, auth settings and email templates, as code ([ADR-0010](adr/0010-configuration-as-code.md)). |
@@ -190,7 +193,7 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | Context | Area | Can use |
 | --- | --- | --- |
 | Dashboard page (extension origin) | `ui/` + `engine/` + `cloud/` | `chrome.*`, IndexedDB, React, `fetch` to xomoni.com's cloud (status only) |
-| Service worker | `background/` + `cloud/web-connect.ts` | `chrome.*`, IndexedDB, messages from xomoni.com's `/connect` (a one-time code only, ADR-0024), `fetch` to xomoni.com's cloud to trade it |
+| Service worker | `background/` + `cloud/website.ts` | `chrome.*`, IndexedDB, messages from xomoni.com's top frame (`@xomoni/bridge`: a hello, a one-time code to pair or sign in, a sign-out; ADR-0024, ADR-0025), `fetch` to xomoni.com's cloud to trade a code or end a token |
 | x.com tab, isolated world | `content/` | DOM of x.com, `chrome.runtime` messaging |
 | x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), a `MessagePort` to the content script |
 
@@ -204,7 +207,12 @@ The extension has a signed-out state of its own ([ADR-0023](adr/0023-sign-out-of
   - remove the account's data if chosen;
   - close the X window;
   - open X's own sign-out page if chosen.
-- Signing in again takes the person's *Continue as @handle*.
+- Signing in again takes the person's *Continue as @handle*, or *Sign in to xomoni.com*.
+
+One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)):
+- every page of the site asks the extension how it stands (`modules/extension`, `cloud/website.ts`);
+- the newest action wins: a sign-in on the website signs the extension in with a one-time code, and a sign-out on either side signs out the other;
+- a browser without a connection is never signed out by the website, so an account stays optional.
 
 ## 6. Data
 

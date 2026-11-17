@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-15
+- Amended: 2026-11-17, signing in to xomoni.com also ends a sign-out, and a sign-out on either side signs out both ([ADR-0025](0025-one-sign-in-for-the-website-and-the-extension.md), #232)
 
 ## Context
 

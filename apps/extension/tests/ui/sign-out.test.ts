@@ -1,11 +1,19 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
+import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, itemKey, kvSet, upsertAccount } from '../../src/shared/db';
 import { getSignedOut } from '../../src/shared/session';
 import type { Job } from '../../src/shared/types';
 import { SIGNED_OUT_PAUSE } from '../../src/ui/hooks';
-import { type SignOutDeps, X_SIGN_OUT, accountCopy, signOut } from '../../src/ui/sign-out';
+import {
+  type SignOutDeps,
+  X_SIGN_OUT,
+  accountCopy,
+  finishSignOut,
+  finishSignOutMadeElsewhere,
+  signOut,
+} from '../../src/ui/sign-out';
 import { stubChrome } from '../support/chrome';
 import { account, resetDb } from '../support/fixtures';
 
@@ -52,7 +60,10 @@ beforeEach(async () => {
   stubChrome();
   await resetDb();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('signOut (#226)', () => {
   it('records the sign-out, pauses the job, stops sharing, disconnects and closes the X window, in that order', async () => {
@@ -120,6 +131,41 @@ describe('signOut (#226)', () => {
 
     expect(result.cloud).toBe('forgotten-here');
     expect(await getSignedOut()).not.toBeNull();
+  });
+});
+
+describe('finishing a sign-out made elsewhere (#232)', () => {
+  it('waits for the job to stop, then stops sharing and closes the X window', async () => {
+    const { deps, steps } = fakeDeps(3);
+
+    await finishSignOut(deps);
+
+    expect(deps.sleep).toHaveBeenCalledTimes(3);
+    expect(steps).toEqual(['stop sharing', 'close']);
+    expect(deps.disconnect).not.toHaveBeenCalled();
+    expect(deps.openTab).not.toHaveBeenCalled();
+  });
+
+  it('closes the X window after the wait even if a job still runs, and when closing fails', async () => {
+    const { deps } = fakeDeps(Number.POSITIVE_INFINITY);
+    deps.closeWorker = vi.fn(() => Promise.reject(new Error('gone')));
+
+    await finishSignOut(deps, 1000);
+
+    expect(deps.sleep).toHaveBeenCalledTimes(4);
+    expect(deps.closeWorker).toHaveBeenCalled();
+  });
+
+  it('runs for a sign-out made elsewhere, and leaves one made in this tab’s dialog to the dialog', async () => {
+    const finish = vi.fn(() => Promise.resolve());
+    finishSignOutMadeElsewhere({ at: 1, handle: 'me', dataKept: true }, finish);
+    expect(finish).toHaveBeenCalledTimes(1);
+
+    const { deps } = fakeDeps();
+    await signOut(ME, { removeData: false, signOutOfX: false }, deps);
+    const here = await getSignedOut();
+    finishSignOutMadeElsewhere(here!, finish);
+    expect(finish).toHaveBeenCalledTimes(1);
   });
 });
 

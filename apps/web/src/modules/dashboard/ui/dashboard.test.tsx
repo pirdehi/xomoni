@@ -9,6 +9,15 @@ import { RISK_LEVEL } from '../domain/risk';
 import { Dashboard, type DashboardViewer, useJustConnected } from './dashboard';
 
 vi.mock('../client/live', () => ({ createLiveDashboardServices: vi.fn() }));
+// The extension in this browser, as the site last found it (#232); unknown unless a test says otherwise.
+const link = vi.hoisted(() => {
+  const state: { current: { status: string; deviceId?: string } } = { current: { status: 'unknown' } };
+  return state;
+});
+vi.mock('@/modules/extension/ui/extension-session-sync', () => ({
+  useExtensionLink: () => link.current,
+  rememberExtensionId: vi.fn(),
+}));
 
 type Handlers = Parameters<LiveDashboardServices['feed']['subscribe']>[1];
 
@@ -90,6 +99,7 @@ describe('Dashboard', () => {
     vi.mocked(createLiveDashboardServices).mockReset().mockReturnValue(fake.services);
     fake.services.reader.listDevices.mockResolvedValue([]);
     fake.services.reader.listRecentJobs.mockResolvedValue([]);
+    link.current = { status: 'unknown' };
   });
 
   afterEach(() => {
@@ -353,6 +363,18 @@ describe('Dashboard', () => {
       expect(items[0]).toHaveTextContent('Chrome on macOS');
       expect(items[0]).toHaveTextContent('Online · Extension v1.4.0');
       expect(items[1]).toHaveTextContent('Last seen 2 hours ago · Extension v1.4.0');
+    });
+
+    it('marks this browser and offers signing out instead of Disconnect, which would sign it straight in (#232)', () => {
+      link.current = { status: 'signed-in', deviceId: 'dev-2' };
+      renderDashboard({ devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows' })], jobs: [] });
+
+      const [other, here] = within(screen.getByRole('region', { name: 'Connected browsers' })).getAllByRole('listitem');
+      expect(here).toHaveTextContent('This browser');
+      expect(here).toHaveTextContent('Signed in with you: signing out disconnects it.');
+      expect(within(here!).queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
+      expect(other).not.toHaveTextContent('This browser');
+      expect(within(other!).getByRole('button', { name: 'Disconnect' })).toBeInTheDocument();
     });
 
     it('marks a browser offline as time passes, without a reload', () => {

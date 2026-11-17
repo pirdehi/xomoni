@@ -1,0 +1,20 @@
+{
+  "name": "@xomoni/bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The messages xomoni.com and the Xomoni extension exchange in one browser: one contract, with strict parsers, for both apps.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage --coverage.include='src/**/*.ts' --coverage.thresholds.100 --coverage.reporter=text-summary"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.5",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

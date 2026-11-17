@@ -171,6 +171,24 @@ describe('Overview signed out (#226)', () => {
     );
   });
 
+  it('signs in with the xomoni.com account first: opens its page with this extension’s id (#232)', async () => {
+    await markSignedOut('me', true);
+    const create = vi.fn((_: { url: string }) => Promise.resolve({}));
+    Object.assign(chrome.tabs, { create });
+    render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
+
+    expect(await screen.findByText(/one sign-in there signs in here too/)).toBeInTheDocument();
+    expect(screen.getByText('Or without an account:')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in to xomoni.com' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![0]).toMatchObject({
+      url: expect.stringMatching(/^https:\/\/xomoni\.com\/connect#ext=test-extension&nonce=/),
+    });
+    // Still signed out until xomoni.com hands over the code.
+    expect(await getSignedOut()).not.toBeNull();
+  });
+
   it('offers no Continue while the X window is signed out', async () => {
     await markSignedOut('me', true);
     render(

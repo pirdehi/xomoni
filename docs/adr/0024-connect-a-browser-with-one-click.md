@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-15
+- Amended: 2026-11-17, a signed-in `/connect` pairs without the click, and a signed-in page may sign the extension in without a nonce of its own ([ADR-0025](0025-one-sign-in-for-the-website-and-the-extension.md), #232)
 
 ## Context
 

@@ -4,6 +4,7 @@ import { cleanup, render, renderHook, screen, waitFor } from '@testing-library/r
 import userEvent from '@testing-library/user-event';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getConnection, saveConnection } from '../../src/cloud/connection';
+import { kvGet } from '../../src/shared/db';
 import { suggestedDeviceName } from '../../src/cloud/device-name';
 import { pendingWebConnect } from '../../src/cloud/web-connect';
 import { CloudCard } from '../../src/ui/components/CloudCard';
@@ -41,7 +42,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     await openCodeForm();
     expect(await screen.findByRole('link', { name: /Get a code/ })).toHaveAttribute(
       'href',
-      'https://xomoni.com/dashboard',
+      'https://xomoni.com/dashboard#ext=test-extension',
     );
     const connectButton = screen.getByRole('button', { name: 'Connect' });
     expect(connectButton).toBeDisabled();
@@ -92,7 +93,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     expect(await getConnection()).toBeNull();
   });
 
-  it('disconnects a connected browser', async () => {
+  it('signs out of xomoni.com in this browser, remembering when (#232)', async () => {
     await saveConnection({
       deviceId: 'd1',
       token: 't',
@@ -103,11 +104,12 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
       confirmed: true,
     });
     render(<CloudCard />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out of xomoni.com' }));
 
     await waitFor(async () => expect(await getConnection()).toBeNull());
-    expect(await screen.findByRole('button', { name: 'Connect to xomoni.com' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Sign in to xomoni.com' })).toBeInTheDocument();
     expect(fetch.mock.calls.at(-1)?.[0]).toMatch(/unpair_device$/);
+    expect(await kvGet('webLeftAt', 0)).toBeGreaterThan(0);
   });
 
   it('tells the person to remove the browser on the website when it couldn’t be told (#151)', async () => {
@@ -122,7 +124,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     });
     fetch.mockRejectedValue(new TypeError('Failed to fetch'));
     render(<CloudCard />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out of xomoni.com' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('remove it under Connected browsers on xomoni.com');
     expect(await getConnection()).toBeNull();
@@ -150,7 +152,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     Object.assign(chrome.tabs, { create });
     render(<CloudCard />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Connect to xomoni.com' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign in to xomoni.com' }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0]![0].url).toMatch(/^https:\/\/xomoni\.com\/connect#ext=test-extension&nonce=[\w-]{22}$/);
@@ -158,7 +160,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     expect(fetch).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(await screen.findByRole('button', { name: 'Connect to xomoni.com' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Sign in to xomoni.com' })).toBeInTheDocument();
     expect(await pendingWebConnect()).toBeNull();
   });
 
@@ -168,7 +170,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     const toasts = renderHook(() => useToasts());
     render(<CloudCard />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Connect to xomoni.com' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign in to xomoni.com' }));
 
     await waitFor(() =>
       expect(toasts.result.current).toContainEqual(

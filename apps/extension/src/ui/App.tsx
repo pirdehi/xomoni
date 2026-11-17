@@ -64,6 +64,7 @@ import {
   useToasts,
   useWorkerStatus,
 } from './hooks';
+import { finishSignOutMadeElsewhere } from './sign-out';
 import { tabShare } from './tab-share';
 import { ActivityPage } from './pages/Activity';
 import { CleanupPage } from './pages/Cleanup';
@@ -283,7 +284,7 @@ export function App() {
   const worker = useWorkerStatus();
   useCloudSync();
   useShareGuard();
-  useSignOutGuard();
+  useSignOutGuard(finishSignOutMadeElsewhere);
 
   return (
     <div className={styles.shell}>

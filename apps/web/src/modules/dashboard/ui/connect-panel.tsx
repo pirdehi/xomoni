@@ -2,7 +2,8 @@
 
 import { Button, MessageBar, MessageBarBody, Spinner, makeStyles, tokens } from '@fluentui/react-components';
 import { ArrowEnter20Regular, CheckmarkCircle20Filled, Link20Regular, PersonAdd20Regular } from '@fluentui/react-icons';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { rememberExtensionId, useExtensionLink } from '@/modules/extension/ui/extension-session-sync';
 import { type ConnectServices, createConnectServices } from '../client/connect';
 import {
   type ConnectOutcome,
@@ -67,6 +68,8 @@ function storage(): Storage | null {
 export function keepRequestFromUrl(now = Date.now()): void {
   const fromUrl = parseConnectFragment(window.location.hash);
   if (!fromUrl) return;
+  // The site finds this extension again later, to keep the two signed in together (#232, ADR-0025).
+  rememberExtensionId(fromUrl.extensionId);
   try {
     storage()?.setItem(CONNECT_STORAGE_KEY, rememberRequest(fromUrl, now));
   } catch {
@@ -114,11 +117,12 @@ type Progress =
   | { step: 'failed'; request: ConnectRequest; outcome: Extract<ConnectOutcome, { ok: false }> };
 
 /**
- * `/connect` (#228, ADR-0024): finishes connecting the browser whose Xomoni opened this page, with one click.
+ * `/connect` (#228, ADR-0024): finishes the extension's *Sign in*, so one sign-in covers xomoni.com and the extension
+ * in this browser (#232, ADR-0025).
  * - No request: says to start from Xomoni, or use a code from the dashboard.
  * - Signed out: sign in or create an account; the request is kept meanwhile.
- * - Signed in: names the account, says what is sent, and *Connect this browser* makes a one-time code and hands it to
- *   the extension, which trades it. Nothing here starts or changes work on X (ADR-0006).
+ * - Signed in: names the account and signs Xomoni in at once: a one-time code is made and handed to the extension,
+ *   which trades it. A failure says why and offers *Try again*. Nothing here starts or changes work on X (ADR-0006).
  */
 export function ConnectPanel({
   viewerEmail,
@@ -138,20 +142,31 @@ export function ConnectPanel({
     () => undefined,
   );
   const [progress, setProgress] = useState<Progress>({ step: 'idle' });
+  const started = useRef(false);
 
   useEffect(() => keepRequestFromUrl(), []);
 
-  const connect = async (asked: ConnectRequest) => {
-    setProgress({ step: 'connecting' });
-    const outcome = await live.connect(asked);
-    if (outcome.ok) {
-      forgetConnectRequest();
-      setProgress({ step: 'connected', account: outcome.account });
-    } else {
-      if (outcome.reason === 'not_asked' || outcome.reason === 'expired') forgetConnectRequest();
-      setProgress({ step: 'failed', request: asked, outcome });
-    }
-  };
+  const connect = useCallback(
+    async (asked: ConnectRequest) => {
+      setProgress({ step: 'connecting' });
+      const outcome = await live.connect(asked);
+      if (outcome.ok) {
+        forgetConnectRequest();
+        setProgress({ step: 'connected', account: outcome.account });
+      } else {
+        if (outcome.reason === 'not_asked' || outcome.reason === 'expired') forgetConnectRequest();
+        setProgress({ step: 'failed', request: asked, outcome });
+      }
+    },
+    [live],
+  );
+
+  // Signed in with a request: the person signed in for this, so Xomoni signs in with them at once (#232).
+  useEffect(() => {
+    if (started.current || !viewerEmail || !request) return;
+    started.current = true;
+    void connect(request);
+  }, [viewerEmail, request, connect]);
 
   if (request === undefined) return <Spinner size="small" label="Reading the request from Xomoni…" />;
   // A request the extension refused is forgotten, but its message stays on screen.
@@ -163,7 +178,7 @@ export function ConnectPanel({
     return (
       <div className={s.stack}>
         <p className={s.text}>
-          Open Xomoni in Chrome and press <strong>Connect to xomoni.com</strong>: this page opens with everything it
+          Open Xomoni in Chrome and press <strong>Sign in to xomoni.com</strong>: this page opens with everything it
           needs. Or connect with a one-time code from your dashboard.
         </p>
         <div className={s.actions}>
@@ -181,7 +196,7 @@ export function ConnectPanel({
     return (
       <div className={s.stack}>
         <p className={s.text}>
-          Xomoni asked to connect this browser. Sign in, or create an account, and you’ll come back here to finish.
+          Xomoni asked you to sign in. Sign in, or create an account, and Xomoni in this browser signs in with you.
         </p>
         <div className={s.actions}>
           <Button as="a" href="/login?next=/connect" appearance="primary" icon={<ArrowEnter20Regular />}>
@@ -195,27 +210,26 @@ export function ConnectPanel({
       </div>
     );
 
-  const busy = progress.step === 'connecting';
+  const failed = progress.step === 'failed';
   return (
     <div className={s.stack}>
       <PairingLink state="waiting" />
       <div className={s.account}>
-        Connect this browser to
+        Signing in Xomoni in this browser as
         <span className={s.email}>{viewerEmail}</span>
       </div>
       <p className={s.text}>
-        Only the status of Xomoni’s jobs is sent: titles, states and counts. Never what you posted or liked. Nothing
-        here can start or change work on X.
+        One sign-in for xomoni.com and Xomoni here. Only the status of Xomoni’s jobs is sent: titles, states and counts.
+        Never what you posted or liked. Nothing here can start or change work on X.
       </p>
       <div className={s.actions}>
-        <Button
-          appearance="primary"
-          disabled={busy}
-          icon={busy ? <Spinner size="extra-tiny" /> : <Link20Regular />}
-          onClick={() => void connect(shown)}
-        >
-          {busy ? 'Connecting…' : 'Connect this browser'}
-        </Button>
+        {failed ? (
+          <Button appearance="primary" icon={<Link20Regular />} onClick={() => void connect(shown)}>
+            Try again
+          </Button>
+        ) : (
+          <Spinner size="extra-tiny" label="Signing in…" />
+        )}
       </div>
       <form method="post" action={SIGN_OUT_AND_BACK} className={s.small}>
         Not your account?{' '}
@@ -243,9 +257,12 @@ function Connected({ account }: { account: string }) {
       <PairingLink state="connected" />
       <p className={s.done}>
         <CheckmarkCircle20Filled className={s.check} aria-hidden />
-        This browser is connected{account ? ` to ${account}` : ''}.
+        Xomoni in this browser is signed in{account ? ` as ${account}` : ''}.
       </p>
-      <p className={s.text}>Your jobs show on the dashboard as they run. You can close this tab.</p>
+      <p className={s.text}>
+        Signing out here or in Xomoni signs out both. Your jobs show on the dashboard as they run. You can close this
+        tab.
+      </p>
       <div className={s.actions}>
         <Button as="a" href="/dashboard" appearance="primary">
           Open the dashboard
@@ -260,6 +277,8 @@ function Connected({ account }: { account: string }) {
  * back to `/connect`), a notice leads back there to finish. Shows nothing otherwise.
  */
 export function PendingConnectNotice({ now = Date.now }: { now?: () => number }) {
+  // Xomoni here already signed in with the person (#232): nothing left to finish.
+  const link = useExtensionLink();
   const pending = useSyncExternalStore(
     noSubscription,
     () => {
@@ -271,7 +290,7 @@ export function PendingConnectNotice({ now = Date.now }: { now?: () => number })
     },
     () => false,
   );
-  if (!pending) return null;
+  if (!pending || link.status === 'signed-in') return null;
   return (
     <div role="status">
       <MessageBar intent="info">

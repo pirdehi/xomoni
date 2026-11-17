@@ -46,8 +46,8 @@ async function installFakeExtension(page: Page) {
   return received;
 }
 
-test.describe('connecting a browser with one click (#228, ADR-0024)', () => {
-  test('signed out, the request waits through sign-in; one click connects and the dashboard shows the browser', async ({
+test.describe('connecting a browser from the extension’s Sign in (#228, ADR-0024, #232)', () => {
+  test('signed out, the request waits through sign-in; Xomoni then signs in by itself and the dashboard shows the browser', async ({
     page,
   }) => {
     const email = uniqueEmail('connect');
@@ -63,10 +63,10 @@ test.describe('connecting a browser with one click (#228, ADR-0024)', () => {
     await signIn(page, email, PASSWORD, '/login?next=/connect');
     await expect(page).toHaveURL(/\/connect$/);
     await expect(page.getByText(email)).toBeVisible();
-    await page.getByRole('button', { name: 'Connect this browser' }).click();
 
-    await expect(page.getByText('This browser is connected to e•••@xomoni.test.')).toBeVisible();
-    expect(received).toEqual([
+    await expect(page.getByText('Xomoni in this browser is signed in as e•••@xomoni.test.')).toBeVisible();
+    // Other pages only asked how it stands (#232); the code went once, with the nonce.
+    expect(received.filter((m) => (m as { type: string }).type !== 'xomoni-hello')).toEqual([
       { id: EXT, type: 'xomoni-pair', code: expect.stringMatching(/^[0-9A-Z]{5}-[0-9A-Z]{5}$/), nonce: NONCE },
     ]);
 
@@ -81,7 +81,6 @@ test.describe('connecting a browser with one click (#228, ADR-0024)', () => {
     await page.waitForURL(/\/dashboard/);
 
     await page.goto(OPENED_BY_XOMONI);
-    await page.getByRole('button', { name: 'Connect this browser' }).click();
 
     // Next.js's route announcer is an alert too, so the message is found by its text.
     await expect(page.getByRole('alert').filter({ hasText: 'Xomoni didn’t answer in this browser.' })).toBeVisible();

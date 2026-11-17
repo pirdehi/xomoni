@@ -22,7 +22,7 @@ import {
   useToasts,
   useWorkerStatus,
 } from '../../src/ui/hooks';
-import { markSignedOut } from '../../src/shared/session';
+import { endSignOut, markSignedOut } from '../../src/shared/session';
 import { WORKER_TAB, stubChrome } from '../support/chrome';
 import { ME, account, resetDb } from '../support/fixtures';
 import { fakeRunner, logEntry, openWorker, pageInfo } from '../support/shell';
@@ -95,6 +95,32 @@ describe('useSignOutGuard (#226)', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(pause).not.toHaveBeenCalled();
+  });
+
+  it('tells the shell when the person signs out while it is open, wherever they did it, and only then (#232)', async () => {
+    fakeRunner({ status: 'idle' });
+    const onSignedOut = vi.fn();
+    renderHook(() => useSignOutGuard(onSignedOut));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(onSignedOut).not.toHaveBeenCalled();
+
+    await markSignedOut('me', true, 10);
+    await waitFor(() => expect(onSignedOut).toHaveBeenCalledWith({ at: 10, handle: 'me', dataKept: true }));
+
+    // Signing in and out again tells it again.
+    await endSignOut();
+    await markSignedOut('me', true, 20);
+    await waitFor(() => expect(onSignedOut).toHaveBeenCalledTimes(2));
+  });
+
+  it('says nothing for a dashboard opened signed out: an X window opened there to sign in again stays', async () => {
+    fakeRunner({ status: 'idle' });
+    await markSignedOut('me', true);
+    const onSignedOut = vi.fn();
+    renderHook(() => useSignOutGuard(onSignedOut));
+
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(onSignedOut).not.toHaveBeenCalled();
   });
 });
 

@@ -92,14 +92,14 @@ export function parseExtensionAnswer(raw: unknown): ConnectOutcome {
 export function failureMessage(reason: ConnectFailure): string {
   switch (reason) {
     case 'unreachable':
-      return 'Xomoni didn’t answer in this browser. Check that it is installed and turned on in chrome://extensions, then press Connect to xomoni.com in Xomoni again.';
+      return 'Xomoni didn’t answer in this browser. Check that it is installed and turned on in chrome://extensions, then press Sign in to xomoni.com in Xomoni again.';
     case 'not_asked':
     case 'expired':
-      return 'This link has expired or was already used. In Xomoni, press Connect to xomoni.com again.';
+      return 'This link has expired or was already used. In Xomoni, press Sign in to xomoni.com again.';
     case 'already_connected':
-      return 'This browser is already connected to xomoni.com. To switch accounts, disconnect it in Xomoni first.';
+      return 'Xomoni in this browser is already signed in to xomoni.com. To switch accounts, sign out of xomoni.com in Xomoni first.';
     case 'bad_code':
-      return 'The one-time code didn’t work. Press Connect this browser again.';
+      return 'The one-time code didn’t work. Press Try again.';
     case 'device_limit':
       return 'Your account already has 10 connected browsers. Disconnect one on the dashboard, then try again.';
     case 'code':

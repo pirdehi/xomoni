@@ -71,7 +71,7 @@ const subscribe = (l: () => void) => {
 
 /**
  * The sign-out dialog (#226), rendered once by the app shell. It names the account and says what signing out does:
- * the running job pauses, this browser disconnects from xomoni.com, the X window closes and nothing more is recorded
+ * the running job pauses, xomoni.com signs out in this browser too (#232), the X window closes and nothing more is recorded
  * from X. Two choices: remove the account's data from this browser (with a copy to download first), and also sign out
  * of X on X's own page. Pressing Sign out runs `signOut`; the page behind turns into the signed-out page.
  */
@@ -168,8 +168,8 @@ function SignOutForm({ account }: { account: Account }) {
           )}
           {connection && (
             <Effect icon={<CloudOff16Regular />}>
-              This browser disconnects from xomoni.com
-              {connection.account ? ` (${connection.account})` : ''}, so it stops sending job status.
+              xomoni.com signs out in this browser too
+              {connection.account ? ` (${connection.account})` : ''}, and this browser stops sending job status.
             </Effect>
           )}
           <Effect icon={<PlugDisconnected16Regular />}>

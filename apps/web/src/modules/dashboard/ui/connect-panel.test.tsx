@@ -12,6 +12,13 @@ import {
   keepRequestFromUrl,
 } from './connect-panel';
 
+// The extension in this browser as the site last found it (#232): unknown unless a test says otherwise.
+const link = vi.hoisted(() => ({ current: { status: 'unknown' } }));
+vi.mock('@/modules/extension/ui/extension-session-sync', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useExtensionLink: () => link.current,
+}));
+
 const EXT = 'abcdefghijklmnopabcdefghijklmnop';
 const NONCE = 'AbCdEfGhIjKlMnOpQrStUv';
 const REQUEST: ConnectRequest = { extensionId: EXT, nonce: NONCE };
@@ -22,6 +29,7 @@ function services(outcome: ConnectOutcome = { ok: true, account: 'o•••@exa
 }
 
 beforeEach(() => {
+  link.current = { status: 'unknown' };
   window.localStorage.clear();
   window.history.replaceState(null, '', '/connect');
 });
@@ -35,13 +43,14 @@ function openedByXomoni() {
 }
 
 describe('the request in the URL (#228)', () => {
-  it('is kept in the browser and cleared from the address bar', () => {
+  it('is kept in the browser and cleared from the address bar, and the site keeps the extension’s id (#232)', () => {
     openedByXomoni();
     expect(currentConnectRequest()).toEqual(REQUEST);
 
     keepRequestFromUrl();
 
     expect(window.location.hash).toBe('');
+    expect(window.localStorage.getItem('xomoni.extension')).toBe(EXT);
     expect(window.localStorage.getItem(CONNECT_STORAGE_KEY)).toContain(NONCE);
     expect(currentConnectRequest()).toEqual(REQUEST);
   });
@@ -64,16 +73,22 @@ describe('the request in the URL (#228)', () => {
 });
 
 describe('ConnectPanel (#228)', () => {
-  it('names the account and connects with one click, then says so and forgets the request', async () => {
+  it('signs Xomoni in at once for a signed-in person, then says so and forgets the request (#232)', async () => {
     openedByXomoni();
-    const live = services();
+    let finish: (outcome: ConnectOutcome) => void = () => undefined;
+    const live = { connect: vi.fn(() => new Promise<ConnectOutcome>((resolve) => (finish = resolve))) };
     render(<ConnectPanel viewerEmail="omid@example.com" services={live} />);
 
     expect(await screen.findByText('omid@example.com')).toBeInTheDocument();
     expect(screen.getByText(/Only the status of Xomoni’s jobs is sent/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Connect this browser' }));
+    expect(screen.getByText('Signing in…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    finish({ ok: true, account: 'o•••@example.com' });
 
-    expect(await screen.findByRole('status')).toHaveTextContent('This browser is connected to o•••@example.com.');
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Xomoni in this browser is signed in as o•••@example.com.',
+    );
+    expect(live.connect).toHaveBeenCalledTimes(1);
     expect(live.connect).toHaveBeenCalledWith(REQUEST);
     expect(screen.getByRole('link', { name: 'Open the dashboard' })).toHaveAttribute('href', '/dashboard');
     expect(window.localStorage.getItem(CONNECT_STORAGE_KEY)).toBeNull();
@@ -94,7 +109,7 @@ describe('ConnectPanel (#228)', () => {
 
     expect(await screen.findByText(/Open Xomoni in Chrome and press/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to the dashboard' })).toHaveAttribute('href', '/dashboard');
-    expect(screen.queryByRole('button', { name: 'Connect this browser' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
 
   it('says what to do when Xomoni doesn’t answer, and lets the person try again', async () => {
@@ -102,18 +117,15 @@ describe('ConnectPanel (#228)', () => {
     const live = services({ ok: false, reason: 'unreachable' });
     render(<ConnectPanel viewerEmail="omid@example.com" services={live} />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Connect this browser' }));
-
     expect(await screen.findByRole('alert')).toHaveTextContent('Xomoni didn’t answer in this browser.');
-    expect(screen.getByRole('button', { name: 'Connect this browser' })).toBeEnabled();
     expect(window.localStorage.getItem(CONNECT_STORAGE_KEY)).toContain(NONCE);
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(live.connect).toHaveBeenCalledTimes(2));
   });
 
   it('forgets a request the extension no longer takes', async () => {
     openedByXomoni();
     render(<ConnectPanel viewerEmail="omid@example.com" services={services({ ok: false, reason: 'expired' })} />);
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Connect this browser' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This link has expired or was already used.');
     expect(window.localStorage.getItem(CONNECT_STORAGE_KEY)).toBeNull();
@@ -123,8 +135,6 @@ describe('ConnectPanel (#228)', () => {
     openedByXomoni();
     const live = services({ ok: false, reason: 'code', message: 'Sign in again to make a code.' });
     render(<ConnectPanel viewerEmail="omid@example.com" services={live} />);
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Connect this browser' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Sign in again to make a code.');
   });
@@ -141,6 +151,13 @@ describe('ConnectPanel (#228)', () => {
 });
 
 describe('PendingConnectNotice (#228)', () => {
+  it('shows nothing once Xomoni here signed in with the person (#232)', () => {
+    window.localStorage.setItem(CONNECT_STORAGE_KEY, rememberRequest(REQUEST, Date.now()));
+    link.current = { status: 'signed-in' };
+    const { container } = render(<PendingConnectNotice />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('leads back to /connect when Xomoni’s request is still kept', async () => {
     window.localStorage.setItem(CONNECT_STORAGE_KEY, rememberRequest(REQUEST, Date.now()));
     render(<PendingConnectNotice />);

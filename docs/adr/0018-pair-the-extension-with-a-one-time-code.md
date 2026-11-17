@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-02
 - Amended: 2026-11-15, xomoni.com hands the code to the extension that asked for it ([ADR-0024](0024-connect-a-browser-with-one-click.md), #228)
+- Amended: 2026-11-17, a page signed in on xomoni.com signs the extension in the same browser in with a code, and signing out on either side signs out both ([ADR-0025](0025-one-sign-in-for-the-website-and-the-extension.md), #232)
 
 ## Context
 

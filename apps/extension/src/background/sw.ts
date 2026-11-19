@@ -1,6 +1,8 @@
 // Service worker: stores what the content script observes, opens the dashboard, and answers xomoni.com in the same
-// browser: a one-time code the person asked for (#228), and one sign-in for the website and the extension (#232).
-import { answerWebsite } from '../cloud/website';
+// browser: a one-time code the person asked for (#228), one sign-in for the website and the extension (#232), and the
+// website's actions, which stop a job or open Xomoni's pages (#251).
+import type { XomoniPage } from '@xomoni/bridge';
+import { type ActionPorts, answerWebsite } from '../cloud/website';
 import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
@@ -10,16 +12,27 @@ import { suggestArchivePath } from './archive-downloads';
 
 const DASHBOARD = chrome.runtime.getURL('dashboard.html');
 
-async function openDashboard() {
+/**
+ * Opens the dashboard, or focuses the tab already showing it. `hash` (`#/jobs`) moves it to a page: in the open tab it
+ * changes only the fragment, so the page and a job running in it stay.
+ */
+async function openDashboard(hash = '') {
   const tabs = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] });
   const existing = tabs.find((c) => c.documentUrl?.startsWith(DASHBOARD));
   if (existing?.tabId != null && existing.tabId >= 0) {
-    await chrome.tabs.update(existing.tabId, { active: true });
+    await chrome.tabs.update(existing.tabId, { active: true, ...(hash && { url: DASHBOARD + hash }) });
     if (existing.windowId >= 0) await chrome.windows.update(existing.windowId, { focused: true });
     return;
   }
-  await chrome.tabs.create({ url: DASHBOARD });
+  await chrome.tabs.create({ url: DASHBOARD + hash });
 }
+
+/** The dashboard's hash for a page the website may open: the website's Activity is the dashboard's job list. */
+function pageHash(page: XomoniPage): string {
+  return `#/${page === 'activity' ? 'jobs' : page}`;
+}
+
+const actionPorts: ActionPorts = { openDashboard: (page) => openDashboard(pageHash(page)) };
 
 /** Brings up the X worker window (tab id stored by WorkerTab in engine/worker-tab.ts). */
 async function focusWorker() {
@@ -52,11 +65,11 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') void openDashboard();
 });
 
-// xomoni.com in this browser (ADR-0024, ADR-0025): a one-time code the person asked for, and the one sign-in, which
-// asks how the extension stands, signs it in or signs it out. The manifest lets only https://xomoni.com send; the
+// xomoni.com in this browser (ADR-0024, ADR-0025, ADR-0027): a one-time code the person asked for, the one sign-in,
+// which asks how the extension stands, signs it in or signs it out, and the website's actions on jobs and pages. The manifest lets only https://xomoni.com send; the
 // sender is checked again (`answerWebsite`), and anything but those exact messages gets no answer, or `invalid`.
 chrome.runtime.onMessageExternal.addListener((raw: unknown, sender, sendResponse) => {
-  const answer = answerWebsite(raw, sender);
+  const answer = answerWebsite(raw, sender, actionPorts);
   if (!answer) return;
   void answer.then(sendResponse, () => sendResponse({ ok: false, reason: 'refused' }));
   return true;

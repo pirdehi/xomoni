@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { db, itemKey, kvGet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { RuntimeMessage } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
-import { getConnection } from '../src/cloud/connection';
+import { getConnection, saveConnection } from '../src/cloud/connection';
 import { PAIR_MESSAGE, startWebConnect } from '../src/cloud/web-connect';
 import { markSignedOut } from '../src/shared/session';
 import { FOLDER_NOTE, FOLDER_NOTE_URL } from '../src/shared/x-archive';
@@ -509,6 +509,44 @@ describe('service worker: a one-time code from xomoni.com (#228, ADR-0024)', () 
       state: { version: '0.3.0', connection: null, signedOutAt: null, leftAt: 0 },
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('opens the page of Xomoni xomoni.com asks for, for the device it is connected as (#251)', async () => {
+    const DEVICE = '0b5e0b9e-7c1a-4d55-9a53-8f3f6a1c2d3e';
+    await saveConnection({
+      deviceId: DEVICE,
+      token: 't',
+      deviceName: 'Chrome on macOS',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
+
+    expect((await send({ type: 'xomoni-open', page: 'library', deviceId: DEVICE })).answer).toEqual({
+      ok: true,
+      outcome: 'opened',
+    });
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: `${DASHBOARD}#/library` });
+
+    // An open dashboard only moves to the page: its Activity is the job list.
+    chrome.runtime.getContexts.mockResolvedValue([{ documentUrl: DASHBOARD, tabId: 5, windowId: 2 }]);
+    await send({ type: 'xomoni-open', page: 'activity', deviceId: DEVICE });
+    expect(chrome.tabs.update).toHaveBeenCalledWith(5, { active: true, url: `${DASHBOARD}#/jobs` });
+
+    const other = await send({
+      type: 'xomoni-open',
+      page: 'settings',
+      deviceId: '9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f',
+    });
+    expect(other.answer).toEqual({ ok: false, reason: 'other_account' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('answers invalid to a message that would start a job (ADR-0027)', async () => {
+    const { answer } = await send({ type: 'xomoni-job', action: 'start', deviceId: 'x', jobId: 'job-1' });
+    expect(answer).toEqual({ ok: false, reason: 'invalid' });
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
   });
 
   it('answers refused when handling a message fails', async () => {

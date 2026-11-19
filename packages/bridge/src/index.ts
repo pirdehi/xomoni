@@ -1,8 +1,9 @@
 // The messages xomoni.com and the Xomoni extension exchange inside one browser, through `externally_connectable`
 // (ADR-0024, ADR-0025). One contract for both apps: the website builds messages and reads answers with it, and the
 // extension's service worker parses messages with it. Every parser is strict: the exact keys and shapes, anything else
-// is null (or, for an answer, a refusal). Nothing here carries X content (ADR-0004) or can start, resume or approve
-// work on X (ADR-0006).
+// is null (or, for an answer, a refusal). Nothing here carries X content (ADR-0004). An action can ask the extension to
+// stop or to open its own page; it can never start, resume or approve work on X, which only the person does in
+// Xomoni (ADR-0027).
 
 /** xomoni.com's origin: the only one the extension's `externally_connectable` lists, checked again on every message. */
 export const WEBSITE_ORIGIN = 'https://xomoni.com';
@@ -15,6 +16,13 @@ export const SIGN_IN = 'xomoni-sign-in';
 export const SIGN_OUT = 'xomoni-sign-out';
 /** Hands over the one-time code of a connection the extension asked for, with its nonce (ADR-0024). */
 export const PAIR = 'xomoni-pair';
+/**
+ * Asks the extension to pause, cancel or resume one of its jobs (ADR-0027). Pausing and cancelling apply at once;
+ * resuming only opens Xomoni's own confirmation.
+ */
+export const JOB = 'xomoni-job';
+/** Asks the extension to open one of its own pages (ADR-0027). */
+export const OPEN = 'xomoni-open';
 
 /** Chrome's id of an extension: 32 letters from a to p. */
 export const EXTENSION_ID = /^[a-p]{32}$/;
@@ -24,6 +32,20 @@ export const PAIRING_CODE = /^[0-9A-Za-z]{5}-?[0-9A-Za-z]{5}$/;
 export const NONCE = /^[A-Za-z0-9_-]{22,64}$/;
 /** A device's id on xomoni.com: a UUID. */
 export const DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A job's id in the extension, as xomoni.com knows it (`jobs.local_id`): 1 to 64 letters, digits, `-` or `_`. */
+export const JOB_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** What the website may ask of a job. */
+export type JobAction = 'pause' | 'cancel' | 'resume';
+
+/** Every `JobAction`, for the parser. */
+export const JOB_ACTIONS: readonly JobAction[] = ['pause', 'cancel', 'resume'];
+
+/** The pages of Xomoni the website may open. */
+export type XomoniPage = 'overview' | 'activity' | 'cleanup' | 'library' | 'watch' | 'settings';
+
+/** Every `XomoniPage`, for the parser. */
+export const XOMONI_PAGES: readonly XomoniPage[] = ['overview', 'activity', 'cleanup', 'library', 'watch', 'settings'];
 
 /** `{type: 'xomoni-hello'}`. */
 export interface HelloMessage {
@@ -52,8 +74,26 @@ export interface PairMessage {
   nonce: string;
 }
 
+/**
+ * `{type: 'xomoni-job', action, deviceId, jobId}` (ADR-0027). `deviceId` is the browser the job runs in, from the
+ * page's own account: the extension acts only when it is connected as that device.
+ */
+export interface JobMessage {
+  type: typeof JOB;
+  action: JobAction;
+  deviceId: string;
+  jobId: string;
+}
+
+/** `{type: 'xomoni-open', page, deviceId}` (ADR-0027): opens one of Xomoni's pages, nothing else. */
+export interface OpenMessage {
+  type: typeof OPEN;
+  page: XomoniPage;
+  deviceId: string;
+}
+
 /** Everything xomoni.com may send the extension. */
-export type WebsiteMessage = HelloMessage | SignInMessage | SignOutMessage | PairMessage;
+export type WebsiteMessage = HelloMessage | SignInMessage | SignOutMessage | PairMessage | JobMessage | OpenMessage;
 
 /** Whether `value` is shaped like an extension id. */
 export function isExtensionId(value: unknown): value is string {
@@ -94,6 +134,19 @@ export function parseWebsiteMessage(raw: unknown): WebsiteMessage | null {
       const code = matching(value.code, PAIRING_CODE);
       const nonce = matching(value.nonce, NONCE);
       return code && nonce ? { type: PAIR, code, nonce } : null;
+    }
+    case JOB: {
+      if (!onlyKeys(value, ['type', 'action', 'deviceId', 'jobId'])) return null;
+      const action = JOB_ACTIONS.find((a) => a === value.action);
+      const deviceId = matching(value.deviceId, DEVICE_ID);
+      const jobId = matching(value.jobId, JOB_ID);
+      return action && deviceId && jobId ? { type: JOB, action, deviceId, jobId } : null;
+    }
+    case OPEN: {
+      if (!onlyKeys(value, ['type', 'page', 'deviceId'])) return null;
+      const page = XOMONI_PAGES.find((p) => p === value.page);
+      const deviceId = matching(value.deviceId, DEVICE_ID);
+      return page && deviceId ? { type: OPEN, page, deviceId } : null;
     }
     default:
       return null;
@@ -192,4 +245,59 @@ export function parseSignOutAnswer(raw: unknown): SignOutAnswer | null {
   return answer?.ok === true && typeof answer.signedOut === 'boolean'
     ? { ok: true, signedOut: answer.signedOut }
     : null;
+}
+
+/**
+ * What the extension did with an action:
+ * - `stopping`: the job's run was asked to pause or cancel and stops after the action in flight;
+ * - `cancelled`: a job that wasn't running is cancelled;
+ * - `asked`: Xomoni opened its own confirmation, and nothing runs until the person says yes there;
+ * - `opened`: Xomoni opened the page.
+ */
+export type ActionOutcome = 'stopping' | 'cancelled' | 'asked' | 'opened';
+
+/**
+ * Why the extension refused an action:
+ * - `not_connected`, `signed_out`, `other_account`: it isn't signed in to the page's account as the device named;
+ * - `no_job`: it has no such job;
+ * - `not_running`: pause asked of a job that isn't running;
+ * - `finished`: the job has ended, so there is nothing to cancel or resume;
+ * - `invalid`, `refused`, `no_answer`: a message it didn't accept, an error, or no answer at all.
+ */
+export type ActionRefusal =
+  | 'not_connected'
+  | 'signed_out'
+  | 'other_account'
+  | 'no_job'
+  | 'not_running'
+  | 'finished'
+  | 'invalid'
+  | 'refused'
+  | 'no_answer';
+
+/** The answer to `xomoni-job` and `xomoni-open`. */
+export type ActionAnswer = { ok: true; outcome: ActionOutcome } | { ok: false; reason: ActionRefusal };
+
+const ACTION_OUTCOMES: readonly ActionOutcome[] = ['stopping', 'cancelled', 'asked', 'opened'];
+const ACTION_REFUSALS: readonly ActionRefusal[] = [
+  'not_connected',
+  'signed_out',
+  'other_account',
+  'no_job',
+  'not_running',
+  'finished',
+  'invalid',
+  'refused',
+];
+
+/** `raw` as an action answer: no answer at all is `no_answer`, and anything unexpected `refused`. */
+export function parseActionAnswer(raw: unknown): ActionAnswer {
+  if (raw === undefined || raw === null) return { ok: false, reason: 'no_answer' };
+  const answer = record(raw);
+  if (answer?.ok === true) {
+    const outcome = ACTION_OUTCOMES.find((o) => o === answer.outcome);
+    if (outcome) return { ok: true, outcome };
+  }
+  const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
+  return { ok: false, reason: reason ?? 'refused' };
 }

@@ -3,6 +3,7 @@
 import { NEED_TITLE, type Need } from '../shared/attention';
 import { db, recordRisk } from '../shared/db';
 import { ATTENTION_ID, FINISHED_ID } from '../shared/notification-ids';
+import { RUNNER_LOCK, runnerLockHeld } from '../shared/runner-lock';
 import type { CleanupFilter, CleanupOptions, DateRange, Job, JobState, ScanTarget } from '../shared/types';
 import type { ArchiveMode } from '../shared/x-archive';
 import { runArchive } from './archive';
@@ -13,7 +14,7 @@ import { runWatch } from './watch';
 import { Aborted } from './timers';
 import { type EnginePorts, NotReady, PageError, WorkerGone } from './ports';
 
-const LOCK = 'xomoni-runner';
+const LOCK = RUNNER_LOCK;
 
 /** What the dashboard shows about the runner in this tab; read with `runner.subscribe` and `runner.getState`. */
 export interface RunnerState {
@@ -116,8 +117,8 @@ export class Runner {
   }
 
   /** Like `pause`, but the job ends as `cancelled`. */
-  cancel() {
-    this.request({ state: 'cancelled', reason: 'Cancelled by you.' });
+  cancel(reason = 'Cancelled by you.') {
+    this.request({ state: 'cancelled', reason });
   }
 
   /** The stop the person asked for while the job ran; `pause` and `cancel` set it from outside `execute`. */
@@ -294,9 +295,8 @@ const STATE_VERB: Record<JobState, string> = {
  * Whether a job runs now, in this dashboard tab or another one: some runner holds the `xomoni-runner` Web Lock. Signing
  * out waits for it to be released (#226).
  */
-export async function jobRunning(): Promise<boolean> {
-  const { held = [] } = await navigator.locks.query();
-  return held.some((lock) => lock.name === LOCK);
+export function jobRunning(): Promise<boolean> {
+  return runnerLockHeld();
 }
 
 /** A job still marked running with no runner holding the lock was interrupted. */

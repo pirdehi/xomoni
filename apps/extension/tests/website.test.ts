@@ -3,7 +3,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { HELLO, PAIR, SIGN_IN, SIGN_OUT } from '@xomoni/bridge';
 import { type CloudConnection, getConnection, saveConnection } from '../src/cloud/connection';
 import { startWebConnect } from '../src/cloud/web-connect';
-import { type WebsiteSender, answerWebsite } from '../src/cloud/website';
+import { type ActionPorts, type WebsiteSender, answerWebsite } from '../src/cloud/website';
 import { getSignedOut, markSignedOut } from '../src/shared/session';
 import { stubChrome } from './support/chrome';
 import { resetDb } from './support/fixtures';
@@ -25,6 +25,9 @@ const CONNECTED: CloudConnection = {
   confirmed: true,
 };
 
+const PORTS: ActionPorts = { openDashboard: vi.fn(() => Promise.resolve()) };
+const ask = (raw: unknown, sender: WebsiteSender) => answerWebsite(raw, sender, PORTS);
+
 let fetch: Fetch;
 beforeEach(async () => {
   stubChrome();
@@ -43,17 +46,17 @@ describe('answerWebsite: who is heard (ADR-0025)', () => {
     ['plain HTTP', { origin: 'http://xomoni.com', frameId: 0 }],
     ['a frame inside xomoni.com', { ...SITE, frameId: 2 }],
   ])('doesn’t answer %s at all', (_, sender) => {
-    expect(answerWebsite({ type: HELLO }, sender)).toBeNull();
-    expect(answerWebsite({ type: SIGN_OUT }, sender)).toBeNull();
+    expect(ask({ type: HELLO }, sender)).toBeNull();
+    expect(ask({ type: SIGN_OUT }, sender)).toBeNull();
   });
 
   it('hears xomoni.com by its URL when Chrome gives no origin', async () => {
-    await expect(answerWebsite({ type: HELLO }, { url: 'https://xomoni.com/' })).resolves.toMatchObject({ ok: true });
+    await expect(ask({ type: HELLO }, { url: 'https://xomoni.com/' })).resolves.toMatchObject({ ok: true });
   });
 
-  it('answers invalid to anything but the four messages, such as starting or resuming a job (ADR-0006)', async () => {
+  it('answers invalid to anything but its six messages, such as starting a job (ADR-0027)', async () => {
     for (const raw of [{ type: 'xomoni-start', jobId: 'j1' }, { type: 'xomoni-resume' }, { type: HELLO, x: 1 }, 'hi']) {
-      await expect(answerWebsite(raw, SITE)).resolves.toEqual({ ok: false, reason: 'invalid' });
+      await expect(ask(raw, SITE)).resolves.toEqual({ ok: false, reason: 'invalid' });
     }
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -63,7 +66,7 @@ describe('answerWebsite: what it answers (#232)', () => {
   it('says how the extension stands to a hello, sending nothing anywhere', async () => {
     await saveConnection(CONNECTED);
 
-    await expect(answerWebsite({ type: HELLO }, SITE)).resolves.toEqual({
+    await expect(ask({ type: HELLO }, SITE)).resolves.toEqual({
       ok: true,
       state: {
         version: '0.3.0',
@@ -78,7 +81,7 @@ describe('answerWebsite: what it answers (#232)', () => {
   it('signs in with a code', async () => {
     fetch.mockReturnValueOnce(json(200, [{ device_id: DEVICE, token: 't', account: 'b•••@example.com' }]));
 
-    await expect(answerWebsite({ type: SIGN_IN, code: CODE }, SITE)).resolves.toEqual({
+    await expect(ask({ type: SIGN_IN, code: CODE }, SITE)).resolves.toEqual({
       ok: true,
       account: 'b•••@example.com',
       deviceId: DEVICE,
@@ -88,7 +91,7 @@ describe('answerWebsite: what it answers (#232)', () => {
   it('signs out', async () => {
     await saveConnection(CONNECTED);
 
-    await expect(answerWebsite({ type: SIGN_OUT }, SITE)).resolves.toEqual({ ok: true, signedOut: true });
+    await expect(ask({ type: SIGN_OUT }, SITE)).resolves.toEqual({ ok: true, signedOut: true });
     expect(await getSignedOut()).not.toBeNull();
   });
 
@@ -97,7 +100,7 @@ describe('answerWebsite: what it answers (#232)', () => {
     const nonce = new URLSearchParams(new URL(url).hash.slice(1)).get('nonce')!;
     fetch.mockReturnValueOnce(json(200, [{ device_id: DEVICE, token: 't', account: 'b•••@example.com' }]));
 
-    await expect(answerWebsite({ type: PAIR, code: CODE, nonce }, SITE)).resolves.toEqual({
+    await expect(ask({ type: PAIR, code: CODE, nonce }, SITE)).resolves.toEqual({
       ok: true,
       account: 'b•••@example.com',
     });
@@ -111,8 +114,8 @@ describe('answerWebsite: what it answers (#232)', () => {
     fetch.mockReturnValueOnce(new Promise((resolve) => (release = () => resolve(new Response(null, { status: 204 })))));
     fetch.mockReturnValueOnce(json(200, [{ device_id: DEVICE, token: 't', account: 'b•••@example.com' }]));
 
-    const signOut = answerWebsite({ type: SIGN_OUT }, SITE)!;
-    const signIn = answerWebsite({ type: SIGN_IN, code: CODE }, SITE)!;
+    const signOut = ask({ type: SIGN_OUT }, SITE)!;
+    const signIn = ask({ type: SIGN_IN, code: CODE }, SITE)!;
     await vi.waitFor(() => expect(calls()).toEqual(['unpair_device']));
     release();
 
@@ -128,7 +131,7 @@ describe('answerWebsite: what it answers (#232)', () => {
       get: vi.fn().mockRejectedValueOnce(new Error('storage broken')).mockResolvedValue({}),
     });
 
-    await expect(answerWebsite({ type: SIGN_OUT }, SITE)).rejects.toThrow('storage broken');
-    await expect(answerWebsite({ type: SIGN_OUT }, SITE)).resolves.toEqual({ ok: true, signedOut: false });
+    await expect(ask({ type: SIGN_OUT }, SITE)).rejects.toThrow('storage broken');
+    await expect(ask({ type: SIGN_OUT }, SITE)).resolves.toEqual({ ok: true, signedOut: false });
   });
 });

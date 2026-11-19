@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   HELLO,
+  JOB,
+  OPEN,
   PAIR,
   SIGN_IN,
   SIGN_OUT,
   WEBSITE_ORIGIN,
   isExtensionId,
+  parseActionAnswer,
   parseExtensionState,
   parseSignInAnswer,
   parseSignOutAnswer,
@@ -15,6 +18,7 @@ import {
 const DEVICE = '0b5e0b9e-7c1a-4d55-9a53-8f3f6a1c2d3e';
 const CODE = 'ABCDE-FGHJK';
 const NONCE = 'AbCdEfGhIjKlMnOpQrStUv';
+const JOB_ID = '6f1c2a4e-1d2b-4c3a-9e8f-0a1b2c3d4e5f';
 
 describe('the website origin', () => {
   it('is xomoni.com over HTTPS, with no path', () => {
@@ -65,6 +69,43 @@ describe('parseWebsiteMessage', () => {
     expect(parseWebsiteMessage({ type: PAIR, code: CODE })).toBeNull();
     expect(parseWebsiteMessage({ type: PAIR, code: CODE, nonce: 'short' })).toBeNull();
     expect(parseWebsiteMessage({ type: PAIR, code: CODE, nonce: NONCE, extra: 1 })).toBeNull();
+  });
+
+  it('reads a job action with its device and job, and nothing more (ADR-0027)', () => {
+    for (const action of ['pause', 'cancel', 'resume'] as const) {
+      expect(parseWebsiteMessage({ type: JOB, action, deviceId: DEVICE, jobId: JOB_ID })).toEqual({
+        type: JOB,
+        action,
+        deviceId: DEVICE,
+        jobId: JOB_ID,
+      });
+    }
+  });
+
+  it('refuses a job action that would start or approve work, or is malformed', () => {
+    for (const action of ['start', 'approve', 'delete', 'run', '', 1]) {
+      expect(parseWebsiteMessage({ type: JOB, action, deviceId: DEVICE, jobId: JOB_ID })).toBeNull();
+    }
+    expect(parseWebsiteMessage({ type: JOB, action: 'pause', deviceId: 'nope', jobId: JOB_ID })).toBeNull();
+    expect(parseWebsiteMessage({ type: JOB, action: 'pause', deviceId: DEVICE, jobId: 'a b' })).toBeNull();
+    expect(parseWebsiteMessage({ type: JOB, action: 'pause', deviceId: DEVICE, jobId: 'x'.repeat(65) })).toBeNull();
+    expect(parseWebsiteMessage({ type: JOB, action: 'pause', deviceId: DEVICE })).toBeNull();
+    expect(
+      parseWebsiteMessage({ type: JOB, action: 'resume', deviceId: DEVICE, jobId: JOB_ID, confirmed: true }),
+    ).toBeNull();
+  });
+
+  it('reads a request to open one of Xomoni’s pages, and only those pages', () => {
+    for (const page of ['overview', 'activity', 'cleanup', 'library', 'watch', 'settings'] as const) {
+      expect(parseWebsiteMessage({ type: OPEN, page, deviceId: DEVICE })).toEqual({
+        type: OPEN,
+        page,
+        deviceId: DEVICE,
+      });
+    }
+    expect(parseWebsiteMessage({ type: OPEN, page: 'chrome://settings', deviceId: DEVICE })).toBeNull();
+    expect(parseWebsiteMessage({ type: OPEN, page: 'overview' })).toBeNull();
+    expect(parseWebsiteMessage({ type: OPEN, page: 'overview', deviceId: DEVICE, url: 'https://x.com' })).toBeNull();
   });
 
   it('refuses anything else: other types, arrays, strings, null', () => {
@@ -161,5 +202,34 @@ describe('parseSignOutAnswer', () => {
     expect(parseSignOutAnswer({ ok: true })).toBeNull();
     expect(parseSignOutAnswer({ ok: false, reason: 'invalid' })).toBeNull();
     expect(parseSignOutAnswer(undefined)).toBeNull();
+  });
+});
+
+describe('parseActionAnswer (ADR-0027)', () => {
+  it('reads what the extension did', () => {
+    for (const outcome of ['stopping', 'cancelled', 'asked', 'opened'] as const) {
+      expect(parseActionAnswer({ ok: true, outcome })).toEqual({ ok: true, outcome });
+    }
+  });
+
+  it('keeps the known reasons, and calls anything else refused', () => {
+    for (const reason of [
+      'not_connected',
+      'signed_out',
+      'other_account',
+      'no_job',
+      'not_running',
+      'finished',
+    ] as const) {
+      expect(parseActionAnswer({ ok: false, reason })).toEqual({ ok: false, reason });
+    }
+    expect(parseActionAnswer({ ok: false, reason: 'later' })).toEqual({ ok: false, reason: 'refused' });
+    expect(parseActionAnswer({ ok: true, outcome: 'started' })).toEqual({ ok: false, reason: 'refused' });
+    expect(parseActionAnswer('ok')).toEqual({ ok: false, reason: 'refused' });
+  });
+
+  it('says when nothing answered', () => {
+    expect(parseActionAnswer(undefined)).toEqual({ ok: false, reason: 'no_answer' });
+    expect(parseActionAnswer(null)).toEqual({ ok: false, reason: 'no_answer' });
   });
 });

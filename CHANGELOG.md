@@ -6,6 +6,14 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **The dashboard's places on xomoni.com** (#245, the first step of the full dashboard, #248).
+  - Every place has its own address: Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings.
+  - A sidebar on a computer, and a bottom bar with *More* on a phone.
+  - An account and period picker on every page, kept in the address.
+  - Without a connected browser, Overview stays in view with one slim bar, instead of a full-page *Connect your browser*.
+  - Overview shows *Needs you*, risk, what Xomoni removed in the period, and the recent jobs.
+  - Places not built yet say what they will show and where their data will come from.
+
 - **One sign-in for xomoni.com and the extension** in the same browser (#232, ADR-0025).
   - Sign in on xomoni.com, and Xomoni signs in by itself. No code, no extra click.
   - Press *Sign in to xomoni.com* in Xomoni and sign in once there; both are signed in.

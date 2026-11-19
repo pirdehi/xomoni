@@ -22,6 +22,9 @@ test.describe('connecting a browser with a one-time code (ADR-0018)', () => {
     await expectDashboard(page);
     await expect(page.getByText('Live', { exact: true })).toBeVisible();
 
+    // Overview keeps one slim bar to set up (#245); codes are made on Browsers.
+    await page.getByRole('link', { name: 'Connect a browser' }).click();
+    await expect(page).toHaveURL(/\/dashboard\/browsers$/);
     await page.getByRole('button', { name: 'Get a code to connect a browser' }).click();
     const code = (await page.getByLabel('Pairing code').textContent()) ?? '';
     expect(code).toMatch(/^[0-9A-Z]{5}-[0-9A-Z]{5}$/);
@@ -61,6 +64,7 @@ test.describe('connecting a browser with a one-time code (ADR-0018)', () => {
     // The answer names the newest release, for the extension's update notice (#151).
     expect(report.status).toBe(200);
     expect(report.json).toEqual({ latest: expect.stringMatching(/^\d+\.\d+\.\d+$/), security: expect.any(Boolean) });
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Activity' }).click();
     await expect(page.getByRole('region', { name: 'Jobs' })).toContainText('Delete posts older than Jan 1, 2018');
 
     // The code was used up.

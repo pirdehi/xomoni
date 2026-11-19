@@ -70,6 +70,7 @@ test.describe('connecting a browser from the extension’s Sign in (#228, ADR-00
     ]);
 
     await page.getByRole('link', { name: 'Open the dashboard' }).click();
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Browsers' }).click();
     await expect(page.getByRole('region', { name: 'Connected browsers' })).toContainText('Chrome on macOS');
   });
 

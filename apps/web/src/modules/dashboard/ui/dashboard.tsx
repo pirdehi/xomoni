@@ -2,7 +2,6 @@
 // The signed-in dashboard on Fluent UI (ADR-0019), in the look of the extension's job card: a status badge, a
 // progress bar, counts as colored chips and relative times.
 import {
-  Avatar,
   Badge,
   type BadgeProps,
   Button,
@@ -35,17 +34,20 @@ import {
   ShieldError20Regular,
   Warning16Filled,
 } from '@fluentui/react-icons';
-import Image from 'next/image';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { TextLink } from '@/shared/ui/links';
 import { isOnline, jobProgress, jobRemaining, jobStateView, relativeTime, type Tone } from '../domain/job-status';
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
+import { accountsIn, jobsInScope, removedIn, scopeQuery } from '../domain/scope';
+import { type Section, sectionHref } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
 import { useExtensionLink } from '@/modules/extension/ui/extension-session-sync';
 import { PendingConnectNotice } from './connect-panel';
+import { DashboardFrame, useScope } from './dashboard-frame';
 import { PairingPanel } from './pairing-panel';
+import { SectionPreview } from './section-preview';
 import { useLiveDashboard } from './use-live-dashboard';
 
 /** Who is signed in, as the dashboard header shows them. */
@@ -138,26 +140,33 @@ const useStyles = makeStyles({
   top: { alignItems: 'flex-start' },
   minW0: { minWidth: 0 },
 
-  avatar: {
-    display: 'inline-flex',
+  tiles: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    margin: 0,
+    padding: 0,
+    listStyleType: 'none',
+    '@media (min-width: 768px)': { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' },
+  },
+  tile: { padding: tokens.spacingHorizontalL },
+  tileLabel: { ...typographyStyles.caption1Strong, margin: 0, color: tokens.colorNeutralForeground3 },
+  tileValue: {
+    ...typographyStyles.title2,
+    margin: `${tokens.spacingVerticalXS} 0 0`,
+    color: tokens.colorNeutralForeground1,
+  },
+  numbersNote: { marginTop: tokens.spacingVerticalM },
+  setup: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalL },
+  setupIcon: {
+    display: 'grid',
+    placeItems: 'center',
     flexShrink: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '44px',
-    height: '44px',
-    borderRadius: tokens.borderRadiusCircular,
+    width: '40px',
+    height: '40px',
+    borderRadius: tokens.borderRadiusLarge,
     backgroundColor: tokens.colorBrandBackground2,
     color: tokens.colorBrandForeground1,
-    fontWeight: tokens.fontWeightSemibold,
-    objectFit: 'cover',
-  },
-  name: { ...typographyStyles.title3, margin: 0, color: tokens.colorNeutralForeground1 },
-  live: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalSNudge,
-    color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase300,
   },
   dot: {
     display: 'inline-block',
@@ -347,51 +356,71 @@ export function useJustConnected(devices: readonly Device[], ms = 20_000): Reado
  * The signed-in dashboard: account bar, jobs that need the person, each X account's risk level, live jobs and
  * connected browsers. It shows; it never starts, resumes or changes a job (ADR-0006).
  */
-export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initial: DashboardSnapshot }) {
+export function Dashboard({
+  viewer,
+  initial,
+  section,
+}: {
+  viewer: DashboardViewer;
+  initial: DashboardSnapshot;
+  /** The place shown; places not built yet show what they will hold. */
+  section: Section;
+}) {
   const s = useStyles();
   const { devices, jobs, live, disconnect, createPairingCode } = useLiveDashboard(viewer.id, initial);
   const now = useNow(30_000);
   const justConnected = useJustConnected(devices);
   const [leaving, setLeaving] = useState<Device | null>(null);
+  const [scope] = useScope();
   // The browser this page runs in, when its Xomoni is signed in here (#232): signing out disconnects it, since
   // xomoni.com would sign a disconnected browser straight back in.
   const link = useExtensionLink();
   const here = link.status === 'signed-in' ? link.deviceId : null;
 
   const deviceName = new Map(devices.map((d) => [d.id, d.name]));
-  const needsYou = jobsNeedingYou(jobs);
-  const risks = accountRisks(jobs);
+  // What needs the person is shown whatever the period: a job waiting now matters even if it began long ago.
+  const onAccount = jobsInScope(jobs, { ...scope, period: 'all' }, now);
+  const inPeriod = jobsInScope(jobs, scope, now);
+  const needsYou = jobsNeedingYou(onAccount);
+  const risks = accountRisks(onAccount);
+  const query = scopeQuery(scope);
 
-  return (
-    <div className={s.root}>
-      <AccountBar viewer={viewer} live={live} />
-      <PendingConnectNotice />
-
-      {needsYou.length > 0 && <NeedsYou jobs={needsYou} deviceName={deviceName} />}
-      {risks.length > 0 && <AccountRisks risks={risks} deviceName={deviceName} now={now} />}
-
-      {devices.length === 0 ? (
+  let content: ReactNode;
+  if (section.id === 'overview') {
+    content = (
+      <>
+        <PendingConnectNotice />
+        {devices.length === 0 && <SetupBar />}
+        {needsYou.length > 0 && <NeedsYou jobs={needsYou} deviceName={deviceName} />}
+        {risks.length > 0 && <AccountRisks risks={risks} deviceName={deviceName} now={now} />}
+        <Numbers removed={removedIn(inPeriod)} />
+        <section aria-labelledby="recent-title">
+          <div className={mergeClasses(s.row, s.center)}>
+            <h2 id="recent-title" className={s.sectionTitle}>
+              Recent jobs
+            </h2>
+            {inPeriod.length > RECENT && (
+              <TextLink href={sectionHref('activity', query)}>All {inPeriod.length} jobs</TextLink>
+            )}
+          </div>
+          <JobList jobs={inPeriod.slice(0, RECENT)} deviceName={deviceName} now={now} />
+        </section>
+      </>
+    );
+  } else if (section.id === 'activity') {
+    content = (
+      <section aria-labelledby="jobs-title">
+        <h2 id="jobs-title" className={s.sectionTitle}>
+          Jobs
+        </h2>
+        <JobList jobs={inPeriod} deviceName={deviceName} now={now} />
+      </section>
+    );
+  } else if (section.id === 'browsers') {
+    content =
+      devices.length === 0 ? (
         <ConnectBrowser createCode={createPairingCode} />
       ) : (
-        <section aria-labelledby="jobs-title">
-          <h2 id="jobs-title" className={s.sectionTitle}>
-            Jobs
-          </h2>
-          {jobs.length === 0 ? (
-            <p className={mergeClasses(s.card, s.padded, s.sectionBody, s.text)}>
-              No jobs yet. Start a cleanup or a scan in the extension and it shows up here as it runs.
-            </p>
-          ) : (
-            <ul className={mergeClasses(s.list, s.stack, s.sectionBody)}>
-              {jobs.map((job) => (
-                <JobRow key={job.id} job={job} device={deviceName.get(job.deviceId)} now={now} />
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-
-      {devices.length > 0 && (
         <section aria-labelledby="devices-title">
           <h2 id="devices-title" className={s.sectionTitle}>
             Connected browsers
@@ -444,10 +473,111 @@ export function Dashboard({ viewer, initial }: { viewer: DashboardViewer; initia
             <PairingPanel createCode={createPairingCode} devices={devices} />
           </div>
         </section>
-      )}
+      );
+  } else {
+    content = <SectionPreview section={section} />;
+  }
 
+  return (
+    <DashboardFrame section={section} accounts={accountsIn(jobs)} live={live}>
+      <div className={s.root}>{content}</div>
       <DisconnectDialog device={leaving} onClose={() => setLeaving(null)} disconnect={disconnect} />
-    </div>
+    </DashboardFrame>
+  );
+}
+
+/** How many jobs Overview lists before *All jobs*. */
+const RECENT = 5;
+
+/** Jobs, newest first, or a line saying there are none in this period. */
+function JobList({
+  jobs,
+  deviceName,
+  now,
+}: {
+  jobs: readonly JobSummary[];
+  deviceName: Map<string, string>;
+  now: number;
+}) {
+  const s = useStyles();
+  if (jobs.length === 0)
+    return (
+      <p className={mergeClasses(s.card, s.padded, s.sectionBody, s.text)}>
+        No jobs in this period. Start a cleanup or a scan in Xomoni and it shows up here as it runs.
+      </p>
+    );
+  return (
+    <ul className={mergeClasses(s.list, s.stack, s.sectionBody)}>
+      {jobs.map((job) => (
+        <JobRow key={job.id} job={job} device={deviceName.get(job.deviceId)} now={now} />
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Overview's figures. *Removed* comes from Xomoni's jobs today; the others come with daily numbers, which the person
+ * turns on (ADR-0026, #250). Until then they say so, instead of showing zeros.
+ */
+function Numbers({ removed }: { removed: number }) {
+  const s = useStyles();
+  const pending = 'With daily numbers';
+  const tiles: { label: string; value: string; note: string }[] = [
+    { label: 'Followers', value: '—', note: pending },
+    { label: 'Posts', value: '—', note: pending },
+    { label: 'Likes received', value: '—', note: pending },
+    { label: 'Replies received', value: '—', note: pending },
+    { label: 'Engagement rate', value: '—', note: pending },
+    { label: 'Removed by Xomoni', value: removed.toLocaleString('en-US'), note: 'by jobs in this period' },
+  ];
+  return (
+    <section aria-labelledby="numbers-title">
+      <h2 id="numbers-title" className={s.sectionTitle}>
+        Your account in numbers
+      </h2>
+      <ul className={mergeClasses(s.tiles, s.sectionBody)}>
+        {tiles.map((tile) => (
+          <li key={tile.label} className={mergeClasses(s.card, s.tile)}>
+            <p className={s.tileLabel}>{tile.label}</p>
+            <p className={s.tileValue}>{tile.value}</p>
+            <p className={s.meta}>{tile.note}</p>
+          </li>
+        ))}
+      </ul>
+      <p className={mergeClasses(s.meta, s.numbersNote)}>
+        Followers, posts and what you receive will come from Xomoni on your computer, once you turn on daily numbers
+        (coming soon): only counts per day, never your posts.
+      </p>
+    </section>
+  );
+}
+
+/** Overview without a connected browser: one slim bar, so the rest of the dashboard stays in view (#245). */
+function SetupBar() {
+  const s = useStyles();
+  return (
+    <section className={mergeClasses(s.card, s.padded, s.setup)} aria-labelledby="setup-title">
+      <span className={s.setupIcon} aria-hidden>
+        <PuzzlePiece20Regular />
+      </span>
+      <div className={s.minW0}>
+        <h2 id="setup-title" className={s.strong}>
+          Connect Xomoni to see your account here
+        </h2>
+        <p className={s.meta}>
+          Install it on your computer, then press <strong>Sign in to xomoni.com</strong> in it. Your jobs, and soon your
+          numbers, show here on every device.
+        </p>
+      </div>
+      <div className={s.group}>
+        <Button as="a" href={INSTALL_URL} appearance="primary" size="small">
+          Install Xomoni
+        </Button>
+        <Button as="a" href="/dashboard/browsers" size="small">
+          Connect a browser
+        </Button>
+      </div>
+    </section>
   );
 }
 
@@ -517,42 +647,6 @@ function DisconnectDialog({
         </DialogBody>
       </DialogSurface>
     </Dialog>
-  );
-}
-
-function AccountBar({ viewer, live }: { viewer: DashboardViewer; live: boolean }) {
-  const s = useStyles();
-  return (
-    <div className={mergeClasses(s.row, s.center)}>
-      <div className={s.group}>
-        {viewer.avatarUrl ? (
-          // Google profile pictures, loaded as they are (no optimizer) with the referrer off.
-          <Image
-            src={viewer.avatarUrl}
-            alt=""
-            width={44}
-            height={44}
-            unoptimized
-            referrerPolicy="no-referrer"
-            className={s.avatar}
-          />
-        ) : (
-          // The header's avatar takes the same name, so both show the same initial and color (#239).
-          <Avatar name={viewer.name || viewer.email} size={48} color="colorful" aria-hidden />
-        )}
-        <div className={s.minW0}>
-          <h1 className={s.name}>{viewer.name}</h1>
-          <p className={s.meta}>{viewer.email}</p>
-        </div>
-      </div>
-      <div className={s.group}>
-        {/* The account page and Sign out are in the header's account menu, on every page (#239). */}
-        <span className={s.live} title="Updates appear as they happen" data-live={live}>
-          <span className={mergeClasses(s.dot, live && s.dotOn)} aria-hidden />
-          {live ? 'Live' : 'Connecting…'}
-        </span>
-      </div>
-    </div>
   );
 }
 

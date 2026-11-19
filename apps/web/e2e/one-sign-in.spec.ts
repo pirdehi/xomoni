@@ -106,6 +106,9 @@ test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', (
 
     await signIn(page, email, PASSWORD);
     await page.waitForURL(/\/dashboard/);
+    // Browsers are listed on their own page (#245); go once Xomoni has signed in.
+    await expect.poll(() => fake.state.connection?.account).toBe('e•••@xomoni.test');
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Browsers' }).click();
 
     const browsers = page.getByRole('region', { name: 'Connected browsers' });
     await expect(browsers).toContainText('Chrome on macOS');
@@ -133,6 +136,8 @@ test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', (
     await expect(page).toHaveURL(/\/$/);
     await signIn(page, email, PASSWORD);
     await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => fake.state.connection?.account).toBe('e•••@xomoni.test');
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Browsers' }).click();
     await expect(page.getByRole('region', { name: 'Connected browsers' })).toContainText('This browser');
 
     // The person signs out in the extension.
@@ -147,6 +152,8 @@ test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', (
     // Signing in again on the website signs Xomoni in again.
     await signIn(page, email, PASSWORD);
     await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => fake.state.connection).not.toBeNull();
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Browsers' }).click();
     await expect(page.getByRole('region', { name: 'Connected browsers' })).toContainText('This browser');
     expect(actions(fake.received)).toEqual(['xomoni-sign-in', 'xomoni-sign-in']);
   });

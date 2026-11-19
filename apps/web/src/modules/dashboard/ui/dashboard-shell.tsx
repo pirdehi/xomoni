@@ -6,21 +6,23 @@ import { Skeleton, SkeletonItem, makeStyles, tokens } from '@fluentui/react-comp
 import type { ReactNode } from 'react';
 
 const useStyles = makeStyles({
-  main: {
+  // The frame inside (#245) sets the width and the padding, with room for its sidebar.
+  main: { boxSizing: 'border-box', width: '100%' },
+  skeleton: {
+    display: 'grid',
+    gap: tokens.spacingVerticalXXL,
     boxSizing: 'border-box',
-    width: '100%',
     maxWidth: '1024px',
     margin: '0 auto',
     padding: `40px ${tokens.spacingHorizontalL}`,
     '@media (min-width: 640px)': { padding: `40px ${tokens.spacingHorizontalXXL}` },
   },
-  skeleton: { display: 'grid', gap: tokens.spacingVerticalXXL },
   bar: { height: '56px', borderRadius: tokens.borderRadius2XLarge },
   tall: { height: '192px', borderRadius: tokens.borderRadius2XLarge },
   medium: { height: '128px', borderRadius: tokens.borderRadius2XLarge },
 });
 
-/** The dashboard's page column: centered, as wide as the job cards read well. */
+/** The dashboard's `<main>`: full width; the frame inside places the sidebar and the page (#245). */
 export function DashboardMain({ children }: { children: ReactNode }) {
   const s = useStyles();
   return <main className={s.main}>{children}</main>;

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-30
+- Amended: 2026-11-19, the extension's actions from the website in the same browser, approved in Xomoni ([ADR-0027](0027-extension-actions-from-the-website.md), #248)
 
 ## Context
 

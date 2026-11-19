@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-30
+- Amended: 2026-11-19, daily numbers by the person's choice ([ADR-0026](0026-daily-numbers-in-the-cloud.md), #248)
 
 ## Context
 

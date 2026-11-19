@@ -2,7 +2,7 @@ import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel, type SupabaseClient } 
 import type { Database, DeviceRow, JobRow } from '@xomoni/db';
 import type { Device, JobSummary } from '../domain/model';
 import { toRiskLevel } from '../domain/risk';
-import type { DashboardReader, DevicePairing, DeviceRegistry, LiveFeed } from '../application/ports';
+import type { DashboardReader, DevicePairing, DeviceRegistry, LiveFeed, NumbersChoice } from '../application/ports';
 
 type Client = SupabaseClient<Database>;
 
@@ -128,6 +128,25 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
         stopped.abort();
         if (channel) void supabase.removeChannel(channel);
       };
+    },
+  };
+}
+
+/**
+ * The account's choice of daily numbers (#250): read from `daily_stats_choices` (Row Level Security shows only the
+ * owner's row; none means off), set through `set_daily_stats`, which deletes every day when turned off.
+ */
+export function createSupabaseNumbersChoice(supabase: Client): NumbersChoice {
+  return {
+    async get() {
+      const { data, error } = await supabase.from('daily_stats_choices').select('enabled').maybeSingle();
+      if (error) throw new Error(`daily_stats_choices: ${error.message}`);
+      return data?.enabled === true;
+    },
+    async set(enabled) {
+      const { data, error } = await supabase.rpc('set_daily_stats', { enabled });
+      if (error) throw new Error(`set_daily_stats: ${error.message}`);
+      return data;
     },
   };
 }

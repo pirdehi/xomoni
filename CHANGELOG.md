@@ -6,6 +6,11 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Show my numbers on xomoni.com** (#250, ADR-0026): a switch in the extension's xomoni.com card and on the dashboard's Overview, off until you turn it on.
+  - While it is on, Xomoni sends each day's counts with its reports: up to 400 days back the first time, then the days since.
+  - Turning it off, in either place, deletes every day already sent.
+  - The privacy policy and the landing page's *Synced when you sign in* list say so.
+
 - **The database side of daily numbers on xomoni.com** (#250, ADR-0026). Off until the person turns them on; then a connected browser can store one row of counts per X account per day, and nothing else: no text, no ids, only whole numbers from 0 to 10⁹, for the last 400 days. Turning them off deletes every row already sent.
 
 - **Daily numbers in the extension** (#249, ADR-0026), kept in this browser.

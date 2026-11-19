@@ -179,6 +179,58 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     );
   });
 
+  it('turns the daily numbers on and off from the card, saying what travels (#250)', async () => {
+    await saveConnection({
+      deviceId: 'd1',
+      token: 'secret',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
+    const toasts = renderHook(() => useToasts());
+    render(<CloudCard />);
+
+    const toggle = await screen.findByRole('switch', { name: 'Show my numbers on xomoni.com' });
+    expect(toggle).not.toBeChecked();
+    expect(screen.getByText(/Never your posts, replies, likes or anyone’s name/)).toBeInTheDocument();
+
+    fetch.mockReturnValueOnce(json(200, true));
+    await userEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(fetch.mock.calls.map(([url]) => url.split('/').pop())).toEqual(['device_set_daily_stats']);
+    const body = fetch.mock.calls[0]?.[1]?.body;
+    expect(JSON.parse(typeof body === 'string' ? body : '{}')).toEqual({ token: 'secret', enabled: true });
+
+    fetch.mockReturnValueOnce(json(200, false));
+    await userEvent.click(toggle);
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    await waitFor(() =>
+      expect(toasts.result.current.map((t) => t.text)).toContain('Your daily numbers were removed from xomoni.com'),
+    );
+    // Busy machines (the push hook, CI) have run this past the default five seconds.
+  }, 15_000);
+
+  it('says why the numbers couldn’t be turned on, and leaves them off', async () => {
+    await saveConnection({
+      deviceId: 'd1',
+      token: 'secret',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
+    render(<CloudCard />);
+    const toggle = await screen.findByRole('switch', { name: 'Show my numbers on xomoni.com' });
+    fetch.mockReturnValueOnce(json(500, { message: 'The server is busy.' }));
+    await userEvent.click(toggle);
+    expect(await screen.findByText('The server is busy.')).toBeInTheDocument();
+    expect(toggle).not.toBeChecked();
+    // Busy machines (the push hook, CI) have run this past the default five seconds.
+  }, 15_000);
+
   it('suggests a name from the browser and the system', () => {
     const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/156.0 Safari/537.36';
     expect(suggestedDeviceName(mac)).toBe('Chrome on macOS');

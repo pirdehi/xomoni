@@ -6,6 +6,7 @@ import type { LiveHandlers } from '../application/ports';
 import {
   createSupabaseDashboardReader,
   createSupabaseDevicePairing,
+  createSupabaseNumbersChoice,
   createSupabaseDeviceRegistry,
   createSupabaseLiveFeed,
   dashboardTopic,
@@ -379,5 +380,41 @@ describe('createSupabaseDevicePairing (ADR-0018)', () => {
       ok: false,
       message: 'No code came back. Try again.',
     });
+  });
+});
+
+describe('createSupabaseNumbersChoice (#250)', () => {
+  /** A client whose `daily_stats_choices` read answers `read` and whose `set_daily_stats` answers `set`. */
+  function clientWith(read: { data: { enabled: boolean } | null; error: { message: string } | null }, set?: unknown) {
+    const maybeSingle = vi.fn(() => Promise.resolve(read));
+    const select = vi.fn(() => ({ maybeSingle }));
+    const from = vi.fn(() => ({ select }));
+    const rpc = vi.fn(() => Promise.resolve(set));
+    return { from, select, rpc, client: { from, rpc } as unknown as Parameters<typeof createSupabaseNumbersChoice>[0] };
+  }
+
+  it('reads the owner’s choice, off when there is no row yet', async () => {
+    const on = clientWith({ data: { enabled: true }, error: null });
+    expect(await createSupabaseNumbersChoice(on.client).get()).toBe(true);
+    expect(on.from).toHaveBeenCalledWith('daily_stats_choices');
+    expect(on.select).toHaveBeenCalledWith('enabled');
+    expect(await createSupabaseNumbersChoice(clientWith({ data: null, error: null }).client).get()).toBe(false);
+  });
+
+  it('sets it through set_daily_stats and returns what was stored', async () => {
+    const { rpc, client } = clientWith({ data: null, error: null }, { data: false, error: null });
+    expect(await createSupabaseNumbersChoice(client).set(false)).toBe(false);
+    expect(rpc).toHaveBeenCalledWith('set_daily_stats', { enabled: false });
+  });
+
+  it('throws what Supabase said', async () => {
+    await expect(
+      createSupabaseNumbersChoice(clientWith({ data: null, error: { message: 'JWT expired' } }).client).get(),
+    ).rejects.toThrow('daily_stats_choices: JWT expired');
+    await expect(
+      createSupabaseNumbersChoice(
+        clientWith({ data: null, error: null }, { data: null, error: { message: 'permission denied' } }).client,
+      ).set(true),
+    ).rejects.toThrow('set_daily_stats: permission denied');
   });
 });

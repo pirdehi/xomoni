@@ -166,8 +166,11 @@ describe('the sidebar’s Connections panel (#182)', () => {
 
     await waitFor(async () => expect(await getConnection()).toBeNull());
     expect(fetch.mock.calls.at(-1)?.[0]).toMatch(/unpair_device$/);
-    expect(toasts.result.current).toContainEqual(
-      expect.objectContaining({ text: 'Signed out of xomoni.com in this browser' }),
+    // The toast comes once the sign-out has finished, which also forgets the daily numbers' choice (#250).
+    await waitFor(() =>
+      expect(toasts.result.current).toContainEqual(
+        expect.objectContaining({ text: 'Signed out of xomoni.com in this browser' }),
+      ),
     );
     expect(await kvGet('webLeftAt', 0)).toBeGreaterThan(0);
   });

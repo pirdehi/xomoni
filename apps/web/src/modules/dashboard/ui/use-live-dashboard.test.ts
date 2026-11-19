@@ -26,6 +26,10 @@ function fakeServices() {
       registry: { disconnect },
       feed: { subscribe },
       pairing: { createCode: vi.fn<LiveDashboardServices['pairing']['createCode']>() },
+      numbers: {
+        get: vi.fn<LiveDashboardServices['numbers']['get']>(() => Promise.resolve(false)),
+        set: vi.fn<LiveDashboardServices['numbers']['set']>(),
+      },
     },
     listDevices,
     listRecentJobs,

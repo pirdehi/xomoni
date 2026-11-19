@@ -1,11 +1,13 @@
 // Reporting job status to xomoni.com while the dashboard is open (#39, #40; ADR-0018): a heartbeat every few
-// minutes, and every job update since the last report, at most 50 at a time. Status only (ADR-0004).
+// minutes, and every job update since the last report, at most 50 at a time. Status only (ADR-0004), and the daily
+// numbers when the person chose to show them (ADR-0026, #250).
 import { liveQuery } from 'dexie';
 import { db, riskEvents } from '../shared/db';
 import { assessRisk } from '../shared/risk';
-import { CloudError, pairDevice, reportStatus, unpairDevice } from './client';
+import { CloudError, type StatusAnswer, pairDevice, reportStatus, unpairDevice } from './client';
 import { type CloudConnection, clearConnection, getConnection, saveConnection } from './connection';
-import { type ReleaseNews, saveReleaseNews } from './release';
+import { rememberStatsChoice, sendDailyNumbers } from './daily-report';
+import { saveReleaseNews } from './release';
 import { type JobReport, jobReport } from './summary';
 
 /** How often a connected browser says it is still there, even with nothing new. */
@@ -35,16 +37,17 @@ async function changedJobs(since: number): Promise<{ jobs: JobReport[]; upTo: nu
 /**
  * One report: a heartbeat with the jobs updated since the last one. `disconnected` when xomoni.com no longer
  * knows this browser (the person disconnected it there), `offline` when it couldn't be reached. Keeps what the
- * answer says about the newest release (#151).
+ * answer says about the newest release (#151) and the account's choice of daily numbers, and sends the days not yet
+ * sent while it shows them (#250).
  */
 export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offline'> {
   const connection = await getConnection();
   // Nothing goes out until the person confirmed the account is theirs (#149).
   if (!connection?.confirmed) return 'idle';
   const { jobs, upTo } = await changedJobs(connection.reportedUpTo);
-  let news: ReleaseNews | null;
+  let answer: StatusAnswer;
   try {
-    news = await reportStatus(connection.token, version(), jobs);
+    answer = await reportStatus(connection.token, version(), jobs);
   } catch (err) {
     if (err instanceof CloudError && err.reason === 'unknown_device') {
       await clearConnection();
@@ -54,7 +57,11 @@ export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offl
     throw err;
   }
   if (upTo > connection.reportedUpTo) await saveConnection({ ...connection, reportedUpTo: upTo });
-  if (news) await saveReleaseNews(news);
+  if (answer.news) await saveReleaseNews(answer.news);
+  // Daily numbers (#250, ADR-0026): only while the account shows them, as xomoni.com just said. A failure here waits
+  // for the next heartbeat and never stops the status report.
+  await rememberStatsChoice(answer.stats);
+  if (answer.stats) await sendDailyNumbers(connection.token).catch(() => 0);
   return 'ok';
 }
 
@@ -78,6 +85,8 @@ export async function connect(code: string, deviceName: string): Promise<CloudCo
     confirmed: false,
   };
   await saveConnection(connection);
+  // A new connection may be another account: its own choice comes with the first report.
+  await rememberStatsChoice(false);
   return connection;
 }
 
@@ -106,6 +115,7 @@ export async function disconnect(): Promise<'disconnected' | 'forgotten-here' | 
     () => false,
   );
   await clearConnection();
+  await rememberStatsChoice(false);
   return told ? 'disconnected' : 'forgotten-here';
 }
 

@@ -6,7 +6,9 @@ import { INSTALL_URL } from '@/shared/config/site';
 import { createLiveDashboardServices, type LiveDashboardServices } from '../client/live';
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { RISK_LEVEL } from '../domain/risk';
+import { SECTIONS, type SectionId } from '../domain/sections';
 import { Dashboard, type DashboardViewer, useJustConnected } from './dashboard';
+import { resetNavigation, router, setLocation } from '@test/fakes/navigation';
 
 vi.mock('../client/live', () => ({ createLiveDashboardServices: vi.fn() }));
 // The extension in this browser, as the site last found it (#232); unknown unless a test says otherwise.
@@ -73,7 +75,10 @@ function fakeServices() {
   return { services, feed: () => handlers! };
 }
 
-/** Each job card in the Jobs section. */
+/** The place `id`, as the route passes it. */
+const place = (id: SectionId) => SECTIONS.find((section) => section.id === id)!;
+
+/** Each job card in the Jobs section (Activity). */
 function jobRows() {
   return within(screen.getByRole('region', { name: 'Jobs' })).getAllByRole('listitem');
 }
@@ -88,8 +93,10 @@ function counts(row: HTMLElement) {
 describe('Dashboard', () => {
   let fake: ReturnType<typeof fakeServices>;
 
-  function renderDashboard(initial: DashboardSnapshot, viewer: DashboardViewer = VIEWER) {
-    return render(<Dashboard viewer={viewer} initial={initial} />);
+  /** Renders one place of the dashboard (#245); Overview unless a test names another. */
+  function renderDashboard(initial: DashboardSnapshot, section: SectionId = 'overview') {
+    setLocation(section === 'overview' ? '/dashboard' : `/dashboard/${section}`);
+    return render(<Dashboard viewer={VIEWER} initial={initial} section={place(section)} />);
   }
 
   beforeEach(() => {
@@ -100,42 +107,21 @@ describe('Dashboard', () => {
     fake.services.reader.listDevices.mockResolvedValue([]);
     fake.services.reader.listRecentJobs.mockResolvedValue([]);
     link.current = { status: 'unknown' };
+    resetNavigation();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  describe('account bar', () => {
-    it('shows who is signed in, with their initial when there is no picture', () => {
+  describe('the frame (#245)', () => {
+    it('leaves who is signed in, the account page and Sign out to the header’s menu (#239)', () => {
       renderDashboard({ devices: [], jobs: [] });
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Ada Lovelace' })).toBeInTheDocument();
-      expect(screen.getByText('ada@example.com', { selector: 'p' })).toBeInTheDocument();
-      // Fluent's Avatar, colored from the name as the header's is, so both show the same initials (#239).
-      expect(screen.getByText('AL')).toBeInTheDocument();
-      expect(screen.queryByRole('presentation')).not.toBeInTheDocument();
-    });
-
-    it('loads a profile picture without sending the referrer', () => {
-      renderDashboard({ devices: [], jobs: [] }, { ...VIEWER, avatarUrl: 'https://lh3.googleusercontent.com/a/ada' });
-
-      const avatar = screen.getByRole('presentation');
-      expect(avatar).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/ada');
-      expect(avatar).toHaveAttribute('referrerpolicy', 'no-referrer');
-    });
-
-    it('falls back to the email’s initial when there is no name', () => {
-      renderDashboard({ devices: [], jobs: [] }, { ...VIEWER, name: '', email: 'zed@example.com' });
-
-      expect(screen.getByText('Z')).toBeInTheDocument();
-    });
-
-    it('leaves the account page and Sign out to the header’s menu, which every page has (#239)', () => {
-      renderDashboard({ devices: [], jobs: [] });
-
+      expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: 'Account' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
     });
 
     it('says whether updates are live, following the feed', async () => {
@@ -150,15 +136,85 @@ describe('Dashboard', () => {
       act(() => fake.feed().onStatus(false));
       expect(screen.getByText('Connecting…')).toBeInTheDocument();
     });
+
+    it('offers the X accounts the jobs ran on, and keeps the choice in the address', async () => {
+      renderDashboard(
+        { devices: [device()], jobs: [job({ xHandle: 'ada' }), job({ id: 'b', xHandle: 'bob' })] },
+        'activity',
+      );
+
+      const picker = screen.getByRole('combobox', { name: 'X account' });
+      expect(
+        within(picker)
+          .getAllByRole('option')
+          .map((o) => o.textContent),
+      ).toEqual(['All accounts', '@ada', '@bob']);
+      await userEvent.selectOptions(picker, '@bob');
+      expect(router.replace).toHaveBeenCalledWith('/dashboard/activity?account=bob', { scroll: false });
+    });
+  });
+
+  describe('Overview', () => {
+    it('shows the figures: what Xomoni removed, and the rest waiting for daily numbers instead of zeros', () => {
+      renderDashboard({
+        devices: [device()],
+        jobs: [
+          job({ id: 'a', done: 50 }),
+          job({ id: 'b', done: 25 }),
+          job({ id: 'c', kind: 'scan', done: 900 }),
+          job({ id: 'old', done: 7, updatedAt: ago(40 * 24 * HOUR) }),
+        ],
+      });
+
+      const numbers = screen.getByRole('region', { name: 'Your account in numbers' });
+      const tiles = within(numbers).getAllByRole('listitem');
+      expect(tiles.map((tile) => tile.firstChild?.textContent)).toEqual([
+        'Followers',
+        'Posts',
+        'Likes received',
+        'Replies received',
+        'Engagement rate',
+        'Removed by Xomoni',
+      ]);
+      // A scan removes nothing; a job last updated before the 30 days isn't counted.
+      expect(tiles[5]).toHaveTextContent('75');
+      expect(tiles[0]).toHaveTextContent('—With daily numbers');
+      expect(numbers).toHaveTextContent('only counts per day, never your posts');
+    });
+
+    it('lists the five newest jobs, with the way to all of them', () => {
+      const jobs = Array.from({ length: 7 }, (_, i) =>
+        job({ id: `j${i}`, title: `Job ${i}`, updatedAt: ago(i * MINUTE) }),
+      );
+      renderDashboard({ devices: [device()], jobs });
+
+      const recent = screen.getByRole('region', { name: 'Recent jobs' });
+      expect(within(recent).getAllByRole('listitem')).toHaveLength(5);
+      expect(within(recent).getByRole('link', { name: 'All 7 jobs' })).toHaveAttribute('href', '/dashboard/activity');
+    });
   });
 
   describe('before a browser is connected', () => {
-    it('explains how to connect the extension with a one-time code (ADR-0018)', async () => {
+    it('keeps Overview in view with one slim bar to set up, instead of a full-page wall (#245)', () => {
+      renderDashboard({ devices: [], jobs: [] });
+
+      const setup = screen.getByRole('region', { name: 'Connect Xomoni to see your account here' });
+      expect(within(setup).getByRole('link', { name: 'Install Xomoni' })).toHaveAttribute('href', INSTALL_URL);
+      expect(within(setup).getByRole('link', { name: 'Connect a browser' })).toHaveAttribute(
+        'href',
+        '/dashboard/browsers',
+      );
+      expect(screen.queryByRole('region', { name: 'Connect your browser' })).not.toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Your account in numbers' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Recent jobs' })).toHaveTextContent('No jobs in this period.');
+    });
+
+    it('explains on Browsers how to connect the extension, with a one-time code too (ADR-0018)', async () => {
       fake.services.pairing.createCode.mockResolvedValue({
         ok: true,
         code: { code: 'AB2CD-EF3GH', expiresAt: new Date(NOW + 10 * 60_000).toISOString() },
       });
-      renderDashboard({ devices: [], jobs: [] });
+      renderDashboard({ devices: [], jobs: [] }, 'browsers');
 
       const connect = screen.getByRole('region', { name: 'Connect your browser' });
       expect(within(connect).getByRole('link', { name: 'Install the Xomoni extension' })).toHaveAttribute(
@@ -170,24 +226,42 @@ describe('Dashboard', () => {
       expect(await within(connect).findByLabelText('Pairing code')).toHaveTextContent('AB2CD-EF3GH');
       // With a code on screen, the panel says it waits for the browser that will use it (#182).
       expect(connect).toHaveTextContent('Waiting for your browser to connect…');
-      expect(screen.queryByRole('region', { name: 'Jobs' })).not.toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Connected browsers' })).not.toBeInTheDocument();
     });
 
-    it('switches to the browser list as soon as the extension connects', () => {
-      renderDashboard({ devices: [], jobs: [] });
+    it('switches Browsers to the list as soon as the extension connects', () => {
+      renderDashboard({ devices: [], jobs: [] }, 'browsers');
 
       act(() => fake.feed().onDevice(device()));
 
       expect(screen.queryByRole('region', { name: 'Connect your browser' })).not.toBeInTheDocument();
       expect(screen.getByRole('region', { name: 'Connected browsers' })).toHaveTextContent('Chrome on macOS');
-      expect(screen.getByRole('region', { name: 'Jobs' })).toHaveTextContent('No jobs yet.');
     });
   });
 
-  describe('jobs', () => {
+  describe('Activity: jobs', () => {
+    it('shows only the jobs of the period and account in the address', () => {
+      setLocation('/dashboard/activity', 'period=7d&account=bob');
+      render(
+        <Dashboard
+          viewer={VIEWER}
+          initial={{
+            devices: [device()],
+            jobs: [
+              job({ id: 'a', xHandle: 'bob', title: 'Recent on bob' }),
+              job({ id: 'b', xHandle: 'ada', title: 'Recent on ada' }),
+              job({ id: 'c', xHandle: 'bob', title: 'Old on bob', updatedAt: ago(10 * 24 * HOUR) }),
+            ],
+          }}
+          section={place('activity')}
+        />,
+      );
+
+      expect(jobRows().map((row) => row.querySelector('p')?.textContent)).toEqual(['Recent on bob']);
+    });
+
     it('shows a cleanup’s progress and counters', () => {
-      renderDashboard({ devices: [device()], jobs: [job()] });
+      renderDashboard({ devices: [device()], jobs: [job()] }, 'activity');
 
       const [row] = jobRows();
       expect(row).toHaveTextContent('Delete posts before Jan 1, 2024');
@@ -201,13 +275,16 @@ describe('Dashboard', () => {
     });
 
     it('colors the state badge and the counts by what they mean', () => {
-      renderDashboard({
-        devices: [device()],
-        jobs: [
-          job({ id: 'a', state: 'blocked', failed: 2, updatedAt: ago(MINUTE) }),
-          job({ id: 'b', state: 'completed', updatedAt: ago(2 * MINUTE) }),
-        ],
-      });
+      renderDashboard(
+        {
+          devices: [device()],
+          jobs: [
+            job({ id: 'a', state: 'blocked', failed: 2, updatedAt: ago(MINUTE) }),
+            job({ id: 'b', state: 'completed', updatedAt: ago(2 * MINUTE) }),
+          ],
+        },
+        'activity',
+      );
 
       const [blocked, completed] = jobRows();
       expect(within(blocked!).getByText('Stopped for safety')).toHaveAttribute('data-tone', 'critical');
@@ -225,20 +302,30 @@ describe('Dashboard', () => {
     });
 
     it('counts unlikes as removed, and shows skipped and failed only when there are some', () => {
-      renderDashboard({
-        devices: [device()],
-        // The extension's title for a likes cleanup (apps/extension/src/ui/pages/Cleanup.tsx).
-        jobs: [job({ title: 'Remove likes older than Jan 1, 2024', matched: 1500, done: 1200, skipped: 0, failed: 3 })],
-      });
+      renderDashboard(
+        {
+          devices: [device()],
+          // The extension's title for a likes cleanup (apps/extension/src/ui/pages/Cleanup.tsx).
+          jobs: [
+            job({ title: 'Remove likes older than Jan 1, 2024', matched: 1500, done: 1200, skipped: 0, failed: 3 }),
+          ],
+        },
+        'activity',
+      );
 
       expect(counts(jobRows()[0]!)).toEqual({ Removed: '1,200', Failed: '3', Remaining: '297' });
     });
 
     it('shows a scan’s count without a progress bar', () => {
-      renderDashboard({
-        devices: [device()],
-        jobs: [job({ kind: 'scan', title: 'Scan posts', state: 'completed', scanned: 12_345, matched: 0, phase: '' })],
-      });
+      renderDashboard(
+        {
+          devices: [device()],
+          jobs: [
+            job({ kind: 'scan', title: 'Scan posts', state: 'completed', scanned: 12_345, matched: 0, phase: '' }),
+          ],
+        },
+        'activity',
+      );
 
       const [row] = jobRows();
       expect(counts(row!)).toEqual({ Scanned: '12,345' });
@@ -247,7 +334,7 @@ describe('Dashboard', () => {
     });
 
     it('labels a state this website does not know yet with its own name', () => {
-      renderDashboard({ devices: [device()], jobs: [job({ state: 'migrating', deviceId: 'gone' })] });
+      renderDashboard({ devices: [device()], jobs: [job({ state: 'migrating', deviceId: 'gone' })] }, 'activity');
 
       const [row] = jobRows();
       expect(row).toHaveTextContent('migrating');
@@ -256,13 +343,13 @@ describe('Dashboard', () => {
     });
 
     it('says when a browser has no jobs yet', () => {
-      renderDashboard({ devices: [device()], jobs: [] });
+      renderDashboard({ devices: [device()], jobs: [] }, 'activity');
 
-      expect(screen.getByRole('region', { name: 'Jobs' })).toHaveTextContent('No jobs yet.');
+      expect(screen.getByRole('region', { name: 'Jobs' })).toHaveTextContent('No jobs in this period.');
     });
 
     it('adds and updates jobs as they report in', () => {
-      renderDashboard({ devices: [device()], jobs: [job()] });
+      renderDashboard({ devices: [device()], jobs: [job()] }, 'activity');
 
       act(() => fake.feed().onJob(job({ done: 190, skipped: 10, state: 'completed', updatedAt: ago(0) })));
       act(() => fake.feed().onJob(job({ id: 'job-2', title: 'Delete replies', updatedAt: ago(0) })));
@@ -295,9 +382,10 @@ describe('Dashboard', () => {
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveTextContent('@ada · Chrome on macOS');
       expect(items[0]).toHaveTextContent('Log in to X as @ada in the Xomoni window.');
-      // The waiting job's card says so too, loudly.
-      expect(within(jobRows()[0]!).getByRole('alert')).toHaveTextContent('Log in to X as @ada in the Xomoni window.');
-      // It is the first section after the account bar.
+      // The waiting job's card, among Overview's recent jobs, says so too, loudly.
+      const recent = within(screen.getByRole('region', { name: 'Recent jobs' })).getAllByRole('listitem');
+      expect(within(recent[0]!).getByRole('alert')).toHaveTextContent('Log in to X as @ada in the Xomoni window.');
+      // It is Overview's first section.
       const sections = screen.getAllByRole('region');
       expect(sections[0]).toBe(needsYou);
     });
@@ -350,10 +438,13 @@ describe('Dashboard', () => {
 
   describe('connected browsers', () => {
     it('shows which browsers are online and their extension version', () => {
-      renderDashboard({
-        devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows', lastSeenAt: ago(2 * HOUR) })],
-        jobs: [],
-      });
+      renderDashboard(
+        {
+          devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows', lastSeenAt: ago(2 * HOUR) })],
+          jobs: [],
+        },
+        'browsers',
+      );
 
       const items = within(screen.getByRole('region', { name: 'Connected browsers' })).getAllByRole('listitem');
       expect(items[0]).toHaveTextContent('Chrome on macOS');
@@ -363,7 +454,7 @@ describe('Dashboard', () => {
 
     it('marks this browser and offers signing out instead of Disconnect, which would sign it straight in (#232)', () => {
       link.current = { status: 'signed-in', deviceId: 'dev-2' };
-      renderDashboard({ devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows' })], jobs: [] });
+      renderDashboard({ devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows' })], jobs: [] }, 'browsers');
 
       const [other, here] = within(screen.getByRole('region', { name: 'Connected browsers' })).getAllByRole('listitem');
       expect(here).toHaveTextContent('This browser');
@@ -376,7 +467,7 @@ describe('Dashboard', () => {
     it('marks a browser offline as time passes, without a reload', () => {
       vi.useRealTimers();
       vi.useFakeTimers({ now: NOW });
-      renderDashboard({ devices: [device()], jobs: [] });
+      renderDashboard({ devices: [device()], jobs: [] }, 'browsers');
       const browsers = screen.getByRole('region', { name: 'Connected browsers' });
       expect(browsers).toHaveTextContent('Online');
 
@@ -387,12 +478,15 @@ describe('Dashboard', () => {
       expect(browsers).toHaveTextContent('Last seen 5 minutes ago');
     });
 
-    it('disconnects a browser after confirming in a dialog, and drops its jobs', async () => {
+    it('disconnects a browser after confirming in a dialog', async () => {
       fake.services.registry.disconnect.mockResolvedValue({ ok: true });
-      renderDashboard({
-        devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows' })],
-        jobs: [job({ id: 'a' }), job({ id: 'b', deviceId: 'dev-2', title: 'Delete replies' })],
-      });
+      renderDashboard(
+        {
+          devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows' })],
+          jobs: [job({ id: 'a' }), job({ id: 'b', deviceId: 'dev-2', title: 'Delete replies' })],
+        },
+        'browsers',
+      );
       const browsers = screen.getByRole('region', { name: 'Connected browsers' });
 
       await userEvent.click(within(browsers).getAllByRole('button', { name: 'Disconnect' })[0]!);
@@ -405,12 +499,10 @@ describe('Dashboard', () => {
       expect(fake.services.registry.disconnect).toHaveBeenCalledWith('dev-1');
       await waitFor(() => expect(browsers).not.toHaveTextContent('Chrome on macOS'));
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-      expect(jobRows()).toHaveLength(1);
-      expect(jobRows()[0]).toHaveTextContent('Delete replies');
     });
 
     it('does nothing when the person cancels', async () => {
-      renderDashboard({ devices: [device()], jobs: [] });
+      renderDashboard({ devices: [device()], jobs: [] }, 'browsers');
 
       await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
       const dialog = await screen.findByRole('alertdialog');
@@ -423,7 +515,7 @@ describe('Dashboard', () => {
 
     it('tells the person when disconnecting failed, and keeps the browser', async () => {
       fake.services.registry.disconnect.mockResolvedValue({ ok: false, message: 'Could not disconnect. Try again.' });
-      renderDashboard({ devices: [device()], jobs: [] });
+      renderDashboard({ devices: [device()], jobs: [] }, 'browsers');
 
       await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
       const dialog = await screen.findByRole('alertdialog');
@@ -446,29 +538,35 @@ describe('Dashboard', () => {
     const EVERY_STATE = ['queued', 'running', 'waiting', 'paused', 'blocked', 'completed', 'cancelled', 'failed'];
 
     it('offers no control that starts, resumes, approves or changes work on X, in any job state', () => {
-      renderDashboard({
-        devices: [device()],
-        jobs: EVERY_STATE.map((state, i) =>
-          job({
-            id: `job-${state}`,
-            state,
-            stateReason: state === 'waiting' ? 'Complete X’s check in the Xomoni window.' : '',
-            riskLevel: (i % 5) as 0 | 1 | 2 | 3 | 4,
-            xHandle: `acct${i}`,
-          }),
-        ),
-      });
+      renderDashboard(
+        {
+          devices: [device()],
+          jobs: EVERY_STATE.map((state, i) =>
+            job({
+              id: `job-${state}`,
+              state,
+              stateReason: state === 'waiting' ? 'Complete X’s check in the Xomoni window.' : '',
+              riskLevel: (i % 5) as 0 | 1 | 2 | 3 | 4,
+              xHandle: `acct${i}`,
+            }),
+          ),
+        },
+        'activity',
+      );
 
-      // Every state is on screen, and the only buttons are disconnecting a browser and getting a code to connect
-      // one: none acts on X. Signing out is in the header's menu (#239).
+      // Every state is on screen. The only button opens the phone's menu of places, the links go to places of the
+      // dashboard, and the only fields pick the account and the period: none acts on X (#245).
       expect(jobRows()).toHaveLength(EVERY_STATE.length);
       const buttons = screen.getAllByRole('button').map((button) => button.textContent);
-      expect(new Set(buttons)).toEqual(new Set(['Disconnect', 'Get a code to connect a browser']));
-      const links = screen.queryAllByRole('link').map((link) => link.textContent);
-      expect(links).toEqual([]);
+      expect(new Set(buttons)).toEqual(new Set(['More']));
+      const links = screen.queryAllByRole('link');
+      expect(links.every((link) => link.getAttribute('href')?.startsWith('/dashboard'))).toBe(true);
       expect(document.querySelectorAll('form')).toHaveLength(0);
-      expect(document.querySelectorAll('input, select, textarea')).toHaveLength(0);
-      const controls = [...buttons, ...links].join(' ');
+      expect(
+        [...document.querySelectorAll('input, select, textarea')].map((field) => field.getAttribute('aria-label')),
+      ).toEqual(['X account', 'Period']);
+      const linkNames = links.map((link) => link.textContent);
+      const controls = [...buttons, ...linkNames].join(' ');
       expect(controls).not.toMatch(/start|resume|approve|continue|retry|run|pause|cancel|stop|delete/i);
     });
   });

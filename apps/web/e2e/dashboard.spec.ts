@@ -62,4 +62,43 @@ test.describe('dashboard (#41)', () => {
     await expect(page.getByRole('region', { name: 'Needs you' })).toHaveCount(0);
     await expect(page.getByRole('region', { name: 'X accounts' })).toHaveCount(0);
   });
+
+  test('every place has an address and a page, the unknown ones a 404, and a phone gets a bottom bar (#245)', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('places');
+    await createConfirmedUser(email, PASSWORD);
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+
+    // Without a browser, Overview stays in view with one slim bar: no full-page wall.
+    await expect(page.getByRole('region', { name: 'Connect Xomoni to see your account here' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Your account in numbers' })).toBeVisible();
+
+    const sidebar = page.getByRole('navigation', { name: 'Dashboard' });
+    await sidebar.getByRole('link', { name: /^Engagement/ }).click();
+    await expect(page).toHaveURL(/\/dashboard\/engagement$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Engagement' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Engagement: coming soon' })).toBeVisible();
+
+    await page.getByRole('combobox', { name: 'Period' }).selectOption('7d');
+    await expect(page).toHaveURL(/\/dashboard\/engagement\?period=7d$/);
+    await expect(sidebar.getByRole('link', { name: 'Activity' })).toHaveAttribute(
+      'href',
+      '/dashboard/activity?period=7d',
+    );
+
+    // An address that names no place shows the not-found page (read inside Suspense, as Cache Components ask).
+    await page.goto('/dashboard/admin');
+    await expect(page.getByText('This page could not be found.')).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/dashboard');
+    await expect(sidebar).toBeHidden();
+    const bar = page.getByRole('navigation', { name: 'Dashboard, on a phone' });
+    await expect(bar).toBeVisible();
+    await bar.getByRole('button', { name: 'More' }).click();
+    await page.getByRole('menuitem', { name: 'Reports' }).click();
+    await expect(page).toHaveURL(/\/dashboard\/reports$/);
+  });
 });

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-19
+- Amended: 2026-11-20 (#250): where the choice is kept, and how the extension learns it
 
 ## Context
 
@@ -41,6 +42,7 @@ The maintainer chose daily numbers, on condition that collecting them adds no ri
    - *Show my numbers on xomoni.com* is off until the person turns it on in the extension or on the website.
    - Turning it off stops the reports and deletes every row already sent.
    - Deleting the Xomoni account deletes them too.
+   - The choice is one flag per account, `daily_stats_choices`, so every connected browser follows it. It is set by `set_daily_stats(enabled)` on the website or `device_set_daily_stats(token, enabled)` in the extension, which delete the rows in the same call when turned off. The extension learns it from its heartbeat: `device_report` answers `stats`.
 4. **The database enforces the shape.**
    - `daily_stats` has only the columns above.
    - Rows are written only by `device_report_stats(token, rows)`, a security-definer function on the device token (ADR-0018). It checks each value: a whole number from 0 to 10⁹. Each day must fall in the last 400 days and not in the future. A call carries at most 60 rows.

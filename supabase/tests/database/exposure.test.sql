@@ -28,17 +28,20 @@ select is_empty(
 select is(
   (select string_agg(table_name || ' ' || privilege_type, ', ' order by table_name, privilege_type)::text
    from information_schema.role_table_grants where grantee = 'authenticated' and table_schema = 'public'),
-  'devices DELETE, devices INSERT, devices SELECT, devices UPDATE, jobs DELETE, jobs INSERT, jobs SELECT, jobs UPDATE',
-  'authenticated has exactly what was granted by name: no TRUNCATE, and nothing on the secret tables');
+  'daily_stats SELECT, daily_stats_choices SELECT, devices DELETE, devices INSERT, devices SELECT, devices UPDATE, '
+    || 'jobs DELETE, jobs INSERT, jobs SELECT, jobs UPDATE',
+  'authenticated has exactly what was granted by name: no TRUNCATE, nothing on the secret tables, and only reads of '
+    || 'the daily numbers (#250)');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions where has_function_privilege('anon', oid, 'execute')),
-  'device_report, pair_device, unpair_device',
-  'anon calls only the three functions of the extension');
+  'device_report, device_report_stats, device_set_daily_stats, pair_device, unpair_device',
+  'anon calls only the extension''s functions: pairing, reports, and the daily numbers with their choice (#250)');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions
    where has_function_privilege('authenticated', oid, 'execute')),
-  'create_pairing_code, delete_account, device_report, pair_device, unpair_device',
-  'a signed-in person calls only those, plus making a code and deleting their account');
+  'create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, pair_device, '
+    || 'set_daily_stats, unpair_device',
+  'a signed-in person calls only those, plus making a code, deleting their account and choosing the daily numbers');
 
 -- ── Something created from now on is exposed to nobody ────────────────────────────────────────────
 create table public.exposure_probe (id integer primary key);

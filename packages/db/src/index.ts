@@ -15,3 +15,6 @@ export type DeviceRow = Tables<'devices'>;
 
 /** The status summary of one extension job (`public.jobs`): counters and state, never post content. */
 export type JobRow = Tables<'jobs'>;
+
+/** One X account's counts on one day (`public.daily_stats`, ADR-0026): numbers only, never X content. */
+export type DailyStatsRow = Tables<'daily_stats'>;

@@ -35,11 +35,11 @@ insert into public.extension_releases (version, security) values ('90.2.0', fals
 
 set local role anon;
 select is(public.device_report((select token from paired), '0.1.0', '[]'),
-  '{"latest": "90.10.0", "security": true}'::jsonb, 'the newest release is 90.10.0, after 90.9.0, and fixes a vulnerability');
+  '{"latest": "90.10.0", "security": true, "stats": false}'::jsonb, 'the newest release is 90.10.0, after 90.9.0, and fixes a vulnerability');
 select is(public.device_report((select token from paired), '90.9.0', '[]') ->> 'security', 'true',
   'a security release newer than the reporting version is flagged');
 select is(public.device_report((select token from paired), '90.10.0', '[]'),
-  '{"latest": "90.10.0", "security": false}'::jsonb, 'nothing is flagged to the newest version');
+  '{"latest": "90.10.0", "security": false, "stats": false}'::jsonb, 'nothing is flagged to the newest version');
 select is(public.device_report((select token from paired), '90.11.0', '[]') ->> 'security', 'false',
   'nor to a version newer than every release, such as a build of main');
 select is(public.device_report((select token from paired), 'dev', '[]') ->> 'security', 'true',

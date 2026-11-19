@@ -1,6 +1,6 @@
 # `packages/db`: the database contract
 
-TypeScript types for the Xomoni Supabase database (`Database`, `Tables<…>`, and the row aliases `DeviceRow` and `JobRow`), generated from [`supabase/migrations`](../../supabase/migrations). Apps import it as `@xomoni/db`.
+TypeScript types for the Xomoni Supabase database (`Database`, `Tables<…>`, and the row aliases `DeviceRow`, `JobRow` and `DailyStatsRow`), generated from [`supabase/migrations`](../../supabase/migrations). Apps import it as `@xomoni/db`.
 
 ## Regenerate after a migration
 

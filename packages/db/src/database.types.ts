@@ -3,6 +3,105 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      daily_stats: {
+        Row: {
+          day: string;
+          followers: number | null;
+          following: number | null;
+          likes_total: number | null;
+          observed_posts: number;
+          posted_posts: number;
+          posted_quotes: number;
+          posted_replies: number;
+          posted_reposts: number;
+          posts_total: number | null;
+          posts_with_likes: number;
+          received_likes: number;
+          received_quotes: number;
+          received_replies: number;
+          received_reposts: number;
+          received_views: number;
+          removed_likes: number;
+          removed_posts: number;
+          removed_replies: number;
+          removed_reposts: number;
+          replies_with_likes: number;
+          updated_at: string;
+          user_id: string;
+          x_handle: string;
+        };
+        Insert: {
+          day: string;
+          followers?: number | null;
+          following?: number | null;
+          likes_total?: number | null;
+          observed_posts?: number;
+          posted_posts?: number;
+          posted_quotes?: number;
+          posted_replies?: number;
+          posted_reposts?: number;
+          posts_total?: number | null;
+          posts_with_likes?: number;
+          received_likes?: number;
+          received_quotes?: number;
+          received_replies?: number;
+          received_reposts?: number;
+          received_views?: number;
+          removed_likes?: number;
+          removed_posts?: number;
+          removed_replies?: number;
+          removed_reposts?: number;
+          replies_with_likes?: number;
+          updated_at?: string;
+          user_id: string;
+          x_handle: string;
+        };
+        Update: {
+          day?: string;
+          followers?: number | null;
+          following?: number | null;
+          likes_total?: number | null;
+          observed_posts?: number;
+          posted_posts?: number;
+          posted_quotes?: number;
+          posted_replies?: number;
+          posted_reposts?: number;
+          posts_total?: number | null;
+          posts_with_likes?: number;
+          received_likes?: number;
+          received_quotes?: number;
+          received_replies?: number;
+          received_reposts?: number;
+          received_views?: number;
+          removed_likes?: number;
+          removed_posts?: number;
+          removed_replies?: number;
+          removed_reposts?: number;
+          replies_with_likes?: number;
+          updated_at?: string;
+          user_id?: string;
+          x_handle?: string;
+        };
+        Relationships: [];
+      };
+      daily_stats_choices: {
+        Row: {
+          changed_at: string;
+          enabled: boolean;
+          user_id: string;
+        };
+        Insert: {
+          changed_at?: string;
+          enabled?: boolean;
+          user_id: string;
+        };
+        Update: {
+          changed_at?: string;
+          enabled?: boolean;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       device_pairings: {
         Row: {
           code_hash: string;
@@ -174,6 +273,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      choose_daily_stats: {
+        Args: { enabled: boolean; owner: string };
+        Returns: boolean;
+      };
       create_pairing_code: {
         Args: never;
         Returns: {
@@ -181,6 +284,7 @@ export type Database = {
           expires_at: string;
         }[];
       };
+      daily_stats_columns: { Args: never; Returns: string[] };
       delete_account: { Args: never; Returns: undefined };
       device_for_token: {
         Args: { token: string };
@@ -203,6 +307,14 @@ export type Database = {
         Args: { jobs?: Json; token: string; version: string };
         Returns: Json;
       };
+      device_report_stats: {
+        Args: { rows: Json; token: string };
+        Returns: number;
+      };
+      device_set_daily_stats: {
+        Args: { enabled: boolean; token: string };
+        Returns: boolean;
+      };
       mask_email: { Args: { email: string }; Returns: string };
       normalize_pairing_code: { Args: { code: string }; Returns: string };
       pair_device: {
@@ -214,6 +326,7 @@ export type Database = {
         }[];
       };
       release_rank: { Args: { version: string }; Returns: number[] };
+      set_daily_stats: { Args: { enabled: boolean }; Returns: boolean };
       unpair_device: { Args: { token: string }; Returns: undefined };
     };
     Enums: {

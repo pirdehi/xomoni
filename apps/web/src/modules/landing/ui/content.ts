@@ -84,10 +84,13 @@ export const NEVER = [
   'Act on a post it can’t verify',
 ];
 
-/** The default pacing, in numbers. */
+/**
+ * The default pacing, in numbers: the extension's Careful preset for deletes (`apps/extension/src/shared/settings.ts`,
+ * one fifth of X's limits, ADR-0012). Change these with it.
+ */
 export const LIMITS = [
-  { icon: Timer24Regular, value: '6–12 s', label: 'between deletes on the default Careful pace' },
-  { icon: Gauge24Regular, value: '150 / hour', label: 'and 1,000 a day, at most, by default' },
+  { icon: Timer24Regular, value: '80–120 s', label: 'between deletes on the default Careful pace' },
+  { icon: Gauge24Regular, value: '40 / hour', label: 'and 960 a day, at most, by default' },
   { icon: Clock24Regular, value: '1 hour', label: 'Xomoni waits for you at a login or 2FA before pausing' },
 ];
 

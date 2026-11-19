@@ -11,6 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
+- Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
 - Phase 14: one Xomoni. The website and the extension sign in and out together (#232); next, the extension's pages on the website, read in the same browser only (#233).
 - Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
 - Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
@@ -214,6 +215,15 @@ The website shows and works with what the extension has, in the same browser. Wo
 | ⬜ | The website shows the extension's pages (Home, Activity, Library, Watch, Settings), read from the extension in the same browser | [#233](https://github.com/pirdehi/xomoni/issues/233) | |
 | ⬜ | Settings on the website, applied in the extension | [#234](https://github.com/pirdehi/xomoni/issues/234) | |
 | ⬜ | Plan a cleanup on the website, start it in Xomoni | [#235](https://github.com/pirdehi/xomoni/issues/235) | |
+
+## Phase 15 · A UX pass of both surfaces
+
+Every page of xomoni.com and of the extension's dashboard, reviewed on screen (desktop and phone, light and dark) on 17 November 2026, and what was found fixed.
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ✅ | xomoni.com: the real pace on the landing page, today's screenshot, the extension's numbers on job cards, one header for the account | [#239](https://github.com/pirdehi/xomoni/issues/239) | [#241](https://github.com/pirdehi/xomoni/pull/241) |
+| ✅ | The extension: a settled archive card, Settings' folds and layout, Watch's form, Home while it loads | [#240](https://github.com/pirdehi/xomoni/issues/240) | [#241](https://github.com/pirdehi/xomoni/pull/241) |
 
 ## Dropped
 

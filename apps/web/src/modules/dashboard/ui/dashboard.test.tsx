@@ -112,7 +112,8 @@ describe('Dashboard', () => {
 
       expect(screen.getByRole('heading', { level: 1, name: 'Ada Lovelace' })).toBeInTheDocument();
       expect(screen.getByText('ada@example.com', { selector: 'p' })).toBeInTheDocument();
-      expect(screen.getByText('A')).toBeInTheDocument();
+      // Fluent's Avatar, colored from the name as the header's is, so both show the same initials (#239).
+      expect(screen.getByText('AL')).toBeInTheDocument();
       expect(screen.queryByRole('presentation')).not.toBeInTheDocument();
     });
 
@@ -130,13 +131,11 @@ describe('Dashboard', () => {
       expect(screen.getByText('Z')).toBeInTheDocument();
     });
 
-    it('links the account page and signs out with a POST form', () => {
+    it('leaves the account page and Sign out to the header’s menu, which every page has (#239)', () => {
       renderDashboard({ devices: [], jobs: [] });
 
-      expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('href', '/account');
-      const form = screen.getByRole('button', { name: 'Sign out' }).closest('form');
-      expect(form).toHaveAttribute('action', '/auth/signout');
-      expect(form).toHaveAttribute('method', 'post');
+      expect(screen.queryByRole('link', { name: 'Account' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
     });
 
     it('says whether updates are live, following the feed', async () => {
@@ -195,7 +194,9 @@ describe('Dashboard', () => {
       expect(row).toHaveTextContent('@ada · Chrome on macOS · updated 1 minute ago');
       expect(row).toHaveTextContent('Running');
       expect(within(row!).getByRole('progressbar', { name: 'Progress' })).toHaveAttribute('aria-valuenow', '30');
-      expect(counts(row!)).toEqual({ Deleted: '50', Matched: '200', Skipped: '10', Progress: '30%' });
+      expect(row).toHaveTextContent('30%');
+      // The extension's numbers, in its words (#206, #239).
+      expect(counts(row!)).toEqual({ Removed: '50', Skipped: '10', Remaining: '140' });
       expect(row).toHaveTextContent('Deleting posts');
     });
 
@@ -216,28 +217,21 @@ describe('Dashboard', () => {
           .getAllByRole('term')
           .find((term) => term.textContent === label)
           ?.closest('[data-tone]');
-      expect(chip(blocked!, 'Deleted')).toHaveAttribute('data-tone', 'success');
+      expect(chip(blocked!, 'Removed')).toHaveAttribute('data-tone', 'success');
       expect(chip(blocked!, 'Failed')).toHaveAttribute('data-tone', 'danger');
-      expect(chip(blocked!, 'Matched')).toHaveAttribute('data-tone', 'neutral');
-      expect(chip(blocked!, 'Progress')).toHaveAttribute('data-tone', 'brand');
+      expect(chip(blocked!, 'Remaining')).toHaveAttribute('data-tone', 'neutral');
       // A job stopped for safety is not waiting for the person: its reason is plain text, not an alert.
       expect(within(blocked!).queryByRole('alert')).not.toBeInTheDocument();
     });
 
-    it('counts unlikes as removed and shows failures only when there are some', () => {
+    it('counts unlikes as removed, and shows skipped and failed only when there are some', () => {
       renderDashboard({
         devices: [device()],
         // The extension's title for a likes cleanup (apps/extension/src/ui/pages/Cleanup.tsx).
         jobs: [job({ title: 'Remove likes older than Jan 1, 2024', matched: 1500, done: 1200, skipped: 0, failed: 3 })],
       });
 
-      expect(counts(jobRows()[0]!)).toEqual({
-        Removed: '1,200',
-        Matched: '1,500',
-        Skipped: '0',
-        Failed: '3',
-        Progress: '80%',
-      });
+      expect(counts(jobRows()[0]!)).toEqual({ Removed: '1,200', Failed: '3', Remaining: '297' });
     });
 
     it('shows a scan’s count without a progress bar', () => {
@@ -279,7 +273,9 @@ describe('Dashboard', () => {
       expect(rows[0]).toHaveTextContent('Delete replies');
       expect(rows[1]).toHaveTextContent('Delete posts before Jan 1, 2024');
       expect(rows[1]).toHaveTextContent('Completed');
-      expect(counts(rows[1]!)).toMatchObject({ Deleted: '190', Progress: '100%' });
+      // Nothing left: no Remaining.
+      expect(counts(rows[1]!)).toEqual({ Removed: '190', Skipped: '10' });
+      expect(rows[1]).toHaveTextContent('100%');
     });
   });
 
@@ -463,16 +459,14 @@ describe('Dashboard', () => {
         ),
       });
 
-      // Every state is on screen, and the only buttons are signing out, disconnecting a browser and getting a code
-      // to connect one: none acts on X.
+      // Every state is on screen, and the only buttons are disconnecting a browser and getting a code to connect
+      // one: none acts on X. Signing out is in the header's menu (#239).
       expect(jobRows()).toHaveLength(EVERY_STATE.length);
       const buttons = screen.getAllByRole('button').map((button) => button.textContent);
-      expect(new Set(buttons)).toEqual(new Set(['Sign out', 'Disconnect', 'Get a code to connect a browser']));
-      const links = screen.getAllByRole('link').map((link) => link.textContent);
-      expect(links).toEqual(['Account']);
-      // The only form is signing out.
-      const forms = [...document.querySelectorAll('form')];
-      expect(forms.map((form) => form.getAttribute('action'))).toEqual(['/auth/signout']);
+      expect(new Set(buttons)).toEqual(new Set(['Disconnect', 'Get a code to connect a browser']));
+      const links = screen.queryAllByRole('link').map((link) => link.textContent);
+      expect(links).toEqual([]);
+      expect(document.querySelectorAll('form')).toHaveLength(0);
       expect(document.querySelectorAll('input, select, textarea')).toHaveLength(0);
       const controls = [...buttons, ...links].join(' ');
       expect(controls).not.toMatch(/start|resume|approve|continue|retry|run|pause|cancel|stop|delete/i);

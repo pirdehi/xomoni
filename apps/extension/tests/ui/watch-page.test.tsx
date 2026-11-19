@@ -58,6 +58,14 @@ describe('Watch page (#158)', () => {
     expect(screen.getByRole('tab', { name: /^Tab 1/, selected: true })).toBeInTheDocument();
   });
 
+  it('describes the phrase field with its hint, under the row so Save lines up with the input (#240)', async () => {
+    await renderPage();
+
+    const input = await screen.findByRole('textbox', { name: 'Phrase or #hashtag' });
+    expect(input).toHaveAccessibleDescription('A word, #hashtag or "exact phrase". X’s search operators work too.');
+    expect(input.closest('form')).not.toHaveTextContent('search operators');
+  });
+
   it('saves a phrase or #hashtag and names the tab after it', async () => {
     await renderPage();
     const field = screen.getByRole('textbox', { name: /Phrase or #hashtag/ });
@@ -110,9 +118,12 @@ describe('Watch page (#158)', () => {
     const start = vi.spyOn(runner, 'start').mockResolvedValue(undefined);
     await renderPage();
     expect(startButton()).toBeDisabled();
+    // A disabled button says why (#240).
+    expect(screen.getByText('Save a phrase or #hashtag first.')).toBeInTheDocument();
 
     await act(() => saveWatchTabs(ME, [{ id: 'tab-1', query: '#a' }, initialTabs()[1]!]));
     await waitFor(() => expect(startButton()).toBeEnabled());
+    expect(screen.queryByText('Save a phrase or #hashtag first.')).not.toBeInTheDocument();
     await userEvent.click(startButton());
     await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
     const jobs = await db.jobs.toArray();

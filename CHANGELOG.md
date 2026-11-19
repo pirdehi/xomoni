@@ -31,11 +31,28 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- **A UX pass on xomoni.com** (#239):
+  - The landing page states the real default pace: 80–120 s between deletes, at most 40 an hour and 960 a day. It said 6–12 s and 150 an hour. A test now ties it to the extension's Careful preset.
+  - The landing page's screenshot is today's Home, in light and dark.
+  - The landing page describes one sign-in instead of a one-time code.
+  - Job cards use the extension's numbers and words: removed, skipped, failed and remaining, with the percentage next to the bar.
+  - The dashboard no longer repeats the header's *Account* and *Sign out*.
+  - The header's avatar and the dashboard's show the same initials.
+- **A UX pass on the extension's dashboard** (#240):
+  - Library: once X's archive is imported, its card says so in one line and offers *Get a newer archive*, instead of the four steps and a primary button. The browse table's last column stays inside the card.
+  - Settings: both pacing folds sit inside the pacing card and look like every other fold. Cards are as tall as their content. *Always on* is in plain words, without HTTP codes. *Test* is now a *Send a test* button.
+  - Watch: *Save* lines up with the phrase field, and a disabled *Start watching* says why.
+  - Home: the counters show a dash, not 0, while your copy is counted. *Recent activity* shows each post's text.
+
 - In Xomoni, *Connect to xomoni.com* and *Connect this browser* are now *Sign in to xomoni.com*, and *Disconnect* is *Sign out of xomoni.com*. The signed-out page offers it first (#232).
 - On xomoni.com/connect, a signed-in person no longer presses *Connect this browser*: Xomoni signs in at once (#232).
 
 - The manifest lets xomoni.com's pages message the extension (`externally_connectable`, no new permission warning). The service worker takes only a one-time code from them (ADR-0024).
 - *Disconnect* from xomoni.com asks to confirm. *Sign out of X* moved from the account menu into the sign-out dialog (#226).
+
+### Fixed
+
+- A React warning on every page of xomoni.com, *The result of getServerSnapshot should be cached*, from the one sign-in (#239).
 
 ## [0.2.1] - 2026-11-14
 

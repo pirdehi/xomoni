@@ -377,7 +377,9 @@ function Tile({ icon: Icon, tone }: { icon: Feature['icon']; tone: 'brand' | 'da
   );
 }
 
-const SHOT_ALT = 'The Xomoni dashboard: removal stats, a year-by-year chart, X’s rate limits and the running job.';
+/** Today's Home in the extension (#239), taken from `npm run preview:ui` at 1440 × 1000, light and dark. */
+const SHOT_ALT =
+  'Xomoni’s Home: a paused job to resume, what is still on the account and what Xomoni removed, a chart by year and recent activity.';
 
 /**
  * The dashboard screenshot, light or dark to match the visitor's system. A <picture> lets the browser fetch only the
@@ -555,7 +557,7 @@ function Anywhere() {
     <Section
       eyebrow="Extension + website"
       title="The work happens in your browser. The dashboard goes with you."
-      intro="Create a free account on xomoni.com and connect your browser with a one-time code, then follow your cleanup from any device."
+      intro="Create a free account on xomoni.com and sign in once: Xomoni in the same browser signs in with you. Then follow your cleanup from any device."
     >
       <div className={mergeClasses(s.grid, s.two)}>
         <div className={s.card}>

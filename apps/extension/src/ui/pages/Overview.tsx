@@ -223,6 +223,9 @@ export function OverviewPage({
   return <Dashboard account={account} navigate={navigate} />;
 }
 
+/** What a counter shows while the copy is still being counted. */
+const LOADING = '–';
+
 function Dashboard({ account, navigate }: { account: Account; navigate: (p: PageId) => void }) {
   const styles = useStyles();
   const counts = useKindCounts(account.id);
@@ -271,31 +274,37 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
           In your copy: what Xomoni knows is still on X, and what it removed. X’s own count is in the Library.
         </Caption1>
       </div>
-      <section aria-label="Counts" className={styles.counts}>
-        <StatTile label="Removed by Xomoni" icon={<Delete16Regular />} value={fmtNumber(removed)} sub="all kinds" />
+      {/* While the copy is counted, a dash rather than a 0 that looks like an empty account (#240). */}
+      <section aria-label="Counts" aria-busy={!counts} className={styles.counts}>
+        <StatTile
+          label="Removed by Xomoni"
+          icon={<Delete16Regular />}
+          value={counts ? fmtNumber(removed) : LOADING}
+          sub="all kinds"
+        />
         <StatTile
           label="Posts"
           icon={<Compose16Regular />}
-          value={fmtCompact(counts?.post.present ?? 0)}
-          sub={`${fmtNumber(counts?.post.deleted ?? 0)} removed`}
+          value={counts ? fmtCompact(counts.post.present) : LOADING}
+          sub={counts && `${fmtNumber(counts.post.deleted)} removed`}
         />
         <StatTile
           label="Replies"
           icon={<ArrowReply16Regular />}
-          value={fmtCompact(counts?.reply.present ?? 0)}
-          sub={`${fmtNumber(counts?.reply.deleted ?? 0)} removed`}
+          value={counts ? fmtCompact(counts.reply.present) : LOADING}
+          sub={counts && `${fmtNumber(counts.reply.deleted)} removed`}
         />
         <StatTile
           label="Reposts"
           icon={<ArrowRepeatAll16Regular />}
-          value={fmtCompact(counts?.repost.present ?? 0)}
-          sub={`${fmtNumber(counts?.repost.deleted ?? 0)} undone`}
+          value={counts ? fmtCompact(counts.repost.present) : LOADING}
+          sub={counts && `${fmtNumber(counts.repost.deleted)} undone`}
         />
         <StatTile
           label="Likes"
           icon={<Heart16Regular />}
-          value={fmtCompact(counts?.like.present ?? 0)}
-          sub={`${fmtNumber(counts?.like.deleted ?? 0)} removed`}
+          value={counts ? fmtCompact(counts.like.present) : LOADING}
+          sub={counts && `${fmtNumber(counts.like.deleted)} removed`}
         />
       </section>
 
@@ -320,7 +329,8 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
             />
           ) : (
             <div className={styles.log}>
-              <LogList entries={logs} grouped maxRows={6} />
+              {/* Each post by its text, as on the Activity page, not by the end of its id (#240). */}
+              <LogList entries={logs} grouped withText maxRows={6} />
             </div>
           )}
         </Card>

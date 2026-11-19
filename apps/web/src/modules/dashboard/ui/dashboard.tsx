@@ -2,6 +2,7 @@
 // The signed-in dashboard on Fluent UI (ADR-0019), in the look of the extension's job card: a status badge, a
 // progress bar, counts as colored chips and relative times.
 import {
+  Avatar,
   Badge,
   type BadgeProps,
   Button,
@@ -24,23 +25,21 @@ import {
 import {
   ArrowRepeatAll16Regular,
   CheckmarkCircle16Regular,
-  DataPie16Regular,
   ErrorCircle16Regular,
-  Filter16Regular,
+  HourglassHalf16Regular,
   Laptop24Regular,
   PersonAlert20Regular,
   PlugDisconnected20Regular,
   PuzzlePiece20Regular,
   Search16Regular,
   ShieldError20Regular,
-  SignOut20Regular,
   Warning16Filled,
 } from '@fluentui/react-icons';
 import Image from 'next/image';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
-import { ButtonLink, TextLink } from '@/shared/ui/links';
-import { isOnline, jobProgress, jobStateView, relativeTime, type Tone } from '../domain/job-status';
+import { TextLink } from '@/shared/ui/links';
+import { isOnline, jobProgress, jobRemaining, jobStateView, relativeTime, type Tone } from '../domain/job-status';
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
@@ -169,7 +168,6 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralForegroundDisabled,
   },
   dotOn: { backgroundColor: tokens.colorStatusSuccessForeground1 },
-  signOut: { margin: 0 },
 
   eyebrow: {
     display: 'flex',
@@ -225,7 +223,21 @@ const useStyles = makeStyles({
 
   job: { padding: tokens.spacingHorizontalXL },
   jobTitle: { ...typographyStyles.subtitle2, margin: 0, color: tokens.colorNeutralForeground1 },
-  progress: { marginTop: tokens.spacingVerticalL },
+  progressRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalL,
+  },
+  progress: { flexGrow: 1 },
+  progressText: {
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground2,
+    fontVariantNumeric: 'tabular-nums',
+    minWidth: '3ch',
+    textAlign: 'end',
+  },
   chips: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -525,7 +537,8 @@ function AccountBar({ viewer, live }: { viewer: DashboardViewer; live: boolean }
             className={s.avatar}
           />
         ) : (
-          <span className={s.avatar}>{(viewer.name || viewer.email).slice(0, 1).toUpperCase()}</span>
+          // The header's avatar takes the same name, so both show the same initial and color (#239).
+          <Avatar name={viewer.name || viewer.email} size={48} color="colorful" aria-hidden />
         )}
         <div className={s.minW0}>
           <h1 className={s.name}>{viewer.name}</h1>
@@ -533,16 +546,11 @@ function AccountBar({ viewer, live }: { viewer: DashboardViewer; live: boolean }
         </div>
       </div>
       <div className={s.group}>
+        {/* The account page and Sign out are in the header's account menu, on every page (#239). */}
         <span className={s.live} title="Updates appear as they happen" data-live={live}>
           <span className={mergeClasses(s.dot, live && s.dotOn)} aria-hidden />
           {live ? 'Live' : 'Connecting…'}
         </span>
-        <ButtonLink href="/account">Account</ButtonLink>
-        <form action="/auth/signout" method="post" className={s.signOut}>
-          <Button type="submit" icon={<SignOut20Regular />}>
-            Sign out
-          </Button>
-        </form>
       </div>
     </div>
   );
@@ -680,6 +688,7 @@ function JobRow({ job, device, now }: { job: JobSummary; device: string | undefi
   const s = useStyles();
   const state = jobStateView(job.state);
   const pct = jobProgress(job);
+  const remaining = jobRemaining(job);
   const waiting = job.state === 'waiting';
 
   return (
@@ -698,36 +707,34 @@ function JobRow({ job, device, now }: { job: JobSummary; device: string | undefi
       </div>
 
       {pct !== null && (
-        <ProgressBar
-          className={s.progress}
-          thickness="large"
-          shape="rounded"
-          value={pct}
-          max={100}
-          color={BAR_COLOR[state.tone]}
-          aria-label="Progress"
-        />
+        <div className={s.progressRow}>
+          <ProgressBar
+            className={s.progress}
+            thickness="large"
+            shape="rounded"
+            value={pct}
+            max={100}
+            color={BAR_COLOR[state.tone]}
+            aria-label="Progress"
+          />
+          <span className={s.progressText}>{pct}%</span>
+        </div>
       )}
 
+      {/* The extension's numbers, in its words (#206, #239): removed, skipped, failed and remaining. */}
       <dl className={s.chips}>
         {job.kind === 'scan' ? (
           <Count icon={<Search16Regular />} label="Scanned" value={job.scanned} tone="brand" />
         ) : (
           <>
-            <Count
-              icon={<CheckmarkCircle16Regular />}
-              label={job.title.toLowerCase().includes('like') ? 'Removed' : 'Deleted'}
-              value={job.done}
-              tone="success"
-            />
-            <Count icon={<Filter16Regular />} label="Matched" value={job.matched} />
-            <Count icon={<ArrowRepeatAll16Regular />} label="Skipped" value={job.skipped} />
+            <Count icon={<CheckmarkCircle16Regular />} label="Removed" value={job.done} tone="success" />
+            {job.skipped > 0 && <Count icon={<ArrowRepeatAll16Regular />} label="Skipped" value={job.skipped} />}
             {job.failed > 0 && (
               <Count icon={<ErrorCircle16Regular />} label="Failed" value={job.failed} tone="danger" />
             )}
+            {remaining > 0 && <Count icon={<HourglassHalf16Regular />} label="Remaining" value={remaining} />}
           </>
         )}
-        {pct !== null && <Count icon={<DataPie16Regular />} label="Progress" value={`${pct}%`} tone="brand" />}
       </dl>
 
       {(job.stateReason || job.phase) &&

@@ -369,12 +369,27 @@ describe('XArchiveCard (#186)', () => {
     expect(mocks.startJob).toHaveBeenCalledWith(job.id);
   });
 
-  it('ticks every step once the archive Xomoni downloaded is imported', async () => {
+  it('says the archive Xomoni downloaded is imported, in one line, and offers a newer one quietly (#240)', async () => {
     await saveArchiveRequest(ME, asked({ downloadedAt: NOW - HOUR }));
     await markArchiveImported(ME);
     render(<XArchiveCard account={account()} store={memoryStore()} host={{}} />);
-    await waitFor(() => expect(screen.getAllByLabelText('Done:')).toHaveLength(4));
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    expect(await screen.findByText(/every post, reply and like up to that day/)).toBeInTheDocument();
     expect(screen.getByText(/^Last imported /)).toBeInTheDocument();
+    // No steps, no folder prompt and no primary Get my archive: it is done.
+    expect(screen.queryByRole('list', { name: 'Getting X’s archive' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Get my archive' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Get a newer archive' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Already have the ZIP?' })).toBeInTheDocument();
+  });
+
+  it('shows the steps again while a newer archive is on its way', async () => {
+    await markArchiveImported(ME);
+    await saveArchiveRequest(ME, asked({}));
+    render(<XArchiveCard account={account()} store={memoryStore()} host={{}} />);
+
+    expect(await screen.findByRole('list', { name: 'Getting X’s archive' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Get a newer archive' })).not.toBeInTheDocument();
   });
 });

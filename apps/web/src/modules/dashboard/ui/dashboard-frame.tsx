@@ -65,27 +65,35 @@ const PHONE_BAR: readonly { id: SectionId; label: string; icon: FluentIcon }[] =
 
 /** Wide enough for the sidebar beside the page. */
 const WIDE = '@media (min-width: 1024px)';
+/** Narrower than that: a phone or a small tablet, with the bottom bar. */
+const NARROW = '@media (max-width: 1023.98px)';
+/** A phone: the pickers share a row under the live state. */
+const PHONE = '@media (max-width: 639.98px)';
+// Every style that differs by width is set only inside these queries, never as a base value a query overrides. Fluent's
+// atomic classes are shared across the site, and a shared `display: none` inserted again after the queries would win
+// over them: in a production build after a client-side navigation, the sidebar stayed hidden that way (#245).
 
 const useStyles = makeStyles({
   frame: {
     boxSizing: 'border-box',
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr)',
     width: '100%',
     // The header's width and side padding, so the sidebar lines up with the logo.
     maxWidth: '1152px',
     margin: '0 auto',
-    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalL} 96px`,
-    gap: tokens.spacingHorizontalXXL,
-    '@media (min-width: 640px)': { paddingInline: tokens.spacingHorizontalXXL },
+    [PHONE]: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalL} 96px` },
+    '@media (min-width: 640px) and (max-width: 1023.98px)': {
+      padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL} 96px`,
+    },
+    [NARROW]: { gridTemplateColumns: 'minmax(0, 1fr)', rowGap: tokens.spacingVerticalXXL },
     [WIDE]: {
       gridTemplateColumns: '200px minmax(0, 1fr)',
-      gap: '40px',
+      columnGap: '40px',
       padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXXL}`,
     },
   },
   sidebar: {
-    display: 'none',
+    [NARROW]: { display: 'none' },
     [WIDE]: {
       display: 'flex',
       flexDirection: 'column',
@@ -141,10 +149,9 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
-    width: '100%',
-    '@media (min-width: 640px)': { width: 'auto' },
+    [PHONE]: { width: '100%' },
   },
-  picker: { flex: '1 1 140px', '@media (min-width: 640px)': { flex: '0 0 auto' } },
+  picker: { [PHONE]: { flex: '1 1 140px' } },
   live: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -159,14 +166,14 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralForeground4,
   },
   dotOn: { backgroundColor: tokens.colorPaletteGreenForeground1 },
-  liveRow: { flexBasis: '100%', '@media (min-width: 640px)': { flexBasis: 'auto' } },
+  liveRow: { [PHONE]: { flexBasis: '100%' } },
   // On a phone, the other places of the current group, as a row of links above the page.
   tabs: {
-    display: 'flex',
     gap: tokens.spacingHorizontalS,
     overflowX: 'auto',
     margin: 0,
     padding: 0,
+    [NARROW]: { display: 'flex' },
     [WIDE]: { display: 'none' },
   },
   tab: {
@@ -188,11 +195,11 @@ const useStyles = makeStyles({
     insetInline: 0,
     bottom: 0,
     zIndex: 20,
-    display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
     paddingBottom: 'env(safe-area-inset-bottom)',
     borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    [NARROW]: { display: 'grid' },
     [WIDE]: { display: 'none' },
   },
   phoneItem: {

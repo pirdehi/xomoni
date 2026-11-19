@@ -49,8 +49,9 @@ test.describe('sign-up and email confirmation', () => {
 
     await followEmailLink(page, email, 'Confirm your Xomoni account');
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole('heading', { name: 'Test Person' })).toBeVisible();
-    await expect(page.getByText(email).first()).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+    // Who is signed in is the header's account menu now, on every page (#239, #245).
+    await expect(page.getByRole('button', { name: `Account menu for ${email}` })).toBeVisible();
   });
 
   test('shows the password rules and rejects weak passwords before sending anything', async ({ page }) => {

@@ -142,11 +142,12 @@ const useStyles = makeStyles({
 
   tiles: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: tokens.spacingHorizontalM,
     margin: 0,
     padding: 0,
     listStyleType: 'none',
+    // Set only inside the queries: see the frame's note on shared atomic classes (#245).
+    '@media (max-width: 767.98px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
     '@media (min-width: 768px)': { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' },
   },
   tile: { padding: tokens.spacingHorizontalL },

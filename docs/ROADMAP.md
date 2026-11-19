@@ -11,6 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
+- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell is done (#245); next, the extension's actions and the dialog when Xomoni isn't there (#251), then daily numbers (#249, #250).
 - Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
 - Phase 14: one Xomoni. The website and the extension sign in and out together (#232); next, the extension's pages on the website, read in the same browser only (#233).
 - Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
@@ -19,7 +20,7 @@ Both roadmaps are updated together: a pull request that finishes a task ticks it
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.2.1 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-17 · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
+**Last updated:** 2026-11-19 · Dashboard plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -227,15 +228,31 @@ Every page of xomoni.com and of the extension's dashboard, reviewed on screen (d
 
 ## Phase 16 · xomoni.com, one product
 
-A UX review of the website's structure: it is two products today, dead-ends on a phone, and getting started has no thread. This phase gives the website the extension's places, one guided start, and a phone that works. Review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md).
+A UX review of the website's structure: it is two products today, dead-ends on a phone, and getting started has no thread. This phase gives the website one guided start and a phone that works; the app shell (#245) moved to Phase 17, the full dashboard. Review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ⬜ | A phone menu, *Install* in the header, a full footer | [#242](https://github.com/pirdehi/xomoni/issues/242) | |
 | ⬜ | The landing page for one Xomoni: one story about risk, *How it works* first, *Send to my computer* on a phone | [#243](https://github.com/pirdehi/xomoni/issues/243) | |
 | ⬜ | Getting started: `/welcome` after install, a checklist that ticks itself, sign-up keeps `next` | [#244](https://github.com/pirdehi/xomoni/issues/244) | |
-| ⬜ | The app shell: the extension's places on the website, sidebar and phone bar (the base for #233–#235) | [#245](https://github.com/pirdehi/xomoni/issues/245) | |
 | ⏸ | Language: Persian (right-to-left) or English only | [#246](https://github.com/pirdehi/xomoni/issues/246) | Waits for the maintainer |
+
+## Phase 17 · The full dashboard on xomoni.com
+
+xomoni.com becomes the place to see and manage the X account: every place of the extension, and audience, content and engagement insights, comments and reports. Daily numbers reach the cloud only by the person's choice and with no extra request to X (ADR-0026). The extension's actions work from the website in the same browser, approved in Xomoni (ADR-0027). Plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · [#248](https://github.com/pirdehi/xomoni/issues/248).
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ✅ | The shell: every section, the account and period pickers, no empty wall | [#245](https://github.com/pirdehi/xomoni/issues/245) | [#259](https://github.com/pirdehi/xomoni/pull/259) |
+| ⬜ | The extension's actions from the website, and the dialog when Xomoni isn't there | [#251](https://github.com/pirdehi/xomoni/issues/251) | |
+| ⬜ | Daily numbers in the extension, from what X already sends | [#249](https://github.com/pirdehi/xomoni/issues/249) | |
+| ⬜ | Daily numbers on xomoni.com, by the person's choice | [#250](https://github.com/pirdehi/xomoni/issues/250) | |
+| ⬜ | Overview | [#252](https://github.com/pirdehi/xomoni/issues/252) | |
+| ⬜ | Audience | [#253](https://github.com/pirdehi/xomoni/issues/253) | |
+| ⬜ | Content | [#254](https://github.com/pirdehi/xomoni/issues/254) | |
+| ⬜ | Engagement | [#255](https://github.com/pirdehi/xomoni/issues/255) | |
+| ⬜ | Comments | [#256](https://github.com/pirdehi/xomoni/issues/256) | |
+| ⬜ | Reports | [#257](https://github.com/pirdehi/xomoni/issues/257) | |
 
 ## Dropped
 

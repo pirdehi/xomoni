@@ -19,7 +19,7 @@ Both roadmaps are updated together: a pull request that finishes a task ticks it
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.2.1 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-17 · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
+**Last updated:** 2026-11-17 · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -224,6 +224,18 @@ Every page of xomoni.com and of the extension's dashboard, reviewed on screen (d
 | --- | --- | --- | --- |
 | ✅ | xomoni.com: the real pace on the landing page, today's screenshot, the extension's numbers on job cards, one header for the account | [#239](https://github.com/pirdehi/xomoni/issues/239) | [#241](https://github.com/pirdehi/xomoni/pull/241) |
 | ✅ | The extension: a settled archive card, Settings' folds and layout, Watch's form, Home while it loads | [#240](https://github.com/pirdehi/xomoni/issues/240) | [#241](https://github.com/pirdehi/xomoni/pull/241) |
+
+## Phase 16 · xomoni.com, one product
+
+A UX review of the website's structure: it is two products today, dead-ends on a phone, and getting started has no thread. This phase gives the website the extension's places, one guided start, and a phone that works. Review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md).
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ⬜ | A phone menu, *Install* in the header, a full footer | [#242](https://github.com/pirdehi/xomoni/issues/242) | |
+| ⬜ | The landing page for one Xomoni: one story about risk, *How it works* first, *Send to my computer* on a phone | [#243](https://github.com/pirdehi/xomoni/issues/243) | |
+| ⬜ | Getting started: `/welcome` after install, a checklist that ticks itself, sign-up keeps `next` | [#244](https://github.com/pirdehi/xomoni/issues/244) | |
+| ⬜ | The app shell: the extension's places on the website, sidebar and phone bar (the base for #233–#235) | [#245](https://github.com/pirdehi/xomoni/issues/245) | |
+| ⏸ | Language: Persian (right-to-left) or English only | [#246](https://github.com/pirdehi/xomoni/issues/246) | Waits for the maintainer |
 
 ## Dropped
 

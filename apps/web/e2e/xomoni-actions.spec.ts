@@ -120,7 +120,9 @@ test.describe('Xomoni’s actions on xomoni.com (#251, ADR-0027)', () => {
     const email = uniqueEmail('actions-here');
     await createConfirmedUser(email, PASSWORD);
     const fake = await installFakeXomoni(page);
+    // A page the extension opened: the site keeps its id and clears it from the address bar.
     await page.goto(`/#ext=${EXT}`);
+    await expect(page).toHaveURL(/\/$/);
     await signIn(page, email, PASSWORD);
     await page.waitForURL(/\/dashboard/);
     await expect.poll(() => fake.state.connection?.deviceId).toBeTruthy();

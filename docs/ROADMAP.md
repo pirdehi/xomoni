@@ -11,7 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
-- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)); the shell (#245) first.
+- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell is done (#245); next, the extension's actions and the dialog when Xomoni isn't there (#251), then daily numbers (#249, #250).
 - Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
 - Phase 14: one Xomoni. The website and the extension sign in and out together (#232); next, the extension's pages on the website, read in the same browser only (#233).
 - Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
@@ -243,7 +243,7 @@ xomoni.com becomes the place to see and manage the X account: every place of the
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| ⬜ | The shell: every section, the account and period pickers, no empty wall | [#245](https://github.com/pirdehi/xomoni/issues/245) | |
+| ✅ | The shell: every section, the account and period pickers, no empty wall | [#245](https://github.com/pirdehi/xomoni/issues/245) | [#259](https://github.com/pirdehi/xomoni/pull/259) |
 | ⬜ | The extension's actions from the website, and the dialog when Xomoni isn't there | [#251](https://github.com/pirdehi/xomoni/issues/251) | |
 | ⬜ | Daily numbers in the extension, from what X already sends | [#249](https://github.com/pirdehi/xomoni/issues/249) | |
 | ⬜ | Daily numbers on xomoni.com, by the person's choice | [#250](https://github.com/pirdehi/xomoni/issues/250) | |

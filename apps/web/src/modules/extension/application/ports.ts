@@ -1,4 +1,12 @@
-import type { ExtensionState, SignInAnswer, SignInMessage, SignOutAnswer } from '@xomoni/bridge';
+import type {
+  ActionAnswer,
+  ExtensionState,
+  JobMessage,
+  OpenMessage,
+  SignInAnswer,
+  SignInMessage,
+  SignOutAnswer,
+} from '@xomoni/bridge';
 
 /** The Xomoni extension in this browser, reached through `externally_connectable` (ADR-0024, ADR-0025). */
 export interface ExtensionChannel {
@@ -8,6 +16,14 @@ export interface ExtensionChannel {
   signIn(extensionId: string, message: Omit<SignInMessage, 'type'>): Promise<SignInAnswer>;
   /** Signs it out of Xomoni; null when it doesn't answer. */
   signOut(extensionId: string): Promise<SignOutAnswer | null>;
+}
+
+/** The Xomoni extension in this browser, for its actions (ADR-0027): kept apart from the sign-in it doesn't need. */
+export interface ActionChannel {
+  /** Asks it to pause, cancel or resume a job; `no_answer` when it doesn't answer. */
+  job(extensionId: string, message: Omit<JobMessage, 'type'>): Promise<ActionAnswer>;
+  /** Asks it to open one of its pages; `no_answer` when it doesn't answer. */
+  open(extensionId: string, message: Omit<OpenMessage, 'type'>): Promise<ActionAnswer>;
 }
 
 /** What this browser keeps for the sync, in the site's own storage. None of it is a secret. */

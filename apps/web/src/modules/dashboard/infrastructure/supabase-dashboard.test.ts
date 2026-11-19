@@ -40,6 +40,7 @@ describe('row mappers', () => {
     expect(toJobSummary(row)).toEqual({
       id: 'j1',
       deviceId: 'd1',
+      localId: 'job-1',
       xHandle: 'ada',
       kind: 'cleanup',
       title: 'Delete posts before 2024',

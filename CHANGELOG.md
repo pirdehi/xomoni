@@ -6,6 +6,9 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Xomoni's actions on xomoni.com** (#251, ADR-0027).
+  - Job cards have *Pause*, *Cancel* and *Resume*, and places whose lists live in Xomoni have *Open in Xomoni*. They go to Xomoni in the same browser, for jobs of this browser.
+  - When Xomoni can't act from here, one dialog says why: *You haven't installed Xomoni yet* (with the install steps), *Xomoni runs on a computer* (with *Send to my computer*), or *Sign in to Xomoni in this browser*.
 - **The extension hears xomoni.com's actions** in the same browser (#251, ADR-0027).
   - Pause and cancel a job: they apply at once, in the tab that runs it, and the log says xomoni.com asked.
   - Resume asks you in Xomoni first: nothing runs on X until you choose *Resume* there.

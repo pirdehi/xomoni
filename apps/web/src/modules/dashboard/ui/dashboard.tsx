@@ -40,10 +40,11 @@ import { TextLink } from '@/shared/ui/links';
 import { isOnline, jobProgress, jobRemaining, jobStateView, relativeTime, type Tone } from '../domain/job-status';
 import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { accountsIn, jobsInScope, removedIn, scopeQuery } from '../domain/scope';
-import { type Section, sectionHref } from '../domain/sections';
+import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
 import { useExtensionLink } from '@/modules/extension/ui/extension-session-sync';
+import { OpenInXomoni, XomoniJobActions, type XomoniControls, useXomoni } from '@/modules/extension/ui/xomoni-actions';
 import { PendingConnectNotice } from './connect-panel';
 import { DashboardFrame, useScope } from './dashboard-frame';
 import { PairingPanel } from './pairing-panel';
@@ -377,6 +378,8 @@ export function Dashboard({
   // xomoni.com would sign a disconnected browser straight back in.
   const link = useExtensionLink();
   const here = link.status === 'signed-in' ? link.deviceId : null;
+  // Xomoni's actions from this page (ADR-0027, #251): sent to Xomoni in this browser, or one dialog saying why not.
+  const xomoni = useXomoni(devices.map((d) => d.id));
 
   const deviceName = new Map(devices.map((d) => [d.id, d.name]));
   // What needs the person is shown whatever the period: a job waiting now matters even if it began long ago.
@@ -404,7 +407,7 @@ export function Dashboard({
               <TextLink href={sectionHref('activity', query)}>All {inPeriod.length} jobs</TextLink>
             )}
           </div>
-          <JobList jobs={inPeriod.slice(0, RECENT)} deviceName={deviceName} now={now} />
+          <JobList jobs={inPeriod.slice(0, RECENT)} deviceName={deviceName} now={now} xomoni={xomoni} />
         </section>
       </>
     );
@@ -414,7 +417,7 @@ export function Dashboard({
         <h2 id="jobs-title" className={s.sectionTitle}>
           Jobs
         </h2>
-        <JobList jobs={inPeriod} deviceName={deviceName} now={now} />
+        <JobList jobs={inPeriod} deviceName={deviceName} now={now} xomoni={xomoni} />
       </section>
     );
   } else if (section.id === 'browsers') {
@@ -476,12 +479,16 @@ export function Dashboard({
         </section>
       );
   } else {
-    content = <SectionPreview section={section} />;
+    const page = xomoniPageFor(section.id);
+    content = <SectionPreview section={section} action={page && <OpenInXomoni xomoni={xomoni} page={page} />} />;
   }
 
   return (
     <DashboardFrame section={section} accounts={accountsIn(jobs)} live={live}>
-      <div className={s.root}>{content}</div>
+      <div className={s.root}>
+        {xomoni.ui}
+        {content}
+      </div>
       <DisconnectDialog device={leaving} onClose={() => setLeaving(null)} disconnect={disconnect} />
     </DashboardFrame>
   );
@@ -495,10 +502,12 @@ function JobList({
   jobs,
   deviceName,
   now,
+  xomoni,
 }: {
   jobs: readonly JobSummary[];
   deviceName: Map<string, string>;
   now: number;
+  xomoni: XomoniControls;
 }) {
   const s = useStyles();
   if (jobs.length === 0)
@@ -510,7 +519,7 @@ function JobList({
   return (
     <ul className={mergeClasses(s.list, s.stack, s.sectionBody)}>
       {jobs.map((job) => (
-        <JobRow key={job.id} job={job} device={deviceName.get(job.deviceId)} now={now} />
+        <JobRow key={job.id} job={job} device={deviceName.get(job.deviceId)} now={now} xomoni={xomoni} />
       ))}
     </ul>
   );
@@ -779,7 +788,17 @@ function AccountRisks({
   );
 }
 
-function JobRow({ job, device, now }: { job: JobSummary; device: string | undefined; now: number }) {
+function JobRow({
+  job,
+  device,
+  now,
+  xomoni,
+}: {
+  job: JobSummary;
+  device: string | undefined;
+  now: number;
+  xomoni: XomoniControls;
+}) {
   const s = useStyles();
   const state = jobStateView(job.state);
   const pct = jobProgress(job);
@@ -841,6 +860,8 @@ function JobRow({ job, device, now }: { job: JobSummary; device: string | undefi
         ) : (
           <p className={s.phase}>{job.stateReason || job.phase}</p>
         ))}
+
+      <XomoniJobActions xomoni={xomoni} job={job} deviceName={device} />
     </li>
   );
 }

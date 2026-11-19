@@ -24,4 +24,21 @@ describe('SectionPreview (#245)', () => {
       'your posts never reach our servers',
     );
   });
+
+  it('offers what works today, such as Open in Xomoni, below the preview', () => {
+    render(
+      <SectionPreview
+        section={SECTIONS.find((s) => s.id === 'watch')!}
+        action={<button type="button">Open in Xomoni</button>}
+      />,
+    );
+    const card = screen.getByRole('region', { name: 'Watch: coming soon' });
+    expect(card).toHaveTextContent('Until then, it is in Xomoni on your computer.');
+    expect(within(card).getByRole('button', { name: 'Open in Xomoni' })).toBeInTheDocument();
+  });
+
+  it('adds nothing when there is no action', () => {
+    render(<SectionPreview section={SECTIONS.find((s) => s.id === 'audience')!} />);
+    expect(screen.queryByText(/Until then/)).not.toBeInTheDocument();
+  });
 });

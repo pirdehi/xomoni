@@ -81,15 +81,16 @@ describe('App sign-out (#226)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }));
 
-    // Signing out pauses, disconnects and closes the X window first: on a busy CI machine that takes over a second.
+    // Signing out pauses, disconnects and closes the X window first: on a busy machine (CI, or the push hook while
+    // other builds run) that has taken over 8 seconds.
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'You’re signed out' }, { timeout: 8_000 }),
+      await screen.findByRole('heading', { level: 1, name: 'You’re signed out' }, { timeout: 15_000 }),
     ).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Sign out of Xomoni?' })).not.toBeInTheDocument());
     expect(within(sidebar()).queryByRole('button', { name: /^Connections: / })).not.toBeInTheDocument();
     expect(await screen.findByText('Signed out of Xomoni. @me is no longer used in this browser.')).toBeInTheDocument();
     expect(await db.accounts.get(ME)).toBeDefined();
-  }, 20_000);
+  }, 30_000);
 
   it('shows only the signed-out page while signed out, whatever the hash says', async () => {
     await markSignedOut('me', true);

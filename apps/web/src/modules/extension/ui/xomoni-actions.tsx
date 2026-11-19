@@ -31,7 +31,7 @@ import {
   Send20Regular,
 } from '@fluentui/react-icons';
 import type { JobAction, XomoniPage } from '@xomoni/bridge';
-import { type ReactElement, type ReactNode, useRef, useState, useSyncExternalStore } from 'react';
+import { type ReactElement, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { ButtonLink } from '@/shared/ui/links';
 import { type XomoniActionServices, createXomoniActionServices } from '../client/xomoni-actions';
@@ -98,14 +98,19 @@ function keyOf(want: XomoniWant): string {
   return want.kind === 'job' ? `${want.action}:${want.jobId}` : `open:${want.page}`;
 }
 
+/** How long a request made while the page is still looking for Xomoni waits for the answer before the dialog shows. */
+export const CHECK_WAIT_MS = 5_000;
+
 /**
  * Xomoni's actions for a page of the signed-in account (ADR-0027). `accountDevices` are the account's own browsers:
  * Xomoni counts as here only when it reports one of them. A job's action goes to Xomoni only for a job of this browser;
- * a job in another browser says so instead. `services` is for tests.
+ * a job in another browser says so instead. A request made while the page is still looking for Xomoni waits for it,
+ * with the button busy, up to `checkWaitMs`, then goes ahead or opens the dialog. `services` is for tests.
  */
 export function useXomoni(
   accountDevices: readonly string[],
   services: () => XomoniActionServices = createXomoniActionServices,
+  checkWaitMs = CHECK_WAIT_MS,
 ): XomoniControls {
   const link = useExtensionLink();
   const phone = usePhone();
@@ -114,14 +119,31 @@ export function useXomoni(
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // The latest presence, for a request still waiting while the page looks for Xomoni.
+  const latest = useRef(presence);
+  useEffect(() => {
+    latest.current = presence;
+  });
   const get = () => (made.current ??= services());
 
+  // A function, so each look reads the presence as it is now.
+  const checking = () => latest.current.kind === 'checking';
+
   async function request(want: XomoniWant) {
-    if (presence.kind !== 'here') {
+    if (checking()) {
+      setBusy(keyOf(want));
+      for (let waited = 0; checking() && waited < checkWaitMs; waited += 100) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+    const here = latest.current;
+    if (here.kind !== 'here') {
+      setBusy(null);
       setDialog({ kind: 'away' });
       return;
     }
-    if (want.kind === 'job' && want.deviceId.toLowerCase() !== presence.deviceId.toLowerCase()) {
+    if (want.kind === 'job' && want.deviceId.toLowerCase() !== here.deviceId.toLowerCase()) {
+      setBusy(null);
       setDialog({ kind: 'elsewhere', deviceName: want.deviceName });
       return;
     }
@@ -129,8 +151,8 @@ export function useXomoni(
     setNotice(null);
     const answer = await get().ask(
       want.kind === 'job'
-        ? { kind: 'job', action: want.action, jobId: want.jobId, deviceId: presence.deviceId }
-        : { kind: 'open', page: want.page, deviceId: presence.deviceId },
+        ? { kind: 'job', action: want.action, jobId: want.jobId, deviceId: here.deviceId }
+        : { kind: 'open', page: want.page, deviceId: here.deviceId },
     );
     setBusy(null);
     setNotice({ text: answerMessage(answer, want.kind === 'job' ? want.action : 'open'), ok: answer.ok });

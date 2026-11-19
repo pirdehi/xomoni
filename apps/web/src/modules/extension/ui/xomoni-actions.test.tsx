@@ -21,8 +21,16 @@ vi.mock('./extension-session-sync', () => ({ useExtensionLink: () => link.curren
 let services: { ask: ReturnType<typeof vi.fn>; recheck: ReturnType<typeof vi.fn> };
 
 /** A page with one running job of this browser and *Open in Xomoni* for the Library. */
-function Page({ jobState = 'running', jobDevice = MINE }: { jobState?: string; jobDevice?: string }) {
-  const xomoni = useXomoni([MINE], () => services as unknown as XomoniActionServices);
+function Page({
+  jobState = 'running',
+  jobDevice = MINE,
+  checkWaitMs,
+}: {
+  jobState?: string;
+  jobDevice?: string;
+  checkWaitMs?: number;
+}) {
+  const xomoni = useXomoni([MINE], () => services as unknown as XomoniActionServices, checkWaitMs);
   return (
     <>
       {xomoni.ui}
@@ -167,14 +175,29 @@ describe('useXomoni: the dialog when Xomoni isn’t here', () => {
     expect(services.ask).not.toHaveBeenCalled();
   });
 
-  it('while looking, says so; once Xomoni answers, says it is ready', async () => {
+  it('a click while still looking waits for Xomoni, then goes ahead without a dialog', async () => {
     link.current = { status: 'unknown' };
     const { rerender } = render(<Page />);
+    await userEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    link.current = { status: 'signed-in', deviceId: MINE };
+    rerender(<Page />);
+    await waitFor(() =>
+      expect(services.ask).toHaveBeenCalledWith({ kind: 'job', action: 'pause', jobId: 'job-1', deviceId: MINE }),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('a click while still looking opens the dialog once the wait is over, which says when Xomoni is ready', async () => {
+    link.current = { status: 'unknown' };
+    const { rerender } = render(<Page checkWaitMs={200} />);
     await userEvent.click(screen.getByRole('button', { name: 'Pause' }));
     expect(await screen.findByRole('dialog', { name: 'Looking for Xomoni' })).toBeInTheDocument();
 
     link.current = { status: 'signed-in', deviceId: MINE };
-    rerender(<Page />);
+    rerender(<Page checkWaitMs={200} />);
     expect(await screen.findByRole('dialog', { name: 'Xomoni is ready' })).toBeInTheDocument();
     expect(services.ask).not.toHaveBeenCalled();
   });

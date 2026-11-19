@@ -1,5 +1,15 @@
-import { HELLO, SIGN_IN, SIGN_OUT, parseExtensionState, parseSignInAnswer, parseSignOutAnswer } from '@xomoni/bridge';
-import type { ExtensionChannel } from '../application/ports';
+import {
+  HELLO,
+  JOB,
+  OPEN,
+  SIGN_IN,
+  SIGN_OUT,
+  parseActionAnswer,
+  parseExtensionState,
+  parseSignInAnswer,
+  parseSignOutAnswer,
+} from '@xomoni/bridge';
+import type { ActionChannel, ExtensionChannel } from '../application/ports';
 
 /**
  * The part of `chrome.runtime` Chrome gives a web page when an installed extension lists the page's origin in
@@ -49,13 +59,13 @@ function send(
 }
 
 /**
- * `ExtensionChannel` over `chrome.runtime.sendMessage` (ADR-0025). Every answer goes through the strict parsers in
- * `@xomoni/bridge`: anything unexpected is no answer (`null`) or a refusal.
+ * `ExtensionChannel` and `ActionChannel` over `chrome.runtime.sendMessage` (ADR-0025, ADR-0027). Every answer goes
+ * through the strict parsers in `@xomoni/bridge`: anything unexpected is no answer (`null`) or a refusal.
  */
 export function createChromeExtensionChannel(
   runtime: () => PageRuntime | undefined = pageRuntime,
   timeouts = { answer: ANSWER_TIMEOUT_MS, signIn: SIGN_IN_TIMEOUT_MS },
-): ExtensionChannel {
+): ExtensionChannel & ActionChannel {
   return {
     async hello(extensionId) {
       return parseExtensionState(await send(runtime(), extensionId, { type: HELLO }, timeouts.answer));
@@ -65,6 +75,12 @@ export function createChromeExtensionChannel(
     },
     async signOut(extensionId) {
       return parseSignOutAnswer(await send(runtime(), extensionId, { type: SIGN_OUT }, timeouts.answer));
+    },
+    async job(extensionId, message) {
+      return parseActionAnswer(await send(runtime(), extensionId, { type: JOB, ...message }, timeouts.answer));
+    },
+    async open(extensionId, message) {
+      return parseActionAnswer(await send(runtime(), extensionId, { type: OPEN, ...message }, timeouts.answer));
     },
   };
 }

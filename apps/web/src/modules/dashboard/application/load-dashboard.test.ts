@@ -12,6 +12,7 @@ const device: Device = {
 const job: JobSummary = {
   id: 'j1',
   deviceId: 'd1',
+  localId: 'job-1',
   xHandle: 'ada',
   kind: 'cleanup',
   title: 'Delete posts before 2024',

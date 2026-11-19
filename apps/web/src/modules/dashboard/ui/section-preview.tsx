@@ -3,6 +3,7 @@
 // of an empty page. On Fluent UI (ADR-0019).
 import { Badge, makeStyles, tokens, typographyStyles } from '@fluentui/react-components';
 import { Checkmark16Regular, Info16Regular } from '@fluentui/react-icons';
+import type { ReactNode } from 'react';
 import { GITHUB_URL } from '@/shared/config/site';
 import { TextLink } from '@/shared/ui/links';
 import type { Section } from '../domain/sections';
@@ -39,6 +40,16 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
   },
   check: { flexShrink: 0, marginTop: '3px', color: tokens.colorBrandForeground1 },
+  action: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    paddingTop: tokens.spacingVerticalL,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+  },
+  actionText: { ...typographyStyles.body1, margin: 0, color: tokens.colorNeutralForeground2 },
   source: {
     display: 'flex',
     alignItems: 'flex-start',
@@ -51,9 +62,10 @@ const useStyles = makeStyles({
 
 /**
  * What a place not built yet will show (`section.shows`), where its data will come from (`section.source`), and the
- * issue that builds it. Marked *Coming soon*, so nobody mistakes it for an empty account.
+ * issue that builds it. Marked *Coming soon*, so nobody mistakes it for an empty account. `action` is what works
+ * today, such as *Open in Xomoni* for a place whose lists live in Xomoni (ADR-0027).
  */
-export function SectionPreview({ section }: { section: Section }) {
+export function SectionPreview({ section, action }: { section: Section; action?: ReactNode }) {
   const s = useStyles();
   const Icon = SECTION_ICON[section.id];
   return (
@@ -87,6 +99,12 @@ export function SectionPreview({ section }: { section: Section }) {
           )}
         </span>
       </p>
+      {action && (
+        <div className={s.action}>
+          <p className={s.actionText}>Until then, it is in Xomoni on your computer.</p>
+          {action}
+        </div>
+      )}
     </section>
   );
 }

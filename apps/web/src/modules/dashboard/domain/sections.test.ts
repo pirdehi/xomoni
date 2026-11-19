@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GROUPS, SECTIONS, sectionFromSlug, sectionHref } from './sections';
+import { GROUPS, SECTIONS, sectionFromSlug, sectionHref, xomoniPageFor } from './sections';
 
 describe('the dashboard’s places (#245)', () => {
   it('has every place of the plan once, in four groups, Overview first', () => {
@@ -58,5 +58,16 @@ describe('the dashboard’s places (#245)', () => {
     expect(sectionHref('overview')).toBe('/dashboard');
     expect(sectionHref('activity')).toBe('/dashboard/activity');
     expect(sectionHref('audience', 'account=ada&period=7d')).toBe('/dashboard/audience?account=ada&period=7d');
+  });
+});
+
+describe('xomoniPageFor (ADR-0027, #251)', () => {
+  it('names Xomoni’s page for every place that needs Xomoni, and none for the others', () => {
+    for (const section of SECTIONS) {
+      expect(xomoniPageFor(section.id) !== null).toBe(section.needsXomoni);
+    }
+    expect(xomoniPageFor('comments')).toBe('library');
+    expect(xomoniPageFor('health')).toBe('overview');
+    expect(xomoniPageFor('settings')).toBe('settings');
   });
 });

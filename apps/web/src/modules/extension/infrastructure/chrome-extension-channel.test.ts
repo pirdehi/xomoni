@@ -41,6 +41,35 @@ describe('the extension channel (#232, ADR-0025)', () => {
     expect(sent).toEqual([{ id: EXT, message: { type: 'xomoni-sign-in', code: 'ABCDE-FGHJK', replace: DEVICE } }]);
   });
 
+  it('asks to pause, cancel or resume a job, and reads the answer strictly (ADR-0027)', async () => {
+    const { page, sent } = runtime({ ok: true, outcome: 'stopping' });
+    const channel = createChromeExtensionChannel(() => page);
+
+    expect(await channel.job(EXT, { action: 'pause', deviceId: DEVICE, jobId: 'job-1' })).toEqual({
+      ok: true,
+      outcome: 'stopping',
+    });
+    expect(sent).toEqual([
+      { id: EXT, message: { type: 'xomoni-job', action: 'pause', deviceId: DEVICE, jobId: 'job-1' } },
+    ]);
+  });
+
+  it('asks to open a page, and calls an unexpected answer refused', async () => {
+    const { page, sent } = runtime({ ok: true, outcome: 'started' });
+    const channel = createChromeExtensionChannel(() => page);
+
+    expect(await channel.open(EXT, { page: 'library', deviceId: DEVICE })).toEqual({ ok: false, reason: 'refused' });
+    expect(sent).toEqual([{ id: EXT, message: { type: 'xomoni-open', page: 'library', deviceId: DEVICE } }]);
+  });
+
+  it('says no_answer to an action when the extension isn’t there', async () => {
+    const channel = createChromeExtensionChannel(() => undefined);
+    expect(await channel.job(EXT, { action: 'cancel', deviceId: DEVICE, jobId: 'job-1' })).toEqual({
+      ok: false,
+      reason: 'no_answer',
+    });
+  });
+
   it('signs out', async () => {
     const { page, sent } = runtime({ ok: true, signedOut: true });
     const channel = createChromeExtensionChannel(() => page);

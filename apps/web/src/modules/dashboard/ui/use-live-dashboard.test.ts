@@ -52,6 +52,7 @@ function job(overrides: Partial<JobSummary> = {}): JobSummary {
   return {
     id: 'job-1',
     deviceId: 'dev-1',
+    localId: 'job-local-1',
     xHandle: 'ada',
     kind: 'cleanup',
     title: 'Delete posts before Jan 1, 2024',

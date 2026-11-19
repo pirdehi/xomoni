@@ -21,6 +21,7 @@ export function toJobSummary(row: JobRow): JobSummary {
   return {
     id: row.id,
     deviceId: row.device_id,
+    localId: row.local_id,
     xHandle: row.x_handle,
     kind: row.kind === 'scan' ? 'scan' : 'cleanup',
     title: row.title,

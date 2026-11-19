@@ -22,6 +22,8 @@ export interface JobSummary {
   id: string;
   /** The device running the job. */
   deviceId: string;
+  /** The job's id in the extension on that device, which an action names (ADR-0027). */
+  localId: string;
   /** The X account the job works on, without the @. */
   xHandle: string;
   /** A cleanup deletes; a scan only counts. */

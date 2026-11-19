@@ -20,6 +20,12 @@ vi.mock('@/modules/extension/ui/extension-session-sync', () => ({
   useExtensionLink: () => link.current,
   rememberExtensionId: vi.fn(),
 }));
+// Xomoni's actions (#251): what the page hands to Xomoni in this browser.
+const xomoni = vi.hoisted(() => ({
+  ask: vi.fn((_request: unknown) => Promise.resolve({ ok: true as const, outcome: 'stopping' as const })),
+  recheck: vi.fn(() => Promise.resolve()),
+}));
+vi.mock('@/modules/extension/client/xomoni-actions', () => ({ createXomoniActionServices: () => xomoni }));
 
 type Handlers = Parameters<LiveDashboardServices['feed']['subscribe']>[1];
 
@@ -38,6 +44,7 @@ function job(overrides: Partial<JobSummary> = {}): JobSummary {
   return {
     id: 'job-1',
     deviceId: 'dev-1',
+    localId: 'job-local-1',
     xHandle: 'ada',
     kind: 'cleanup',
     title: 'Delete posts before Jan 1, 2024',
@@ -534,17 +541,19 @@ describe('Dashboard', () => {
     });
   });
 
-  describe('view-only toward X (ADR-0006)', () => {
+  describe('toward X: ask Xomoni, never start or approve (ADR-0027, #251)', () => {
     const EVERY_STATE = ['queued', 'running', 'waiting', 'paused', 'blocked', 'completed', 'cancelled', 'failed'];
 
-    it('offers no control that starts, resumes, approves or changes work on X, in any job state', () => {
+    it('offers only Pause, Cancel and Resume on jobs, and nothing that starts, approves or deletes', () => {
       renderDashboard(
         {
           devices: [device()],
           jobs: EVERY_STATE.map((state, i) =>
             job({
               id: `job-${state}`,
+              localId: `local-${state}`,
               state,
+              title: `Job ${state}`,
               stateReason: state === 'waiting' ? 'Complete X’s check in the Xomoni window.' : '',
               riskLevel: (i % 5) as 0 | 1 | 2 | 3 | 4,
               xHandle: `acct${i}`,
@@ -554,20 +563,83 @@ describe('Dashboard', () => {
         'activity',
       );
 
-      // Every state is on screen. The only button opens the phone's menu of places, the links go to places of the
-      // dashboard, and the only fields pick the account and the period: none acts on X (#245).
       expect(jobRows()).toHaveLength(EVERY_STATE.length);
+      const actionsOf = (state: string) =>
+        within(jobRows()[EVERY_STATE.indexOf(state)]!)
+          .queryAllByRole('button')
+          .map((b) => b.textContent);
+      expect(actionsOf('running')).toEqual(['Pause', 'Cancel']);
+      expect(actionsOf('waiting')).toEqual(['Pause', 'Cancel']);
+      for (const state of ['queued', 'paused', 'blocked', 'failed'])
+        expect(actionsOf(state)).toEqual(['Resume', 'Cancel']);
+      for (const state of ['completed', 'cancelled']) expect(actionsOf(state)).toEqual([]);
+
       const buttons = screen.getAllByRole('button').map((button) => button.textContent);
-      expect(new Set(buttons)).toEqual(new Set(['More']));
-      const links = screen.queryAllByRole('link');
-      expect(links.every((link) => link.getAttribute('href')?.startsWith('/dashboard'))).toBe(true);
+      expect(new Set(buttons)).toEqual(new Set(['More', 'Pause', 'Cancel', 'Resume']));
+      expect(buttons.join(' ')).not.toMatch(/start|approve|continue|retry|run|delete/i);
+      expect(screen.queryAllByRole('link').every((l) => l.getAttribute('href')?.startsWith('/dashboard'))).toBe(true);
       expect(document.querySelectorAll('form')).toHaveLength(0);
       expect(
         [...document.querySelectorAll('input, select, textarea')].map((field) => field.getAttribute('aria-label')),
       ).toEqual(['X account', 'Period']);
-      const linkNames = links.map((link) => link.textContent);
-      const controls = [...buttons, ...linkNames].join(' ');
-      expect(controls).not.toMatch(/start|resume|approve|continue|retry|run|pause|cancel|stop|delete/i);
+    });
+
+    it('opens the “not installed” dialog instead of acting when Xomoni isn’t in this browser', async () => {
+      link.current = { status: 'none' };
+      renderDashboard({ devices: [device()], jobs: [job({ state: 'running' })] }, 'activity');
+
+      await userEvent.click(within(jobRows()[0]!).getByRole('button', { name: 'Pause' }));
+
+      const dialog = await screen.findByRole('dialog', { name: 'You haven’t installed Xomoni yet' });
+      expect(within(dialog).getByRole('link', { name: /Install Xomoni/ })).toHaveAttribute('href', INSTALL_URL);
+      expect(dialog).toHaveTextContent('Open Xomoni and press Connect to xomoni.com once.');
+      expect(xomoni.ask).not.toHaveBeenCalled();
+    });
+
+    it('says a job of another browser can’t be stopped from here, and sends nothing', async () => {
+      link.current = { status: 'signed-in', deviceId: 'dev-2' };
+      renderDashboard(
+        { devices: [device(), device({ id: 'dev-2', name: 'Edge on Windows' })], jobs: [job({ state: 'running' })] },
+        'activity',
+      );
+
+      await userEvent.click(within(jobRows()[0]!).getByRole('button', { name: 'Cancel' }));
+
+      const dialog = await screen.findByRole('dialog', { name: 'This job runs in another browser' });
+      expect(dialog).toHaveTextContent('It runs in Chrome on macOS.');
+      expect(xomoni.ask).not.toHaveBeenCalled();
+    });
+
+    it('hands a job of this browser to Xomoni by its id there, and shows Xomoni’s answer', async () => {
+      xomoni.ask.mockClear();
+      link.current = { status: 'signed-in', deviceId: 'dev-1' };
+      renderDashboard({ devices: [device()], jobs: [job({ state: 'running' })] }, 'activity');
+
+      await userEvent.click(within(jobRows()[0]!).getByRole('button', { name: 'Pause' }));
+
+      expect(xomoni.ask).toHaveBeenCalledWith({
+        kind: 'job',
+        action: 'pause',
+        jobId: 'job-local-1',
+        deviceId: 'dev-1',
+      });
+      expect(await screen.findByText('Pausing: the job stops after the action in progress.')).toBeInTheDocument();
+    });
+
+    it('offers Open in Xomoni on a place whose lists live in Xomoni, and opens its page', async () => {
+      xomoni.ask.mockClear().mockResolvedValueOnce({ ok: true, outcome: 'opened' } as never);
+      link.current = { status: 'signed-in', deviceId: 'dev-1' };
+      renderDashboard({ devices: [device()], jobs: [] }, 'comments');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open in Xomoni' }));
+
+      expect(xomoni.ask).toHaveBeenCalledWith({ kind: 'open', page: 'library', deviceId: 'dev-1' });
+      expect(await screen.findByText('Xomoni opened on this computer.')).toBeInTheDocument();
+    });
+
+    it('offers no Open in Xomoni where the data will come from the cloud', () => {
+      renderDashboard({ devices: [device()], jobs: [] }, 'audience');
+      expect(screen.queryByRole('button', { name: 'Open in Xomoni' })).not.toBeInTheDocument();
     });
   });
 });

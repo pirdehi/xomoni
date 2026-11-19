@@ -7,6 +7,7 @@ import { RISK_LEVEL, accountRisks, jobsNeedingYou, toRiskLevel } from './risk';
 const job = (over: Partial<JobSummary>): JobSummary => ({
   id: 'j',
   deviceId: 'd1',
+  localId: 'job-1',
   xHandle: 'ada',
   kind: 'cleanup',
   title: 'Delete posts',

@@ -1,5 +1,6 @@
 // The dashboard's places (#245, docs/DASHBOARD-PLAN-2026-11-19.md): one list, in the order the menu shows them, with
 // the words each place uses for itself. Pure.
+import type { XomoniPage } from '@xomoni/bridge';
 
 /** A place of the dashboard; also its address under `/dashboard`. */
 export type SectionId =
@@ -227,4 +228,21 @@ export function sectionFromSlug(slug: string | undefined): Section | null {
 export function sectionHref(id: SectionId, query = ''): string {
   const path = id === 'overview' ? '/dashboard' : `/dashboard/${id}`;
   return query ? `${path}?${query}` : path;
+}
+
+const XOMONI_PAGE: Partial<Record<SectionId, XomoniPage>> = {
+  library: 'library',
+  comments: 'library',
+  cleanup: 'cleanup',
+  watch: 'watch',
+  health: 'overview',
+  settings: 'settings',
+};
+
+/**
+ * The page of Xomoni that holds a place's lists and actions today (ADR-0027), for *Open in Xomoni*; null for a place
+ * that doesn't need Xomoni. Comments live in Xomoni's Library, and account health on its Home.
+ */
+export function xomoniPageFor(id: SectionId): XomoniPage | null {
+  return XOMONI_PAGE[id] ?? null;
 }

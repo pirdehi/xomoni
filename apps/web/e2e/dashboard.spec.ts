@@ -44,8 +44,14 @@ test.describe('dashboard (#41)', () => {
     await expect(page.getByRole('region', { name: 'Needs you' })).toHaveCount(0);
     await expect(accounts.nth(1)).toContainText('Risk level 3: Defensive');
 
-    // View-only (ADR-0006): nothing here starts, resumes or approves a job.
-    await expect(page.getByRole('button', { name: /resume|start|continue|approve/i })).toHaveCount(0);
+    // ADR-0027 (#251): the site may ask Xomoni to pause, cancel or resume, never start or approve work. Xomoni isn't
+    // in this browser, so Resume on the stopped job opens the dialog that says so, and nothing is sent.
+    await expect(page.getByRole('button', { name: /start|continue|approve|delete|retry/i })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Resume' }).click();
+    const dialog = page.getByRole('dialog', { name: 'You haven’t installed Xomoni yet' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect(dialog).toBeHidden();
   });
 
   test('shows neither section when nothing needs the person and no level was reported', async ({ page }) => {

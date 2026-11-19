@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { localDay } from '../src/shared/daily';
 import { db, itemKey, kvGet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { RuntimeMessage } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
@@ -370,6 +371,15 @@ describe('service worker: observations from x.com tabs', () => {
 
     await vi.waitFor(async () => expect(await db.accounts.get(X_ME)).toMatchObject({ postsCount: 42, likesCount: 7 }));
     expect((await db.accounts.get(X_ME))?.profileAt).toEqual(expect.any(Number));
+    // The same counts are the day's numbers (#249), from the page X already showed.
+    await vi.waitFor(async () =>
+      expect(await db.daily.get([X_ME, localDay(Date.now())])).toMatchObject({
+        followers: 3,
+        following: 4,
+        postsTotal: 42,
+        likesTotal: 7,
+      }),
+    );
   });
 
   it('stores X’s rate-limit observation', async () => {

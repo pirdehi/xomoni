@@ -39,6 +39,15 @@ export interface Item {
   likes: number;
   reposts: number;
   replies: number;
+  /**
+   * More of X's counts for the person's own posts and replies, as last seen live (#249): quotes, bookmarks and views.
+   * Missing until X has shown them (archive items, older rows); X leaves views out on some posts.
+   */
+  quotes?: number;
+  bookmarks?: number;
+  views?: number;
+  /** Whether the post quotes another one (X's `is_quote_status`); missing when not known. */
+  quote?: boolean;
   /** Every source that has reported this item. */
   sources: ItemSource[];
   status: ItemStatus;
@@ -65,7 +74,8 @@ export type ItemDraft = Pick<
   | 'likes'
   | 'reposts'
   | 'replies'
->;
+> &
+  Partial<Pick<Item, 'quotes' | 'bookmarks' | 'views' | 'quote'>>;
 
 /**
  * An X account Xomoni has seen, keyed by X's numeric user id (`rest_id`, also in the `twid` cookie).

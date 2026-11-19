@@ -1,4 +1,19 @@
 import Dexie, { type Table } from 'dexie';
+import {
+  type DailyRow,
+  type DailyStats,
+  type ProfileCounts,
+  type PublishedItem,
+  type Removal,
+  addDelta,
+  emptyDay,
+  isEmptyDelta,
+  localDay,
+  sightingDelta,
+  sumDeltas,
+  withProfile,
+  withPublishedAndRemoved,
+} from './daily';
 import { type RiskEvent, type RiskEventKind, isDuplicateRisk } from './risk';
 import { normalizeSettings } from './settings';
 import { DAY } from './time';
@@ -58,6 +73,7 @@ class XomoniDB extends Dexie {
   risk!: Table<RiskEvent, number>;
   checks!: Table<SampleCheck, number>;
   consents!: Table<Consent, string>;
+  daily!: Table<DailyStats, [string, string]>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -74,6 +90,7 @@ class XomoniDB extends Dexie {
     this.version(3).stores({ risk: '++seq, [accountId+at]' });
     this.version(4).stores({ checks: '++seq, [accountId+dueAt]' });
     this.version(5).stores({ consents: 'accountId' });
+    this.version(6).stores({ daily: '[accountId+day], accountId' });
   }
 }
 
@@ -112,7 +129,7 @@ const KEPT_ACCOUNT_VALUES: readonly string[] = ['viewCap'];
 
 /**
  * Removes one X account's data from this browser when the person signs out with *Remove its data* (#226): its
- * inventory, jobs, activity log, X's observed limits, sampled posts to check again, its consent, every `kv` value
+ * inventory, jobs, activity log, X's observed limits, sampled posts to check again, its consent, its daily numbers, every `kv` value
  * kept for it (Watch, the archive and its request, archive files seen) and the account itself, in one transaction.
  * Like `wipeLocalData`, it keeps `KEPT_ON_WIPE` and the view cap, so X's limits still hold; other accounts keep
  * everything. Stop the account's running job first.
@@ -122,7 +139,7 @@ export async function forgetAccount(accountId: string) {
     const at = key.indexOf(':');
     return at > 0 && key.slice(at + 1) === accountId && !KEPT_ACCOUNT_VALUES.includes(key.slice(0, at));
   };
-  const tables = [db.accounts, db.items, db.jobs, db.logs, db.limits, db.checks, db.consents, db.kv];
+  const tables = [db.accounts, db.items, db.jobs, db.logs, db.limits, db.checks, db.consents, db.daily, db.kv];
   await db.transaction('rw', tables, async () => {
     const whole: [string, number] = [accountId, -Infinity];
     const end: [string, number] = [accountId, Infinity];
@@ -132,6 +149,7 @@ export async function forgetAccount(accountId: string) {
     await db.limits.where('accountId').equals(accountId).delete();
     await db.checks.where('[accountId+dueAt]').between(whole, end, true, true).delete();
     await db.consents.delete(accountId);
+    await db.daily.where('accountId').equals(accountId).delete();
     await db.kv.filter((row) => own(row.key)).delete();
     if ((await kvGet<string | null>('activeAccount', null)) === accountId) await db.kv.delete('activeAccount');
     await db.accounts.delete(accountId);
@@ -144,10 +162,12 @@ export const itemKey = (accountId: string, kind: ItemKind, id: string) => `${acc
 /**
  * Merges drafts into the inventory. Live observations refresh metrics and can
  * revive an item marked deleted only if they were captured after that mark.
+ * A live sighting also adds what it shows to the day's numbers (#249): the rise
+ * in the counts of the person's own posts since they were last seen.
  */
 export async function upsertItems(accountId: string, drafts: ItemDraft[], source: ItemSource, observedAt = Date.now()) {
   if (!drafts.length) return 0;
-  return db.transaction('rw', db.items, async () => {
+  return db.transaction('rw', db.items, db.daily, async () => {
     const keys = drafts.map((d) => itemKey(accountId, d.kind, d.id));
     const existing = await db.items.bulkGet(keys);
     const rows: Item[] = drafts.map((d, i) => {
@@ -175,6 +195,9 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
           createdAt: d.createdAt || prev.createdAt,
           seenAt: observedAt,
         });
+        for (const name of ['quotes', 'bookmarks', 'views', 'quote'] as const) {
+          if (d[name] !== undefined) Object.assign(next, { [name]: d[name] });
+        }
         if (prev.status !== 'present' && observedAt > prev.statusAt + 5_000) {
           next.status = 'present';
           next.statusAt = observedAt;
@@ -189,8 +212,74 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
       return next;
     });
     await db.items.bulkPut(rows);
+    if (source === 'scan') await addSightings(accountId, existing, rows, observedAt);
     return rows.length;
   });
+}
+
+/** Adds the sightings of one live observation to the day's numbers; runs inside `upsertItems`'s transaction. */
+async function addSightings(
+  accountId: string,
+  before: readonly (Item | undefined)[],
+  after: readonly Item[],
+  observedAt: number,
+) {
+  const sum = sumDeltas(after.map((next, i) => sightingDelta(before[i], next, observedAt)));
+  if (isEmptyDelta(sum)) return;
+  const day = localDay(observedAt);
+  const row = (await db.daily.get([accountId, day])) ?? emptyDay(accountId, day, observedAt);
+  await db.daily.put(addDelta(row, sum, Date.now()));
+}
+
+/**
+ * Keeps the profile's counts X showed at `at` as that day's (#249). A count X left out keeps the day's earlier value.
+ */
+export async function recordProfileDay(accountId: string, profile: ProfileCounts, at: number): Promise<void> {
+  const day = localDay(at);
+  await db.transaction('rw', db.daily, async () => {
+    const row = (await db.daily.get([accountId, day])) ?? emptyDay(accountId, day, at);
+    await db.daily.put(withProfile(row, profile, at));
+  });
+}
+
+const PUBLISHED_KINDS = ['post', 'reply', 'repost'] as const;
+
+/**
+ * The account's days from `from` to `to` (epoch ms, inclusive), oldest first (#249): the recorded numbers, what the
+ * person published (from the inventory) and what Xomoni removed (from the activity log). A day with none of them is
+ * left out, so a page shows a gap, not zeros.
+ */
+export async function dailyRows(accountId: string, from: number, to: number): Promise<DailyRow[]> {
+  const [first, last] = [localDay(from), localDay(to)];
+  const stored = await db.daily
+    .where('[accountId+day]')
+    .between([accountId, first], [accountId, last], true, true)
+    .toArray();
+  const published: PublishedItem[] = [];
+  for (const kind of PUBLISHED_KINDS) {
+    const items = await db.items
+      .where('[accountId+kind+createdAt]')
+      .between([accountId, kind, from], [accountId, kind, to], true, true)
+      .toArray();
+    for (const item of items) published.push({ kind, createdAt: item.createdAt, quote: item.quote });
+  }
+  const logs = await db.logs.where('[accountId+ts]').between([accountId, from], [accountId, to], true, true).toArray();
+  const done = logs.filter((l) => l.outcome === 'done' && l.action !== 'system' && l.action !== 'read' && l.targetId);
+  const deletes = done.filter((l) => l.action === 'delete');
+  const replies = await db.items.bulkGet(deletes.map((l) => itemKey(accountId, 'reply', l.targetId ?? '')));
+  const isReply = new Set(replies.filter((r): r is Item => r !== undefined).map((r) => r.id));
+  const removals: Removal[] = done.map((l) => ({
+    kind:
+      l.action === 'delete'
+        ? isReply.has(l.targetId ?? '')
+          ? 'reply'
+          : 'post'
+        : l.action === 'unretweet'
+          ? 'repost'
+          : 'like',
+    at: l.ts,
+  }));
+  return withPublishedAndRemoved(accountId, stored, published, removals, Date.now());
 }
 
 /**

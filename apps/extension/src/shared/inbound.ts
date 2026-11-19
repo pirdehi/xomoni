@@ -83,6 +83,18 @@ function draft(value: unknown, now: number): ItemDraft | null {
   if (!isText(text, MAX_TEXT) || (author !== '' && !(typeof author === 'string' && isHandle(author)))) return null;
   if ((inReplyToId !== null && !isId(inReplyToId)) || typeof selfReply !== 'boolean') return null;
   if (!isCount(likes) || !isCount(reposts) || !isCount(replies)) return null;
+  // X's other counts for own posts (#249): each optional, and a count when present.
+  const extra: Pick<ItemDraft, 'quotes' | 'bookmarks' | 'views' | 'quote'> = {};
+  for (const name of ['quotes', 'bookmarks', 'views'] as const) {
+    const value = d[name];
+    if (value === undefined) continue;
+    if (!isCount(value)) return null;
+    extra[name] = value;
+  }
+  if (d.quote !== undefined) {
+    if (typeof d.quote !== 'boolean') return null;
+    extra.quote = d.quote;
+  }
   return {
     kind: kind as ItemKind,
     id,
@@ -96,6 +108,7 @@ function draft(value: unknown, now: number): ItemDraft | null {
     likes,
     reposts,
     replies,
+    ...extra,
   };
 }
 

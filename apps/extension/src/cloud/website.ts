@@ -1,8 +1,10 @@
-// Everything xomoni.com may ask the extension, in one place for the service worker (ADR-0024, ADR-0025). The manifest
-// lets only https://xomoni.com send; the sender is checked again here, and the message must be exactly one of the
-// shapes in `@xomoni/bridge`. Each asks one thing: how the extension stands, a pairing it asked for, a sign-in or a
-// sign-out. None reads X content or starts, resumes or approves work on X (ADR-0004, ADR-0006).
-import { HELLO, PAIR, SIGN_IN, SIGN_OUT, parseWebsiteMessage } from '@xomoni/bridge';
+// Everything xomoni.com may ask the extension, in one place for the service worker (ADR-0024, ADR-0025, ADR-0027). The
+// manifest lets only https://xomoni.com send; the sender is checked again here, and the message must be exactly one of
+// the shapes in `@xomoni/bridge`. Each asks one thing: how the extension stands, a pairing it asked for, a sign-in, a
+// sign-out, to pause, cancel or resume a job, or to open a page of Xomoni. None reads X content, and none starts or
+// approves work on X: a resume only opens Xomoni's own confirmation (ADR-0004, ADR-0027).
+import { HELLO, JOB, OPEN, PAIR, SIGN_IN, SIGN_OUT, parseWebsiteMessage } from '@xomoni/bridge';
+import { type ActionPorts, answerJob, answerOpen } from './website-actions';
 import { connectFromWebsite, fromWebsite } from './web-connect';
 import { extensionState, signInFromWebsite, signOutFromWebsite } from './web-session';
 
@@ -22,11 +24,13 @@ function inTurn<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
+export type { ActionPorts } from './website-actions';
+
 /**
  * The answer to a message from a page, or null when the page isn't xomoni.com's top frame, which gets no answer at
- * all. A message of any other shape is answered `invalid`.
+ * all. A message of any other shape is answered `invalid`. `ports` opens Xomoni's pages for the actions.
  */
-export function answerWebsite(raw: unknown, sender: WebsiteSender): Promise<unknown> | null {
+export function answerWebsite(raw: unknown, sender: WebsiteSender, ports: ActionPorts): Promise<unknown> | null {
   if (!fromWebsite(sender)) return null;
   const message = parseWebsiteMessage(raw);
   if (!message) return Promise.resolve({ ok: false, reason: 'invalid' });
@@ -39,5 +43,9 @@ export function answerWebsite(raw: unknown, sender: WebsiteSender): Promise<unkn
       return inTurn(() => signInFromWebsite(message));
     case SIGN_OUT:
       return inTurn(() => signOutFromWebsite());
+    case JOB:
+      return inTurn(() => answerJob(message, ports));
+    case OPEN:
+      return inTurn(() => answerOpen(message, ports));
   }
 }

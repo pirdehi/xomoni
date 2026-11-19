@@ -51,6 +51,7 @@ import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
 import { ConsentDialog } from './components/ConsentDialog';
 import { SignOutDialog } from './components/SignOutDialog';
+import { WebsiteRequests } from './components/WebsiteRequests';
 import { errorMessage } from './format';
 import {
   type WorkerStatus,
@@ -304,6 +305,7 @@ export function App() {
       <Toasts />
       <ConsentDialog />
       <SignOutDialog />
+      <WebsiteRequests />
       {account && <ArchiveFollowUp account={account} libraryOpen={page === 'library'} />}
     </div>
   );

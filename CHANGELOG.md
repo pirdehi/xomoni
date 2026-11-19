@@ -6,6 +6,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **The extension hears xomoni.com's actions** in the same browser (#251, ADR-0027).
+  - Pause and cancel a job: they apply at once, in the tab that runs it, and the log says xomoni.com asked.
+  - Resume asks you in Xomoni first: nothing runs on X until you choose *Resume* there.
+  - Open one of Xomoni's pages.
+  - Only for the xomoni.com account this browser is connected to; anything else is refused.
+
 - **The dashboard's places on xomoni.com** (#245, the first step of the full dashboard, #248).
   - Every place has its own address: Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings.
   - A sidebar on a computer, and a bottom bar with *More* on a phone.

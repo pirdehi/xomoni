@@ -90,7 +90,7 @@ describe('the listing text (#301)', () => {
     const text = block('detailed-description');
     assert.ok(text.length >= 250 && text.length <= 10_000, `${text.length} characters`);
     assert.match(text, /Not affiliated with X Corp\./);
-    assert.match(text, /https:\/\/xomoni\.com\/privacy/);
+    assert.ok(text.includes('https://xomoni.com/privacy'), 'links the privacy policy');
   });
 
   it('states one purpose, and gives the reviewers the safety rules and the privacy policy', () => {
@@ -99,7 +99,7 @@ describe('the listing text (#301)', () => {
     for (const rule of ['one fifth', 'No credentials', 'No evasion', 'Confirmation for every job', 'Data stays local'])
       assert.ok(notes.includes(rule), rule);
     assert.match(notes, /Not affiliated with X Corp\./);
-    assert.match(notes, /https:\/\/xomoni\.com\/privacy/);
+    assert.ok(notes.includes('https://xomoni.com/privacy'), 'links the privacy policy');
   });
 
   it('names the homepage, the support page and the privacy policy the stores ask for', () => {

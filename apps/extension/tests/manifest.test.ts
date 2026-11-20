@@ -131,6 +131,7 @@ describe('the manifest names the product (#312)', () => {
   it('as Xomoni, the digital footprint manager, within the stores’ limits', () => {
     expect(manifest.name).toBe('Xomoni — Digital footprint manager');
     expect(manifest.short_name).toBe('Xomoni');
+    expect(manifest.homepage_url).toBe('https://xomoni.com');
     expect(String(manifest.name).length).toBeLessThanOrEqual(75);
     expect(String(manifest.description).length).toBeLessThanOrEqual(132);
   });

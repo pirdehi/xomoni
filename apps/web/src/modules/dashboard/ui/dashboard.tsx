@@ -59,6 +59,7 @@ import { HealthPlace, LibraryPlace, WatchPlace } from './xomoni-places';
 import { SettingsPlace } from './settings-place';
 import { CleanupPlace } from './cleanup-place';
 import { CommentsPlace } from './comments-place';
+import { ReportsPlace } from './reports-place';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
@@ -433,7 +434,11 @@ export function Dashboard({
   const query = scopeQuery(scope);
 
   let content: ReactNode;
-  if (section.id === 'overview') {
+  if (!section.ready) {
+    // A place not built yet says what it will show, and where its data will come from (#245).
+    const page = xomoniPageFor(section.id);
+    content = <SectionPreview section={section} action={page && <OpenInXomoni xomoni={xomoni} page={page} />} />;
+  } else if (section.id === 'overview') {
     content = (
       <>
         <PendingConnectNotice />
@@ -508,11 +513,14 @@ export function Dashboard({
     content = <HealthPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'cleanup') {
     content = <CleanupPlace xomoni={xomoni} now={now} />;
+  } else if (section.id === 'reports') {
+    content = <ReportsPlace days={days} jobs={jobs} scope={scope} now={now} shown={numbersShown} />;
   } else if (section.id === 'comments') {
     content = <CommentsPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'settings') {
     content = <SettingsPlace xomoni={xomoni} numbers={<NumbersChoice shown={numbersShown} onShow={showNumbers} />} />;
-  } else if (section.id === 'browsers') {
+  } else {
+    // Browsers: the last place. A new place shows its preview above until it is ready and has its own branch.
     content =
       devices.length === 0 ? (
         <ConnectBrowser createCode={createPairingCode} />
@@ -570,9 +578,6 @@ export function Dashboard({
           </div>
         </section>
       );
-  } else {
-    const page = xomoniPageFor(section.id);
-    content = <SectionPreview section={section} action={page && <OpenInXomoni xomoni={xomoni} page={page} />} />;
   }
 
   return (

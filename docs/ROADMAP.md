@@ -11,7 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
-- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), Settings (#234), Cleanup (#235) and Comments (#256) are done too. Release 0.4.0 (#282) brought the first of them to Xomoni; Comments needs the next release. Next, Reports (#257). The next 20 tasks, in order: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md).
+- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), Settings (#234), Cleanup (#235) and Comments (#256) are done too. Release 0.4.0 (#282) brought the first of them to Xomoni; Comments needs the next release. Reports (#257) are in, as CSV and PDF; next, the weekly email for those who ask for it (#257). The next 20 tasks, in order: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md).
 - Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
 - Phase 14: one Xomoni. The website and the extension sign in and out together (#232), and the website shows the Library, Watch and account health, read in the same browser only (#233), changes Xomoni's settings there within its safety rules (#234), and plans cleanups that start only in Xomoni (#235). Phase 14 is done.
 - Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
@@ -254,7 +254,7 @@ xomoni.com becomes the place to see and manage the X account: every place of the
 | ✅ | Engagement: received by type, views and the rate against the period before and over time, the share seen with a like, as labelled estimates (most-liked replies: in Xomoni, #233) | [#255](https://github.com/pirdehi/xomoni/issues/255) | [#276](https://github.com/pirdehi/xomoni/pull/276) |
 | ✅ | Release 0.4.0: Xomoni answers the Library, Watch, Account health, Settings and Cleanup places on xomoni.com | [#282](https://github.com/pirdehi/xomoni/issues/282) | [#283](https://github.com/pirdehi/xomoni/pull/283), [v0.4.0](https://github.com/pirdehi/xomoni/releases/tag/v0.4.0) |
 | ✅ | Comments: *Your replies* (by date, likes, who and words, picked for a cleanup in Xomoni) and *Replies to you* (kept 90 days on the computer, never acted on, ADR-0030) | [#256](https://github.com/pirdehi/xomoni/issues/256) | [#284](https://github.com/pirdehi/xomoni/pull/284), [#287](https://github.com/pirdehi/xomoni/pull/287) |
-| ⬜ | Reports | [#257](https://github.com/pirdehi/xomoni/issues/257) | |
+| 🔄 | Reports: weekly, monthly, the year in review, cleanup and your own, as CSV and PDF; next, the weekly email | [#257](https://github.com/pirdehi/xomoni/issues/257) | [#288](https://github.com/pirdehi/xomoni/pull/288) |
 
 ## Dropped
 

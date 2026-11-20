@@ -107,7 +107,7 @@ export function GithubMark({ className }: { className?: string }) {
 export function SiteHeader({ app = false }: { app?: boolean }) {
   const s = useStyles();
   return (
-    <header className={s.header}>
+    <header className={s.header} data-print="hide">
       <div className={s.bar}>
         <Logo />
         <nav className={s.nav} aria-label="Main">
@@ -150,7 +150,7 @@ export function SiteFooter() {
       </a>
     );
   return (
-    <footer className={s.footer}>
+    <footer className={s.footer} data-print="hide">
       <div className={s.footerBar}>
         <p className={s.credits}>
           © 2026 {link('https://github.com/pirdehi', 'Omid Pirdehi')} · MIT license · Not affiliated with X Corp.

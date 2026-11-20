@@ -27,7 +27,7 @@ src/
   app/            routes only: pages, layouts, route handlers (thin)
   modules/
     auth/         identity: sign-up and email confirmation, sign-in, password reset, account settings, sessions
-    dashboard/    the dashboard's places (/dashboard, /dashboard/<place>), devices and live job status, /connect, where the extension's Sign in finishes, and /weekly-email/stop with POST /api/weekly-email/stop, where the weekly email stops (ADR-0031)
+    dashboard/    the dashboard's places (/dashboard, /dashboard/<place>), devices and live job status, /connect, where the extension's Sign in finishes, /welcome, which Xomoni opens once installed (#244), and /weekly-email/stop with POST /api/weekly-email/stop, where the weekly email stops (ADR-0031)
     extension/    the Xomoni extension in this browser: one sign-in for the site and the extension (ADR-0025)
     landing/      the landing page at / and the install guide at /install
   shared/

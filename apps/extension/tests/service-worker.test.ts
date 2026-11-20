@@ -142,13 +142,20 @@ describe('service worker: opening the dashboard', () => {
     expect(chrome.tabs.update).not.toHaveBeenCalled();
   });
 
-  it('opens the dashboard on install, not on an update', async () => {
+  it('opens the dashboard and xomoni.com/welcome with its id on install, nothing on an update (#244)', async () => {
     on.installed!({ reason: 'update' });
     await settle();
     expect(chrome.tabs.create).not.toHaveBeenCalled();
 
     on.installed!({ reason: 'install' });
-    await vi.waitFor(() => expect(chrome.tabs.create).toHaveBeenCalledWith({ url: DASHBOARD }));
+    await vi.waitFor(() =>
+      expect(chrome.tabs.create).toHaveBeenLastCalledWith({
+        url: `https://xomoni.com/welcome#ext=${chrome.runtime.id}`,
+        active: true,
+      }),
+    );
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: DASHBOARD });
+    expect(chrome.tabs.create).toHaveBeenCalledTimes(2);
   });
 });
 

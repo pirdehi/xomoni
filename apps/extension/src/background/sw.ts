@@ -2,7 +2,7 @@
 // browser: a one-time code the person asked for (#228), one sign-in for the website and the extension (#232), and the
 // website's actions, which stop a job or open Xomoni's pages (#251). Profile counts X shows also make the day's numbers
 // (#249).
-import type { XomoniPage } from '@xomoni/bridge';
+import { WEBSITE_ORIGIN, type XomoniPage } from '@xomoni/bridge';
 import { type ActionPorts, answerWebsite } from '../cloud/website';
 import { db, kvSet, recordProfileDay, upsertAccount, upsertItems } from '../shared/db';
 import { saveIncoming } from '../shared/incoming';
@@ -63,8 +63,13 @@ chrome.notifications.onClicked.addListener((id) => {
 // X's archive goes into Downloads/Xomoni while Xomoni expects it, since Chrome won't let Xomoni read Downloads (#196).
 chrome.downloads.onDeterminingFilename.addListener(suggestArchivePath);
 
+// On install, Xomoni's dashboard, and xomoni.com/welcome in front of it with this extension's id in the fragment, so the
+// site knows Xomoni is in this browser and offers the one sign-in (#244, ADR-0025). Only on install, never an update.
 chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') void openDashboard();
+  if (details.reason !== 'install') return;
+  void openDashboard().then(() =>
+    chrome.tabs.create({ url: `${WEBSITE_ORIGIN}/welcome#ext=${chrome.runtime.id}`, active: true }),
+  );
 });
 
 // xomoni.com in this browser (ADR-0024, ADR-0025, ADR-0027): a one-time code the person asked for, the one sign-in,

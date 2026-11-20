@@ -77,6 +77,8 @@ What can travel between the two is what ADR-0024 already uses: messages from xom
     - The service worker imports only `cloud/website.ts` from `cloud/` (rule `ext-background-is-thin`).
     - The website's `domain/` and `application/` may import `@xomoni/bridge`, a pure contract (rules `web-domain-is-pure`, `web-application-depends-on-domain`).
 
+Amended 2026-11-20 (#244): on install, Xomoni also opens `xomoni.com/welcome#ext=<id>` in front of its own dashboard. The site learns the extension's id from the fragment, which never reaches a server, as `/connect` does. `/welcome` asks nothing of Xomoni: it shows a checklist of what the page can see, and offers the one sign-in or *Continue without an account*. Only an install opens it, never an update.
+
 ## Consequences
 
 - In one browser, one sign-in and one sign-out cover both. The usual paths:

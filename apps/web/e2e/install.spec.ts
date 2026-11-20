@@ -58,3 +58,19 @@ test.describe('the header and footer (#242)', () => {
     });
   });
 });
+
+test.describe('getting started (#244)', () => {
+  test('/welcome shows where a visitor stands, and sign-up comes back to it', async ({ page }) => {
+    await page.goto('/welcome');
+    await expect(page.getByRole('heading', { name: 'Welcome to Xomoni' })).toBeVisible();
+    const steps = page.getByRole('region', { name: 'Getting started' });
+    await expect(steps.getByRole('listitem')).toHaveCount(3);
+    // No Xomoni answers in this test browser: the first step is to install it.
+    await expect(steps.getByRole('link', { name: 'Install Xomoni' })).toHaveAttribute('href', '/install');
+    await page.getByRole('button', { name: 'Continue without an account' }).click();
+    await expect(page.getByRole('status')).toHaveText('You can close this tab: Xomoni is ready on your computer.');
+
+    await page.goto('/install');
+    await expect(page.getByRole('region', { name: 'Getting started' })).toBeVisible();
+  });
+});

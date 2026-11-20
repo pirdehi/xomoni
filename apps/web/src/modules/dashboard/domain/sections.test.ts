@@ -43,6 +43,7 @@ describe('the dashboard’s places (#245)', () => {
       'activity',
       'health',
       'browsers',
+      'settings',
     ]);
   });
 

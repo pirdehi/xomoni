@@ -79,6 +79,24 @@ describe('the extension channel (#232, ADR-0025)', () => {
     expect(await channel.read(EXT, { what: 'health', deviceId: DEVICE })).toEqual({ ok: false, reason: 'refused' });
   });
 
+  it('asks for a change of settings, and reads the answer strictly (ADR-0029)', async () => {
+    const { page, sent } = runtime({ ok: false, reason: 'other_account' });
+    const channel = createChromeExtensionChannel(() => page);
+
+    expect(await channel.settings(EXT, { deviceId: DEVICE, change: { whileAway: false } })).toEqual({
+      ok: false,
+      reason: 'other_account',
+    });
+    expect(sent).toEqual([
+      { id: EXT, message: { type: 'xomoni-settings', deviceId: DEVICE, change: { whileAway: false } } },
+    ]);
+    const none = createChromeExtensionChannel(() => undefined);
+    expect(await none.settings(EXT, { deviceId: DEVICE, change: { whileAway: false } })).toEqual({
+      ok: false,
+      reason: 'no_answer',
+    });
+  });
+
   it('signs out', async () => {
     const { page, sent } = runtime({ ok: true, signedOut: true });
     const channel = createChromeExtensionChannel(() => page);

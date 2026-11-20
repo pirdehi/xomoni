@@ -3,11 +3,13 @@ import {
   JOB,
   OPEN,
   READ,
+  SETTINGS,
   SIGN_IN,
   SIGN_OUT,
   parseActionAnswer,
   parseExtensionState,
   parseReadAnswer,
+  parseSettingsAnswer,
   parseSignInAnswer,
   parseSignOutAnswer,
 } from '@xomoni/bridge';
@@ -91,6 +93,9 @@ export function createChromeExtensionChannel(
         await send(runtime(), extensionId, { type: READ, ...message }, timeouts.read),
         message.what,
       );
+    },
+    async settings(extensionId, message) {
+      return parseSettingsAnswer(await send(runtime(), extensionId, { type: SETTINGS, ...message }, timeouts.answer));
     },
   };
 }

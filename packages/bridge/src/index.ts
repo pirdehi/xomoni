@@ -94,7 +94,14 @@ export interface OpenMessage {
 
 /** Everything xomoni.com may send the extension. */
 export type WebsiteMessage =
-  HelloMessage | SignInMessage | SignOutMessage | PairMessage | JobMessage | OpenMessage | ReadMessage;
+  | HelloMessage
+  | SignInMessage
+  | SignOutMessage
+  | PairMessage
+  | JobMessage
+  | OpenMessage
+  | ReadMessage
+  | SettingsMessage;
 
 /** Whether `value` is shaped like an extension id. */
 export function isExtensionId(value: unknown): value is string {
@@ -151,6 +158,8 @@ export function parseWebsiteMessage(raw: unknown): WebsiteMessage | null {
     }
     case READ:
       return parseReadMessage(value);
+    case SETTINGS:
+      return parseSettingsMessage(value);
     default:
       return null;
   }
@@ -312,8 +321,8 @@ export function parseActionAnswer(raw: unknown): ActionAnswer {
 /** Asks the extension for one of its places' data (ADR-0028). */
 export const READ = 'xomoni-read';
 
-/** What the website may read. */
-export type ReadWhat = 'library' | 'health' | 'watch';
+/** What the website may read: `settings` too, under ADR-0029. */
+export type ReadWhat = 'library' | 'health' | 'watch' | 'settings';
 
 /** The kinds of item the Library holds. */
 export type LibraryKind = 'post' | 'reply' | 'repost' | 'like';
@@ -333,7 +342,7 @@ export const MAX_READ_TEXT = 1_000;
 /** `{type: 'xomoni-read', what, deviceId, …}`: the Library also takes a kind, a search and an offset. */
 export type ReadMessage =
   | { type: typeof READ; what: 'library'; deviceId: string; kind: LibraryKind; query: string; offset: number }
-  | { type: typeof READ; what: 'health' | 'watch'; deviceId: string };
+  | { type: typeof READ; what: 'health' | 'watch' | 'settings'; deviceId: string };
 
 /** `raw` as a read message, or null unless it is exactly one of `ReadMessage`'s shapes. */
 export function parseReadMessage(raw: unknown): ReadMessage | null {
@@ -341,7 +350,7 @@ export function parseReadMessage(raw: unknown): ReadMessage | null {
   if (value?.type !== READ) return null;
   const deviceId = matching(value.deviceId, DEVICE_ID);
   if (!deviceId) return null;
-  if (value.what === 'health' || value.what === 'watch') {
+  if (value.what === 'health' || value.what === 'watch' || value.what === 'settings') {
     return onlyKeys(value, ['type', 'what', 'deviceId']) ? { type: READ, what: value.what, deviceId } : null;
   }
   if (value.what !== 'library' || !onlyKeys(value, ['type', 'what', 'deviceId', 'kind', 'query', 'offset']))
@@ -411,6 +420,7 @@ export type ReadAnswer =
   | { ok: true; what: 'library'; page: LibraryPage }
   | { ok: true; what: 'health'; accounts: AccountHealth[] }
   | { ok: true; what: 'watch'; tabs: WatchTabView[] }
+  | { ok: true; what: 'settings'; settings: XomoniSettings }
   | { ok: false; reason: ActionRefusal };
 
 const X_ID = /^\d{1,25}$/;
@@ -511,7 +521,174 @@ export function parseReadAnswer(raw: unknown, what: ReadWhat): ReadAnswer {
     } else if (what === 'watch' && Array.isArray(answer.tabs)) {
       const tabs = (answer.tabs as unknown[]).slice(0, 10).map(parseTab);
       if (!tabs.some((t) => t === null)) return { ok: true, what, tabs: tabs as WatchTabView[] };
+    } else if (what === 'settings') {
+      const settings = parseSettings(answer.settings);
+      if (settings) return { ok: true, what, settings };
     }
+  }
+  const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
+  return { ok: false, reason: reason ?? 'refused' };
+}
+
+// ── Settings (ADR-0029, #234) ────────────────────────────────────────────────────────────────────
+// The website changes a fixed few of Xomoni's settings in the same browser. Xomoni checks and clamps every value
+// with its own rules, so nothing can be set faster than Careful or above the one-fifth ceilings (ADR-0012).
+
+/** Asks the extension to change some of its settings (ADR-0029). */
+export const SETTINGS = 'xomoni-settings';
+
+/** The actions Xomoni paces, in its own order. */
+export type PaceAction = 'delete' | 'unretweet' | 'unlike' | 'relike' | 'read';
+
+/** Every `PaceAction`. */
+export const PACE_ACTIONS: readonly PaceAction[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
+
+/** The most Watch searches an account has (ADR-0021). */
+export const MAX_WATCH_SEARCHES = 5;
+
+/** Local hours from `start` up to `end` (0–23); the same hour for both means all day, as in Xomoni. */
+export interface ActiveHours {
+  enabled: boolean;
+  start: number;
+  end: number;
+}
+
+/** Xomoni's settings as the website shows them. */
+export interface XomoniSettings {
+  /** `careful` runs at one fifth of X's published limits; `custom` is slower, and set in Xomoni. */
+  preset: 'careful' | 'custom';
+  /** Each action's caps as Xomoni applies them. */
+  pace: Record<PaceAction, { perHour: number; perDay: number }>;
+  activeHours: ActiveHours;
+  notifications: boolean;
+  whileAway: boolean;
+  /** Unknown failures in a row that pause a job: 1 to 3. */
+  maxFailures: number;
+  /** The active X account, whose Watch searches `watch` holds; empty when Xomoni knows none yet. */
+  handle: string;
+  /** The active account's Watch tabs in order; an empty string is a tab with no search yet. */
+  watch: string[];
+}
+
+/** What the website may change (ADR-0029); at least one of them. */
+export interface SettingsChange {
+  /** Back to Careful: custom pacing is set in Xomoni. */
+  preset?: 'careful';
+  activeHours?: ActiveHours;
+  notifications?: boolean;
+  whileAway?: boolean;
+  maxFailures?: number;
+  /** The active account's Watch tabs in order, at most `MAX_WATCH_SEARCHES`. */
+  watch?: string[];
+}
+
+/** `{type: 'xomoni-settings', deviceId, change}`. */
+export interface SettingsMessage {
+  type: typeof SETTINGS;
+  deviceId: string;
+  change: SettingsChange;
+}
+
+/** The answer to `xomoni-settings`: the settings as Xomoni stored them, or why it refused. */
+export type SettingsAnswer = { ok: true; settings: XomoniSettings } | { ok: false; reason: ActionRefusal };
+
+const CHANGE_KEYS = ['preset', 'activeHours', 'notifications', 'whileAway', 'maxFailures', 'watch'] as const;
+
+function hour(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 23 ? value : null;
+}
+
+function failures(value: unknown): number | null {
+  return typeof value === 'number' && [1, 2, 3].includes(value) ? value : null;
+}
+
+function parseHours(raw: unknown): ActiveHours | null {
+  const v = record(raw);
+  if (!v || !onlyKeys(v, ['enabled', 'start', 'end']) || typeof v.enabled !== 'boolean') return null;
+  const start = hour(v.start);
+  const end = hour(v.end);
+  return start === null || end === null ? null : { enabled: v.enabled, start, end };
+}
+
+function parseSearches(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.length > MAX_WATCH_SEARCHES) return null;
+  const searches = raw as unknown[];
+  return searches.every((q) => typeof q === 'string' && q.length <= MAX_READ_QUERY) ? (searches as string[]) : null;
+}
+
+/** `raw` as a settings message, or null unless it is exactly `SettingsMessage` with at least one valid change. */
+export function parseSettingsMessage(raw: unknown): SettingsMessage | null {
+  const value = record(raw);
+  if (value?.type !== SETTINGS || !onlyKeys(value, ['type', 'deviceId', 'change'])) return null;
+  const deviceId = matching(value.deviceId, DEVICE_ID);
+  const c = record(value.change);
+  if (!deviceId || !c || !onlyKeys(c, CHANGE_KEYS) || Object.keys(c).length === 0) return null;
+  const change: SettingsChange = {};
+  if ('preset' in c) {
+    if (c.preset !== 'careful') return null;
+    change.preset = 'careful';
+  }
+  if ('activeHours' in c) {
+    const hours = parseHours(c.activeHours);
+    if (!hours) return null;
+    change.activeHours = hours;
+  }
+  for (const key of ['notifications', 'whileAway'] as const) {
+    if (!(key in c)) continue;
+    const on = c[key];
+    if (typeof on !== 'boolean') return null;
+    change[key] = on;
+  }
+  if ('maxFailures' in c) {
+    const max = failures(c.maxFailures);
+    if (max === null) return null;
+    change.maxFailures = max;
+  }
+  if ('watch' in c) {
+    const watch = parseSearches(c.watch);
+    if (!watch) return null;
+    change.watch = watch;
+  }
+  return { type: SETTINGS, deviceId, change };
+}
+
+function parseSettings(raw: unknown): XomoniSettings | null {
+  const v = record(raw);
+  const preset = v?.preset === 'careful' || v?.preset === 'custom' ? v.preset : null;
+  const paceRaw = record(v?.pace);
+  const activeHours = parseHours(v?.activeHours);
+  const maxFailures = failures(v?.maxFailures);
+  const handle = matching(v?.handle, HANDLE_TEXT);
+  const watch = parseSearches(v?.watch);
+  if (!preset || !paceRaw || !activeHours || maxFailures === null || handle === null || !watch) return null;
+  if (typeof v?.notifications !== 'boolean' || typeof v.whileAway !== 'boolean') return null;
+  const pace = {} as XomoniSettings['pace'];
+  for (const action of PACE_ACTIONS) {
+    const rule = record(paceRaw[action]);
+    const perHour = count(rule?.perHour);
+    const perDay = count(rule?.perDay);
+    if (perHour === null || perDay === null) return null;
+    pace[action] = { perHour, perDay };
+  }
+  return {
+    preset,
+    pace,
+    activeHours,
+    notifications: v.notifications,
+    whileAway: v.whileAway,
+    maxFailures,
+    handle,
+    watch,
+  };
+}
+
+/** `raw` as the answer to `xomoni-settings`: anything unexpected is `refused`, nothing at all `no_answer`. */
+export function parseSettingsAnswer(raw: unknown): SettingsAnswer {
+  if (raw === undefined || raw === null) return { ok: false, reason: 'no_answer' };
+  const answer = record(raw);
+  if (answer?.ok === true) {
+    const settings = parseSettings(answer.settings);
+    if (settings) return { ok: true, settings };
   }
   const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
   return { ok: false, reason: reason ?? 'refused' };

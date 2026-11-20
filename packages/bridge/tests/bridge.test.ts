@@ -6,7 +6,12 @@ import {
   PAIR,
   READ,
   READ_PAGE,
+  MAX_WATCH_SEARCHES,
+  PACE_ACTIONS,
+  SETTINGS,
   parseReadAnswer,
+  parseSettingsAnswer,
+  parseSettingsMessage,
   parseReadMessage,
   SIGN_IN,
   SIGN_OUT,
@@ -367,5 +372,107 @@ describe('reads (ADR-0028, #233)', () => {
     });
     expect(parseReadAnswer({ ok: false, reason: 'later' }, 'library')).toEqual({ ok: false, reason: 'refused' });
     expect(parseReadAnswer(undefined, 'watch')).toEqual({ ok: false, reason: 'no_answer' });
+  });
+});
+
+describe('settings (ADR-0029, #234)', () => {
+  const settings = {
+    preset: 'custom',
+    pace: Object.fromEntries(PACE_ACTIONS.map((a) => [a, { perHour: 10, perDay: 100 }])),
+    activeHours: { enabled: true, start: 8, end: 23 },
+    notifications: true,
+    whileAway: false,
+    maxFailures: 2,
+    handle: 'ada',
+    watch: ['xomoni', ''],
+  };
+  const message = (change: unknown) => ({ type: SETTINGS, deviceId: DEVICE, change });
+
+  it('reads a change of the settings the website may change, and nothing more', () => {
+    const change = {
+      preset: 'careful',
+      activeHours: { enabled: false, start: 22, end: 22 },
+      notifications: false,
+      whileAway: true,
+      maxFailures: 3,
+      watch: ['#rust', '', 'x'.repeat(100)],
+    };
+    expect(parseWebsiteMessage(message(change))).toEqual({ type: SETTINGS, deviceId: DEVICE, change });
+    expect(parseSettingsMessage(message({ notifications: true }))).toEqual(message({ notifications: true }));
+    expect(parseSettingsMessage(message({ watch: [] }))).toEqual(message({ watch: [] }));
+  });
+
+  it('refuses anything faster, out of range, malformed or unknown', () => {
+    for (const change of [
+      {},
+      null,
+      'everything',
+      { preset: 'custom' },
+      { preset: 'fast' },
+      { pacing: { delete: { hourlyCap: 1000 } } },
+      { theme: 'dark' },
+      { activeHours: { enabled: true, start: 24, end: 3 } },
+      { activeHours: { enabled: true, start: -1, end: 3 } },
+      { activeHours: { enabled: true, start: 1.5, end: 3 } },
+      { activeHours: { enabled: 'yes', start: 1, end: 3 } },
+      { activeHours: { enabled: true, start: 1, end: 3, tz: 'UTC' } },
+      { activeHours: 'always' },
+      { notifications: 'on' },
+      { whileAway: 1 },
+      { maxFailures: 0 },
+      { maxFailures: 4 },
+      { maxFailures: 2.5 },
+      { watch: Array.from({ length: MAX_WATCH_SEARCHES + 1 }, () => 'a') },
+      { watch: ['x'.repeat(101)] },
+      { watch: [42] },
+      { watch: 'xomoni' },
+    ]) {
+      expect(parseSettingsMessage(message(change)), JSON.stringify(change)).toBeNull();
+    }
+    expect(parseSettingsMessage({ type: SETTINGS, deviceId: 'me', change: { notifications: true } })).toBeNull();
+    expect(parseSettingsMessage({ ...message({ notifications: true }), extra: 1 })).toBeNull();
+    expect(parseSettingsMessage({ type: READ, deviceId: DEVICE, change: { notifications: true } })).toBeNull();
+    expect(parseSettingsMessage(null)).toBeNull();
+  });
+
+  it('reads the settings with xomoni-read, strictly', () => {
+    expect(parseReadMessage({ type: READ, what: 'settings', deviceId: DEVICE })).toEqual({
+      type: READ,
+      what: 'settings',
+      deviceId: DEVICE,
+    });
+    expect(parseReadAnswer({ ok: true, what: 'settings', settings }, 'settings')).toEqual({
+      ok: true,
+      what: 'settings',
+      settings,
+    });
+    expect(
+      parseReadAnswer({ ok: true, what: 'settings', settings: { ...settings, preset: 'fast' } }, 'settings'),
+    ).toEqual({ ok: false, reason: 'refused' });
+  });
+
+  it('reads the answer to a change strictly', () => {
+    expect(parseSettingsAnswer({ ok: true, settings })).toEqual({ ok: true, settings });
+    for (const bad of [
+      { ...settings, preset: 'fast' },
+      { ...settings, pace: { ...settings.pace, read: { perHour: -1, perDay: 1 } } },
+      { ...settings, pace: { delete: { perHour: 1, perDay: 1 } } },
+      { ...settings, pace: 'careful' },
+      { ...settings, activeHours: { enabled: true, start: 8 } },
+      { ...settings, maxFailures: 9 },
+      { ...settings, handle: 'not a handle' },
+      { ...settings, watch: ['a', 'b', 'c', 'd', 'e', 'f'] },
+      { ...settings, notifications: 'yes' },
+      { ...settings, whileAway: null },
+      null,
+    ]) {
+      expect(parseSettingsAnswer({ ok: true, settings: bad }), JSON.stringify(bad)).toEqual({
+        ok: false,
+        reason: 'refused',
+      });
+    }
+    expect(parseSettingsAnswer({ ok: false, reason: 'signed_out' })).toEqual({ ok: false, reason: 'signed_out' });
+    expect(parseSettingsAnswer({ ok: false, reason: 'later' })).toEqual({ ok: false, reason: 'refused' });
+    expect(parseSettingsAnswer(undefined)).toEqual({ ok: false, reason: 'no_answer' });
   });
 });

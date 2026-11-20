@@ -6,8 +6,8 @@ The module has no data and no actions, so it has only a `ui/` layer.
 
 ## Layers
 
-| Layer | Files | Responsibility |
-| --- | --- | --- |
+| Layer | Files                                             | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ui/` | `home-page.tsx`, `content.ts`, `install-page.tsx` | `HomePage`: header, hero with the dashboard screenshot (light or dark, following the visitor's system), the sections, the questions (a Fluent accordion), a closing call to action and the footer. `content.ts` holds the words, so copy changes don't touch the layout. `InstallPage`: the download buttons (the latest release's `xomoni-extension.zip` and every release with its checksums, `docs/RELEASING.md`), four numbered steps and how to update. |
 
 ## Rules

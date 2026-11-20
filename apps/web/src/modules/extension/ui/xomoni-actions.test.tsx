@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { XomoniActionServices } from '../client/xomoni-actions';
 import { OpenInXomoni, XomoniJobActions, useXomoni, useXomoniRead } from './xomoni-actions';
@@ -22,6 +23,7 @@ let services: {
   ask: ReturnType<typeof vi.fn>;
   recheck: ReturnType<typeof vi.fn>;
   read: ReturnType<typeof vi.fn>;
+  settings: ReturnType<typeof vi.fn>;
 };
 
 /** A page with one running job of this browser and *Open in Xomoni* for the Library. */
@@ -59,6 +61,7 @@ beforeEach(() => {
     ask: vi.fn(() => Promise.resolve({ ok: true, outcome: 'stopping' })),
     recheck: vi.fn(() => Promise.resolve()),
     read: vi.fn(() => Promise.resolve({ ok: true, what: 'watch', tabs: [] })),
+    settings: vi.fn(() => Promise.resolve({ ok: false, reason: 'refused' })),
   };
 });
 afterEach(() => {
@@ -264,5 +267,38 @@ describe('useXomoniRead (ADR-0028, #233)', () => {
     expect(sessionStorage.length).toBe(0);
     expect(document.cookie).not.toContain('secret');
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+/** A page that turns notifications off through Xomoni, showing its answer. */
+function Changer() {
+  const xomoni = useXomoni([MINE], () => services as unknown as XomoniActionServices);
+  const [answer, setAnswer] = useState('none yet');
+  return (
+    <>
+      <p>{answer}</p>
+      <button
+        onClick={() => void xomoni.changeSettings({ notifications: false }).then((a) => setAnswer(JSON.stringify(a)))}
+      >
+        change
+      </button>
+    </>
+  );
+}
+
+describe('useXomoni: changing settings (ADR-0029, #234)', () => {
+  it('hands the change to Xomoni here, naming its device', async () => {
+    render(<Changer />);
+    await userEvent.click(screen.getByRole('button', { name: 'change' }));
+    expect(await screen.findByText('{"ok":false,"reason":"refused"}')).toBeInTheDocument();
+    expect(services.settings).toHaveBeenCalledWith({ deviceId: MINE, change: { notifications: false } });
+  });
+
+  it('sends nothing while Xomoni here is signed in to another account', async () => {
+    link.current = { status: 'signed-in', deviceId: OTHER };
+    render(<Changer />);
+    await userEvent.click(screen.getByRole('button', { name: 'change' }));
+    expect(await screen.findByText('null')).toBeInTheDocument();
+    expect(services.settings).not.toHaveBeenCalled();
   });
 });

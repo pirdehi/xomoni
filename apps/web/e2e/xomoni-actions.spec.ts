@@ -23,6 +23,18 @@ async function asExtension(fn: string, body: Record<string, unknown>) {
  */
 async function installFakeXomoni(page: Page) {
   const state: { connection: { deviceId: string; token: string; account: string } | null } = { connection: null };
+  let settings = {
+    preset: 'custom',
+    pace: Object.fromEntries(
+      ['delete', 'unretweet', 'unlike', 'relike', 'read'].map((a) => [a, { perHour: 5, perDay: 50 }]),
+    ),
+    activeHours: { enabled: true, start: 8, end: 23 },
+    notifications: true,
+    whileAway: true,
+    maxFailures: 2,
+    handle: 'ada',
+    watch: ['xomoni', ''],
+  };
   const received: Record<string, unknown>[] = [];
   await page.exposeFunction('xomoniFakeExtension', async (id: string, message: Record<string, unknown>) => {
     if (id !== EXT) return undefined;
@@ -84,7 +96,13 @@ async function installFakeXomoni(page: Page) {
         return { ok: true, outcome: 'opened' };
       case 'xomoni-read':
         if (message.deviceId !== state.connection?.deviceId) return { ok: false, reason: 'other_account' };
-        return readAnswer(message);
+        return message.what === 'settings' ? { ok: true, what: 'settings', settings } : readAnswer(message);
+      case 'xomoni-settings': {
+        if (message.deviceId !== state.connection?.deviceId) return { ok: false, reason: 'other_account' };
+        // Xomoni applies its own rules; here a change is simply taken as it came.
+        settings = { ...settings, ...(message.change as Partial<typeof settings>) };
+        return { ok: true, settings };
+      }
       default:
         return { ok: false, reason: 'invalid' };
     }
@@ -275,6 +293,53 @@ test.describe('Xomoni’s places on xomoni.com, read in this browser (#233, ADR-
     );
     expect(stored).not.toContain(SECRET_POST);
     expect(stored).not.toContain(SECRET_SEARCH);
+  });
+});
+
+test.describe('Xomoni’s settings on xomoni.com, changed in this browser (#234, ADR-0029)', () => {
+  test('shows Xomoni’s settings, and hands each change to Xomoni, which answers what it stored', async ({ page }) => {
+    const email = uniqueEmail('settings');
+    await createConfirmedUser(email, PASSWORD);
+    const fake = await installFakeXomoni(page);
+    await page.goto(`/#ext=${EXT}`);
+    await expect(page).toHaveURL(/\/$/);
+    await signIn(page, email, PASSWORD);
+    await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => fake.state.connection?.deviceId).toBeTruthy();
+
+    await page.goto('/dashboard/settings');
+    const pace = page.getByRole('region', { name: /^Pace/ });
+    await expect(pace.getByText('Custom', { exact: true })).toBeVisible();
+    await pace.getByRole('button', { name: 'Back to Careful' }).click();
+    await expect(pace.getByText('Careful', { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Saved in Xomoni/)).toBeVisible();
+
+    await page.getByRole('combobox', { name: 'From' }).selectOption('9');
+    await expect(page.getByRole('combobox', { name: 'From' })).toHaveValue('9');
+    await page.getByRole('textbox', { name: 'Search 2' }).fill('#rust');
+    await page.getByRole('button', { name: 'Save searches' }).click();
+    await expect(page.getByRole('button', { name: 'Save searches' })).toBeDisabled();
+    // The daily numbers choice is the account's, in the cloud: it shows here too.
+    await expect(page.getByRole('switch', { name: 'Show my numbers on xomoni.com' })).toBeVisible();
+
+    const changes = fake.received.filter((m) => m.type === 'xomoni-settings');
+    expect(changes.map((m) => m.change)).toEqual([
+      { preset: 'careful' },
+      { activeHours: { enabled: true, start: 9, end: 23 } },
+      { watch: ['xomoni', '#rust'] },
+    ]);
+    expect(new Set(changes.map((m) => m.deviceId))).toEqual(new Set([fake.state.connection?.deviceId]));
+  });
+
+  test('without Xomoni in this browser, says where the settings live', async ({ page }) => {
+    const email = uniqueEmail('settings-none');
+    await createConfirmedUser(email, PASSWORD);
+    await signIn(page, email, PASSWORD);
+    await page.waitForURL(/\/dashboard/);
+    await page.goto('/dashboard/settings');
+    await expect(page.getByRole('region', { name: 'Xomoni’s settings: in Xomoni' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open in Xomoni' }).click();
+    await expect(page.getByRole('dialog', { name: 'You haven’t installed Xomoni yet' })).toBeVisible();
   });
 });
 

@@ -204,11 +204,10 @@ export const SECTIONS: readonly Section[] = [
     group: 'history',
     label: 'Settings',
     summary: 'Xomoni’s pace, safety and notifications, applied on your computer.',
-    shows: ['Pace and safety, as in Xomoni', 'Whether your daily numbers show here', 'Notifications'],
+    shows: [],
     source: 'Xomoni on this computer',
     needsXomoni: true,
-    ready: false,
-    issue: 234,
+    ready: true,
   },
 ];
 

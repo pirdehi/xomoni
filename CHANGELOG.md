@@ -6,6 +6,13 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Settings on xomoni.com** (#234), in the browser where Xomoni runs.
+  - See Xomoni's pace with each action's caps, and set custom pacing back to Careful.
+  - Change active hours, the failures in a row before a job pauses, notifications and *Keep going while away*.
+  - Edit the active account's Watch searches.
+  - Xomoni applies its own rules to every change, so nothing goes faster than Careful or above a fifth of X's limits. It writes the change to its activity log, and a running job keeps its settings until it is paused and resumed ([ADR-0029](docs/adr/0029-xomoni-settings-from-the-website.md)).
+  - *Show my numbers on xomoni.com* is here too, on any device.
+
 - **Your Library, Watch and account health on xomoni.com** (#233), in the browser where Xomoni runs.
   - The Library: your posts, replies, reposts and likes, newest first, with each kind's count, a search, 100 at a time, and *Open on X*.
   - Account health: each X account's level and why, its pace, and when a hold ends.

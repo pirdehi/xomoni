@@ -1,12 +1,14 @@
 // Everything xomoni.com may ask the extension, in one place for the service worker (ADR-0024, ADR-0025, ADR-0027). The
 // manifest lets only https://xomoni.com send; the sender is checked again here, and the message must be exactly one of
 // the shapes in `@xomoni/bridge`. Each asks one thing: how the extension stands, a pairing it asked for, a sign-in, a
-// sign-out, to pause, cancel or resume a job, to open a page of Xomoni, or to read its Library, health or Watch
-// (ADR-0028). None reads X content, and none starts or
-// approves work on X: a resume only opens Xomoni's own confirmation (ADR-0004, ADR-0027).
-import { HELLO, JOB, OPEN, PAIR, READ, SIGN_IN, SIGN_OUT, parseWebsiteMessage } from '@xomoni/bridge';
+// sign-out, to pause, cancel or resume a job, to open a page of Xomoni, to read its Library, health, Watch or settings
+// (ADR-0028), or to change a few settings within Xomoni's safety rules (ADR-0029). None sends X content anywhere but
+// that page, and none starts or approves work on X: a resume only opens Xomoni's own confirmation (ADR-0004,
+// ADR-0027).
+import { HELLO, JOB, OPEN, PAIR, READ, SETTINGS, SIGN_IN, SIGN_OUT, parseWebsiteMessage } from '@xomoni/bridge';
 import { type ActionPorts, answerJob, answerOpen } from './website-actions';
 import { answerRead } from './website-reads';
+import { answerSettings } from './website-settings';
 import { connectFromWebsite, fromWebsite } from './web-connect';
 import { extensionState, signInFromWebsite, signOutFromWebsite } from './web-session';
 
@@ -52,5 +54,7 @@ export function answerWebsite(raw: unknown, sender: WebsiteSender, ports: Action
     case READ:
       // A read changes nothing, so it needn't wait its turn.
       return answerRead(message);
+    case SETTINGS:
+      return inTurn(() => answerSettings(message));
   }
 }

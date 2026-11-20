@@ -1,5 +1,5 @@
-// What xomoni.com may read of Xomoni's own data in this browser (ADR-0028, #233): the Library, account health and
-// Watch. A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
+// What xomoni.com may read of Xomoni's own data in this browser (ADR-0028, #233): the Library, account health,
+// Watch, and the settings (ADR-0029). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
 // device this extension is connected as. The answers are X content: they go to that page in this browser and nowhere
 // else (ADR-0004).
 import {
@@ -16,15 +16,10 @@ import {
 } from '@xomoni/bridge';
 import { db, kvGet, riskEvents, watchResults, watchTabsKey } from '../shared/db';
 import { assessRisk } from '../shared/risk';
-import type { Account, Item } from '../shared/types';
+import type { Item } from '../shared/types';
 import { normalizeTabs } from '../shared/watch';
-import { accessRefusal } from './website-access';
-
-/** The X account the dashboard works with: the one last seen in the worker, else the most recently updated. */
-async function activeAccount(): Promise<Account | undefined> {
-  const id = await kvGet<string | null>('activeAccount', null);
-  return (id ? await db.accounts.get(id) : undefined) ?? (await db.accounts.orderBy('updatedAt').last());
-}
+import { accessRefusal, activeAccount } from './website-access';
+import { readSettings } from './website-settings';
 
 /** Whether an item matches a search: in its text or its author, ignoring case. */
 function matches(item: Item, query: string): boolean {
@@ -129,5 +124,7 @@ export async function answerRead(message: ReadMessage): Promise<ReadAnswer> {
       return { ok: true, what: 'health', accounts: await readHealth() };
     case 'watch':
       return { ok: true, what: 'watch', tabs: await readWatch() };
+    case 'settings':
+      return { ok: true, what: 'settings', settings: await readSettings() };
   }
 }

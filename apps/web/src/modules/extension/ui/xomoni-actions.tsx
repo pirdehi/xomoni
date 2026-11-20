@@ -35,6 +35,7 @@ import type {
   JobAction,
   LibraryKind,
   ReadAnswer,
+  RepliesFilter,
   SettingsAnswer,
   SettingsChange,
   XomoniPage,
@@ -80,7 +81,8 @@ export type XomoniReadRequest =
   | { what: 'health' }
   | { what: 'watch' }
   | { what: 'settings' }
-  | { what: 'cleanup'; plan: CleanupPlan };
+  | { what: 'cleanup'; plan: CleanupPlan }
+  | { what: 'replies'; filter: RepliesFilter; offset: number };
 
 /** What `useXomoni` gives a page. */
 export interface XomoniControls {

@@ -1,6 +1,7 @@
 // Cleanups planned on xomoni.com (#235, ADR-0027): the website asks the same three questions as Xomoni's Cleanup page,
 // can see how much a plan matches (counts only, from Xomoni's copy on this computer), and hands the plan over. Xomoni
-// then opens its Cleanup page with the plan filled in. No job is made here: nothing starts until the person reviews
+// then opens its Cleanup page with the plan filled in. A plan can also name replies the person picked on the website
+// (#256): only those are removed, still under every other rule. No job is made here: nothing starts until the person reviews
 // the plan on that page and confirms.
 import type { ActionAnswer, CleanupEstimate, CleanupPlan, PlanMessage } from '@xomoni/bridge';
 import { savePlannedCleanup } from '../shared/cleanup-plan';
@@ -10,7 +11,7 @@ import type { CleanupFilter } from '../shared/types';
 import { accessRefusal, activeAccount } from './website-access';
 import type { ActionPorts } from './website-actions';
 
-/** `plan` as the rules of a cleanup: keywords lowercased and trimmed, no ids to keep. */
+/** `plan` as the rules of a cleanup: keywords lowercased and trimmed, no ids to keep, and the picked ids if any. */
 export function toFilter(plan: CleanupPlan): CleanupFilter {
   return {
     target: plan.target,
@@ -20,6 +21,7 @@ export function toFilter(plan: CleanupPlan): CleanupFilter {
     keepKeywords: plan.keepKeywords.map((k) => k.trim().toLowerCase()).filter(Boolean),
     keepIds: [],
     skipSelfReplies: plan.skipSelfReplies,
+    ...(plan.onlyIds && { onlyIds: [...plan.onlyIds] }),
   };
 }
 
@@ -30,11 +32,26 @@ const PLURAL: Record<CleanupPlan['target'], string> = {
   like: 'likes',
 };
 
+const SINGULAR: Record<CleanupPlan['target'], string> = {
+  post: 'post',
+  reply: 'reply',
+  repost: 'repost',
+  like: 'like',
+};
+
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-/** The plan in the log's words: "replies older than 2025-11-20, from 2015-01-01, keeping 10+ likes". */
+/**
+ * The plan in the log's words: "replies older than 2025-11-20, from 2015-01-01, keeping 10+ likes", or "12 replies
+ * picked on xomoni.com".
+ */
 export function describePlan(plan: CleanupPlan): string {
-  const parts = [`${PLURAL[plan.target]} older than ${day(plan.before)}`];
+  const picked = plan.onlyIds?.length;
+  const parts = [
+    picked
+      ? `${picked} ${picked === 1 ? SINGULAR[plan.target] : PLURAL[plan.target]} picked on xomoni.com`
+      : `${PLURAL[plan.target]} older than ${day(plan.before)}`,
+  ];
   if (plan.after !== null) parts.push(`from ${day(plan.after)}`);
   const keeps: string[] = [];
   if (plan.keepMinLikes !== null && (plan.target === 'post' || plan.target === 'reply'))

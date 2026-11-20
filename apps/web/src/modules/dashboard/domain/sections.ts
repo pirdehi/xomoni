@@ -145,7 +145,7 @@ export const SECTIONS: readonly Section[] = [
     ],
     source: 'Xomoni on this computer: your posts never reach our servers',
     needsXomoni: true,
-    ready: false,
+    ready: true,
     issue: 256,
   },
   {

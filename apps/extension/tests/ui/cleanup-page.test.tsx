@@ -150,6 +150,52 @@ describe('Cleanup page', () => {
       await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
     });
 
+    describe('posts picked on xomoni.com (#256)', () => {
+      const picked = (): CleanupFilter => ({
+        target: 'post',
+        before: Date.now(),
+        after: null,
+        keepMinLikes: null,
+        keepKeywords: [],
+        keepIds: [],
+        skipSelfReplies: false,
+        onlyIds: ['1000000001', '1000000004'],
+      });
+
+      it('removes only those, visiting each instead of searching X, and still needs the confirmation', async () => {
+        const props = await (async () => {
+          await savePlannedCleanup({ accountId: ME, filter: picked(), at: Date.now() });
+          return renderWithArchive(2);
+        })();
+        expect(screen.getByText('1 · Picked on xomoni.com')).toBeInTheDocument();
+        expect(screen.getByText(/Only the posts you picked on xomoni.com are removed\./)).toBeInTheDocument();
+        expect(screen.queryByText('2 · Older than')).not.toBeInTheDocument();
+        expect(screen.getByText('2 · Exceptions')).toBeInTheDocument();
+
+        const modal = await openConfirm();
+        expect(within(modal).getByText('Delete the posts picked on xomoni.com (2)')).toBeInTheDocument();
+        expect(await jobs()).toEqual([]);
+        await userEvent.type(confirmInput(), 'DELETE');
+        await userEvent.click(confirmButton());
+        await waitFor(() => expect(props.navigate).toHaveBeenCalledWith('jobs'));
+        const [job] = await jobs();
+        expect(job).toMatchObject({
+          options: { sweep: false, deep: true },
+          filter: { target: 'post', onlyIds: ['1000000001', '1000000004'] },
+        });
+      });
+
+      it('goes back to the whole form, and its usual rules, on request', async () => {
+        await savePlannedCleanup({ accountId: ME, filter: picked(), at: Date.now() });
+        await renderWithArchive(2);
+        await userEvent.click(screen.getByRole('button', { name: 'Use the form instead' }));
+        expect(screen.getByText('1 · What to clean up')).toBeInTheDocument();
+        expect(screen.getByText('3 · Exceptions')).toBeInTheDocument();
+        // The plan's own end stays the date; without the picks, the three old posts match again.
+        await waitFor(() => expect(matching()).toHaveTextContent(/^3$/));
+      });
+    });
+
     it('leaves a plan for another X account alone', async () => {
       const at = Date.now();
       await savePlannedCleanup({ accountId: 'someone-else', filter: PLAN, at });

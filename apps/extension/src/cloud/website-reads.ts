@@ -1,5 +1,5 @@
 // What xomoni.com may read of Xomoni's own data in this browser (ADR-0028, #233): the Library, account health,
-// Watch, and the settings (ADR-0029). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
+// Watch, the settings (ADR-0029), and the person's replies with whom each answers (#256). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
 // device this extension is connected as. The answers are X content: they go to that page in this browser and nowhere
 // else (ADR-0004).
 import {
@@ -9,9 +9,14 @@ import {
   LIBRARY_KINDS,
   type LibraryPage,
   MAX_READ_TEXT,
+  MAX_REPLIED_TO,
   READ_PAGE,
   type ReadAnswer,
   type ReadMessage,
+  type RepliedTo,
+  type RepliesFilter,
+  type RepliesPage,
+  type ReplyItem,
   type WatchTabView,
 } from '@xomoni/bridge';
 import { db, kvGet, riskEvents, watchResults, watchTabsKey } from '../shared/db';
@@ -72,6 +77,65 @@ export async function readLibrary(kind: LibraryKind, query: string, offset: numb
   return { handle: account.handle, counts, matching, items, next };
 }
 
+/** Whether one of the person's replies passes the Comments place's filter (#256). */
+function replyMatches(item: Item, filter: RepliesFilter, query: string): boolean {
+  if (!filter.threads && item.selfReply) return false;
+  if (filter.after !== null && item.createdAt < filter.after) return false;
+  if (filter.before !== null && item.createdAt >= filter.before) return false;
+  if (filter.maxLikes !== null && item.likes > filter.maxLikes) return false;
+  if (filter.replyTo && (item.replyTo ?? '').toLowerCase() !== filter.replyTo.toLowerCase()) return false;
+  return !query || item.text.toLowerCase().includes(query);
+}
+
+function toReplyItem(item: Item): ReplyItem {
+  return {
+    id: item.id,
+    replyTo: item.replyTo ?? '',
+    text: item.text.slice(0, MAX_READ_TEXT),
+    createdAt: item.createdAt,
+    likes: item.likes,
+    reposts: item.reposts,
+    replies: item.replies,
+    thread: item.selfReply,
+  };
+}
+
+/**
+ * The active account's replies still on X (#256), newest first: a page of those matching `filter` from `offset`, and
+ * whom the person replies to most. One pass over the replies, so a long history isn't held in memory.
+ */
+export async function readReplies(filter: RepliesFilter, offset: number): Promise<RepliesPage> {
+  const account = await activeAccount();
+  if (!account) return { handle: '', total: 0, matching: 0, items: [], next: null, people: [] };
+  const query = filter.query.trim().toLowerCase();
+  const people = new Map<string, RepliedTo>();
+  const items: ReplyItem[] = [];
+  let total = 0;
+  let matching = 0;
+  await db.items
+    .where('[accountId+kind+status+createdAt]')
+    .between([account.id, 'reply', 'present', -Infinity], [account.id, 'reply', 'present', Infinity])
+    .reverse()
+    .each((item) => {
+      total++;
+      if (item.replyTo && !item.selfReply) {
+        // One person, however X capitalized their handle on each reply.
+        const key = item.replyTo.toLowerCase();
+        const person = people.get(key) ?? { handle: item.replyTo, replies: 0 };
+        person.replies++;
+        people.set(key, person);
+      }
+      if (!replyMatches(item, filter, query)) return;
+      if (matching >= offset && items.length < READ_PAGE) items.push(toReplyItem(item));
+      matching++;
+    });
+  const most = [...people.values()]
+    .sort((a, b) => b.replies - a.replies || a.handle.localeCompare(b.handle))
+    .slice(0, MAX_REPLIED_TO);
+  const next = offset + items.length < matching ? offset + items.length : null;
+  return { handle: account.handle, total, matching, items, next, people: most };
+}
+
 /** Each known X account's health, as the risk ladder sees it at `now`. */
 export async function readHealth(now = Date.now()): Promise<AccountHealth[]> {
   const accounts = await db.accounts.orderBy('updatedAt').reverse().limit(50).toArray();
@@ -129,5 +193,7 @@ export async function answerRead(message: ReadMessage): Promise<ReadAnswer> {
       return { ok: true, what: 'settings', settings: await readSettings() };
     case 'cleanup':
       return { ok: true, what: 'cleanup', estimate: await estimatePlan(message.plan) };
+    case 'replies':
+      return { ok: true, what: 'replies', page: await readReplies(message.filter, message.offset) };
   }
 }

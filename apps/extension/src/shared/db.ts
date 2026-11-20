@@ -208,6 +208,8 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
         next.createdAt ||= d.createdAt;
       }
       next.targetId ||= d.targetId;
+      // Whom a reply answers (#256): what X shows live wins; the archive only fills it in.
+      if (d.replyTo && (source === 'scan' || !next.replyTo)) next.replyTo = d.replyTo;
       if (d.likedAt != null) next.likedAt = Math.max(prev.likedAt ?? 0, d.likedAt);
       return next;
     });

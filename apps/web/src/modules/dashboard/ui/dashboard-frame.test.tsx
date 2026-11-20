@@ -32,7 +32,8 @@ describe('DashboardFrame (#245)', () => {
     const current = within(sidebar).getByRole('link', { current: 'page' });
     expect(current).toHaveTextContent('Audience');
     expect(within(sidebar).getByRole('link', { name: /^Overview/ })).not.toHaveTextContent('Soon');
-    expect(within(sidebar).getByRole('link', { name: /^Comments/ })).toHaveTextContent('Soon');
+    expect(within(sidebar).getByRole('link', { name: /^Comments/ })).not.toHaveTextContent('Soon');
+    expect(within(sidebar).getByRole('link', { name: /^Reports/ })).toHaveTextContent('Soon');
     expect(screen.getByRole('heading', { level: 1, name: 'Audience' })).toBeInTheDocument();
     expect(screen.getByText('Who follows you, and how that changes.')).toBeInTheDocument();
     expect(screen.getByText('Page content')).toBeInTheDocument();

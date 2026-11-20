@@ -324,8 +324,11 @@ export function parseActionAnswer(raw: unknown): ActionAnswer {
 /** Asks the extension for one of its places' data (ADR-0028). */
 export const READ = 'xomoni-read';
 
-/** What the website may read: `settings` too, under ADR-0029, and a cleanup plan's estimate (#235). */
-export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup';
+/**
+ * What the website may read: `settings` too, under ADR-0029, a cleanup plan's estimate (#235), and the person's
+ * replies with whom each answers (#256).
+ */
+export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup' | 'replies';
 
 /** The kinds of item the Library holds. */
 export type LibraryKind = 'post' | 'reply' | 'repost' | 'like';
@@ -342,11 +345,55 @@ export const MAX_READ_QUERY = 100;
 /** The longest text an item or post carries in an answer. */
 export const MAX_READ_TEXT = 1_000;
 
-/** `{type: 'xomoni-read', what, deviceId, …}`: the Library also takes a kind, a search and an offset. */
+/**
+ * Which of the person's replies to list (#256): all of them match the defaults. Times are epoch ms, and `replyTo` is
+ * a handle without `@`. Only replies Xomoni knows are still on X are listed.
+ */
+export interface RepliesFilter {
+  /** Only replies from this time on, or null. */
+  after: number | null;
+  /** Only replies older than this, or null. */
+  before: number | null;
+  /** Only replies with at most this many likes, or null. */
+  maxLikes: number | null;
+  /** Only replies to this handle, ignoring case; empty for anyone. */
+  replyTo: string;
+  /** Only replies whose text holds this, ignoring case; empty for any. */
+  query: string;
+  /** Whether replies in the person's own threads are listed too. */
+  threads: boolean;
+}
+
+/**
+ * `{type: 'xomoni-read', what, deviceId, …}`: the Library also takes a kind, a search and an offset, and the replies a
+ * filter and an offset.
+ */
 export type ReadMessage =
   | { type: typeof READ; what: 'library'; deviceId: string; kind: LibraryKind; query: string; offset: number }
   | { type: typeof READ; what: 'health' | 'watch' | 'settings'; deviceId: string }
-  | { type: typeof READ; what: 'cleanup'; deviceId: string; plan: CleanupPlan };
+  | { type: typeof READ; what: 'cleanup'; deviceId: string; plan: CleanupPlan }
+  | { type: typeof READ; what: 'replies'; deviceId: string; filter: RepliesFilter; offset: number };
+
+function readOffset(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 1e6 ? value : null;
+}
+
+/** `raw` as a replies filter, or null unless every field has its shape and the dates make sense. */
+export function parseRepliesFilter(raw: unknown, now = Date.now()): RepliesFilter | null {
+  const v = record(raw);
+  const keys = ['after', 'before', 'maxLikes', 'replyTo', 'query', 'threads'];
+  if (!v || !onlyKeys(v, keys) || keys.some((key) => !(key in v))) return null;
+  const after = v.after === null ? null : (planTime(v.after, now) ?? undefined);
+  const before = v.before === null ? null : (planTime(v.before, now) ?? undefined);
+  const maxLikes = v.maxLikes === null ? null : (count(v.maxLikes) ?? undefined);
+  const replyTo = matching(v.replyTo, HANDLE_TEXT);
+  const query = typeof v.query === 'string' && v.query.length <= MAX_READ_QUERY ? v.query : null;
+  if (after === undefined || before === undefined || maxLikes === undefined) return null;
+  if (replyTo === null || query === null || typeof v.threads !== 'boolean') return null;
+  if (after !== null && before !== null && after >= before) return null;
+  if (maxLikes !== null && maxLikes > 1_000_000) return null;
+  return { after, before, maxLikes, replyTo, query, threads: v.threads };
+}
 
 /** `raw` as a read message, or null unless it is exactly one of `ReadMessage`'s shapes. */
 export function parseReadMessage(raw: unknown): ReadMessage | null {
@@ -361,14 +408,17 @@ export function parseReadMessage(raw: unknown): ReadMessage | null {
     const plan = onlyKeys(value, ['type', 'what', 'deviceId', 'plan']) ? parsePlan(value.plan) : null;
     return plan ? { type: READ, what: 'cleanup', deviceId, plan } : null;
   }
+  if (value.what === 'replies') {
+    if (!onlyKeys(value, ['type', 'what', 'deviceId', 'filter', 'offset'])) return null;
+    const filter = parseRepliesFilter(value.filter);
+    const offset = readOffset(value.offset);
+    return filter && offset !== null ? { type: READ, what: 'replies', deviceId, filter, offset } : null;
+  }
   if (value.what !== 'library' || !onlyKeys(value, ['type', 'what', 'deviceId', 'kind', 'query', 'offset']))
     return null;
   const kind = LIBRARY_KINDS.find((k) => k === value.kind);
   const query = typeof value.query === 'string' && value.query.length <= MAX_READ_QUERY ? value.query : null;
-  const offset =
-    typeof value.offset === 'number' && Number.isSafeInteger(value.offset) && value.offset >= 0 && value.offset <= 1e6
-      ? value.offset
-      : null;
+  const offset = readOffset(value.offset);
   return kind && query !== null && offset !== null
     ? { type: READ, what: 'library', deviceId, kind, query, offset }
     : null;
@@ -401,6 +451,44 @@ export interface LibraryPage {
   next: number | null;
 }
 
+/** One of the person's replies, as the Comments place shows it (#256). `id` is X's post id. */
+export interface ReplyItem {
+  id: string;
+  /** Whose post it answers, without `@`; empty while Xomoni doesn't know. */
+  replyTo: string;
+  text: string;
+  /** When it was posted, epoch ms. */
+  createdAt: number;
+  likes: number;
+  reposts: number;
+  replies: number;
+  /** A reply in the person's own thread. */
+  thread: boolean;
+}
+
+/** Someone the person replies to, and how many of the replies still on X answer them. */
+export interface RepliedTo {
+  handle: string;
+  replies: number;
+}
+
+/** The most people a replies read names. */
+export const MAX_REPLIED_TO = 20;
+
+/** An answer to a replies read: the account, a page of matching replies, and whom the person replies to most. */
+export interface RepliesPage {
+  handle: string;
+  /** Replies Xomoni knows are still on X. */
+  total: number;
+  /** Of those, how many match the filter, before paging. */
+  matching: number;
+  items: ReplyItem[];
+  /** The offset of the next page, or null on the last one. */
+  next: number | null;
+  /** Up to `MAX_REPLIED_TO` people replied to most, most first; the person's own threads left out. */
+  people: RepliedTo[];
+}
+
 /** One X account's health, as the risk ladder sees it now (ADR-0013). Times are epoch ms. */
 export interface AccountHealth {
   handle: string;
@@ -430,6 +518,7 @@ export type ReadAnswer =
   | { ok: true; what: 'watch'; tabs: WatchTabView[] }
   | { ok: true; what: 'settings'; settings: XomoniSettings }
   | { ok: true; what: 'cleanup'; estimate: CleanupEstimate }
+  | { ok: true; what: 'replies'; page: RepliesPage }
   | { ok: false; reason: ActionRefusal };
 
 const X_ID = /^\d{1,25}$/;
@@ -481,6 +570,39 @@ function parseLibrary(raw: unknown): LibraryPage | null {
   const items = (v.items as unknown[]).slice(0, READ_PAGE).map(parseItem);
   if (items.some((i) => i === null)) return null;
   return { handle, counts, matching: matchingCount, items: items as LibraryItem[], next };
+}
+
+function parseReply(raw: unknown): ReplyItem | null {
+  const v = record(raw);
+  const id = matching(v?.id, X_ID);
+  const replyTo = matching(v?.replyTo, HANDLE_TEXT);
+  const body = text(v?.text);
+  const createdAt = epoch(v?.createdAt);
+  const [likes, reposts, replies] = [count(v?.likes), count(v?.reposts), count(v?.replies)];
+  if (!id || replyTo === null || body === null || createdAt === null) return null;
+  if (likes === null || reposts === null || replies === null || typeof v?.thread !== 'boolean') return null;
+  return { id, replyTo, text: body, createdAt, likes, reposts, replies, thread: v.thread };
+}
+
+function parseReplies(raw: unknown): RepliesPage | null {
+  const v = record(raw);
+  const handle = matching(v?.handle, HANDLE_TEXT);
+  const total = count(v?.total);
+  const matchingCount = count(v?.matching);
+  const next = v?.next === null ? null : (count(v?.next) ?? undefined);
+  if (handle === null || total === null || matchingCount === null || next === undefined) return null;
+  if (!Array.isArray(v?.items) || !Array.isArray(v.people)) return null;
+  const items = (v.items as unknown[]).slice(0, READ_PAGE).map(parseReply);
+  if (items.some((i) => i === null)) return null;
+  const people: RepliedTo[] = [];
+  for (const raw of (v.people as unknown[]).slice(0, MAX_REPLIED_TO)) {
+    const person = record(raw);
+    const who = matching(person?.handle, HANDLE_TEXT);
+    const replies = count(person?.replies);
+    if (!who || replies === null) return null;
+    people.push({ handle: who, replies });
+  }
+  return { handle, total, matching: matchingCount, items: items as ReplyItem[], next, people };
 }
 
 function parseHealth(raw: unknown): AccountHealth | null {
@@ -536,6 +658,9 @@ export function parseReadAnswer(raw: unknown, what: ReadWhat): ReadAnswer {
     } else if (what === 'cleanup') {
       const estimate = parseEstimate(answer.estimate);
       if (estimate) return { ok: true, what, estimate };
+    } else if (what === 'replies') {
+      const page = parseReplies(answer.page);
+      if (page) return { ok: true, what, page };
     }
   }
   const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
@@ -719,6 +844,9 @@ export const MAX_PLAN_KEYWORDS = 20;
 /** The longest such word or phrase. */
 export const MAX_PLAN_KEYWORD = 50;
 
+/** The most posts a plan can pick by id: the replies selected on xomoni.com (#256). */
+export const MAX_PLAN_IDS = 500;
+
 /** The earliest date a plan may name: X opened in 2006. */
 const X_BEGAN = Date.UTC(2006, 0, 1);
 
@@ -736,6 +864,11 @@ export interface CleanupPlan {
   keepKeywords: string[];
   /** Keep replies to your own posts (threads); replies only. */
   skipSelfReplies: boolean;
+  /**
+   * Only these posts, by X's id: the replies picked on xomoni.com (#256). Absent from a plan by date, so a Xomoni
+   * older than the selection still takes those.
+   */
+  onlyIds?: string[];
 }
 
 /** What a plan would match in Xomoni's copy of the account, counted on the person's computer. */
@@ -767,7 +900,9 @@ function planTime(value: unknown, now: number): number | null {
 export function parsePlan(raw: unknown, now = Date.now()): CleanupPlan | null {
   const v = record(raw);
   const keys = ['target', 'before', 'after', 'keepMinLikes', 'keepKeywords', 'skipSelfReplies'];
-  if (!v || !onlyKeys(v, keys) || Object.keys(v).length !== keys.length) return null;
+  if (!v || !onlyKeys(v, [...keys, 'onlyIds']) || keys.some((key) => !(key in v))) return null;
+  const ids = v.onlyIds === undefined ? undefined : parseIds(v.onlyIds);
+  if (ids === null) return null;
   const target = LIBRARY_KINDS.find((k) => k === v.target);
   const before = planTime(v.before, now);
   const after = v.after === null ? null : (planTime(v.after, now) ?? undefined);
@@ -786,7 +921,16 @@ export function parsePlan(raw: unknown, now = Date.now()): CleanupPlan | null {
     keepMinLikes: likes,
     keepKeywords: words as string[],
     skipSelfReplies: v.skipSelfReplies,
+    ...(ids && { onlyIds: ids }),
   };
+}
+
+/** A plan's picked ids: 1 to `MAX_PLAN_IDS` distinct post ids, or null. */
+function parseIds(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_PLAN_IDS) return null;
+  const ids = (raw as unknown[]).map((id) => matching(id, X_ID));
+  if (ids.some((id) => id === null)) return null;
+  return new Set(ids).size === ids.length ? (ids as string[]) : null;
 }
 
 /** `raw` as a plan message, or null unless it is exactly `PlanMessage`. */

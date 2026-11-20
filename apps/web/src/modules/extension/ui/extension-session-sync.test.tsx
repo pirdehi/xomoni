@@ -3,7 +3,7 @@ import { act, cleanup, render, renderHook, waitFor } from '@testing-library/reac
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetNavigation, router, setLocation } from '@test/fakes/navigation';
 import type { SyncOutcome } from '../application/session-sync';
-import type { ExtensionSessionServices } from '../client/extension-session';
+import { type ExtensionSessionServices, requestLinkCheck } from '../client/extension-session';
 import { renderToString } from 'react-dom/server';
 import { ExtensionSessionSync, UNKNOWN_LINK, useExtensionLink } from './extension-session-sync';
 
@@ -162,6 +162,22 @@ describe('ExtensionSessionSync (#232, ADR-0025)', () => {
     form.remove();
   });
 
+  it('syncs again when a page asks to look for Xomoni, one at a time (#299)', async () => {
+    let finish: (outcome: SyncOutcome) => void = () => undefined;
+    const { services } = fakeServices();
+    services.sync.mockImplementation(() => new Promise<SyncOutcome>((resolve) => (finish = resolve)));
+    render(<ExtensionSessionSync services={() => services} />);
+    expect(services.sync).toHaveBeenCalledTimes(1);
+
+    requestLinkCheck();
+    expect(services.sync).toHaveBeenCalledTimes(1);
+    await act(async () => finish({ kind: 'no-extension' }));
+
+    requestLinkCheck();
+    expect(services.sync).toHaveBeenCalledTimes(2);
+    await act(async () => finish({ kind: 'no-extension' }));
+  });
+
   it('stops listening when it goes away', () => {
     const { services } = fakeServices();
     const { unmount } = render(<ExtensionSessionSync services={() => services} />);
@@ -169,6 +185,7 @@ describe('ExtensionSessionSync (#232, ADR-0025)', () => {
 
     unmount();
     window.dispatchEvent(new Event('focus'));
+    requestLinkCheck();
 
     expect(stop).toHaveBeenCalled();
     expect(services.sync).toHaveBeenCalledTimes(1);

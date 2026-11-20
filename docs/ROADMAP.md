@@ -215,7 +215,7 @@ The website shows and works with what the extension has, in the same browser. Wo
 | ✅ | One sign-in: signing in or out on xomoni.com or in the extension does the same on the other ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)) | [#232](https://github.com/pirdehi/xomoni/issues/232) | [#236](https://github.com/pirdehi/xomoni/pull/236) |
 | ✅ | The website shows the extension's Library, Watch and account health, read from the extension in the same browser and kept nowhere (ADR-0028; Home and Activity came with #251 and #252, Settings comes with #234) | [#233](https://github.com/pirdehi/xomoni/issues/233) | [#278](https://github.com/pirdehi/xomoni/pull/278) |
 | ✅ | Settings on the website, applied in the extension within its safety rules: back to Careful, active hours, failures in a row, notifications, keep going while away, Watch searches (ADR-0029) | [#234](https://github.com/pirdehi/xomoni/issues/234) | [#279](https://github.com/pirdehi/xomoni/pull/279) |
-| ✅ | Plan a cleanup on the website (what, how old, what to keep, and how much it matches in Xomoni's copy), start it in Xomoni after its own confirmation | [#235](https://github.com/pirdehi/xomoni/issues/235) | [#PRNUM](https://github.com/pirdehi/xomoni/pull/PRNUM) |
+| ✅ | Plan a cleanup on the website (what, how old, what to keep, and how much it matches in Xomoni's copy), start it in Xomoni after its own confirmation | [#235](https://github.com/pirdehi/xomoni/issues/235) | [#281](https://github.com/pirdehi/xomoni/pull/281) |
 
 ## Phase 15 · A UX pass of both surfaces
 

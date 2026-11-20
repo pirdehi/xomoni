@@ -6,13 +6,12 @@
 // - Resume never runs anything: it opens Xomoni with its own confirmation (`requestResume`), and only the person's yes
 //   there starts the job, with the consent and safety checks every start has.
 // Every action taken is written to the job's log.
-import type { ActionAnswer, ActionRefusal, JobMessage, OpenMessage, XomoniPage } from '@xomoni/bridge';
+import type { ActionAnswer, JobMessage, OpenMessage, XomoniPage } from '@xomoni/bridge';
 import { addLog, db } from '../shared/db';
 import { runnerLockHeld } from '../shared/runner-lock';
-import { getSignedOut } from '../shared/session';
 import type { Job } from '../shared/types';
 import { CANCELLED_FROM_WEBSITE, requestResume, requestStop } from '../shared/website-requests';
-import { getConnection } from './connection';
+import { accessRefusal } from './website-access';
 import { syncOnce } from './sync';
 
 /** What the service worker lends: opening Xomoni's dashboard on a page, focusing a tab that is already open. */
@@ -22,14 +21,6 @@ export interface ActionPorts {
 
 /** States a job can't leave: nothing to pause, cancel or resume. */
 const ENDED: ReadonlySet<Job['state']> = new Set(['completed', 'cancelled']);
-
-/** Why this extension won't act for a page that named `deviceId`, or null when it will. */
-async function refusal(deviceId: string): Promise<ActionRefusal | null> {
-  const connection = await getConnection();
-  if (!connection) return 'not_connected';
-  if (await getSignedOut()) return 'signed_out';
-  return connection.deviceId.toLowerCase() === deviceId.toLowerCase() ? null : 'other_account';
-}
 
 function note(job: Job, message: string) {
   return addLog({
@@ -45,7 +36,7 @@ function note(job: Job, message: string) {
 
 /** Answers `xomoni-job`: pauses or cancels a job, or asks the person in Xomoni to resume it. Never starts one. */
 export async function answerJob(message: JobMessage, ports: ActionPorts, now = Date.now()): Promise<ActionAnswer> {
-  const refused = await refusal(message.deviceId);
+  const refused = await accessRefusal(message.deviceId);
   if (refused) return { ok: false, reason: refused };
   const job = await db.jobs.get(message.jobId);
   if (!job) return { ok: false, reason: 'no_job' };
@@ -87,7 +78,7 @@ export async function answerJob(message: JobMessage, ports: ActionPorts, now = D
 
 /** Answers `xomoni-open`: opens one of Xomoni's pages. */
 export async function answerOpen(message: OpenMessage, ports: ActionPorts): Promise<ActionAnswer> {
-  const refused = await refusal(message.deviceId);
+  const refused = await accessRefusal(message.deviceId);
   if (refused) return { ok: false, reason: refused };
   await ports.openDashboard(message.page);
   return { ok: true, outcome: 'opened' };

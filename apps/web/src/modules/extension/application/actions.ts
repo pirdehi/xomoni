@@ -1,6 +1,6 @@
-import type { ActionAnswer } from '@xomoni/bridge';
+import type { ActionAnswer, ReadAnswer, ReadMessage } from '@xomoni/bridge';
 import type { XomoniRequest } from '../domain/presence';
-import type { ActionChannel, BrowserMemory } from './ports';
+import type { ActionChannel, BrowserMemory, DistributiveOmit } from './ports';
 
 /** What `askXomoni` needs: the extension in this browser, and its id as the site remembered it. */
 export interface ActionDeps {
@@ -19,4 +19,17 @@ export async function askXomoni(deps: ActionDeps, request: XomoniRequest): Promi
   return request.kind === 'job'
     ? deps.channel.job(extensionId, { action: request.action, deviceId: request.deviceId, jobId: request.jobId })
     : deps.channel.open(extensionId, { page: request.page, deviceId: request.deviceId });
+}
+
+/** A read of one of Xomoni's places, as a page asks it (ADR-0028). */
+export type XomoniRead = DistributiveOmit<ReadMessage, 'type'>;
+
+/**
+ * Reads one of Xomoni's places in this browser (ADR-0028, #233): the answer is X content, for the page that asked and
+ * nowhere else. Without a known extension id nothing is sent and the answer is `no_answer`.
+ */
+export async function readXomoni(deps: ActionDeps, read: XomoniRead): Promise<ReadAnswer> {
+  const extensionId = deps.memory.extensionId();
+  if (!extensionId) return { ok: false, reason: 'no_answer' };
+  return deps.channel.read(extensionId, read);
 }

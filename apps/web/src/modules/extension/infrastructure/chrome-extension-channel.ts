@@ -2,10 +2,12 @@ import {
   HELLO,
   JOB,
   OPEN,
+  READ,
   SIGN_IN,
   SIGN_OUT,
   parseActionAnswer,
   parseExtensionState,
+  parseReadAnswer,
   parseSignInAnswer,
   parseSignOutAnswer,
 } from '@xomoni/bridge';
@@ -29,6 +31,8 @@ function pageRuntime(): PageRuntime | undefined {
 export const ANSWER_TIMEOUT_MS = 5_000;
 /** How long a sign-in waits: the extension trades the code with xomoni.com before it answers. */
 export const SIGN_IN_TIMEOUT_MS = 30_000;
+/** How long a read waits: a search runs through the whole Library. */
+export const READ_TIMEOUT_MS = 15_000;
 
 /**
  * Sends `message` and resolves with the answer, or undefined when there is none: no runtime on this page, the
@@ -64,7 +68,7 @@ function send(
  */
 export function createChromeExtensionChannel(
   runtime: () => PageRuntime | undefined = pageRuntime,
-  timeouts = { answer: ANSWER_TIMEOUT_MS, signIn: SIGN_IN_TIMEOUT_MS },
+  timeouts = { answer: ANSWER_TIMEOUT_MS, signIn: SIGN_IN_TIMEOUT_MS, read: READ_TIMEOUT_MS },
 ): ExtensionChannel & ActionChannel {
   return {
     async hello(extensionId) {
@@ -81,6 +85,12 @@ export function createChromeExtensionChannel(
     },
     async open(extensionId, message) {
       return parseActionAnswer(await send(runtime(), extensionId, { type: OPEN, ...message }, timeouts.answer));
+    },
+    async read(extensionId, message) {
+      return parseReadAnswer(
+        await send(runtime(), extensionId, { type: READ, ...message }, timeouts.read),
+        message.what,
+      );
     },
   };
 }

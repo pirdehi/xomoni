@@ -93,7 +93,8 @@ export interface OpenMessage {
 }
 
 /** Everything xomoni.com may send the extension. */
-export type WebsiteMessage = HelloMessage | SignInMessage | SignOutMessage | PairMessage | JobMessage | OpenMessage;
+export type WebsiteMessage =
+  HelloMessage | SignInMessage | SignOutMessage | PairMessage | JobMessage | OpenMessage | ReadMessage;
 
 /** Whether `value` is shaped like an extension id. */
 export function isExtensionId(value: unknown): value is string {
@@ -148,6 +149,8 @@ export function parseWebsiteMessage(raw: unknown): WebsiteMessage | null {
       const deviceId = matching(value.deviceId, DEVICE_ID);
       return page && deviceId ? { type: OPEN, page, deviceId } : null;
     }
+    case READ:
+      return parseReadMessage(value);
     default:
       return null;
   }
@@ -297,6 +300,218 @@ export function parseActionAnswer(raw: unknown): ActionAnswer {
   if (answer?.ok === true) {
     const outcome = ACTION_OUTCOMES.find((o) => o === answer.outcome);
     if (outcome) return { ok: true, outcome };
+  }
+  const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
+  return { ok: false, reason: reason ?? 'refused' };
+}
+
+// ── Reads (ADR-0028, #233) ───────────────────────────────────────────────────────────────────────
+// The website reads Xomoni's own data in the same browser: the Library, account health and Watch. A read changes
+// nothing, answers at most `READ_PAGE` items, and what it returns stays in the page's memory.
+
+/** Asks the extension for one of its places' data (ADR-0028). */
+export const READ = 'xomoni-read';
+
+/** What the website may read. */
+export type ReadWhat = 'library' | 'health' | 'watch';
+
+/** The kinds of item the Library holds. */
+export type LibraryKind = 'post' | 'reply' | 'repost' | 'like';
+
+/** Every `LibraryKind`, in the Library's order. */
+export const LIBRARY_KINDS: readonly LibraryKind[] = ['post', 'reply', 'repost', 'like'];
+
+/** Items a read answers at most. */
+export const READ_PAGE = 100;
+
+/** The longest search a Library read takes. */
+export const MAX_READ_QUERY = 100;
+
+/** The longest text an item or post carries in an answer. */
+export const MAX_READ_TEXT = 1_000;
+
+/** `{type: 'xomoni-read', what, deviceId, …}`: the Library also takes a kind, a search and an offset. */
+export type ReadMessage =
+  | { type: typeof READ; what: 'library'; deviceId: string; kind: LibraryKind; query: string; offset: number }
+  | { type: typeof READ; what: 'health' | 'watch'; deviceId: string };
+
+/** `raw` as a read message, or null unless it is exactly one of `ReadMessage`'s shapes. */
+export function parseReadMessage(raw: unknown): ReadMessage | null {
+  const value = record(raw);
+  if (value?.type !== READ) return null;
+  const deviceId = matching(value.deviceId, DEVICE_ID);
+  if (!deviceId) return null;
+  if (value.what === 'health' || value.what === 'watch') {
+    return onlyKeys(value, ['type', 'what', 'deviceId']) ? { type: READ, what: value.what, deviceId } : null;
+  }
+  if (value.what !== 'library' || !onlyKeys(value, ['type', 'what', 'deviceId', 'kind', 'query', 'offset']))
+    return null;
+  const kind = LIBRARY_KINDS.find((k) => k === value.kind);
+  const query = typeof value.query === 'string' && value.query.length <= MAX_READ_QUERY ? value.query : null;
+  const offset =
+    typeof value.offset === 'number' && Number.isSafeInteger(value.offset) && value.offset >= 0 && value.offset <= 1e6
+      ? value.offset
+      : null;
+  return kind && query !== null && offset !== null
+    ? { type: READ, what: 'library', deviceId, kind, query, offset }
+    : null;
+}
+
+/** One item of the Library, as the website shows it. `id` is X's post id, to link to the post. */
+export interface LibraryItem {
+  kind: LibraryKind;
+  id: string;
+  /** Whose post it is: the person's own handle, or, for reposts and likes, the original author's. */
+  author: string;
+  text: string;
+  /** When it was posted (for a like, the liked post's time), epoch ms. */
+  createdAt: number;
+  likes: number;
+  reposts: number;
+  replies: number;
+  /** Removed: Xomoni deleted it, or X no longer shows it. */
+  removed: boolean;
+}
+
+/** An answer to a Library read: the account, counts per kind, a page of items and where the next page starts. */
+export interface LibraryPage {
+  handle: string;
+  counts: Record<LibraryKind, { present: number; removed: number }>;
+  /** Items matching the read, before paging. */
+  matching: number;
+  items: LibraryItem[];
+  /** The offset of the next page, or null on the last one. */
+  next: number | null;
+}
+
+/** One X account's health, as the risk ladder sees it now (ADR-0013). Times are epoch ms. */
+export interface AccountHealth {
+  handle: string;
+  /** 0 (Normal) to 4 (Full stop). */
+  level: number;
+  /** Xomoni's own words for why; empty at level 0. */
+  reason: string;
+  /** Share of Xomoni's one-fifth allowance in use: 1, 0.5 or 0.25. */
+  pace: number;
+  reducedUntil: number | null;
+  resumeAt: number | null;
+  fullStop: boolean;
+}
+
+/** One Watch tab: what it searches, when it last looked, its newest posts and, if the look failed, why. */
+export interface WatchTabView {
+  query: string;
+  checkedAt: number | null;
+  error: string;
+  posts: { id: string; handle: string; name: string; text: string; time: number | null }[];
+}
+
+/** The answer to a read; `refused` and `no_answer` as for actions. */
+export type ReadAnswer =
+  | { ok: true; what: 'library'; page: LibraryPage }
+  | { ok: true; what: 'health'; accounts: AccountHealth[] }
+  | { ok: true; what: 'watch'; tabs: WatchTabView[] }
+  | { ok: false; reason: ActionRefusal };
+
+const X_ID = /^\d{1,25}$/;
+const HANDLE_TEXT = /^[A-Za-z0-9_]{0,15}$/;
+
+function text(value: unknown, max = MAX_READ_TEXT): string | null {
+  return typeof value === 'string' ? value.slice(0, max) : null;
+}
+
+function count(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function time(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  return epoch(value) ?? undefined;
+}
+
+function parseItem(raw: unknown): LibraryItem | null {
+  const v = record(raw);
+  const kind = LIBRARY_KINDS.find((k) => k === v?.kind);
+  const id = matching(v?.id, X_ID);
+  const author = matching(v?.author, HANDLE_TEXT);
+  const body = text(v?.text);
+  const createdAt = epoch(v?.createdAt);
+  const [likes, reposts, replies] = [count(v?.likes), count(v?.reposts), count(v?.replies)];
+  if (!kind || !id || author === null || body === null || createdAt === null) return null;
+  if (likes === null || reposts === null || replies === null || typeof v?.removed !== 'boolean') return null;
+  return { kind, id, author, text: body, createdAt, likes, reposts, replies, removed: v.removed };
+}
+
+function parseLibrary(raw: unknown): LibraryPage | null {
+  const v = record(raw);
+  const handle = matching(v?.handle, HANDLE_TEXT);
+  const countsRaw = record(v?.counts);
+  const matchingCount = count(v?.matching);
+  // Null on the last page; anything that isn't a count is malformed.
+  const next = v?.next === null ? null : (count(v?.next) ?? undefined);
+  if (handle === null || !countsRaw || matchingCount === null || next === undefined || !Array.isArray(v?.items))
+    return null;
+  const counts = {} as LibraryPage['counts'];
+  for (const k of LIBRARY_KINDS) {
+    const c = record(countsRaw[k]);
+    const present = count(c?.present);
+    const removed = count(c?.removed);
+    if (present === null || removed === null) return null;
+    counts[k] = { present, removed };
+  }
+  const items = (v.items as unknown[]).slice(0, READ_PAGE).map(parseItem);
+  if (items.some((i) => i === null)) return null;
+  return { handle, counts, matching: matchingCount, items: items as LibraryItem[], next };
+}
+
+function parseHealth(raw: unknown): AccountHealth | null {
+  const v = record(raw);
+  const handle = matching(v?.handle, HANDLE_TEXT);
+  const level = typeof v?.level === 'number' && [0, 1, 2, 3, 4].includes(v.level) ? v.level : null;
+  const reason = text(v?.reason, 300);
+  const pace = typeof v?.pace === 'number' && [1, 0.5, 0.25].includes(v.pace) ? v.pace : null;
+  const reducedUntil = time(v?.reducedUntil);
+  const resumeAt = time(v?.resumeAt);
+  if (handle === null || level === null || reason === null || pace === null) return null;
+  if (reducedUntil === undefined || resumeAt === undefined || typeof v?.fullStop !== 'boolean') return null;
+  return { handle, level, reason, pace, reducedUntil, resumeAt, fullStop: v.fullStop };
+}
+
+function parseTab(raw: unknown): WatchTabView | null {
+  const v = record(raw);
+  const query = text(v?.query, MAX_READ_QUERY);
+  const checkedAt = time(v?.checkedAt);
+  const error = text(v?.error, 300);
+  if (query === null || checkedAt === undefined || error === null || !Array.isArray(v?.posts)) return null;
+  const posts: WatchTabView['posts'] = [];
+  for (const p of (v.posts as unknown[]).slice(0, READ_PAGE)) {
+    const post = record(p);
+    const id = matching(post?.id, X_ID);
+    const handle = matching(post?.handle, HANDLE_TEXT);
+    const name = text(post?.name, 100);
+    const body = text(post?.text);
+    const at = time(post?.time);
+    if (!id || handle === null || name === null || body === null || at === undefined) return null;
+    posts.push({ id, handle, name, text: body, time: at });
+  }
+  return { query, checkedAt, error, posts };
+}
+
+/** `raw` as the answer to a read of `what`: anything unexpected is `refused`, nothing at all `no_answer`. */
+export function parseReadAnswer(raw: unknown, what: ReadWhat): ReadAnswer {
+  if (raw === undefined || raw === null) return { ok: false, reason: 'no_answer' };
+  const answer = record(raw);
+  if (answer?.ok === true && answer.what === what) {
+    if (what === 'library') {
+      const page = parseLibrary(answer.page);
+      if (page) return { ok: true, what, page };
+    } else if (what === 'health' && Array.isArray(answer.accounts)) {
+      const accounts = (answer.accounts as unknown[]).slice(0, 50).map(parseHealth);
+      if (!accounts.some((a) => a === null)) return { ok: true, what, accounts: accounts as AccountHealth[] };
+    } else if (what === 'watch' && Array.isArray(answer.tabs)) {
+      const tabs = (answer.tabs as unknown[]).slice(0, 10).map(parseTab);
+      if (!tabs.some((t) => t === null)) return { ok: true, what, tabs: tabs as WatchTabView[] };
+    }
   }
   const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
   return { ok: false, reason: reason ?? 'refused' };

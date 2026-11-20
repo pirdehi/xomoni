@@ -20,6 +20,15 @@ const json = (status: number, body: unknown) =>
 const openCodeForm = async () =>
   userEvent.click(await screen.findByRole('button', { name: /Use a one-time code instead/ }));
 
+/**
+ * Clicks the switch once it can be used: it stays disabled until the stored choice is read, and while a change is
+ * on its way. A click before that does nothing, which is how this ran past its wait on busy machines (#271).
+ */
+async function clickWhenEnabled(element: HTMLElement) {
+  await waitFor(() => expect(element).toBeEnabled());
+  await userEvent.click(element);
+}
+
 describe('Settings: the xomoni.com card (ADR-0018)', () => {
   let fetch: Fetch;
   beforeEach(async () => {
@@ -197,14 +206,14 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     expect(screen.getByText(/Never your posts, replies, likes or anyone’s name/)).toBeInTheDocument();
 
     fetch.mockReturnValueOnce(json(200, true));
-    await userEvent.click(toggle);
+    await clickWhenEnabled(toggle);
     await waitFor(() => expect(toggle).toBeChecked(), { timeout: 8_000 });
     expect(fetch.mock.calls.map(([url]) => url.split('/').pop())).toEqual(['device_set_daily_stats']);
     const body = fetch.mock.calls[0]?.[1]?.body;
     expect(JSON.parse(typeof body === 'string' ? body : '{}')).toEqual({ token: 'secret', enabled: true });
 
     fetch.mockReturnValueOnce(json(200, false));
-    await userEvent.click(toggle);
+    await clickWhenEnabled(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked(), { timeout: 8_000 });
     await waitFor(() =>
       expect(toasts.result.current.map((t) => t.text)).toContain('Your daily numbers were removed from xomoni.com'),
@@ -225,7 +234,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     render(<CloudCard />);
     const toggle = await screen.findByRole('switch', { name: 'Show my numbers on xomoni.com' });
     fetch.mockReturnValueOnce(json(500, { message: 'The server is busy.' }));
-    await userEvent.click(toggle);
+    await clickWhenEnabled(toggle);
     expect(await screen.findByText('The server is busy.', undefined, { timeout: 8_000 })).toBeInTheDocument();
     expect(toggle).not.toBeChecked();
     // Busy machines (the push hook, CI) have run this past the default five seconds.

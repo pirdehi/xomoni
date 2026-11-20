@@ -6,6 +6,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Your Library, Watch and account health on xomoni.com** (#233), in the browser where Xomoni runs.
+  - The Library: your posts, replies, reposts and likes, newest first, with each kind's count, a search, 100 at a time, and *Open on X*.
+  - Account health: each X account's level and why, its pace, and when a hold ends.
+  - Watch: each search, when it last looked and what it found.
+  - The site reads them from Xomoni in this browser and keeps them only while the page is open: nothing reaches our servers ([ADR-0028](docs/adr/0028-xomoni-data-on-the-website-in-the-same-browser.md)). On a phone or another computer, each place says where its data lives.
+
 - **Engagement on xomoni.com** (#255), from your daily numbers.
   - Likes, replies, reposts and quotes, views and the engagement rate, each against the period before.
   - What your posts received each day by type, views, and the rate over time.

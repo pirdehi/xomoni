@@ -82,6 +82,9 @@ async function installFakeXomoni(page: Page) {
           : { ok: false, reason: 'other_account' };
       case 'xomoni-open':
         return { ok: true, outcome: 'opened' };
+      case 'xomoni-read':
+        if (message.deviceId !== state.connection?.deviceId) return { ok: false, reason: 'other_account' };
+        return readAnswer(message);
       default:
         return { ok: false, reason: 'invalid' };
     }
@@ -97,6 +100,90 @@ async function installFakeXomoni(page: Page) {
     Object.defineProperty(window, 'chrome', { value: { runtime }, configurable: true });
   });
   return { state, received };
+}
+
+/** Words only Xomoni knows: they must never reach a server or the site's storage (ADR-0028). */
+const SECRET_POST = 'A post only Xomoni keeps 7f3a';
+const SECRET_SEARCH = 'search only Xomoni keeps 9c1d';
+
+/** Xomoni's answer to a read, as the extension builds it from its own database (#233). */
+function readAnswer(message: Record<string, unknown>) {
+  switch (message.what) {
+    case 'library':
+      return {
+        ok: true,
+        what: 'library',
+        page: {
+          handle: 'ada',
+          counts: {
+            post: { present: 2, removed: 1 },
+            reply: { present: 0, removed: 0 },
+            repost: { present: 0, removed: 0 },
+            like: { present: 0, removed: 0 },
+          },
+          matching: message.kind === 'post' ? 2 : 0,
+          items:
+            message.kind === 'post'
+              ? [
+                  {
+                    kind: 'post',
+                    id: '1800000000000000001',
+                    author: 'ada',
+                    text: SECRET_POST,
+                    createdAt: Date.UTC(2024, 0, 2),
+                    likes: 3,
+                    reposts: 1,
+                    replies: 0,
+                    removed: false,
+                  },
+                  {
+                    kind: 'post',
+                    id: '1800000000000000000',
+                    author: 'ada',
+                    text: 'An older post',
+                    createdAt: Date.UTC(2023, 5, 1),
+                    likes: 0,
+                    reposts: 0,
+                    replies: 0,
+                    removed: true,
+                  },
+                ]
+              : [],
+          next: null,
+        },
+      };
+    case 'health':
+      return {
+        ok: true,
+        what: 'health',
+        accounts: [
+          {
+            handle: 'ada',
+            level: 1,
+            reason: 'X answered slowly',
+            pace: 0.5,
+            reducedUntil: null,
+            resumeAt: null,
+            fullStop: false,
+          },
+        ],
+      };
+    case 'watch':
+      return {
+        ok: true,
+        what: 'watch',
+        tabs: [
+          {
+            query: SECRET_SEARCH,
+            checkedAt: Date.now() - 60_000,
+            error: '',
+            posts: [{ id: '42', handle: 'grace', name: 'Grace', text: 'Found by the search', time: Date.now() }],
+          },
+        ],
+      };
+    default:
+      return { ok: false, reason: 'invalid' };
+  }
 }
 
 test.describe('Xomoni’s actions on xomoni.com (#251, ADR-0027)', () => {
@@ -136,6 +223,58 @@ test.describe('Xomoni’s actions on xomoni.com (#251, ADR-0027)', () => {
     expect(fake.received.filter((m) => m.type === 'xomoni-job')).toEqual([
       { type: 'xomoni-job', action: 'pause', deviceId: fake.state.connection?.deviceId, jobId: 'local-job-1' },
     ]);
+  });
+});
+
+test.describe('Xomoni’s places on xomoni.com, read in this browser (#233, ADR-0028)', () => {
+  test('the Library, Account health and Watch come from Xomoni here, and none of it reaches a server or storage', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('places-read');
+    await createConfirmedUser(email, PASSWORD);
+    const fake = await installFakeXomoni(page);
+    const sent: string[] = [];
+    page.on('request', (request) => sent.push(`${request.url()} ${request.postData() ?? ''}`));
+    await page.goto(`/#ext=${EXT}`);
+    await expect(page).toHaveURL(/\/$/);
+    await signIn(page, email, PASSWORD);
+    await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => fake.state.connection?.deviceId).toBeTruthy();
+
+    await page.goto('/dashboard/library');
+    await expect(page.getByRole('tab', { name: 'Posts 2' })).toBeVisible();
+    const posts = page.getByRole('list', { name: 'Posts' });
+    await expect(posts.getByRole('listitem')).toHaveCount(2);
+    await expect(posts).toContainText(SECRET_POST);
+    await expect(posts.getByRole('link', { name: /Open on X/ }).first()).toHaveAttribute(
+      'href',
+      'https://x.com/i/status/1800000000000000001',
+    );
+    await page.getByRole('textbox', { name: 'Search the Library' }).fill('older');
+    await expect
+      .poll(() => fake.received.filter((m) => m.type === 'xomoni-read' && m.query === 'older').length)
+      .toBe(1);
+
+    await page.goto('/dashboard/health');
+    await expect(page.getByRole('list', { name: 'Your X accounts' })).toContainText('X answered slowly');
+
+    await page.goto('/dashboard/watch');
+    await expect(page.getByRole('region', { name: `Watch: ${SECRET_SEARCH}` })).toContainText('Found by the search');
+
+    // Every read named this browser's device, and nothing Xomoni answered went anywhere else.
+    const reads = fake.received.filter((m) => m.type === 'xomoni-read');
+    expect(reads.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(reads.map((m) => m.deviceId))).toEqual(new Set([fake.state.connection?.deviceId]));
+    for (const words of [SECRET_POST, SECRET_SEARCH, 'X answered slowly']) {
+      expect(sent.filter((line) => line.includes(words) || line.includes(encodeURIComponent(words)))).toEqual([]);
+    }
+    const stored = await page.evaluate(() =>
+      [localStorage, sessionStorage]
+        .flatMap((store) => Object.keys(store).map((key) => `${key}=${store.getItem(key) ?? ''}`))
+        .join('\n'),
+    );
+    expect(stored).not.toContain(SECRET_POST);
+    expect(stored).not.toContain(SECRET_SEARCH);
   });
 });
 

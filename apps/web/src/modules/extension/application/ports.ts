@@ -3,6 +3,8 @@ import type {
   ExtensionState,
   JobMessage,
   OpenMessage,
+  ReadAnswer,
+  ReadMessage,
   SignInAnswer,
   SignInMessage,
   SignOutAnswer,
@@ -24,7 +26,12 @@ export interface ActionChannel {
   job(extensionId: string, message: Omit<JobMessage, 'type'>): Promise<ActionAnswer>;
   /** Asks it to open one of its pages; `no_answer` when it doesn't answer. */
   open(extensionId: string, message: Omit<OpenMessage, 'type'>): Promise<ActionAnswer>;
+  /** Reads one of its places' data (ADR-0028); `no_answer` when it doesn't answer. */
+  read(extensionId: string, message: DistributiveOmit<ReadMessage, 'type'>): Promise<ReadAnswer>;
 }
+
+/** `Omit` over each member of a union, keeping it a union. */
+export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 /** What this browser keeps for the sync, in the site's own storage. None of it is a secret. */
 export interface BrowserMemory {

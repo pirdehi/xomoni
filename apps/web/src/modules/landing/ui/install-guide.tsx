@@ -44,6 +44,7 @@ import {
   stepNumber,
   unzipHow,
 } from '../domain/install-guide';
+import { TroubleLinks } from './install-help';
 
 const WIDE = '@media (min-width: 640px)';
 
@@ -311,6 +312,7 @@ function useStepViews(platform: Platform, steps: InstallSteps): Record<InstallSt
             Move the <code>xomoni-extension</code> folder somewhere you keep, such as Documents. Xomoni runs from that
             folder, so don’t delete it.
           </p>
+          <TroubleLinks questions={['wrong-folder', 'turned-off']} />
         </>
       ),
     },
@@ -335,6 +337,7 @@ function useStepViews(platform: Platform, steps: InstallSteps): Record<InstallSt
             </li>
           </ol>
           <p className={s.text}>Xomoni opens by itself once it is added.</p>
+          <TroubleLinks questions={['developer-mode', 'wrong-folder', 'developer-mode-warning']} />
         </>
       ),
     },
@@ -352,6 +355,7 @@ function useStepViews(platform: Platform, steps: InstallSteps): Record<InstallSt
             with you, and signing out on either side signs out both. Only job status is sent; your posts and likes stay
             on your computer.
           </p>
+          <TroubleLinks questions={['not-recognized']} />
         </>
       ),
     },

@@ -1,22 +1,17 @@
 'use client';
 // The install guide at `/install` (#44) on Fluent UI (ADR-0019): where the visitor stands, at the top and live; then the
-// download and the steps, told for their browser and computer, one at a time (#299). Until the Chrome Web Store listing
-// exists (#43), this is how to install. On a phone it says Xomoni runs on a computer, and offers nothing to install.
+// download and the steps, told for their browser and computer, one at a time (#299); then the install questions (#306).
+// Until the Chrome Web Store listing exists (#43), this is how to install. On a phone it says Xomoni runs on a computer,
+// and offers nothing to install.
 import { Badge, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
-import {
-  ArrowDownload20Regular,
-  ArrowSync20Regular,
-  Globe16Regular,
-  Open20Regular,
-  ShieldCheckmark16Regular,
-} from '@fluentui/react-icons';
+import { ArrowDownload20Regular, Globe16Regular, Open20Regular, ShieldCheckmark16Regular } from '@fluentui/react-icons';
 import { DOWNLOAD_URL, RELEASES_URL } from '@/shared/config/site';
 import { ButtonLink } from '@/shared/ui/links';
 import { SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
 import { useExtensionLink } from '@/modules/extension/ui/extension-session-sync';
 import { GettingStarted } from '@/modules/extension/ui/getting-started';
-import { extensionsAddress } from '../domain/install-guide';
 import { InstallGuide, PhoneNotice, useInstallSteps, usePlatform } from './install-guide';
+import { InstallHelp } from './install-help';
 
 const WIDE = '@media (min-width: 640px)';
 
@@ -78,36 +73,14 @@ const useStyles = makeStyles({
     [WIDE]: { padding: tokens.spacingHorizontalXXL },
   },
   where: { borderTop: `${tokens.strokeWidthThickest} solid ${tokens.colorBrandStroke1}` },
-  update: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalM,
-    backgroundColor: tokens.colorNeutralBackground2,
-    boxShadow: 'none',
-  },
-  updateIcon: { flexShrink: 0, marginTop: '2px', color: tokens.colorBrandForeground1 },
-  updateText: {
-    margin: 0,
-    color: tokens.colorNeutralForeground2,
-    fontSize: tokens.fontSizeBase400,
-    lineHeight: '1.6',
-    '& code': {
-      padding: `0 ${tokens.spacingHorizontalXS}`,
-      borderRadius: tokens.borderRadiusSmall,
-      backgroundColor: tokens.colorNeutralBackground1,
-      color: tokens.colorNeutralForeground1,
-      fontFamily: tokens.fontFamilyMonospace,
-      fontSize: '0.9em',
-      overflowWrap: 'anywhere',
-    },
-    '& strong': { color: tokens.colorNeutralForeground1, fontWeight: tokens.fontWeightSemibold },
-  },
 });
 
 /**
  * The install page at `/install`: header; the download buttons; *Where you are*, the getting-started checklist, which
  * looks for Xomoni every few seconds; the steps for this browser and computer (the risks, download, unzip, add it to
- * the browser, follow it here), which move on when the download starts and when Xomoni shows up; how to update; the
- * footer. On a phone, only why it can't be installed there.
+ * the browser, follow it here), which move on when the download starts and when Xomoni shows up; the install questions,
+ * how to update among them (#306); the footer. On a phone, why it can't be installed there instead of the download and
+ * the steps, then the questions.
  */
 export function InstallPage() {
   const s = useStyles();
@@ -167,15 +140,9 @@ export function InstallPage() {
                 />
               </div>
               <InstallGuide platform={platform} steps={steps} />
-              <div className={mergeClasses(s.card, s.update)}>
-                <ArrowSync20Regular className={s.updateIcon} aria-hidden />
-                <p className={s.updateText}>
-                  <strong>Updating:</strong> download the new version, replace the folder’s contents and press the
-                  reload button on Xomoni’s card in <code>{extensionsAddress(platform.browser)}</code>. Your data stays.
-                </p>
-              </div>
             </>
           )}
+          <InstallHelp platform={platform} />
         </div>
       </main>
       <SiteFooter />

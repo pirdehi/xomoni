@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-20
+- Amended: 2026-11-21, the file that moves Xomoni's data to another Xomoni carries them, within the same limits ([ADR-0032](0032-move-data-between-xomoni-versions.md), #300)
 
 ## Context
 
@@ -27,7 +28,8 @@ X lets nobody delete someone else's reply. The author of a post can hide a reply
 3. **It keeps them for a short while.**
    - At most 90 days, by when the reply was posted, and at most 5,000 per X account; older ones are dropped whenever new ones are kept.
    - They go with the account's other data: removing the account's data from the browser (`forgetAccount`) and *Delete local data* remove them.
-   - They are not in Xomoni's backup file.
+   - They are not in Xomoni's backup file (*Download a copy*).
+   - The file that moves Xomoni's data to another Xomoni on the same computer carries them, so a move doesn't lose them. The other Xomoni keeps only those within 90 days and the newest 5,000 ([ADR-0032](0032-move-data-between-xomoni-versions.md)).
 4. **They stay on the computer.** Nothing about them goes to a server (ADR-0004). xomoni.com reads them in the same browser only, under ADR-0028 (`xomoni-read`, `what: 'incoming'`): a page of at most 100, replies per day, and the 20 people who reply most.
 5. **Xomoni never acts on them.**
    - No hiding, blocking, muting or reporting, now or later, without a new ADR.

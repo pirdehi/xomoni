@@ -162,6 +162,18 @@ describe('SettingsPlace (#234, ADR-0029)', () => {
     expect(await screen.findByText(/Xomoni didn’t answer, so nothing changed/)).toBeInTheDocument();
   });
 
+  it('says to install the newest Xomoni when this one doesn’t know settings yet', async () => {
+    const old = controls(settings(), () => ({ ok: false, reason: 'invalid' }));
+    old.read.mockResolvedValue({ ok: false, reason: 'invalid' });
+    const { unmount } = render(<SettingsPlace xomoni={old.xomoni} numbers={NUMBERS} />);
+    expect(await screen.findByText(/older than this page and can’t show its settings here yet/)).toBeInTheDocument();
+    unmount();
+    const oldWrite = controls(settings(), () => ({ ok: false, reason: 'invalid' }));
+    render(<SettingsPlace xomoni={oldWrite.xomoni} numbers={NUMBERS} />);
+    await userEvent.click(await screen.findByRole('switch', { name: 'Desktop notifications' }));
+    expect(await screen.findByText(/can’t change its settings from here yet, so nothing changed/)).toBeInTheDocument();
+  });
+
   it('says so when Xomoni didn’t answer the read, or knows no X account for Watch', async () => {
     const { unmount } = render(<SettingsPlace xomoni={controls(null).xomoni} numbers={NUMBERS} />);
     expect(await screen.findByText(/Xomoni didn’t answer\. Open it/)).toBeInTheDocument();

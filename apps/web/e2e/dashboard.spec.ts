@@ -156,4 +156,27 @@ test.describe('dashboard (#41)', () => {
     await expect(page.getByRole('img', { name: 'Followers gained or lost: +8 in all' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Milestones' })).toContainText('1,000 followers on');
   });
+
+  test('Content shows what was published by type, and the weekday most is published (#254)', async ({ page }) => {
+    const email = uniqueEmail('content');
+    const userId = await createConfirmedUser(email, PASSWORD);
+    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+    await addDailyNumbers(userId, [
+      { x_handle: 'ada_x', day: day(3), posted_posts: 2, posted_replies: 5 },
+      { x_handle: 'ada_x', day: day(1), posted_posts: 1, posted_replies: 0 },
+    ]);
+
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Content' }).click();
+
+    const tiles = page.getByRole('list', { name: 'What you published' }).getByRole('listitem');
+    await expect(tiles.nth(0)).toContainText('Posts3');
+    await expect(tiles.nth(1)).toContainText('Replies5');
+    await expect(page.getByRole('img', { name: 'Posts, replies, reposts and quotes: 8 in all' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Posts, replies, reposts and quotes: legend' })).toContainText(
+      'Quotes',
+    );
+    await expect(page.getByRole('region', { name: 'When you publish' })).toContainText('You publish most on');
+  });
 });

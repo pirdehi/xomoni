@@ -6,6 +6,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Content on xomoni.com** (#254), from your daily numbers.
+  - Posts, replies, reposts and quotes published, each against the period before.
+  - What you published each day (or week) by type, stacked, with a legend and a table view.
+  - The weekday you publish most.
+  - Your best hour, top posts, posts no one engaged with and the age of what is still online stay in Xomoni, with your posts.
+
 - **Audience on xomoni.com** (#253), from your daily numbers.
   - Followers, gained, lost and the best and worst days, and followers per account you follow.
   - Followers and following over time, and what you gained or lost each day, losses below the line.

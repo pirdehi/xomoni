@@ -460,3 +460,274 @@ export function ColumnChart({
     </WithTable>
   );
 }
+
+/**
+ * The categorical slots for a chart of several series, in a fixed order (the dataviz reference palette, slots 1–4):
+ * light and dark steps, so each theme keeps its own validated set. Adjacent pairs pass the color-vision and
+ * normal-vision checks in both; the light aqua and yellow sit under 3:1 on the page, so these charts always carry a
+ * legend and a table view.
+ */
+export const SERIES_COLORS = [
+  { light: '#2a78d6', dark: '#3987e5' },
+  { light: '#eb6834', dark: '#d95926' },
+  { light: '#1baf7a', dark: '#199e70' },
+  { light: '#eda100', dark: '#c98500' },
+] as const;
+
+const DARK = '@media (prefers-color-scheme: dark)';
+
+const useSeriesStyles = makeStyles({
+  s0: {
+    fill: SERIES_COLORS[0].light,
+    stroke: SERIES_COLORS[0].light,
+    [DARK]: { fill: SERIES_COLORS[0].dark, stroke: SERIES_COLORS[0].dark },
+  },
+  s1: {
+    fill: SERIES_COLORS[1].light,
+    stroke: SERIES_COLORS[1].light,
+    [DARK]: { fill: SERIES_COLORS[1].dark, stroke: SERIES_COLORS[1].dark },
+  },
+  s2: {
+    fill: SERIES_COLORS[2].light,
+    stroke: SERIES_COLORS[2].light,
+    [DARK]: { fill: SERIES_COLORS[2].dark, stroke: SERIES_COLORS[2].dark },
+  },
+  s3: {
+    fill: SERIES_COLORS[3].light,
+    stroke: SERIES_COLORS[3].light,
+    [DARK]: { fill: SERIES_COLORS[3].dark, stroke: SERIES_COLORS[3].dark },
+  },
+  legend: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalL}`,
+    margin: 0,
+    padding: 0,
+    listStyleType: 'none',
+    ...typographyStyles.caption1,
+    color: tokens.colorNeutralForeground2,
+  },
+  key: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
+  tipRow: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, ...typographyStyles.caption1 },
+  tipNumber: { ...typographyStyles.caption1Strong, color: tokens.colorNeutralForeground1, minWidth: '2ch' },
+  dim: { opacity: 0.75 },
+});
+
+/** One column of a stacked chart: a value per series, or null on a day with no numbers. */
+export interface StackPoint {
+  day: string;
+  values: Record<string, number> | null;
+}
+
+/** Groups stacked days into weeks (Monday first) when there would be more than `max` columns. */
+export function stackedColumnsOf(points: readonly StackPoint[], max = 45): { points: StackPoint[]; weekly: boolean } {
+  if (points.length <= max) return { points: [...points], weekly: false };
+  const weeks: StackPoint[] = [];
+  for (const p of points) {
+    const date = new Date(`${p.day}T00:00:00Z`);
+    const monday = new Date(date.getTime() - ((date.getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
+    let week = weeks.at(-1);
+    if (week?.day !== monday) {
+      week = { day: monday, values: null };
+      weeks.push(week);
+    }
+    if (p.values) {
+      const sum: Record<string, number> = { ...(week.values ?? {}) };
+      for (const [k, v] of Object.entries(p.values)) sum[k] = (sum[k] ?? 0) + v;
+      week.values = sum;
+    }
+  }
+  return { points: weeks, weekly: true };
+}
+
+/**
+ * Stacked columns over days, or weeks for a long period (#254): one segment per series, in the fixed palette order,
+ * 2px of surface between segments, a legend, a tooltip listing every series by pointer or keyboard, and a table view
+ * with a column per series and the total.
+ */
+export function StackedColumnChart({
+  points,
+  series,
+  label,
+  today,
+}: {
+  points: readonly StackPoint[];
+  /** At most four, in the order they stack from the baseline up. */
+  series: readonly { id: string; label: string }[];
+  label: string;
+  today: string;
+}) {
+  const s = useStyles();
+  const c = useSeriesStyles();
+  const slotClass = [c.s0, c.s1, c.s2, c.s3];
+  const [ref, width] = useWidth();
+  const [active, setActive] = useState<number | null>(null);
+  const [table, setTable] = useState(false);
+  const titleId = useId();
+  const { points: cols, weekly } = stackedColumnsOf(points);
+  const totalOf = (p: StackPoint) => (p.values ? series.reduce((sum, x) => sum + (p.values?.[x.id] ?? 0), 0) : null);
+  const totals = cols.map(totalOf);
+  const ticks = niceTicks(0, Math.max(1, ...totals.map((t) => t ?? 0))).filter((t) => t >= 0);
+  const hi = ticks.at(-1) ?? 1;
+  const innerW = width - PAD.left - PAD.right;
+  const innerH = HEIGHT - PAD.top - PAD.bottom;
+  const slot = innerW / Math.max(cols.length, 1);
+  const barW = Math.max(2, Math.min(24, slot - 2));
+  const cx = (i: number) => PAD.left + slot * i + slot / 2;
+  const y = (v: number) => PAD.top + innerH - (v / hi) * innerH;
+  const all = totals.reduce<number>((sum, t) => sum + (t ?? 0), 0);
+  const shown = active !== null ? cols[active] : undefined;
+  const asLine = (p: StackPoint): SeriesPoint => ({ day: p.day, value: totalOf(p) });
+
+  const onMove = (e: PointerEvent<SVGSVGElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const i = Math.floor((((e.clientX - box.left) / box.width) * width - PAD.left) / slot);
+    setActive(i >= 0 && i < cols.length && cols[i]?.values ? i : null);
+  };
+  const onKey = (e: KeyboardEvent<SVGSVGElement>) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setActive(stepIndex(cols.map(asLine), active, e.key === 'ArrowRight' ? 1 : -1));
+    } else if (e.key === 'Escape') setActive(null);
+  };
+
+  /** The segments of one column, bottom up; the top one has a 4px rounded end, and 2px separates each. */
+  const segments = (i: number, p: StackPoint) => {
+    const out: { id: string; d: string; slot: number }[] = [];
+    let base = 0;
+    const visible = series.map((x, k) => ({ x, k, v: p.values?.[x.id] ?? 0 })).filter((e) => e.v > 0);
+    visible.forEach(({ x, k, v }, n) => {
+      const left = cx(i) - barW / 2;
+      const bottom = y(base) - (n === 0 ? 0 : 1);
+      const top = y(base + v) + (n === visible.length - 1 ? 0 : 1);
+      if (bottom - top > 0.5) {
+        const r = n === visible.length - 1 ? Math.min(4, barW / 2, bottom - top) : 0;
+        out.push({
+          id: x.id,
+          slot: k,
+          d: `M${left},${bottom} L${left},${top + r} Q${left},${top} ${left + r},${top} L${left + barW - r},${top} Q${left + barW},${top} ${left + barW},${top + r} L${left + barW},${bottom} Z`,
+        });
+      }
+      base += v;
+    });
+    return out;
+  };
+
+  return (
+    <div className={s.stack}>
+      <ul className={c.legend} aria-label={`${label}: legend`}>
+        {series.map((x, k) => (
+          <li key={x.id} className={c.key}>
+            <svg width="10" height="10" aria-hidden>
+              <rect width="10" height="10" rx="2" className={slotClass[k]} />
+            </svg>
+            {x.label}
+          </li>
+        ))}
+      </ul>
+      {table ? (
+        <div className={s.tableBox}>
+          <table className={s.table}>
+            <caption className={s.hidden}>{label}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{weekly ? 'Week of' : 'Day'}</th>
+                {series.map((x) => (
+                  <th key={x.id} scope="col">
+                    {x.label}
+                  </th>
+                ))}
+                <th scope="col">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cols
+                .filter((p) => p.values)
+                .map((p) => (
+                  <tr key={p.day}>
+                    <td>{formatDay(p.day, today)}</td>
+                    {series.map((x) => (
+                      <td key={x.id}>{formatCount(p.values?.[x.id] ?? 0)}</td>
+                    ))}
+                    <td>{formatCount(totalOf(p) ?? 0)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div ref={ref} className={s.wrap}>
+          <svg
+            className={mergeClasses(s.svg, s.focusable)}
+            viewBox={`0 0 ${width} ${HEIGHT}`}
+            height={HEIGHT}
+            role="img"
+            aria-labelledby={titleId}
+            tabIndex={0}
+            onPointerMove={onMove}
+            onPointerLeave={() => setActive(null)}
+            onKeyDown={onKey}
+            onBlur={() => setActive(null)}
+          >
+            <title id={titleId}>{`${label}: ${formatCount(all)} in all`}</title>
+            {ticks.map((t) => (
+              <g key={t}>
+                <line className={s.grid} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} />
+                <text className={s.tick} x={PAD.left - 8} y={y(t) + 4} textAnchor="end">
+                  {formatCount(t)}
+                </text>
+              </g>
+            ))}
+            {cols.length > 0 && (
+              <>
+                <text className={s.tick} x={cx(0)} y={HEIGHT - 6} textAnchor="start">
+                  {formatDay(cols[0]?.day ?? '', today)}
+                </text>
+                <text className={s.tick} x={cx(cols.length - 1)} y={HEIGHT - 6} textAnchor="end">
+                  {formatDay(cols.at(-1)?.day ?? '', today)}
+                </text>
+              </>
+            )}
+            {cols.map((p, i) =>
+              segments(i, p).map((seg) => (
+                <path
+                  key={`${p.day}-${seg.id}`}
+                  className={mergeClasses(slotClass[seg.slot], active === i && c.dim)}
+                  strokeWidth={0}
+                  d={seg.d}
+                />
+              )),
+            )}
+          </svg>
+          {shown?.values && active !== null && (
+            <div className={s.tooltip} style={{ left: `${(cx(active) / width) * 100}%` }} role="status">
+              <span className={s.tipLabel}>
+                {weekly ? 'Week of ' : ''}
+                {formatDay(shown.day, today)}
+              </span>
+              {series.map((x, k) => (
+                <span key={x.id} className={c.tipRow}>
+                  <svg width="12" height="4" aria-hidden>
+                    <line x1="0" x2="12" y1="2" y2="2" strokeWidth="2" className={slotClass[k]} />
+                  </svg>
+                  <span className={c.tipNumber}>{formatCount(shown.values?.[x.id] ?? 0)}</span>
+                  {x.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <Button
+        className={s.toggle}
+        size="small"
+        appearance="subtle"
+        icon={table ? <DataLine16Regular /> : <Table16Regular />}
+        aria-pressed={table}
+        onClick={() => setTable(!table)}
+      >
+        {table ? 'Show as chart' : 'Show as table'}
+      </Button>
+    </div>
+  );
+}

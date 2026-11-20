@@ -268,3 +268,81 @@ export function nextMilestone(followers: number): { count: number; toGo: number 
   const next = MILESTONES.find((m) => m > followers);
   return next === undefined ? null : { count: next, toGo: next - followers };
 }
+
+/** What the person publishes, by type (#254). */
+export type ContentType = 'posts' | 'replies' | 'reposts' | 'quotes';
+
+/** The types in the order the Content place shows them. */
+export const CONTENT_TYPES: readonly { id: ContentType; label: string }[] = [
+  { id: 'posts', label: 'Posts' },
+  { id: 'replies', label: 'Replies' },
+  { id: 'reposts', label: 'Reposts' },
+  { id: 'quotes', label: 'Quotes' },
+];
+
+/** One day's publishing by type; null on a day with no numbers. */
+export interface TypedPoint {
+  day: string;
+  values: Record<ContentType, number> | null;
+}
+
+function typed(d: DailyNumbers): Record<ContentType, number> {
+  return { posts: d.postedPosts, replies: d.postedReplies, reposts: d.postedReposts, quotes: d.postedQuotes };
+}
+
+/** What was published each day of the period, by type, summed over the accounts in scope. */
+export function publishedByType(days: readonly DailyNumbers[], scope: Scope, now: number): TypedPoint[] {
+  const span = range(days, scope, now);
+  if (!span) return [];
+  const byDay = new Map<string, Record<ContentType, number>>();
+  for (const d of days) {
+    const sum = byDay.get(d.day) ?? { posts: 0, replies: 0, reposts: 0, quotes: 0 };
+    const add = typed(d);
+    for (const t of CONTENT_TYPES) sum[t.id] += add[t.id];
+    byDay.set(d.day, sum);
+  }
+  return eachDay(...span).map((day) => ({ day, values: byDay.get(day) ?? null }));
+}
+
+/** The Content place's figures: each type published in the period, against the period before. */
+export function contentFigures(
+  current: readonly DailyNumbers[],
+  previous: readonly DailyNumbers[],
+): Record<ContentType, Figure> {
+  const out = {} as Record<ContentType, Figure>;
+  for (const t of CONTENT_TYPES) {
+    out[t.id] = {
+      value: sum(current, (d) => typed(d)[t.id]),
+      previous: sum(previous, (d) => typed(d)[t.id]),
+    };
+  }
+  return out;
+}
+
+/** The days of the week, Monday first. */
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+
+/**
+ * How much the person publishes on each day of the week, on average over the days with numbers, Monday first; null for
+ * a weekday with no day of numbers. `best` is the weekday with the highest average, if any day had a post.
+ */
+export function weekdayAverages(days: readonly DailyNumbers[]): { averages: (number | null)[]; best: number | null } {
+  const totals = new Map<string, number>();
+  for (const d of days) {
+    const t = typed(d);
+    totals.set(d.day, (totals.get(d.day) ?? 0) + t.posts + t.replies + t.reposts + t.quotes);
+  }
+  const sums = Array<number>(7).fill(0);
+  const counts = Array<number>(7).fill(0);
+  for (const [day, total] of totals) {
+    const weekday = (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7;
+    sums[weekday] = (sums[weekday] ?? 0) + total;
+    counts[weekday] = (counts[weekday] ?? 0) + 1;
+  }
+  const averages = sums.map((s, i) => ((counts[i] ?? 0) === 0 ? null : s / (counts[i] ?? 1)));
+  let best: number | null = null;
+  averages.forEach((a, i) => {
+    if (a !== null && a > 0 && (best === null || a > (averages[best] ?? 0))) best = i;
+  });
+  return { averages, best };
+}

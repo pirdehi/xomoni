@@ -250,7 +250,7 @@ xomoni.com becomes the place to see and manage the X account: every place of the
 | ✅ | Release 0.3.0: everything since 0.2.1, actions from the website and daily numbers | [#260](https://github.com/pirdehi/xomoni/issues/260) | [#270](https://github.com/pirdehi/xomoni/pull/270), [v0.3.0](https://github.com/pirdehi/xomoni/releases/tag/v0.3.0), [#272](https://github.com/pirdehi/xomoni/pull/272) |
 | ✅ | Overview: the figures against the period before, followers over time, what was published (top posts come with #233) | [#252](https://github.com/pirdehi/xomoni/issues/252) | [#273](https://github.com/pirdehi/xomoni/pull/273) |
 | ✅ | Audience: followers and following, gained and lost each day, milestones, the ratio (who followed or unfollowed: by comparing archives in Xomoni, #233) | [#253](https://github.com/pirdehi/xomoni/issues/253) | [#274](https://github.com/pirdehi/xomoni/pull/274) |
-| ⬜ | Content | [#254](https://github.com/pirdehi/xomoni/issues/254) | |
+| ✅ | Content: each type published against the period before, by type over time, the weekday most is published (what needs the posts themselves: in Xomoni, #233) | [#254](https://github.com/pirdehi/xomoni/issues/254) | [#275](https://github.com/pirdehi/xomoni/pull/275) |
 | ⬜ | Engagement | [#255](https://github.com/pirdehi/xomoni/issues/255) | |
 | ⬜ | Comments | [#256](https://github.com/pirdehi/xomoni/issues/256) | |
 | ⬜ | Reports | [#257](https://github.com/pirdehi/xomoni/issues/257) | |

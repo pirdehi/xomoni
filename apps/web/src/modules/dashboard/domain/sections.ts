@@ -91,8 +91,7 @@ export const SECTIONS: readonly Section[] = [
     ],
     source: 'Your X archive and what Xomoni has seen',
     needsXomoni: false,
-    ready: false,
-    issue: 254,
+    ready: true,
   },
   {
     id: 'engagement',

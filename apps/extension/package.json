@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run --coverage",
     "icons": "node scripts/make-icons.mjs",
-    "preview:ui": "vite --open /preview.html"
+    "preview:ui": "vite --open /preview.html",
+    "store:images": "node scripts/store-images.mjs"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.75.1",
@@ -36,6 +37,7 @@
     "esbuild": "^0.25.0",
     "fake-indexeddb": "^6.2.7",
     "happy-dom": "^21.0.4",
+    "playwright": "^1.64.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.7",
     "vitest": "^5.0.5"

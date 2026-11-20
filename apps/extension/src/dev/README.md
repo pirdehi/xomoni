@@ -16,6 +16,7 @@
 ## Used by
 
 - `preview.html` loads `preview.ts`. Run `npm run preview:ui -w @xomoni/extension`, which starts the Vite dev server and opens `/preview.html`.
+- `../../scripts/store-images.mjs` serves the same page with Vite and photographs it for the store screenshots (#301): the demo account is the only data they show.
 - Nothing else. `preview.html` is not an input in `vite.config.ts`, so `npm run build` never includes this code.
 
 ## Rules

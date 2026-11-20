@@ -32,6 +32,7 @@
     "docs:check": "node tooling/check-docs.mjs",
     "tests:check": "node tooling/check-tests.mjs",
     "test:tooling": "node --test 'tooling/*.test.mjs'",
+    "remote-code:check": "npm run --silent build -w @xomoni/extension && node tooling/check-remote-code.mjs",
     "verify": "node tooling/verify.mjs",
     "prepare": "node tooling/install-git-hooks.mjs"
   },

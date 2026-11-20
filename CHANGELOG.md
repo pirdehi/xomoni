@@ -6,6 +6,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Audience on xomoni.com** (#253), from your daily numbers.
+  - Followers, gained, lost and the best and worst days, and followers per account you follow.
+  - Followers and following over time, and what you gained or lost each day, losses below the line.
+  - Milestones reached, and how many to the next.
+  - Who followed or unfollowed you is found in Xomoni, by comparing two of your X archives; the names stay on your computer.
+
 - **Overview shows your numbers** (#252), once you turn them on.
   - Followers, posts, likes and replies received, and the engagement rate, each against the period before.
   - Followers over time, and what you published each day (or week, over a long period).

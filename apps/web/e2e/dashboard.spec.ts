@@ -134,4 +134,26 @@ test.describe('dashboard (#41)', () => {
     await numbers.getByRole('button', { name: 'Show as table' }).first().click();
     await expect(numbers.getByRole('table').first()).toContainText('125');
   });
+
+  test('Audience shows followers gained and lost, and milestones, from the daily numbers (#253)', async ({ page }) => {
+    const email = uniqueEmail('audience');
+    const userId = await createConfirmedUser(email, PASSWORD);
+    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+    await addDailyNumbers(userId, [
+      { x_handle: 'ada_x', day: day(6), followers: 990 },
+      { x_handle: 'ada_x', day: day(4), followers: 1004 },
+      { x_handle: 'ada_x', day: day(2), followers: 998 },
+    ]);
+
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Audience' }).click();
+
+    const tiles = page.getByRole('list', { name: 'Your audience in numbers' });
+    await expect(tiles.getByRole('listitem').nth(0)).toContainText('998');
+    await expect(tiles.getByRole('listitem').nth(1)).toContainText('14');
+    await expect(tiles.getByRole('listitem').nth(2)).toContainText('6');
+    await expect(page.getByRole('img', { name: 'Followers gained or lost: +8 in all' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Milestones' })).toContainText('1,000 followers on');
+  });
 });

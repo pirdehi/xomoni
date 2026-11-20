@@ -27,7 +27,8 @@ describe('formatting (#252)', () => {
   it('picks round ticks that cover the values', () => {
     expect(niceTicks(1200, 1325)).toEqual([1200, 1250, 1300, 1350]);
     expect(niceTicks(0, 7)).toEqual([0, 5, 10]);
-    expect(niceTicks(5, 5)).toEqual([4, 6]);
+    expect(niceTicks(5, 5)).toEqual([4, 5, 6]);
+    expect(niceTicks(310, 310)).toEqual([300, 310, 320]);
     expect(niceTicks(0, 0)).toEqual([0, 1]);
   });
 
@@ -178,5 +179,24 @@ describe('chart edges', () => {
     render(<ColumnChart points={[]} label="Published" today={TODAY} />);
     await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
     expect(screen.getAllByRole('row')).toHaveLength(1);
+  });
+});
+
+describe('ColumnChart with gains and losses (#253)', () => {
+  it('draws losses below zero, signs every value, and marks the zero line', async () => {
+    render(<ColumnChart points={points([4, -3, null, 0, 2])} label="Followers gained or lost" today={TODAY} signed />);
+    const chart = screen.getByRole('img', { name: 'Followers gained or lost: +3 in all' });
+    expect(chart.querySelectorAll('path')).toHaveLength(3);
+    expect(chart).toHaveTextContent('−5');
+    chart.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('status')).toHaveTextContent('+4Nov 14');
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('status')).toHaveTextContent('−3Nov 15');
+  });
+
+  it('keeps the minus sign without signing gains when not asked to', () => {
+    render(<ColumnChart points={points([-2, 1])} label="Change" today={TODAY} />);
+    expect(screen.getByRole('img', { name: 'Change: −1 in all' })).toBeInTheDocument();
   });
 });

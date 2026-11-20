@@ -33,7 +33,7 @@ describe('the dashboard’s places (#245)', () => {
       expect(section.issue).toBeGreaterThan(0);
       expect(section.source).not.toBe('');
     }
-    expect(SECTIONS.filter((s) => s.ready).map((s) => s.id)).toEqual(['overview', 'activity', 'browsers']);
+    expect(SECTIONS.filter((s) => s.ready).map((s) => s.id)).toEqual(['overview', 'audience', 'activity', 'browsers']);
   });
 
   it('marks as needing Xomoni exactly the places whose lists or actions come from the extension (ADR-0027)', () => {

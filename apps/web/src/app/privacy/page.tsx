@@ -8,12 +8,12 @@ export const metadata: Metadata = { title: 'Privacy Policy' };
 /** `/privacy`: the privacy policy. */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="November 20, 2026">
+    <LegalPage title="Privacy Policy" updated="November 21, 2026">
       <p>
-        Xomoni is a free, open-source tool made by Omid Pirdehi. It has two parts: a browser extension that cleans up
-        your own X account on your computer, and this website, where you can follow that work from any device. This
-        policy explains what each part stores and why. The source code for both is public on{' '}
-        <a href={GITHUB_URL}>GitHub</a>, so you can check every claim below.
+        Xomoni is a free, open-source tool made by Omid Pirdehi that manages your digital footprint, starting with your
+        own X account. It has two parts: a browser extension that does the work on your computer, and this website,
+        where you can follow that work from any device. This policy explains what each part stores and why. The source
+        code for both is public on <a href={GITHUB_URL}>GitHub</a>, so you can check every claim below.
       </p>
 
       <h2>The short version</h2>
@@ -64,6 +64,23 @@ export default function PrivacyPage() {
         Xomoni or anyone else. Xomoni never asks for, reads or stores your X password, and it does not read your X
         session cookies.
       </p>
+      <p>
+        Xomoni also keeps the replies other people wrote to your posts, as X showed them to you, so you can see who
+        replies to you: at most the last 90 days and 5,000 replies per X account, on your computer only. When you move
+        your data to another copy of Xomoni, the file you export is saved where you choose. Xomoni never uploads it.
+      </p>
+
+      <h2>What xomoni.com shows from the extension in the same browser</h2>
+      <p>
+        When you are signed in to this website and to the extension in the same browser, with the same Xomoni account,
+        pages here can ask the extension for your Library, Watch, account health, settings and comments, and show them.
+        That data goes from the extension to the page inside your browser. It never passes through our servers. The page
+        keeps it in memory only while it is open: it isn’t stored, logged or sent to anyone.
+      </p>
+      <p>
+        Actions you take here reach the extension the same way, inside your browser. Settings changed here stay within
+        Xomoni’s safety limits, and any work on X is always confirmed by you in the extension, never on this website.
+      </p>
 
       <h2>What we store if you sign in</h2>
       <p>You can create a Xomoni account with your email address and a password, or with Google. We then store:</p>
@@ -79,9 +96,10 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Connected browsers:</strong> a name such as “Chrome on macOS”, the extension version and when it last
-          checked in. You connect a browser by typing a one-time code from your dashboard into the extension; we keep
-          the code and the browser’s key only as one-way hashes, and the key can only report job status and, if you turn
-          them on, your daily numbers.
+          checked in. You connect a browser in one click on this website, in the same browser, which hands the extension
+          a one-time code, or by typing that code from your dashboard into the extension. We keep the code and the
+          browser’s key only as one-way hashes, and the key can only report job status and, if you turn them on, your
+          daily numbers.
         </li>
         <li>
           <strong>Job summaries:</strong> the job’s title (for example “Delete posts before Jan 2024”), its type, state

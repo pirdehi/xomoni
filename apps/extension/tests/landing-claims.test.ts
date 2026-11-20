@@ -12,3 +12,14 @@ describe('the pace xomoni.com promises (#239)', () => {
     expect(content).toContain(`and ${dailyCap.toLocaleString('en-US')} a day, at most, by default`);
   });
 });
+
+describe('what xomoni.com’s privacy policy says Xomoni keeps (ADR-0030)', () => {
+  it('names the replies Xomoni keeps with the limits it keeps them to', async () => {
+    const { INCOMING_KEEP_DAYS, INCOMING_MAX } = await import('../src/shared/incoming');
+    const { default: privacy } = await import('../../web/src/app/privacy/page.tsx?raw');
+
+    expect(privacy).toContain(
+      `at most the last ${INCOMING_KEEP_DAYS} days and ${INCOMING_MAX.toLocaleString('en-US')} replies per X account`,
+    );
+  });
+});

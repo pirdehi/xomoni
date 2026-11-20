@@ -30,6 +30,11 @@ export interface Item {
   /** Handle of the original author (own handle for posts/replies). */
   author: string;
   inReplyToId: string | null;
+  /**
+   * Replies only: the handle of the post's author it answers, without `@` (#256). Missing until X or the archive has
+   * said; X's `in_reply_to_screen_name`.
+   */
+  replyTo?: string;
   /** Reply to one of your own posts (a thread continuation). */
   selfReply: boolean;
   /**
@@ -75,7 +80,7 @@ export type ItemDraft = Pick<
   | 'reposts'
   | 'replies'
 > &
-  Partial<Pick<Item, 'quotes' | 'bookmarks' | 'views' | 'quote'>>;
+  Partial<Pick<Item, 'quotes' | 'bookmarks' | 'views' | 'quote' | 'replyTo'>>;
 
 /**
  * An X account Xomoni has seen, keyed by X's numeric user id (`rest_id`, also in the `twid` cookie).
@@ -128,6 +133,11 @@ export interface CleanupFilter {
   keepIds: string[];
   /** Keep replies to your own posts (thread continuations). Applies only when `target` is `reply`. */
   skipSelfReplies: boolean;
+  /**
+   * Only these posts, by id: replies picked on xomoni.com (#256). Every other rule still applies. Missing for a
+   * cleanup by date, and in jobs made before it.
+   */
+  onlyIds?: string[];
 }
 
 /** Strategy switches for a cleanup job. The sweep runs before the deep clean (see engine/cleanup.ts). */

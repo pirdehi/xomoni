@@ -58,6 +58,7 @@ import { Delta } from './delta';
 import { HealthPlace, LibraryPlace, WatchPlace } from './xomoni-places';
 import { SettingsPlace } from './settings-place';
 import { CleanupPlace } from './cleanup-place';
+import { CommentsPlace } from './comments-place';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
@@ -507,6 +508,8 @@ export function Dashboard({
     content = <HealthPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'cleanup') {
     content = <CleanupPlace xomoni={xomoni} now={now} />;
+  } else if (section.id === 'comments') {
+    content = <CommentsPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'settings') {
     content = <SettingsPlace xomoni={xomoni} numbers={<NumbersChoice shown={numbersShown} onShow={showNumbers} />} />;
   } else if (section.id === 'browsers') {

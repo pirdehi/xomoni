@@ -34,6 +34,7 @@ function tweet(
     text?: string;
     replyTo?: string;
     replyToUser?: string;
+    replyToHandle?: string;
     rt?: object;
     quoted?: object;
     likes?: number;
@@ -51,6 +52,7 @@ function tweet(
       full_text: opts.text ?? `text ${id}`,
       in_reply_to_status_id_str: opts.replyTo,
       in_reply_to_user_id_str: opts.replyToUser,
+      in_reply_to_screen_name: opts.replyToHandle,
       favorite_count: opts.likes ?? 0,
       retweet_count: 0,
       reply_count: 0,
@@ -180,6 +182,30 @@ describe('graphql parsing', () => {
     expect(drafts[2]?.author).toBe('author');
   });
 
+  it('reads whom a reply answers (#256), and only a handle X could have', () => {
+    const tweets = [
+      tweet('1', { replyTo: '77', replyToUser: '5', replyToHandle: 'Ada_L' }),
+      tweet('2', { replyTo: '78', replyToUser: '6', replyToHandle: 'not a handle' }),
+      tweet('3', { replyTo: '1', replyToUser: ME, replyToHandle: 'me' }),
+      // X names the author a post mentions first even when it answers nothing: not a reply.
+      tweet('4', { replyToHandle: 'ada_l' }),
+    ].map((t) => parseTweet(t, null));
+    expect(tweets.map((t) => t?.inReplyToHandle)).toEqual(['Ada_L', null, 'me', 'ada_l']);
+    const drafts = draftsFromTimeline(
+      'UserTweetsAndReplies',
+      tweets.filter((t) => t !== null),
+      ME,
+      {},
+    );
+    expect(drafts.map((d) => [d.kind, d.replyTo])).toEqual([
+      ['reply', 'Ada_L'],
+      ['reply', undefined],
+      ['reply', 'me'],
+      ['post', undefined],
+    ]);
+    expect(drafts[1]).not.toHaveProperty('replyTo');
+  });
+
   it('records likes only from the viewer’s own Likes timeline, with checked like times', () => {
     const created = Date.UTC(2020, 0, 1);
     const tweets = [
@@ -262,15 +288,37 @@ describe('archive', () => {
             full_text: '@a ok',
             in_reply_to_status_id_str: '5',
             in_reply_to_user_id_str: '42',
+            in_reply_to_screen_name: 'a',
+          },
+        },
+        {
+          tweet: {
+            id_str: '14',
+            created_at: 'Wed Oct 10 20:19:24 +0000 2018',
+            full_text: 'odd',
+            in_reply_to_status_id_str: '6',
+            in_reply_to_screen_name: '<b>',
+          },
+        },
+        {
+          tweet: {
+            id_str: '15',
+            created_at: 'Wed Oct 10 20:19:24 +0000 2018',
+            full_text: 'RT @someone: hi',
+            in_reply_to_status_id_str: '7',
+            in_reply_to_screen_name: 'someone',
           },
         },
       ])}`,
     );
     const drafts = archiveTweetDrafts(tweets, ME, 'me');
-    expect(drafts.map((d) => [d.kind, d.targetId, d.author])).toEqual([
-      ['post', '11', 'me'],
-      ['repost', '', 'someone'],
-      ['reply', '13', 'me'],
+    expect(drafts.map((d) => [d.kind, d.targetId, d.author, d.replyTo])).toEqual([
+      ['post', '11', 'me', undefined],
+      ['repost', '', 'someone', undefined],
+      // Whom a reply answers (#256), when the archive names a real handle; never on a repost.
+      ['reply', '13', 'me', 'a'],
+      ['reply', '14', 'me', undefined],
+      ['repost', '', 'someone', undefined],
     ]);
     expect(drafts[0]?.likes).toBe(4);
     expect(drafts[2]?.selfReply).toBe(false);
@@ -333,6 +381,15 @@ describe('cleanup rules', () => {
     expect(
       matchesFilter({ ...base, target: 'reply', skipSelfReplies: false }, item({ kind: 'reply', selfReply: true })),
     ).toBe(true);
+  });
+
+  it('removes only the picked posts when the plan names them (#256), still under every keep rule', () => {
+    const picked = { ...base, target: 'reply' as const, skipSelfReplies: false, onlyIds: ['1', '3'] };
+    expect(matchesFilter(picked, item({ kind: 'reply' }))).toBe(true);
+    expect(matchesFilter(picked, item({ kind: 'reply', id: '2' }))).toBe(false);
+    expect(matchesFilter({ ...picked, keepKeywords: ['hello'] }, item({ kind: 'reply' }))).toBe(false);
+    expect(matchesFilter(picked, item({ kind: 'reply', status: 'deleted' }))).toBe(false);
+    expect(matchesFilter(picked, item({ kind: 'reply', createdAt: Date.UTC(2024, 5, 1) }))).toBe(false);
   });
 
   it('uses the like time for likes when known', () => {

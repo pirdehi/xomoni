@@ -6,7 +6,10 @@ import {
   PAIR,
   READ,
   READ_PAGE,
+  MAX_PLAN_IDS,
   MAX_PLAN_KEYWORDS,
+  MAX_REPLIED_TO,
+  parseRepliesFilter,
   MAX_WATCH_SEARCHES,
   PLAN,
   parsePlan,
@@ -538,6 +541,27 @@ describe('cleanup plans (#235)', () => {
     expect(parseReadMessage({ type: READ, what: 'cleanup', deviceId: DEVICE, plan, x: 1 })).toBeNull();
   });
 
+  it('reads replies picked by id (#256), and refuses an empty, long, repeated or odd list', () => {
+    const picked = { ...plan, onlyIds: ['1800000000000000001', '1800000000000000002'] };
+    expect(parsePlan(picked, NOW)).toEqual(picked);
+    expect(parsePlanMessage({ type: PLAN, deviceId: DEVICE, plan: picked })?.plan.onlyIds).toHaveLength(2);
+    // A plan by date has no list at all, as a Xomoni older than the selection expects.
+    expect(parsePlan(plan, NOW)).not.toHaveProperty('onlyIds');
+    const many = Array.from({ length: MAX_PLAN_IDS }, (_, i) => `18000000000000${String(i).padStart(5, '0')}`);
+    expect(parsePlan({ ...plan, onlyIds: many }, NOW)?.onlyIds).toHaveLength(MAX_PLAN_IDS);
+    for (const onlyIds of [
+      [],
+      [...many, '1'],
+      ['1800000000000000001', '1800000000000000001'],
+      ['https://x.com/a/status/1'],
+      [18],
+      '1800000000000000001',
+      null,
+    ]) {
+      expect(parsePlan({ ...plan, onlyIds }, NOW), JSON.stringify(onlyIds)).toBeNull();
+    }
+  });
+
   it('reads an estimate strictly: counts only', () => {
     const estimate = { handle: 'ada', matching: 1200, archive: false, perDay: 100 };
     expect(parseReadAnswer({ ok: true, what: 'cleanup', estimate }, 'cleanup')).toEqual({
@@ -553,6 +577,113 @@ describe('cleanup plans (#235)', () => {
       null,
     ]) {
       expect(parseReadAnswer({ ok: true, what: 'cleanup', estimate: bad }, 'cleanup')).toEqual({
+        ok: false,
+        reason: 'refused',
+      });
+    }
+  });
+});
+
+describe('replies (#256)', () => {
+  const NOW = Date.UTC(2026, 10, 20);
+  const filter = {
+    after: Date.UTC(2020, 0, 1),
+    before: Date.UTC(2025, 0, 1),
+    maxLikes: 3,
+    replyTo: 'ada_l',
+    query: 'rust',
+    threads: false,
+  };
+  const open = { after: null, before: null, maxLikes: null, replyTo: '', query: '', threads: true };
+
+  it('reads a replies read with its filter and offset, and nothing more', () => {
+    expect(parseRepliesFilter(filter, NOW)).toEqual(filter);
+    expect(parseRepliesFilter(open, NOW)).toEqual(open);
+    const read = { type: READ, what: 'replies', deviceId: DEVICE, filter: open, offset: 100 };
+    expect(parseReadMessage(read)).toEqual(read);
+    expect(parseWebsiteMessage(read)).toEqual(read);
+  });
+
+  it('refuses a filter with a wrong field, impossible dates or an odd handle', () => {
+    for (const bad of [
+      { ...filter, after: filter.before },
+      { ...filter, after: Date.UTC(2004, 0, 1) },
+      { ...filter, before: NOW + 3 * 86_400_000 },
+      { ...filter, before: '2025' },
+      { ...filter, maxLikes: -1 },
+      { ...filter, maxLikes: 2_000_000 },
+      { ...filter, maxLikes: 1.5 },
+      { ...filter, replyTo: '@ada' },
+      { ...filter, replyTo: 'x'.repeat(16) },
+      { ...filter, query: 'x'.repeat(101) },
+      { ...filter, query: 3 },
+      { ...filter, threads: 'no' },
+      { ...filter, start: true },
+      { after: null, before: null },
+      null,
+    ]) {
+      expect(parseRepliesFilter(bad, NOW), JSON.stringify(bad)).toBeNull();
+    }
+    const read = { type: READ, what: 'replies', deviceId: DEVICE, filter: open, offset: 0 };
+    expect(parseReadMessage({ ...read, offset: -1 })).toBeNull();
+    expect(parseReadMessage({ ...read, filter: null })).toBeNull();
+    expect(parseReadMessage({ ...read, kind: 'reply' })).toBeNull();
+    expect(parseReadMessage({ ...read, deviceId: 'me' })).toBeNull();
+  });
+
+  const reply = {
+    id: '1800000000000000000',
+    replyTo: 'ada_l',
+    text: 'agreed',
+    createdAt: 1,
+    likes: 0,
+    reposts: 0,
+    replies: 1,
+    thread: false,
+  };
+  const page = {
+    handle: 'me',
+    total: 3,
+    matching: 1,
+    items: [reply, { ...reply, id: '1800000000000000001', replyTo: '' }],
+    next: null,
+    people: [{ handle: 'ada_l', replies: 2 }],
+  };
+
+  it('reads a page of replies strictly, with at most a page of them and the people replied to most', () => {
+    expect(parseReadAnswer({ ok: true, what: 'replies', page }, 'replies')).toEqual({
+      ok: true,
+      what: 'replies',
+      page,
+    });
+    const long = {
+      ...page,
+      items: Array.from({ length: 150 }, () => ({ ...reply, text: 'x'.repeat(2000) })),
+      people: Array.from({ length: 30 }, (_, i) => ({ handle: `p${i}`, replies: 30 - i })),
+      next: 100,
+    };
+    const read = parseReadAnswer({ ok: true, what: 'replies', page: long }, 'replies');
+    expect(read.ok && read.what === 'replies' && read.page.items).toHaveLength(READ_PAGE);
+    expect(read.ok && read.what === 'replies' && read.page.items[0]?.text).toHaveLength(1000);
+    expect(read.ok && read.what === 'replies' && read.page.people).toHaveLength(MAX_REPLIED_TO);
+    for (const bad of [
+      { ...page, items: [{ ...reply, id: 'abc' }] },
+      { ...page, items: [{ ...reply, replyTo: 'not a handle' }] },
+      { ...page, items: [{ ...reply, likes: -1 }] },
+      { ...page, items: [{ ...reply, text: 5 }] },
+      { ...page, items: [{ ...reply, createdAt: 'today' }] },
+      { ...page, items: [{ ...reply, thread: 'yes' }] },
+      { ...page, items: 'none' },
+      { ...page, people: [{ handle: '', replies: 1 }] },
+      { ...page, people: [{ handle: 'ada', replies: -1 }] },
+      { ...page, people: null },
+      { ...page, total: -1 },
+      { ...page, matching: 'one' },
+      { ...page, next: 'later' },
+      { ...page, handle: 'not a handle!' },
+      null,
+    ]) {
+      expect(parseReadAnswer({ ok: true, what: 'replies', page: bad }, 'replies')).toEqual({
         ok: false,
         reason: 'refused',
       });

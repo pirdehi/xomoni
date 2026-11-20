@@ -784,15 +784,27 @@ describe('Dashboard', () => {
       expect(await screen.findByText('Pausing: the job stops after the action in progress.')).toBeInTheDocument();
     });
 
-    it('offers Open in Xomoni on a place whose lists live in Xomoni, and opens its page', async () => {
+    it('offers Open in Xomoni where what a place needs lives in Xomoni, and opens its page', async () => {
       xomoni.ask.mockClear().mockResolvedValueOnce({ ok: true, outcome: 'opened' } as never);
       link.current = { status: 'signed-in', deviceId: 'dev-1' };
-      renderDashboard({ devices: [device()], jobs: [] }, 'comments');
+      // Audience: who followed or unfollowed is found by comparing archives in Xomoni's Library.
+      renderDashboard({ devices: [device()], jobs: [] }, 'audience');
 
       await userEvent.click(screen.getByRole('button', { name: 'Open in Xomoni' }));
 
       expect(xomoni.ask).toHaveBeenCalledWith({ kind: 'open', page: 'library', deviceId: 'dev-1' });
       expect(await screen.findByText('Xomoni opened on this computer.')).toBeInTheDocument();
+    });
+
+    it('shows the places Xomoni answers, and where their data lives while it isn’t here (#233, #235, #256)', () => {
+      const { unmount } = renderDashboard({ devices: [device()], jobs: [] }, 'comments');
+      expect(screen.getByRole('region', { name: 'Your replies: in Xomoni' })).toBeInTheDocument();
+      unmount();
+      const library = renderDashboard({ devices: [device()], jobs: [] }, 'library');
+      expect(screen.getByRole('region', { name: 'Your Library: in Xomoni' })).toBeInTheDocument();
+      library.unmount();
+      renderDashboard({ devices: [device()], jobs: [] }, 'cleanup');
+      expect(screen.getByRole('heading', { name: '1 · What to remove' })).toBeInTheDocument();
     });
 
     it('offers no Open in Xomoni where the data will come from the cloud', () => {

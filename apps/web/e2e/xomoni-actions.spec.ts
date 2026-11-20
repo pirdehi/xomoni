@@ -129,6 +129,7 @@ async function installFakeXomoni(page: Page) {
 /** Words only Xomoni knows: they must never reach a server or the site's storage (ADR-0028). */
 const SECRET_POST = 'A post only Xomoni keeps 7f3a';
 const SECRET_SEARCH = 'search only Xomoni keeps 9c1d';
+const SECRET_REPLY = 'A reply only Xomoni keeps 2b8e';
 
 /** Xomoni's answer to a read, as the extension builds it from its own database (#233). */
 function readAnswer(message: Record<string, unknown>) {
@@ -176,6 +177,46 @@ function readAnswer(message: Record<string, unknown>) {
           next: null,
         },
       };
+    case 'replies': {
+      const filter = message.filter as { replyTo: string };
+      const replies = [
+        {
+          id: '1800000000000000011',
+          replyTo: 'bob',
+          text: SECRET_REPLY,
+          createdAt: Date.UTC(2024, 0, 3),
+          likes: 0,
+          reposts: 0,
+          replies: 0,
+          thread: false,
+        },
+        {
+          id: '1800000000000000010',
+          replyTo: 'carol',
+          text: 'Another reply',
+          createdAt: Date.UTC(2023, 0, 3),
+          likes: 2,
+          reposts: 0,
+          replies: 1,
+          thread: false,
+        },
+      ].filter((r) => !filter.replyTo || r.replyTo === filter.replyTo);
+      return {
+        ok: true,
+        what: 'replies',
+        page: {
+          handle: 'ada',
+          total: 2,
+          matching: replies.length,
+          items: replies,
+          next: null,
+          people: [
+            { handle: 'bob', replies: 1 },
+            { handle: 'carol', replies: 1 },
+          ],
+        },
+      };
+    }
     case 'health':
       return {
         ok: true,
@@ -374,6 +415,48 @@ test.describe('A cleanup planned on xomoni.com, started in Xomoni (#235)', () =>
     expect(plans[0]).toMatchObject({ deviceId: fake.state.connection?.deviceId, plan: { target: 'reply' } });
     // Only a plan and reads went to Xomoni: no job action, nothing that starts work.
     expect(fake.received.filter((m) => m.type === 'xomoni-job')).toEqual([]);
+  });
+});
+
+test.describe('Your replies on xomoni.com, picked for a cleanup in Xomoni (#256)', () => {
+  test('lists your replies from Xomoni here, finds them by whom they answer, and hands only the picked ones over', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('replies');
+    await createConfirmedUser(email, PASSWORD);
+    const fake = await installFakeXomoni(page);
+    const sent: string[] = [];
+    page.on('request', (request) => sent.push(`${request.url()} ${request.postData() ?? ''}`));
+    await page.goto(`/#ext=${EXT}`);
+    await expect(page).toHaveURL(/\/$/);
+    await signIn(page, email, PASSWORD);
+    await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => fake.state.connection?.deviceId).toBeTruthy();
+
+    await page.goto('/dashboard/comments');
+    const replies = page.getByRole('list', { name: 'Your replies' });
+    await expect(replies.getByRole('listitem')).toHaveCount(2);
+    await expect(replies).toContainText(SECRET_REPLY);
+    await page.getByRole('button', { name: '@bob · 1' }).click();
+    await expect(replies.getByRole('listitem')).toHaveCount(1);
+    await expect(replies).toContainText('To @bob');
+
+    await page.getByRole('checkbox', { name: /^Pick your reply of/ }).check();
+    await expect(page.getByRole('status').filter({ hasText: 'picked' })).toHaveText('1 reply picked');
+    await page.getByRole('button', { name: 'Review and remove in Xomoni' }).click();
+    await expect(page.getByText(/Xomoni opened its Cleanup page with your plan/)).toBeVisible();
+
+    const plans = fake.received.filter((m) => m.type === 'xomoni-plan');
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toMatchObject({
+      deviceId: fake.state.connection?.deviceId,
+      plan: { target: 'reply', skipSelfReplies: false, onlyIds: ['1800000000000000011'] },
+    });
+    // Nothing that starts work went to Xomoni, and the replies went nowhere else.
+    expect(fake.received.filter((m) => m.type === 'xomoni-job')).toEqual([]);
+    expect(
+      sent.filter((line) => line.includes(SECRET_REPLY) || line.includes(encodeURIComponent(SECRET_REPLY))),
+    ).toEqual([]);
   });
 });
 

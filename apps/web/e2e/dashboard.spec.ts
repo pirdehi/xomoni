@@ -82,13 +82,13 @@ test.describe('dashboard (#41)', () => {
     await expect(page.getByRole('region', { name: 'Your account in numbers' })).toBeVisible();
 
     const sidebar = page.getByRole('navigation', { name: 'Dashboard' });
-    await sidebar.getByRole('link', { name: /^Engagement/ }).click();
-    await expect(page).toHaveURL(/\/dashboard\/engagement$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Engagement' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Engagement: coming soon' })).toBeVisible();
+    await sidebar.getByRole('link', { name: /^Comments/ }).click();
+    await expect(page).toHaveURL(/\/dashboard\/comments$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Comments' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Comments: coming soon' })).toBeVisible();
 
     await page.getByRole('combobox', { name: 'Period' }).selectOption('7d');
-    await expect(page).toHaveURL(/\/dashboard\/engagement\?period=7d$/);
+    await expect(page).toHaveURL(/\/dashboard\/comments\?period=7d$/);
     await expect(sidebar.getByRole('link', { name: 'Activity' })).toHaveAttribute(
       'href',
       '/dashboard/activity?period=7d',

@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { DOWNLOAD_URL, RELEASES_URL } from '@/shared/config/site';
 import { ButtonLink, TextLink } from '@/shared/ui/links';
 import { SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
+import { GettingStarted } from '@/modules/extension/ui/getting-started';
 
 const WIDE = '@media (min-width: 640px)';
 
@@ -183,6 +184,7 @@ export function InstallPage() {
               either side signs out both. Only job status is sent; your posts and likes stay on your computer.
             </Step>
           </ol>
+          <GettingStarted next="/install" showDashboard />
           <div className={mergeClasses(s.card, s.update)}>
             <ArrowSync20Regular className={s.updateIcon} aria-hidden />
             <p className={mergeClasses(s.stepText, s.flushText)}>

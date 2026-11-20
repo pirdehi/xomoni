@@ -64,6 +64,7 @@ import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
 import { useExtensionLink } from '@/modules/extension/ui/extension-session-sync';
+import { GettingStarted } from '@/modules/extension/ui/getting-started';
 import { OpenInXomoni, XomoniJobActions, type XomoniControls, useXomoni } from '@/modules/extension/ui/xomoni-actions';
 import { PendingConnectNotice } from './connect-panel';
 import { DashboardFrame, useScope } from './dashboard-frame';
@@ -802,6 +803,7 @@ function SetupBar() {
           Install it on your computer, then press <strong>Sign in to xomoni.com</strong> in it. Your jobs, and soon your
           numbers, show here on every device.
         </p>
+        <GettingStarted next="/dashboard" actions={false} />
       </div>
       <div className={s.group}>
         <Button as="a" href={INSTALL_URL} appearance="primary" size="small">

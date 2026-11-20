@@ -18,9 +18,9 @@ import {
 } from '@fluentui/react-components';
 import { Board20Regular, PersonSettings20Regular, SignOut20Regular } from '@fluentui/react-icons';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { watchSessionEmail } from '@/shared/supabase/browser-session';
+import { useRef } from 'react';
 import { ButtonLink } from './links';
+import { useSession } from './use-session';
 
 /** The site's own paths this corner links to; the auth module owns them (`modules/auth/domain/routes.ts`). */
 export const ACCOUNT_PATHS = {
@@ -54,19 +54,10 @@ const useStyles = makeStyles({
 export function HeaderAccount() {
   const s = useStyles();
   const pathname = usePathname();
-  const [email, setEmail] = useState<string | null | undefined>(undefined);
-  const [name, setName] = useState('');
-  useEffect(
-    () =>
-      watchSessionEmail((nextEmail, nextName = '') => {
-        setEmail(nextEmail);
-        setName(nextName);
-      }),
-    [],
-  );
+  const person = useSession();
 
-  if (email === undefined) return <span className={s.placeholder} aria-hidden data-testid="account-loading" />;
-  if (email === null) {
+  if (person === undefined) return <span className={s.placeholder} aria-hidden data-testid="account-loading" />;
+  if (person === null) {
     return (
       <ButtonLink href={ACCOUNT_PATHS.signIn} appearance="primary">
         Sign in
@@ -82,7 +73,7 @@ export function HeaderAccount() {
           </ButtonLink>
         </span>
       )}
-      <AccountMenu email={email} name={name} />
+      <AccountMenu email={person.email} name={person.name} />
     </span>
   );
 }

@@ -6,6 +6,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **A welcome page and a checklist that ticks itself** (#244). Xomoni now opens xomoni.com/welcome when it is installed. Three steps, ticked from what the page sees: Xomoni installed in this browser, signed in to xomoni.com, and Xomoni signed in with you. The same checklist is on the install guide and an empty dashboard. *Continue without an account* closes the tab. Opening /welcome on install needs the next Xomoni release.
 - **Signing up keeps where you were going** (#244): create an account from a page that asked you to, such as connecting Xomoni, and the confirmation email brings you back to it instead of the dashboard.
 - **xomoni.com on a phone has a menu** (#242): *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, one tap away, and it works with the keyboard. On a computer, *Install* is always in the header.
 - **A full footer**: Install, What's new, Risks, Privacy, Terms, Security, Support and GitHub.

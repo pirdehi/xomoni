@@ -101,7 +101,8 @@ export type WebsiteMessage =
   | JobMessage
   | OpenMessage
   | ReadMessage
-  | SettingsMessage;
+  | SettingsMessage
+  | PlanMessage;
 
 /** Whether `value` is shaped like an extension id. */
 export function isExtensionId(value: unknown): value is string {
@@ -160,6 +161,8 @@ export function parseWebsiteMessage(raw: unknown): WebsiteMessage | null {
       return parseReadMessage(value);
     case SETTINGS:
       return parseSettingsMessage(value);
+    case PLAN:
+      return parsePlanMessage(value);
     default:
       return null;
   }
@@ -321,8 +324,8 @@ export function parseActionAnswer(raw: unknown): ActionAnswer {
 /** Asks the extension for one of its places' data (ADR-0028). */
 export const READ = 'xomoni-read';
 
-/** What the website may read: `settings` too, under ADR-0029. */
-export type ReadWhat = 'library' | 'health' | 'watch' | 'settings';
+/** What the website may read: `settings` too, under ADR-0029, and a cleanup plan's estimate (#235). */
+export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup';
 
 /** The kinds of item the Library holds. */
 export type LibraryKind = 'post' | 'reply' | 'repost' | 'like';
@@ -342,7 +345,8 @@ export const MAX_READ_TEXT = 1_000;
 /** `{type: 'xomoni-read', what, deviceId, …}`: the Library also takes a kind, a search and an offset. */
 export type ReadMessage =
   | { type: typeof READ; what: 'library'; deviceId: string; kind: LibraryKind; query: string; offset: number }
-  | { type: typeof READ; what: 'health' | 'watch' | 'settings'; deviceId: string };
+  | { type: typeof READ; what: 'health' | 'watch' | 'settings'; deviceId: string }
+  | { type: typeof READ; what: 'cleanup'; deviceId: string; plan: CleanupPlan };
 
 /** `raw` as a read message, or null unless it is exactly one of `ReadMessage`'s shapes. */
 export function parseReadMessage(raw: unknown): ReadMessage | null {
@@ -352,6 +356,10 @@ export function parseReadMessage(raw: unknown): ReadMessage | null {
   if (!deviceId) return null;
   if (value.what === 'health' || value.what === 'watch' || value.what === 'settings') {
     return onlyKeys(value, ['type', 'what', 'deviceId']) ? { type: READ, what: value.what, deviceId } : null;
+  }
+  if (value.what === 'cleanup') {
+    const plan = onlyKeys(value, ['type', 'what', 'deviceId', 'plan']) ? parsePlan(value.plan) : null;
+    return plan ? { type: READ, what: 'cleanup', deviceId, plan } : null;
   }
   if (value.what !== 'library' || !onlyKeys(value, ['type', 'what', 'deviceId', 'kind', 'query', 'offset']))
     return null;
@@ -421,6 +429,7 @@ export type ReadAnswer =
   | { ok: true; what: 'health'; accounts: AccountHealth[] }
   | { ok: true; what: 'watch'; tabs: WatchTabView[] }
   | { ok: true; what: 'settings'; settings: XomoniSettings }
+  | { ok: true; what: 'cleanup'; estimate: CleanupEstimate }
   | { ok: false; reason: ActionRefusal };
 
 const X_ID = /^\d{1,25}$/;
@@ -524,6 +533,9 @@ export function parseReadAnswer(raw: unknown, what: ReadWhat): ReadAnswer {
     } else if (what === 'settings') {
       const settings = parseSettings(answer.settings);
       if (settings) return { ok: true, what, settings };
+    } else if (what === 'cleanup') {
+      const estimate = parseEstimate(answer.estimate);
+      if (estimate) return { ok: true, what, estimate };
     }
   }
   const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
@@ -692,4 +704,105 @@ export function parseSettingsAnswer(raw: unknown): SettingsAnswer {
   }
   const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);
   return { ok: false, reason: reason ?? 'refused' };
+}
+
+// ── Cleanup plans (#235, ADR-0027) ───────────────────────────────────────────────────────────────
+// The website asks the same questions as Xomoni's Cleanup page and hands the plan over. Xomoni opens its Cleanup page
+// with the plan filled in; nothing starts until the person reviews it and confirms there.
+
+/** Hands a cleanup plan to Xomoni, which opens its own Cleanup page with it. */
+export const PLAN = 'xomoni-plan';
+
+/** The most words a plan keeps posts by. */
+export const MAX_PLAN_KEYWORDS = 20;
+
+/** The longest such word or phrase. */
+export const MAX_PLAN_KEYWORD = 50;
+
+/** The earliest date a plan may name: X opened in 2006. */
+const X_BEGAN = Date.UTC(2006, 0, 1);
+
+/** What to remove and what to keep: the three questions of Xomoni's Cleanup page. Times are epoch ms. */
+export interface CleanupPlan {
+  /** What to remove. */
+  target: LibraryKind;
+  /** Only what is older than this. */
+  before: number;
+  /** And, if set, no older than this. */
+  after: number | null;
+  /** Keep posts and replies with at least this many likes. */
+  keepMinLikes: number | null;
+  /** Keep anything whose text holds one of these, lowercased. */
+  keepKeywords: string[];
+  /** Keep replies to your own posts (threads); replies only. */
+  skipSelfReplies: boolean;
+}
+
+/** What a plan would match in Xomoni's copy of the account, counted on the person's computer. */
+export interface CleanupEstimate {
+  /** The active X account; empty when Xomoni knows none. */
+  handle: string;
+  /** Items in Xomoni's copy the plan matches now. */
+  matching: number;
+  /** Whether the account's X archive was imported: without it, old items can be missed. */
+  archive: boolean;
+  /** The most of this action Xomoni does a day at the current pace. */
+  perDay: number;
+}
+
+/** `{type: 'xomoni-plan', deviceId, plan}`. */
+export interface PlanMessage {
+  type: typeof PLAN;
+  deviceId: string;
+  plan: CleanupPlan;
+}
+
+function planTime(value: unknown, now: number): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= X_BEGAN && value <= now + 86_400_000
+    ? value
+    : null;
+}
+
+/** `raw` as a cleanup plan, or null unless every field has its shape and the dates make sense. */
+export function parsePlan(raw: unknown, now = Date.now()): CleanupPlan | null {
+  const v = record(raw);
+  const keys = ['target', 'before', 'after', 'keepMinLikes', 'keepKeywords', 'skipSelfReplies'];
+  if (!v || !onlyKeys(v, keys) || Object.keys(v).length !== keys.length) return null;
+  const target = LIBRARY_KINDS.find((k) => k === v.target);
+  const before = planTime(v.before, now);
+  const after = v.after === null ? null : (planTime(v.after, now) ?? undefined);
+  const likes = v.keepMinLikes === null ? null : (count(v.keepMinLikes) ?? undefined);
+  const words = Array.isArray(v.keepKeywords) ? (v.keepKeywords as unknown[]) : null;
+  if (!target || before === null || after === undefined || likes === undefined || !words) return null;
+  if (after !== null && after >= before) return null;
+  if (likes !== null && (likes < 1 || likes > 1_000_000)) return null;
+  if (words.length > MAX_PLAN_KEYWORDS) return null;
+  if (!words.every((w) => typeof w === 'string' && w.length > 0 && w.length <= MAX_PLAN_KEYWORD)) return null;
+  if (typeof v.skipSelfReplies !== 'boolean') return null;
+  return {
+    target,
+    before,
+    after,
+    keepMinLikes: likes,
+    keepKeywords: words as string[],
+    skipSelfReplies: v.skipSelfReplies,
+  };
+}
+
+/** `raw` as a plan message, or null unless it is exactly `PlanMessage`. */
+export function parsePlanMessage(raw: unknown): PlanMessage | null {
+  const value = record(raw);
+  if (value?.type !== PLAN || !onlyKeys(value, ['type', 'deviceId', 'plan'])) return null;
+  const deviceId = matching(value.deviceId, DEVICE_ID);
+  const plan = parsePlan(value.plan);
+  return deviceId && plan ? { type: PLAN, deviceId, plan } : null;
+}
+
+function parseEstimate(raw: unknown): CleanupEstimate | null {
+  const v = record(raw);
+  const handle = matching(v?.handle, HANDLE_TEXT);
+  const matchingCount = count(v?.matching);
+  const perDay = count(v?.perDay);
+  if (handle === null || matchingCount === null || perDay === null || typeof v?.archive !== 'boolean') return null;
+  return { handle, matching: matchingCount, archive: v.archive, perDay };
 }

@@ -96,7 +96,13 @@ async function installFakeXomoni(page: Page) {
         return { ok: true, outcome: 'opened' };
       case 'xomoni-read':
         if (message.deviceId !== state.connection?.deviceId) return { ok: false, reason: 'other_account' };
+        if (message.what === 'cleanup')
+          return { ok: true, what: 'cleanup', estimate: { handle: 'ada', matching: 1234, archive: true, perDay: 100 } };
         return message.what === 'settings' ? { ok: true, what: 'settings', settings } : readAnswer(message);
+      case 'xomoni-plan':
+        return message.deviceId === state.connection?.deviceId
+          ? { ok: true, outcome: 'opened' }
+          : { ok: false, reason: 'other_account' };
       case 'xomoni-settings': {
         if (message.deviceId !== state.connection?.deviceId) return { ok: false, reason: 'other_account' };
         // Xomoni applies its own rules; here a change is simply taken as it came.
@@ -343,6 +349,34 @@ test.describe('Xomoni’s settings on xomoni.com, changed in this browser (#234,
   });
 });
 
+test.describe('A cleanup planned on xomoni.com, started in Xomoni (#235)', () => {
+  test('counts what the plan matches in Xomoni, and hands the plan over without starting anything', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('plan');
+    await createConfirmedUser(email, PASSWORD);
+    const fake = await installFakeXomoni(page);
+    await page.goto(`/#ext=${EXT}`);
+    await expect(page).toHaveURL(/\/$/);
+    await signIn(page, email, PASSWORD);
+    await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => fake.state.connection?.deviceId).toBeTruthy();
+
+    await page.goto('/dashboard/cleanup');
+    await page.getByRole('radio', { name: 'Replies' }).check();
+    await expect(page).toHaveURL(/\/dashboard\/cleanup\?what=reply$/);
+    await expect(page.getByText('1,234')).toBeVisible();
+    await page.getByRole('button', { name: 'Review and start in Xomoni' }).click();
+    await expect(page.getByText(/Xomoni opened its Cleanup page with your plan/)).toBeVisible();
+
+    const plans = fake.received.filter((m) => m.type === 'xomoni-plan');
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toMatchObject({ deviceId: fake.state.connection?.deviceId, plan: { target: 'reply' } });
+    // Only a plan and reads went to Xomoni: no job action, nothing that starts work.
+    expect(fake.received.filter((m) => m.type === 'xomoni-job')).toEqual([]);
+  });
+});
+
 test.describe('Xomoni’s actions on a phone (#251)', () => {
   test.use({ userAgent: IPHONE, viewport: { width: 390, height: 844 } });
 
@@ -358,5 +392,18 @@ test.describe('Xomoni’s actions on a phone (#251)', () => {
     const dialog = page.getByRole('dialog', { name: 'Xomoni runs on a computer' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Send to my computer' })).toBeVisible();
+  });
+
+  test('a cleanup plan made on a phone goes to the computer in the link (#235)', async ({ page }) => {
+    const email = uniqueEmail('plan-phone');
+    await createConfirmedUser(email, PASSWORD);
+    await signIn(page, email, PASSWORD);
+    await page.waitForURL(/\/dashboard/);
+
+    await page.goto('/dashboard/cleanup');
+    await page.getByRole('radio', { name: 'Likes' }).check();
+    await expect(page).toHaveURL(/\?what=like$/);
+    await page.getByRole('button', { name: 'Review and start in Xomoni' }).click();
+    await expect(page.getByRole('dialog', { name: 'Xomoni runs on a computer' })).toBeVisible();
   });
 });

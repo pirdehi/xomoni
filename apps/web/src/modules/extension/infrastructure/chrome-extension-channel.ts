@@ -2,6 +2,7 @@ import {
   HELLO,
   JOB,
   OPEN,
+  PLAN,
   READ,
   SETTINGS,
   SIGN_IN,
@@ -93,6 +94,9 @@ export function createChromeExtensionChannel(
         await send(runtime(), extensionId, { type: READ, ...message }, timeouts.read),
         message.what,
       );
+    },
+    async plan(extensionId, message) {
+      return parseActionAnswer(await send(runtime(), extensionId, { type: PLAN, ...message }, timeouts.answer));
     },
     async settings(extensionId, message) {
       return parseSettingsAnswer(await send(runtime(), extensionId, { type: SETTINGS, ...message }, timeouts.answer));

@@ -11,9 +11,9 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
-- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), and Settings (#234) too; next, planning a cleanup on the website (#235). The next 20 tasks, in order: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md).
+- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), Settings (#234) and Cleanup (#235) too; next, Comments (#256). The next 20 tasks, in order: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md).
 - Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
-- Phase 14: one Xomoni. The website and the extension sign in and out together (#232), and the website shows the Library, Watch and account health, read in the same browser only (#233), and changes Xomoni's settings there within its safety rules (#234); next, planning a cleanup on the website (#235).
+- Phase 14: one Xomoni. The website and the extension sign in and out together (#232), and the website shows the Library, Watch and account health, read in the same browser only (#233), changes Xomoni's settings there within its safety rules (#234), and plans cleanups that start only in Xomoni (#235). Phase 14 is done.
 - Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
 - Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
 - Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](PHASE-11-REPORT.md)).
@@ -215,7 +215,7 @@ The website shows and works with what the extension has, in the same browser. Wo
 | ✅ | One sign-in: signing in or out on xomoni.com or in the extension does the same on the other ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)) | [#232](https://github.com/pirdehi/xomoni/issues/232) | [#236](https://github.com/pirdehi/xomoni/pull/236) |
 | ✅ | The website shows the extension's Library, Watch and account health, read from the extension in the same browser and kept nowhere (ADR-0028; Home and Activity came with #251 and #252, Settings comes with #234) | [#233](https://github.com/pirdehi/xomoni/issues/233) | [#278](https://github.com/pirdehi/xomoni/pull/278) |
 | ✅ | Settings on the website, applied in the extension within its safety rules: back to Careful, active hours, failures in a row, notifications, keep going while away, Watch searches (ADR-0029) | [#234](https://github.com/pirdehi/xomoni/issues/234) | [#279](https://github.com/pirdehi/xomoni/pull/279) |
-| ⬜ | Plan a cleanup on the website, start it in Xomoni | [#235](https://github.com/pirdehi/xomoni/issues/235) | |
+| ✅ | Plan a cleanup on the website (what, how old, what to keep, and how much it matches in Xomoni's copy), start it in Xomoni after its own confirmation | [#235](https://github.com/pirdehi/xomoni/issues/235) | [#281](https://github.com/pirdehi/xomoni/pull/281) |
 
 ## Phase 15 · A UX pass of both surfaces
 

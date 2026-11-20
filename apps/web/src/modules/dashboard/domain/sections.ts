@@ -153,11 +153,10 @@ export const SECTIONS: readonly Section[] = [
     group: 'manage',
     label: 'Cleanup',
     summary: 'Plan what to remove; Xomoni does it, at a careful pace.',
-    shows: ['Three questions: what, how old, what to keep', 'A preview before anything goes', 'Start it in Xomoni'],
+    shows: [],
     source: 'Xomoni on this computer, which asks you before it starts',
     needsXomoni: true,
-    ready: false,
-    issue: 235,
+    ready: true,
   },
   {
     id: 'watch',

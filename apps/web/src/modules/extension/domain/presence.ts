@@ -1,5 +1,5 @@
 // Whether this page can reach Xomoni to act (ADR-0027, #251), and if not, why: the one dialog says which. Pure.
-import type { ActionRefusal, JobAction, XomoniPage } from '@xomoni/bridge';
+import type { ActionRefusal, CleanupPlan, JobAction, XomoniPage } from '@xomoni/bridge';
 
 /** How the extension stands with the site after the last sync, as far as acting goes. */
 export type LinkView =
@@ -54,7 +54,8 @@ export function isPhoneBrowser(userAgent: string, mobileHint?: boolean): boolean
 /** Something the page asks of Xomoni: an action on a job, or opening one of its pages. */
 export type XomoniRequest =
   | { kind: 'job'; action: JobAction; deviceId: string; jobId: string }
-  | { kind: 'open'; page: XomoniPage; deviceId: string };
+  | { kind: 'open'; page: XomoniPage; deviceId: string }
+  | { kind: 'plan'; plan: CleanupPlan; deviceId: string };
 
 /** States in which a job has ended: nothing to pause, cancel or resume. */
 const ENDED = new Set(['completed', 'cancelled']);
@@ -70,7 +71,7 @@ export function jobActionsFor(state: string): JobAction[] {
 /** What a page says after Xomoni answered, in plain words. */
 export function answerMessage(
   answer: { ok: true; outcome: 'stopping' | 'cancelled' | 'asked' | 'opened' } | { ok: false; reason: ActionRefusal },
-  action: JobAction | 'open',
+  action: JobAction | 'open' | 'plan',
 ): string {
   if (answer.ok) {
     switch (answer.outcome) {
@@ -83,7 +84,9 @@ export function answerMessage(
       case 'asked':
         return 'Xomoni opened on this computer. Choose Resume there to continue: nothing runs until you do.';
       case 'opened':
-        return 'Xomoni opened on this computer.';
+        return action === 'plan'
+          ? 'Xomoni opened its Cleanup page with your plan. Review it there and press Start: nothing starts until you confirm in Xomoni.'
+          : 'Xomoni opened on this computer.';
     }
   }
   switch (answer.reason) {
@@ -98,6 +101,7 @@ export function answerMessage(
     case 'finished':
       return 'The job has already ended.';
     case 'invalid':
+      return 'Your Xomoni is older than this page and can’t do this yet. Install the newest version, then try again.';
     case 'refused':
       return 'Xomoni refused this. Update Xomoni and try again.';
     case 'no_answer':

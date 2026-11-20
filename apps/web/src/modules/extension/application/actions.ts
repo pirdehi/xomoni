@@ -11,14 +11,23 @@ export interface ActionDeps {
 /**
  * Hands one request to Xomoni in this browser (ADR-0027, #251) and returns its answer. Without a known extension id
  * nothing is sent and the answer is `no_answer`. Nothing here can start work on X: the extension only stops jobs,
- * opens its pages, or asks the person to resume.
+ * opens its pages, asks the person to resume, or fills in its Cleanup page for the person to review (#235).
  */
 export async function askXomoni(deps: ActionDeps, request: XomoniRequest): Promise<ActionAnswer> {
   const extensionId = deps.memory.extensionId();
   if (!extensionId) return { ok: false, reason: 'no_answer' };
-  return request.kind === 'job'
-    ? deps.channel.job(extensionId, { action: request.action, deviceId: request.deviceId, jobId: request.jobId })
-    : deps.channel.open(extensionId, { page: request.page, deviceId: request.deviceId });
+  switch (request.kind) {
+    case 'job':
+      return deps.channel.job(extensionId, {
+        action: request.action,
+        deviceId: request.deviceId,
+        jobId: request.jobId,
+      });
+    case 'open':
+      return deps.channel.open(extensionId, { page: request.page, deviceId: request.deviceId });
+    case 'plan':
+      return deps.channel.plan(extensionId, { plan: request.plan, deviceId: request.deviceId });
+  }
 }
 
 /** A read of one of Xomoni's places, as a page asks it (ADR-0028). */

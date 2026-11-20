@@ -30,6 +30,10 @@ xomoni.com and the extension already talk in the same browser through `externall
 
 Built in [#233](https://github.com/pirdehi/xomoni/issues/233).
 
+Amended 2026-11-20:
+- the settings are read the same way (ADR-0029, #234);
+- Cleanup reads how many items a plan matches, with whether the archive was imported and the pace per day: counts only, no items (#235).
+
 ## Consequences
 
 - The Library, Watch and account health appear on xomoni.com in the browser where Xomoni runs, with nothing new stored anywhere.

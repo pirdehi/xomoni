@@ -162,7 +162,7 @@ apps/extension/   the Chrome extension (MV3): engine, X page scripts, dashboard 
 apps/web/         xomoni.com (Next.js): landing page, sign-in, live job status
 packages/db/      typed contract of the Supabase database, generated from the migrations
 supabase/         database migrations, auth config and email templates (config as code)
-docs/             architecture, decision records, safety playbook, research
+docs/             architecture, decision records, safety playbook, research, store listing
 tooling/          repository checks: documentation gate, verify runner, git hooks
 ```
 

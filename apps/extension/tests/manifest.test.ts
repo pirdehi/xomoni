@@ -84,6 +84,41 @@ describe('the manifest locks the extension down (#143)', () => {
     ]);
   });
 
+  it('uses every permission it asks for, and each only where docs/STORE-LISTING.md says (#301)', () => {
+    // Each permission's API, and the files that may call it. The stores ask why each permission is needed, and an
+    // unused one must go: a permission no code uses fails here, and so does a use outside the files named.
+    const uses: Record<string, { api: RegExp; files: RegExp }> = {
+      storage: { api: /chrome\.storage\./, files: /(background\/sw|engine\/worker-tab|cloud\/connection)\.ts$/ },
+      notifications: {
+        api: /chrome(?: as Partial<typeof chrome>\))?\.notifications\b/,
+        files: /(background\/sw|shared\/notify)\.ts$/,
+      },
+      idle: { api: /chrome\.idle\./, files: /engine\/presence\.ts$/ },
+      power: { api: /chrome\.power\./, files: /engine\/presence\.ts$/ },
+      downloads: { api: /chrome\.downloads\./, files: /(background\/sw|ui\/downloads-folder)\.ts$/ },
+      // No API: it lifts the quota on the IndexedDB database the inventory and the log live in, so Chrome never
+      // evicts them under storage pressure.
+      unlimitedStorage: { api: /class XomoniDB extends Dexie/, files: /shared\/db\.ts$/ },
+    };
+    expect(Object.keys(uses).sort()).toEqual([...(manifest.permissions as string[])].sort());
+    for (const [permission, { api, files }] of Object.entries(uses)) {
+      const using = Object.keys(sources).filter((file) => api.test(sources[file] ?? ''));
+      expect(using.length, permission).toBeGreaterThan(0);
+      expect(
+        using.filter((file) => !files.test(file)),
+        permission,
+      ).toEqual([]);
+    }
+  });
+
+  it('fits the stores’ limits on the name and the summary, which they take from the manifest (#301)', () => {
+    // Chrome: name at most 75 characters, short_name 12 and description 132; Edge shows the description as the
+    // short description.
+    expect((manifest.name as string).length).toBeLessThanOrEqual(75);
+    expect((manifest.short_name as string).length).toBeLessThanOrEqual(12);
+    expect((manifest.description as string).length).toBeLessThanOrEqual(132);
+  });
+
   it('listens to no other extension or web page, but the service worker to xomoni.com’s one-time code (#228)', () => {
     expect(Object.keys(sources).length).toBeGreaterThan(50);
     const external = Object.entries(sources).filter(([, text]) => /onMessageExternal|onConnectExternal/.test(text));

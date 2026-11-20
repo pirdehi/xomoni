@@ -27,7 +27,8 @@ npm install            # also installs the git hooks (.githooks)
 | Architecture | `npm run arch` | An import breaks a rule in `.dependency-cruiser.cjs` |
 | Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
 | Test presence | `npm run tests:check` | A source file is imported by no test and is not listed as exempt with a reason ([docs/TESTING.md](docs/TESTING.md)) |
-| Tooling tests | `npm run test:tooling` | A test of the repository's own scripts fails (`node --test 'tooling/*.test.mjs'`) |
+| Tooling tests | `npm run test:tooling` | A test of the repository's own scripts fails (`node --test 'tooling/*.test.mjs'`), or [docs/STORE-LISTING.md](docs/STORE-LISTING.md) no longer matches the manifest or the stores' limits |
+| No remote code | `npm run remote-code:check` | The extension's build runs code from a string (`eval`, `new Function`) or loads it from another site, or its CSP would let it ([docs/STORE-LISTING.md](docs/STORE-LISTING.md#6-no-remote-code)) |
 | Unit tests and coverage | `npm test` | A test fails, or coverage drops below a workspace's threshold |
 
 It runs automatically before every `git push` (`.githooks/pre-push`). CI runs it again, plus both production builds, the database checks (Row Level Security tests, types drift) and the end-to-end auth tests, and `main` only accepts pull requests with green CI.

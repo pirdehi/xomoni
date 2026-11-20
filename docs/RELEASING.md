@@ -20,7 +20,7 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
      - checks that the tag points at a commit on `main`;
      - runs `npm run verify`;
      - checks the versions against the tag;
-     - builds the extension and packages it reproducibly.
+     - builds the extension, checks that it has no remotely hosted code (#301), and packages it reproducibly.
    - **publish**, which runs no npm code:
      - signs the zips with [build provenance](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) (SLSA);
      - creates the release, with the changelog section as notes.
@@ -62,8 +62,11 @@ Set on GitHub, not in code (#142):
 
 ## Checked on every pull request
 
-CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. The helpers are tested by `tooling/release.test.mjs` (reproducible zips included), and the workflows by `tooling/workflows.test.mjs`: actions pinned by SHA, no token left in a checkout, no write access by default, and a release build that can't write. Both run with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`.
+CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. `npm run verify` builds it too and runs `node tooling/check-remote-code.mjs` on the build, which fails on code from a string or from another site, which the stores refuse (#301). The helpers are tested by `tooling/release.test.mjs` (reproducible zips included), and the workflows by `tooling/workflows.test.mjs`: actions pinned by SHA, no token left in a checkout, no write access by default, and a release build that can't write. Both run with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`.
 
 ## Chrome Web Store
 
-Not yet: the maintainer put the store listing off for now ([#43](https://github.com/pirdehi/xomoni/issues/43)). When it comes, the same `xomoni-extension-X.Y.Z.zip` is what gets uploaded.
+Not submitted yet ([#43](https://github.com/pirdehi/xomoni/issues/43), [#301](https://github.com/pirdehi/xomoni/issues/301)). The same `xomoni-extension-X.Y.Z.zip` is what gets uploaded, to the Chrome Web Store and to Microsoft Edge Add-ons. Everything else the stores ask for is in [the store listing](STORE-LISTING.md):
+- the permission justifications and the privacy answers;
+- the listing text and the notes for reviewers;
+- the images, made by `npm run store:images -w @xomoni/extension`.

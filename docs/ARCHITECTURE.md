@@ -117,7 +117,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`packages/fluent-theme`](../packages/fluent-theme/README.md) | Xomoni's Fluent UI themes (ADR-0019): the brand ramp and the light and dark themes, one source for the extension and xomoni.com. |
 | [`supabase`](../supabase/README.md) | Migrations, auth settings and email templates, as code ([ADR-0010](adr/0010-configuration-as-code.md)). |
 
-`tooling/` holds repository checks (the documentation gate, the `verify` runner, git hook setup) and `docs/` holds this document, the ADRs, the playbook and research.
+`tooling/` holds repository checks (the documentation gate, the `verify` runner, the check for remotely hosted code in the extension's build, git hook setup) and `docs/` holds this document, the ADRs, the playbook, research and the [store listing](STORE-LISTING.md).
 
 ## 4. Website (`apps/web`)
 
@@ -286,7 +286,7 @@ Nothing reaches `main` without passing the same checks twice: on the developer's
 ```mermaid
 flowchart LR
   edit["Change"] --> push["git push"]
-  push -- ".githooks/pre-push" --> verify["npm run verify<br/>format · lint + code docs · types ·<br/>architecture · docs · test presence ·<br/>unit tests + coverage"]
+  push -- ".githooks/pre-push" --> verify["npm run verify<br/>format · lint + code docs · types ·<br/>architecture · docs · test presence ·<br/>tooling tests · no remote code ·<br/>unit tests + coverage"]
   verify -- pass --> gh["GitHub pull request"]
   gh --> ci["CI: verify + builds · database · e2e"]
   ci -- "all green" --> main["merge to main<br/>(branch protected)"]

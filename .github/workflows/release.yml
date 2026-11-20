@@ -40,6 +40,8 @@ jobs:
         run: node tooling/release.mjs check "$GITHUB_REF_NAME"
       - name: Build the extension
         run: npm run build -w @xomoni/extension
+      - name: No remotely hosted code in what gets zipped (#301)
+        run: node tooling/check-remote-code.mjs
       - name: Package it reproducibly, with checksums
         run: |
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"

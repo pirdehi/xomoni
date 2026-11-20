@@ -10,6 +10,7 @@ const steps = [
   ['Documentation', 'docs:check'],
   ['Test presence', 'tests:check'],
   ['Tooling tests', 'test:tooling'],
+  ['No remotely hosted code (extension build)', 'remote-code:check'],
   ['Unit tests and coverage', 'test'],
 ];
 

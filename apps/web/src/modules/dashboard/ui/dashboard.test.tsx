@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { INSTALL_URL } from '@/shared/config/site';
 import { createLiveDashboardServices, type LiveDashboardServices } from '../client/live';
-import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
+import type { DailyNumbers, DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { RISK_LEVEL } from '../domain/risk';
 import { SECTIONS, type SectionId } from '../domain/sections';
 import { Dashboard, type DashboardViewer, useJustConnected } from './dashboard';
@@ -40,6 +40,36 @@ function device(overrides: Partial<Device> = {}): Device {
   return { id: 'dev-1', name: 'Chrome on macOS', extensionVersion: '1.4.0', lastSeenAt: ago(MINUTE), ...overrides };
 }
 
+/** A day of numbers for the account @ada_x (#252). */
+function numbers(day: string, overrides: Partial<DailyNumbers> = {}): DailyNumbers {
+  return {
+    xHandle: 'ada_x',
+    day,
+    followers: null,
+    following: null,
+    postsTotal: null,
+    likesTotal: null,
+    postedPosts: 0,
+    postedReplies: 0,
+    postedReposts: 0,
+    postedQuotes: 0,
+    receivedLikes: 0,
+    receivedReplies: 0,
+    receivedReposts: 0,
+    receivedQuotes: 0,
+    receivedViews: 0,
+    observedPosts: 0,
+    postsWithLikes: 0,
+    repliesWithLikes: 0,
+    removedPosts: 0,
+    removedReplies: 0,
+    removedReposts: 0,
+    removedLikes: 0,
+    updatedAt: `${day}T20:00:00Z`,
+    ...overrides,
+  };
+}
+
 function job(overrides: Partial<JobSummary> = {}): JobSummary {
   return {
     id: 'job-1',
@@ -69,6 +99,7 @@ function fakeServices() {
     reader: {
       listDevices: vi.fn<LiveDashboardServices['reader']['listDevices']>(),
       listRecentJobs: vi.fn<LiveDashboardServices['reader']['listRecentJobs']>(),
+      listDailyNumbers: vi.fn<LiveDashboardServices['reader']['listDailyNumbers']>(() => Promise.resolve([])),
     },
     registry: { disconnect: vi.fn<LiveDashboardServices['registry']['disconnect']>() },
     pairing: { createCode: vi.fn<LiveDashboardServices['pairing']['createCode']>() },
@@ -228,6 +259,92 @@ describe('Dashboard', () => {
       fake.services.numbers.get.mockResolvedValueOnce(true);
       renderDashboard({ devices: [device()], jobs: [] });
       await waitFor(() => expect(screen.getByRole('switch', { name: 'Show my numbers on xomoni.com' })).toBeChecked());
+    });
+
+    it('shows the daily numbers against the period before, with followers and what was published (#252)', async () => {
+      fake.services.numbers.get.mockResolvedValueOnce(true);
+      const days = [
+        numbers('2026-09-20', { followers: 90, postedPosts: 1, receivedLikes: 5, receivedViews: 100 }),
+        numbers('2026-10-25', {
+          followers: 100,
+          postedPosts: 2,
+          postedQuotes: 1,
+          receivedLikes: 30,
+          receivedViews: 1000,
+        }),
+        numbers('2026-11-01', { followers: 112, postedReplies: 4, receivedReplies: 6, observedPosts: 25 }),
+      ];
+      renderDashboard({ devices: [device()], jobs: [], days });
+      const section = screen.getByRole('region', { name: 'Your account in numbers' });
+      const tiles = within(section).getAllByRole('listitem');
+
+      expect(tiles[0]).toHaveTextContent('Followers112+22 (+24%) vs the 30 days before');
+      expect(tiles[1]).toHaveTextContent('Posts3+2 (+200%) vs the 30 days before');
+      expect(tiles[2]).toHaveTextContent('Likes received30+25 (+500%) vs the 30 days before');
+      expect(tiles[3]).toHaveTextContent('Replies received6+6 vs the 30 days before');
+      expect(tiles[4]).toHaveTextContent('Engagement rate3.6%−1.4 pt vs the 30 days before');
+      expect(within(section).getByRole('img', { name: 'Followers: 112 on Nov 1' })).toBeInTheDocument();
+      expect(
+        within(section).getByRole('img', { name: 'Posts, replies, reposts and quotes: 7 in all' }),
+      ).toBeInTheDocument();
+      expect(section).toHaveTextContent('estimates, from 25 sightings of your posts by Xomoni');
+    });
+
+    it('says a period has no numbers rather than showing zeros, and shows no charts', () => {
+      fake.services.numbers.get.mockResolvedValueOnce(true);
+      setLocation('/dashboard', 'period=7d');
+      render(
+        <Dashboard
+          viewer={VIEWER}
+          initial={{ devices: [device()], jobs: [], days: [numbers('2026-10-01', { followers: 9 })] }}
+          section={place('overview')}
+        />,
+      );
+      const section = screen.getByRole('region', { name: 'Your account in numbers' });
+      expect(within(section).getAllByRole('listitem')[0]).toHaveTextContent('—');
+      expect(within(section).queryByRole('img')).not.toBeInTheDocument();
+    });
+
+    it('reads a fall, no change, all time and a missing count in plain words (#252)', async () => {
+      fake.services.numbers.get.mockResolvedValueOnce(true);
+      setLocation('/dashboard', 'period=7d');
+      render(
+        <Dashboard
+          viewer={VIEWER}
+          initial={{
+            devices: [device()],
+            jobs: [],
+            days: [
+              numbers('2026-10-22', { followers: 120, postedPosts: 2, receivedLikes: 4, receivedViews: 100 }),
+              numbers('2026-11-01', { postedPosts: 2, receivedLikes: 2, receivedViews: 100 }),
+            ],
+          }}
+          section={place('overview')}
+        />,
+      );
+      const tiles = within(screen.getByRole('region', { name: 'Your account in numbers' })).getAllByRole('listitem');
+      // No count in the week: the tile says so; posts didn't move; likes fell.
+      // Once the stored choice (on) is read.
+      await waitFor(() => expect(tiles[0]).toHaveTextContent('Followers—No numbers in this period'));
+      expect(tiles[1]).toHaveTextContent('Posts2±0 (±0%) vs the 7 days before');
+      expect(tiles[2]).toHaveTextContent('Likes received2−2 (−50%) vs the 7 days before');
+      expect(
+        screen.getByText('No follower count in this period yet: it comes when you open your X profile.'),
+      ).toBeVisible();
+    });
+
+    it('compares nothing over all time', () => {
+      fake.services.numbers.get.mockResolvedValueOnce(true);
+      setLocation('/dashboard', 'period=all');
+      render(
+        <Dashboard
+          viewer={VIEWER}
+          initial={{ devices: [device()], jobs: [], days: [numbers('2026-11-01', { followers: 50 })] }}
+          section={place('overview')}
+        />,
+      );
+      const tiles = within(screen.getByRole('region', { name: 'Your account in numbers' })).getAllByRole('listitem');
+      expect(tiles[0]).toHaveTextContent('Followers50all time');
     });
 
     it('lists the five newest jobs, with the way to all of them', () => {

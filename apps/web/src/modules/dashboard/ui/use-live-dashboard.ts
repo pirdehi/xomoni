@@ -3,11 +3,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createLiveDashboardServices } from '../client/live';
 import { upsertNewestFirst } from '../domain/job-status';
-import { RECENT_JOBS_LIMIT, type DashboardSnapshot, type Device } from '../domain/model';
+import { isoDay } from '../domain/insights';
+import {
+  DAILY_NUMBERS_DAYS,
+  RECENT_JOBS_LIMIT,
+  type DailyNumbers,
+  type DashboardSnapshot,
+  type Device,
+} from '../domain/model';
 import type { PairingResult } from '../domain/pairing';
 
 /** State and actions of the live dashboard. */
 export interface LiveDashboard extends DashboardSnapshot {
+  /** Daily numbers, oldest first, re-read with everything else (#252). */
+  days: DailyNumbers[];
   /** Whether live updates are flowing. */
   live: boolean;
   /** Disconnects a device and drops its jobs from view; resolves to an error message on failure. */
@@ -28,6 +37,7 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   const services = useMemo(() => createLiveDashboardServices(), []);
   const [devices, setDevices] = useState(initial.devices);
   const [jobs, setJobs] = useState(initial.jobs);
+  const [days, setDays] = useState(initial.days ?? []);
   const [live, setLive] = useState(false);
   const [numbersShown, setNumbersShown] = useState<boolean | null>(null);
 
@@ -43,6 +53,11 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
       ]).catch(() => [null, null] as const);
       if (d) setDevices(d);
       if (j) setJobs(j);
+      // Daily numbers aren't broadcast: they come with each re-read (#252).
+      const numbers = await services.reader
+        .listDailyNumbers(isoDay(Date.now() - DAILY_NUMBERS_DAYS * 86_400_000))
+        .catch(() => null);
+      if (numbers) setDays(numbers);
     }
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refetch();
@@ -86,6 +101,7 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   return {
     devices,
     jobs,
+    days,
     live,
     disconnect,
     createPairingCode: () => services.pairing.createCode(),

@@ -124,7 +124,7 @@ export interface RecordedQuery {
 }
 
 type Builder = Promise<QueryResult> &
-  Record<'select' | 'order' | 'limit' | 'delete' | 'eq', (...args: unknown[]) => Builder>;
+  Record<'select' | 'order' | 'limit' | 'delete' | 'eq' | 'gte', (...args: unknown[]) => Builder>;
 
 type Listener = { type: string; filter: Record<string, unknown>; callback: (payload: unknown) => void };
 
@@ -191,6 +191,7 @@ export function fakeSupabase(): FakeSupabase {
       limit: record('limit'),
       delete: record('delete'),
       eq: record('eq'),
+      gte: record('gte'),
     });
     return builder;
   });

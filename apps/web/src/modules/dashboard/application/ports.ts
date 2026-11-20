@@ -1,4 +1,4 @@
-import type { Device, JobSummary } from '../domain/model';
+import type { DailyNumbers, Device, JobSummary } from '../domain/model';
 import type { PairMessage } from '../domain/connect';
 import type { PairingResult } from '../domain/pairing';
 
@@ -8,6 +8,8 @@ export interface DashboardReader {
   listDevices(): Promise<Device[]>;
   /** Jobs, most recently updated first. */
   listRecentJobs(limit: number): Promise<JobSummary[]>;
+  /** Daily numbers from `since` (`YYYY-MM-DD`) on, oldest first; none while they are off (#250). */
+  listDailyNumbers(since: string): Promise<DailyNumbers[]>;
 }
 
 /** Changes to the signed-in person's devices. */

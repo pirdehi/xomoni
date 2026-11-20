@@ -75,3 +75,37 @@ export async function updateJob(deviceId: string, localId: string, changes: Part
     prefer: 'return=minimal',
   });
 }
+
+/** One day of daily numbers to seed, as the extension sends it (#250); the counts left out are 0. */
+export interface SeedDay {
+  x_handle: string;
+  day: string;
+  followers?: number | null;
+  posted_posts?: number;
+  received_likes?: number;
+  received_views?: number;
+  observed_posts?: number;
+}
+
+/** Turns the account's daily numbers on and stores days for it, as Xomoni would after the person chose so (#252). */
+export async function addDailyNumbers(userId: string, days: SeedDay[]): Promise<void> {
+  await call('/rest/v1/daily_stats_choices', {
+    method: 'POST',
+    body: { user_id: userId, enabled: true },
+    prefer: 'return=minimal',
+  });
+  await call('/rest/v1/daily_stats', {
+    method: 'POST',
+    // A bulk insert needs the same keys in every row.
+    body: days.map((d) => ({
+      user_id: userId,
+      followers: null,
+      posted_posts: 0,
+      received_likes: 0,
+      received_views: 0,
+      observed_posts: 0,
+      ...d,
+    })),
+    prefer: 'return=minimal',
+  });
+}

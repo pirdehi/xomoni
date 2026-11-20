@@ -13,11 +13,11 @@ import {
   mergeClasses,
   tokens,
 } from '@fluentui/react-components';
-import { ArrowDownload20Regular, Delete20Regular, ShieldCheckmark16Regular } from '@fluentui/react-icons';
+import { Delete20Regular, ShieldCheckmark16Regular } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { FORGOTTEN_HERE, disconnect } from '../../cloud/sync';
-import { db, getSettings, kvSet, wipeLocalData } from '../../shared/db';
+import { getSettings, kvSet, wipeLocalData } from '../../shared/db';
 import { FINISHED_ID, notify } from '../../shared/notify';
 import { ACTION_LABELS, PRESETS, normalizeSettings } from '../../shared/settings';
 import { DAY } from '../../shared/time';
@@ -25,11 +25,12 @@ import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/
 import { X_PUBLISHED_LIMITS, capCeilings, share } from '../../shared/x-limits';
 import type { PageProps } from '../navigation';
 import { Button, Callout, Card, Disclosure, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
-import { downloadFile, errorMessage, toDateInput } from '../format';
+import { errorMessage } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
 import { CloudCard } from '../components/CloudCard';
 import { LimitsPanel } from '../components/LimitsPanel';
+import { MoveDataCard } from '../components/MoveData';
 import { xLinkOf } from '../components/ConnectionMap';
 
 const ACTIONS: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
@@ -141,9 +142,10 @@ const save = (s: Settings) => {
 };
 
 /**
- * Pacing presets and per-action rules, active hours, notifications, the failure limit, theme, and
- * export or wipe of local data, drawn with Fluent UI (ADR-0019). Presets come first (#198): *Careful* reads as a few
- * daily caps, and the table of every pacing value shows only under *Custom*; the failure limit sits under *Advanced*.
+ * Pacing presets and per-action rules, active hours, notifications, the failure limit, theme, wiping local data, and
+ * *Move your data* (export everything, import from a file; #300, ADR-0032), drawn with Fluent UI (ADR-0019). Presets
+ * come first (#198): *Careful* reads as a few daily caps, and the table of every pacing value shows only under
+ * *Custom*; the failure limit sits under *Advanced*.
  * Today's use of the limits, once on Home, is folded here (#201).
  * Each change is saved to the `kv` table at once; a running job keeps the settings it read when it started. Each
  * pacing field is named by its action and column (such as "Unlike, Per hour") for screen readers.
@@ -165,19 +167,6 @@ export function SettingsPage({ account, worker }: PageProps) {
       preset: 'custom',
       pacing: { ...settings.pacing, [action]: { ...settings.pacing[action], [key]: value } },
     });
-
-  const exportAll = async () => {
-    const [accounts, items, jobs, logs] = await Promise.all([
-      db.accounts.toArray(),
-      db.items.toArray(),
-      db.jobs.toArray(),
-      db.logs.toArray(),
-    ]);
-    downloadFile(
-      `xomoni-export-${toDateInput(Date.now())}.json`,
-      JSON.stringify({ exportedAt: new Date().toISOString(), accounts, items, jobs, logs }),
-    );
-  };
 
   const wipe = async () => {
     // xomoni.com first: telling it needs the token the wipe deletes (#151).
@@ -384,12 +373,10 @@ export function SettingsPage({ account, worker }: PageProps) {
             </Field>
             <div className={styles.data}>
               <Caption1 as="p" block className={styles.dataNote}>
-                Your copy, jobs and log live only in this browser.
+                Your copy, jobs and log live only in this browser. To keep them, or to take them to a new Xomoni, use
+                Move your data.
               </Caption1>
               <div className={styles.buttons}>
-                <Button icon={<ArrowDownload20Regular />} onClick={() => void exportAll()}>
-                  Export everything
-                </Button>
                 <Button
                   variant="ghost"
                   icon={<Delete20Regular />}
@@ -401,6 +388,8 @@ export function SettingsPage({ account, worker }: PageProps) {
               </div>
             </div>
           </Card>
+
+          <MoveDataCard />
         </div>
       </div>
 

@@ -225,7 +225,12 @@ One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](
 - **Types:** [`packages/db`](../packages/db/README.md) holds the generated `Database` type. CI regenerates it from the migrations and fails on drift.
 - **What is never stored:** post text, likes, the inventory, X credentials, X cookies.
 - **In the browser, daily numbers** (#249, [ADR-0026](adr/0026-daily-numbers-in-the-cloud.md)): the extension's `daily` table keeps one row of counts per X account per local day, from pages X already showed (the profile's counts, and the rise in the counts of the person's own posts). No request is made to collect them. They reach the cloud only by the person's choice (#250).
-- **In the browser, replies to you** (#256, [ADR-0030](adr/0030-replies-to-you-kept-on-the-computer.md)): the extension's `incoming` table keeps replies other people wrote to the person's posts, from the same responses: id, author handle, text (at most 1,000 characters), time and the post it answers. At most 90 days and 5,000 per X account, removed with the account's data, never in a backup, never sent to a server, never acted on.
+- **In the browser, replies to you** (#256, [ADR-0030](adr/0030-replies-to-you-kept-on-the-computer.md)): the extension's `incoming` table keeps replies other people wrote to the person's posts, from the same responses: id, author handle, text (at most 1,000 characters), time and the post it answers. At most 90 days and 5,000 per X account, removed with the account's data, never in a backup (only in the move file below), never sent to a server, never acted on.
+- **Moving to another Xomoni** (#300, [ADR-0032](adr/0032-move-data-between-xomoni-versions.md)): a fixed id or the store's version is another extension to Chrome, with an empty database. *Export everything* writes every table but `consents` into one file on the computer (`shared/move-file.ts`, `shared/move.ts`):
+  - format `xomoni-export`, a version, the app's version and the time, and a SHA-256 checksum of all of it;
+  - only listed `kv` values: never the xomoni.com token or the sign-in state.
+
+  *Import from a file* checks the whole file first: its size, format and version, the checksum, and every record's shape. It then merges in one transaction while holding the runner's lock: the newer copy of each record wins, nothing is deleted, an unfinished job arrives cancelled, and a typed override of the risk ladder isn't taken. Nothing is sent anywhere.
 
 ## 7. Enforced rules
 

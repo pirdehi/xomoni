@@ -33,8 +33,11 @@ const FUTURE_SLACK_MS = 24 * 60 * 60 * 1000;
 
 const KINDS: ReadonlySet<string> = new Set<ItemKind>(['post', 'reply', 'repost', 'like']);
 
-/** Where X serves avatars from; the dashboard's CSP loads images from these and nowhere else (#143). */
-const AVATAR = /^https:\/\/(pbs|abs)\.twimg\.com\/[^\s"'<>]{1,1000}$/;
+/**
+ * Where X serves avatars from; the dashboard's CSP loads images from these and nowhere else (#143). A moved account's
+ * avatar is checked against it too (`move-file.ts`).
+ */
+export const AVATAR_URL = /^https:\/\/(pbs|abs)\.twimg\.com\/[^\s"'<>]{1,1000}$/;
 
 function originOf(url: string | undefined): string | undefined {
   try {
@@ -159,7 +162,7 @@ function profile(m: Record<string, unknown>, now: number): RuntimeMessage | null
   if (!p) return null;
   const { id, handle, name, avatar, postsCount, likesCount, followers, following, createdAt, verified } = p;
   if (!isId(id) || typeof handle !== 'string' || !isHandle(handle) || !isText(name, MAX_NAME)) return null;
-  if (typeof avatar !== 'string' || (avatar !== '' && !AVATAR.test(avatar))) return null;
+  if (typeof avatar !== 'string' || (avatar !== '' && !AVATAR_URL.test(avatar))) return null;
   if (![postsCount, likesCount, followers, following].every(countOrNull)) return null;
   if ((createdAt !== null && !isTime(createdAt, now)) || (verified !== null && typeof verified !== 'boolean')) {
     return null;

@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, itemKey, kvSet, upsertAccount } from '../../src/shared/db';
+import { checkMoveText } from '../../src/shared/move-file';
 import { getSignedOut } from '../../src/shared/session';
 import type { Job } from '../../src/shared/types';
 import { SIGNED_OUT_PAUSE } from '../../src/ui/hooks';
@@ -170,18 +171,36 @@ describe('finishing a sign-out made elsewhere (#232)', () => {
 });
 
 describe('accountCopy (#226)', () => {
-  it('writes one account’s data in the shape Export everything uses, without other accounts', async () => {
-    await storeAccountData();
-    await upsertAccount(account({ id: 'other', handle: 'other' }));
-    await db.items.put({ key: itemKey('other', 'post', '2'), accountId: 'other', kind: 'post', id: '2' } as never);
-    await kvSet('activeAccount', ME.id);
+  it('writes one account’s data in the file Export everything writes, without other accounts, ready to import', async () => {
+    const X = '1234567890';
+    await upsertAccount(account({ id: X, handle: 'mover' }));
+    await db.items.put({ key: itemKey(X, 'post', '1'), accountId: X, kind: 'post', id: '1' } as never);
+    await db.jobs.put({
+      id: 'j1',
+      accountId: X,
+      kind: 'cleanup',
+      state: 'paused',
+      createdAt: 1,
+      title: 'Old posts',
+    } as Job);
+    await upsertAccount(account({ id: '2', handle: 'other' }));
+    await db.items.put({ key: itemKey('2', 'post', '2'), accountId: '2', kind: 'post', id: '2' } as never);
+    await kvSet('activeAccount', X);
+    await kvSet(`viewCap:${X}`, { cap: 100, seen: 120, learnedAt: 1 });
 
-    const copy = JSON.parse(await accountCopy(ME.id, new Date('2026-11-15T00:00:00Z'))) as Record<string, unknown[]>;
+    const now = new Date();
+    const text = await accountCopy(X, now);
+    const checked = await checkMoveText(text);
 
-    expect(copy.exportedAt).toBe('2026-11-15T00:00:00.000Z');
-    expect(copy.accounts).toHaveLength(1);
-    expect(copy.items).toEqual([expect.objectContaining({ accountId: ME.id })]);
-    expect(copy.jobs).toEqual([expect.objectContaining({ id: 'j1' })]);
-    expect(copy.logs).toEqual([]);
+    if (!checked.ok) throw new Error(checked.message);
+    expect(checked.file.exportedAt).toBe(now.toISOString());
+    expect(checked.file.app).toBe('0.3.0');
+    const { data } = checked.file;
+    expect(data.accounts.map((a) => a.id)).toEqual([X]);
+    expect(data.items).toEqual([expect.objectContaining({ accountId: X })]);
+    expect(data.jobs).toEqual([expect.objectContaining({ id: 'j1' })]);
+    expect(data.logs).toEqual([]);
+    // Its own values come along; the browser's (the active account) stay.
+    expect(data.kv.map((v) => v.key)).toEqual([`viewCap:${X}`]);
   });
 });

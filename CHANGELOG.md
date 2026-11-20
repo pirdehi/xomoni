@@ -6,6 +6,14 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Move your data to a new Xomoni** (#300). A Xomoni with another id, such as the coming Chrome Web Store version, starts empty, because Chrome keeps each extension's data apart.
+  - In the Xomoni you're leaving, *Settings › Move your data › Export everything* saves one file in Downloads. It holds your accounts, posts, replies, reposts and likes, jobs, the activity log, daily numbers, replies to you, settings and Watch, plus what keeps Xomoni within X's limits and the risk ladder's warnings.
+  - In the new one, *Import from a file* checks the whole file first and shows what it holds. A file that was changed or damaged, is too large, or comes from another version is refused, and nothing is imported.
+  - The import adds to what is there: the newer copy of each item wins and nothing is deleted. Jobs that hadn't finished arrive ended, and nothing starts on X. It waits while a job runs, and the activity log says what came in.
+  - A new install offers *Coming from another Xomoni? Import your data* until you say *Not now*.
+  - The file stays on your computer: Xomoni never sends it anywhere. It never holds your xomoni.com connection; sign in again with one click ([ADR-0032](docs/adr/0032-move-data-between-xomoni-versions.md)).
+  - The copy offered before removing an account's data is the same kind of file, so it can be imported again.
+
 - **A welcome page and a checklist that ticks itself** (#244). Xomoni now opens xomoni.com/welcome when it is installed. Three steps, ticked from what the page sees: Xomoni installed in this browser, signed in to xomoni.com, and Xomoni signed in with you. The same checklist is on the install guide and an empty dashboard. *Continue without an account* closes the tab. Opening /welcome on install needs the next Xomoni release.
 - **Signing up keeps where you were going** (#244): create an account from a page that asked you to, such as connecting Xomoni, and the confirmation email brings you back to it instead of the dashboard.
 - **xomoni.com on a phone has a menu** (#242): *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, one tap away, and it works with the keyboard. On a computer, *Install* is always in the header.

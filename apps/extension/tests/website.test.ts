@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HELLO, PAIR, SIGN_IN, SIGN_OUT } from '@xomoni/bridge';
+import { HELLO, PAIR, SETTINGS, SIGN_IN, SIGN_OUT } from '@xomoni/bridge';
 import { type CloudConnection, getConnection, saveConnection } from '../src/cloud/connection';
 import { startWebConnect } from '../src/cloud/web-connect';
 import { type ActionPorts, type WebsiteSender, answerWebsite } from '../src/cloud/website';
@@ -54,10 +54,28 @@ describe('answerWebsite: who is heard (ADR-0025)', () => {
     await expect(ask({ type: HELLO }, { url: 'https://xomoni.com/' })).resolves.toMatchObject({ ok: true });
   });
 
-  it('answers invalid to anything but its six messages, such as starting a job (ADR-0027)', async () => {
+  it('answers invalid to anything but its messages, such as starting a job (ADR-0027)', async () => {
     for (const raw of [{ type: 'xomoni-start', jobId: 'j1' }, { type: 'xomoni-resume' }, { type: HELLO, x: 1 }, 'hi']) {
       await expect(ask(raw, SITE)).resolves.toEqual({ ok: false, reason: 'invalid' });
     }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('hands a settings change to Xomoni’s own rules, and refuses one faster than Careful (ADR-0029)', async () => {
+    const deviceId = CONNECTED.deviceId;
+    await expect(ask({ type: SETTINGS, deviceId, change: { notifications: false } }, SITE)).resolves.toEqual({
+      ok: false,
+      reason: 'not_connected',
+    });
+    await expect(ask({ type: SETTINGS, deviceId, change: { preset: 'custom' } }, SITE)).resolves.toEqual({
+      ok: false,
+      reason: 'invalid',
+    });
+    await saveConnection(CONNECTED);
+    await expect(ask({ type: SETTINGS, deviceId, change: { notifications: false } }, SITE)).resolves.toMatchObject({
+      ok: true,
+      settings: { notifications: false },
+    });
     expect(fetch).not.toHaveBeenCalled();
   });
 });

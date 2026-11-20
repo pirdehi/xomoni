@@ -56,6 +56,7 @@ import { Engagement } from './engagement';
 import { ColumnChart, LineChart, formatCount } from './charts';
 import { Delta } from './delta';
 import { HealthPlace, LibraryPlace, WatchPlace } from './xomoni-places';
+import { SettingsPlace } from './settings-place';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
@@ -503,6 +504,8 @@ export function Dashboard({
     content = <WatchPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'health') {
     content = <HealthPlace xomoni={xomoni} now={now} />;
+  } else if (section.id === 'settings') {
+    content = <SettingsPlace xomoni={xomoni} numbers={<NumbersChoice shown={numbersShown} onShow={showNumbers} />} />;
   } else if (section.id === 'browsers') {
     content =
       devices.length === 0 ? (
@@ -637,8 +640,6 @@ function Numbers({
   onShow: (enabled: boolean) => Promise<string | null>;
 }) {
   const s = useStyles();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const current = daysInScope(days, scope, now);
   const figures = overviewFigures(current, daysBefore(days, scope, now));
   const today = isoDay(now);
@@ -670,11 +671,6 @@ function Numbers({
   const followers = followersSeries(current, scope, now);
   const published = publishedSeries(current, scope, now);
 
-  async function choose(enabled: boolean) {
-    setBusy(true);
-    setError(await onShow(enabled));
-    setBusy(false);
-  }
   return (
     <section aria-labelledby="numbers-title">
       <h2 id="numbers-title" className={s.sectionTitle}>
@@ -716,25 +712,49 @@ function Numbers({
           </p>
         </>
       )}
-      <div className={mergeClasses(s.card, s.numbersChoice)}>
-        <Switch
-          label="Show my numbers on xomoni.com"
-          checked={shown === true}
-          disabled={busy || shown === null}
-          onChange={(_, data) => void choose(data.checked)}
-        />
-        <p className={s.meta}>
-          Counts per day only, sent by Xomoni on your computer: followers, posts, what your posts received and what
-          Xomoni removed. Never your posts, replies, likes or anyone’s name. Turning it off deletes them.{' '}
-          <TextLink href="/privacy">What is stored</TextLink>
-        </p>
-        {error && (
-          <MessageBar intent="error">
-            <MessageBarBody>{error}</MessageBarBody>
-          </MessageBar>
-        )}
-      </div>
+      <NumbersChoice shown={shown} onShow={onShow} />
     </section>
+  );
+}
+
+/**
+ * *Show my numbers on xomoni.com* (ADR-0026): the account's choice, kept in the cloud, so it works on any device.
+ * On Overview and in Settings.
+ */
+function NumbersChoice({
+  shown,
+  onShow,
+}: {
+  shown: boolean | null;
+  onShow: (enabled: boolean) => Promise<string | null>;
+}) {
+  const s = useStyles();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function choose(enabled: boolean) {
+    setBusy(true);
+    setError(await onShow(enabled));
+    setBusy(false);
+  }
+  return (
+    <div className={mergeClasses(s.card, s.numbersChoice)}>
+      <Switch
+        label="Show my numbers on xomoni.com"
+        checked={shown === true}
+        disabled={busy || shown === null}
+        onChange={(_, data) => void choose(data.checked)}
+      />
+      <p className={s.meta}>
+        Counts per day only, sent by Xomoni on your computer: followers, posts, what your posts received and what Xomoni
+        removed. Never your posts, replies, likes or anyone’s name. Turning it off deletes them.{' '}
+        <TextLink href="/privacy">What is stored</TextLink>
+      </p>
+      {error && (
+        <MessageBar intent="error">
+          <MessageBarBody>{error}</MessageBarBody>
+        </MessageBar>
+      )}
+    </div>
   );
 }
 

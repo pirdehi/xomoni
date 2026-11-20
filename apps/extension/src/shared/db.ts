@@ -366,6 +366,26 @@ export async function setWatchQuery(accountId: string, tabId: string, query: str
   });
 }
 
+/**
+ * Sets an account's Watch searches in order, as xomoni.com sends them (ADR-0029): each tab keeps its place and id,
+ * tabs past the end are removed (the initial ones come back empty), and a tab whose search changed loses its old
+ * results, so they never show under the new search.
+ */
+export async function setWatchQueries(accountId: string, queries: readonly string[]) {
+  await db.transaction('rw', db.kv, async () => {
+    const before = await watchTabs(accountId);
+    const tabs: WatchTab[] = [];
+    for (const query of queries.slice(0, WATCH_TABS.max)) {
+      tabs.push({ id: before[tabs.length]?.id ?? newTabId([...before, ...tabs]), query: normalizeQuery(query) });
+    }
+    await saveWatchTabs(accountId, tabs);
+    const kept = await watchTabs(accountId);
+    const same = new Set(kept.filter((t) => before.some((b) => b.id === t.id && b.query === t.query)).map((t) => t.id));
+    const results = await watchResults(accountId);
+    await kvSet(watchResultsKey(accountId), Object.fromEntries(Object.entries(results).filter(([id]) => same.has(id))));
+  });
+}
+
 /** Removes a Watch tab added by the person, with its results; the initial tabs stay. */
 export async function removeWatchTab(accountId: string, tabId: string) {
   await db.transaction('rw', db.kv, async () => {

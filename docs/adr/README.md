@@ -32,3 +32,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0026](0026-daily-numbers-in-the-cloud.md) | Daily numbers in the cloud: counts per day, never X content | Accepted |
 | [0027](0027-extension-actions-from-the-website.md) | The extension's actions on xomoni.com, in the same browser, confirmed in Xomoni | Accepted |
 | [0028](0028-xomoni-data-on-the-website-in-the-same-browser.md) | Xomoni's own data on xomoni.com, read in the same browser and kept nowhere | Accepted |
+| [0029](0029-xomoni-settings-from-the-website.md) | Xomoni's settings on xomoni.com, applied by Xomoni in the same browser within its safety rules | Accepted |

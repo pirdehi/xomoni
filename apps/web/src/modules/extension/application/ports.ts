@@ -5,6 +5,8 @@ import type {
   OpenMessage,
   ReadAnswer,
   ReadMessage,
+  SettingsAnswer,
+  SettingsMessage,
   SignInAnswer,
   SignInMessage,
   SignOutAnswer,
@@ -28,6 +30,8 @@ export interface ActionChannel {
   open(extensionId: string, message: Omit<OpenMessage, 'type'>): Promise<ActionAnswer>;
   /** Reads one of its places' data (ADR-0028); `no_answer` when it doesn't answer. */
   read(extensionId: string, message: DistributiveOmit<ReadMessage, 'type'>): Promise<ReadAnswer>;
+  /** Changes some of its settings within its own rules (ADR-0029); `no_answer` when it doesn't answer. */
+  settings(extensionId: string, message: Omit<SettingsMessage, 'type'>): Promise<SettingsAnswer>;
 }
 
 /** `Omit` over each member of a union, keeping it a union. */

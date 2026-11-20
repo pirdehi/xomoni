@@ -30,7 +30,7 @@ import {
   Prohibited16Regular,
   Send20Regular,
 } from '@fluentui/react-icons';
-import type { JobAction, LibraryKind, ReadAnswer, XomoniPage } from '@xomoni/bridge';
+import type { JobAction, LibraryKind, ReadAnswer, SettingsAnswer, SettingsChange, XomoniPage } from '@xomoni/bridge';
 import { type ReactElement, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { ButtonLink } from '@/shared/ui/links';
@@ -67,7 +67,10 @@ export type XomoniWant =
 
 /** A read a page asks of Xomoni (ADR-0028); the device is added by `useXomoni`. */
 export type XomoniReadRequest =
-  { what: 'library'; kind: LibraryKind; query: string; offset: number } | { what: 'health' } | { what: 'watch' };
+  | { what: 'library'; kind: LibraryKind; query: string; offset: number }
+  | { what: 'health' }
+  | { what: 'watch' }
+  | { what: 'settings' };
 
 /** What `useXomoni` gives a page. */
 export interface XomoniControls {
@@ -84,6 +87,11 @@ export interface XomoniControls {
    * The answer is X content: keep it in memory, never store, log or send it.
    */
   read: (request: XomoniReadRequest) => Promise<ReadAnswer | null>;
+  /**
+   * Asks Xomoni here to change some of its settings (ADR-0029): null unless Xomoni is here and signed in to this
+   * account. Xomoni applies its own rules and answers the settings as stored.
+   */
+  changeSettings: (change: SettingsChange) => Promise<SettingsAnswer | null>;
 }
 
 type DialogState = { kind: 'away' } | { kind: 'elsewhere'; deviceName: string | undefined };
@@ -183,8 +191,13 @@ export function useXomoni(
     if (here.kind !== 'here') return null;
     return get().read({ ...request, deviceId: here.deviceId });
   }
+  async function changeSettings(change: SettingsChange): Promise<SettingsAnswer | null> {
+    const here = latest.current;
+    if (here.kind !== 'here') return null;
+    return get().settings({ deviceId: here.deviceId, change });
+  }
 
-  return { presence, request, busy, ui, read };
+  return { presence, request, busy, ui, read, changeSettings };
 }
 
 /**

@@ -1,7 +1,13 @@
-import type { ActionAnswer, ReadAnswer } from '@xomoni/bridge';
-import { type XomoniRead, askXomoni, readXomoni } from '../application/actions';
+import type { ActionAnswer, ReadAnswer, SettingsAnswer } from '@xomoni/bridge';
+import {
+  type XomoniRead,
+  type XomoniSettingsChange,
+  askXomoni,
+  changeXomoniSettings,
+  readXomoni,
+} from '../application/actions';
 
-export type { XomoniRead };
+export type { XomoniRead, XomoniSettingsChange };
 import type { XomoniRequest } from '../domain/presence';
 import { createBrowserMemory } from '../infrastructure/browser-memory';
 import { createChromeExtensionChannel } from '../infrastructure/chrome-extension-channel';
@@ -15,6 +21,8 @@ export interface XomoniActionServices {
   recheck(): Promise<void>;
   /** Reads one of Xomoni's places (ADR-0028); the answer stays in the page's memory. */
   read(read: XomoniRead): Promise<ReadAnswer>;
+  /** Changes some of Xomoni's settings within its own rules (ADR-0029), answering them as stored. */
+  settings(change: XomoniSettingsChange): Promise<SettingsAnswer>;
 }
 
 /**
@@ -26,6 +34,7 @@ export function createXomoniActionServices(): XomoniActionServices {
   return {
     ask: (request) => askXomoni(deps, request),
     read: (read) => readXomoni(deps, read),
+    settings: (change) => changeXomoniSettings(deps, change),
     async recheck() {
       await createExtensionSessionServices().sync();
     },

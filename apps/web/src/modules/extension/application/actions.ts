@@ -1,4 +1,4 @@
-import type { ActionAnswer, ReadAnswer, ReadMessage } from '@xomoni/bridge';
+import type { ActionAnswer, ReadAnswer, ReadMessage, SettingsAnswer, SettingsMessage } from '@xomoni/bridge';
 import type { XomoniRequest } from '../domain/presence';
 import type { ActionChannel, BrowserMemory, DistributiveOmit } from './ports';
 
@@ -32,4 +32,18 @@ export async function readXomoni(deps: ActionDeps, read: XomoniRead): Promise<Re
   const extensionId = deps.memory.extensionId();
   if (!extensionId) return { ok: false, reason: 'no_answer' };
   return deps.channel.read(extensionId, read);
+}
+
+/** A change of Xomoni's settings, as a page asks it (ADR-0029). */
+export type XomoniSettingsChange = Omit<SettingsMessage, 'type'>;
+
+/**
+ * Asks Xomoni in this browser to change some of its settings (ADR-0029, #234). Xomoni checks and clamps every value
+ * with its own rules and answers the settings as stored. Without a known extension id nothing is sent and the answer
+ * is `no_answer`.
+ */
+export async function changeXomoniSettings(deps: ActionDeps, change: XomoniSettingsChange): Promise<SettingsAnswer> {
+  const extensionId = deps.memory.extensionId();
+  if (!extensionId) return { ok: false, reason: 'no_answer' };
+  return deps.channel.settings(extensionId, change);
 }

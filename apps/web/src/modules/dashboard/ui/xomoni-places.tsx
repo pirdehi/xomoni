@@ -73,8 +73,21 @@ function formatTime(ms: number): string {
   return new Date(ms).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-/** What a place says while Xomoni can't be read from this page, with the way to it. */
-function NotHere({ xomoni, page, what }: { xomoni: XomoniControls; page: XomoniPage; what: string }) {
+/**
+ * What a place says while Xomoni can't be read from this page, with the way to it. `what` names the place (its
+ * region is "`what`: in Xomoni"); `says` replaces the sentence about where its data lives.
+ */
+export function NotHere({
+  xomoni,
+  page,
+  what,
+  says,
+}: {
+  xomoni: XomoniControls;
+  page: XomoniPage;
+  what: string;
+  says?: string;
+}) {
   const s = useStyles();
   return (
     <section className={mergeClasses(s.card, s.stack)} aria-label={`${what}: in Xomoni`}>
@@ -84,8 +97,8 @@ function NotHere({ xomoni, page, what }: { xomoni: XomoniControls; page: XomoniP
       ) : (
         <>
           <p className={s.text}>
-            {what} is read from Xomoni on your computer, in this browser: it never reaches our servers. Open this page
-            in the browser where Xomoni runs, signed in to this account.
+            {says ??
+              `${what} is read from Xomoni on your computer, in this browser: it never reaches our servers. Open this page in the browser where Xomoni runs, signed in to this account.`}
           </p>
           <div className={s.row}>
             <OpenInXomoni xomoni={xomoni} page={page} />
@@ -96,7 +109,8 @@ function NotHere({ xomoni, page, what }: { xomoni: XomoniControls; page: XomoniP
   );
 }
 
-function Notice({ children }: { children: ReactNode }) {
+/** A small line above a place's content, such as where its data was read. */
+export function Notice({ children }: { children: ReactNode }) {
   const s = useStyles();
   return <p className={s.note}>{children}</p>;
 }
@@ -264,7 +278,7 @@ export function WatchPlace({ xomoni, now }: { xomoni: XomoniControls; now: numbe
   return (
     <div className={s.root}>
       <Notice>
-        Read from Xomoni in this browser. Watch looks while Xomoni’s dashboard is open; change the searches there.
+        Read from Xomoni in this browser. Watch looks while Xomoni’s dashboard is open; change the searches in Settings.
       </Notice>
       {loading && !tabs && <Spinner size="small" label="Reading Xomoni…" />}
       {answer && !answer.ok && <p className={s.text}>Xomoni didn’t answer. Open it on this computer and try again.</p>}

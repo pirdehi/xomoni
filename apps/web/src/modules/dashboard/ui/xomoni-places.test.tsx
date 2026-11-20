@@ -15,7 +15,14 @@ function controls(
   presence: XomoniControls['presence'] = { kind: 'here', deviceId: MINE },
 ) {
   const read = vi.fn((request: XomoniReadRequest) => Promise.resolve(answer(request)));
-  const xomoni: XomoniControls = { presence, request: vi.fn(() => Promise.resolve()), busy: null, ui: null, read };
+  const xomoni: XomoniControls = {
+    presence,
+    request: vi.fn(() => Promise.resolve()),
+    busy: null,
+    ui: null,
+    read,
+    changeSettings: vi.fn(() => Promise.resolve(null)),
+  };
   return { xomoni, read };
 }
 
@@ -213,6 +220,7 @@ describe('useXomoniRead', () => {
       busy: null,
       ui: null,
       read,
+      changeSettings: vi.fn(() => Promise.resolve(null)),
     };
     const { unmount } = render(<WatchPlace xomoni={xomoni} now={NOW} />);
     await waitFor(() => expect(read).toHaveBeenCalled());

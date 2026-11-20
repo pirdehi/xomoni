@@ -16,17 +16,17 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const signedIn = !!data?.claims;
   const path = request.nextUrl.pathname;
 
-  const to = (pathname: string) => {
-    const url = request.nextUrl.clone();
+  // A plain URL on this site's origin: setting the path can never change the host, and the redirect needs a real
+  // `URL`, not Next's `NextURL` (#285).
+  const onThisSite = (pathname: string) => {
+    const url = new URL(request.nextUrl.origin);
     url.pathname = pathname;
-    url.search = '';
-    return redirect(url);
+    return url;
   };
+  const to = (pathname: string) => redirect(onThisSite(pathname));
 
   if (!signedIn && requiresSession(path)) {
-    const url = request.nextUrl.clone();
-    url.pathname = ROUTES.signIn;
-    url.search = '';
+    const url = onThisSite(ROUTES.signIn);
     url.searchParams.set('next', `${path}${request.nextUrl.search}`);
     return redirect(url);
   }

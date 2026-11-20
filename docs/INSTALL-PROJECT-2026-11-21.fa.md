@@ -3,7 +3,8 @@
 # پروژه‌ی «نصب با یک کلیک»: فازها و تسک‌ها
 
 > - **تاریخ:** ۲۱ نوامبر ۲۰۲۶.
-> - **وضعیت:** ⏸ منتظر تأیید شما. تا تأیید ندهید، هیچ تسکی شروع نمی‌شود.
+> - **وضعیت:** 🔄 تأیید شد (۲۱ نوامبر). فازهای ۱، ۲ و ۳ در حال انجام‌اند. فاز ۰ منتظر حساب‌های شماست: [راهنما](STORE-ACCOUNTS-GUIDE.fa.md).
+> - **Issueها:** فاز ۰ [#298](https://github.com/pirdehi/xomoni/issues/298)، ۱ [#299](https://github.com/pirdehi/xomoni/issues/299)، ۲ [#300](https://github.com/pirdehi/xomoni/issues/300)، ۳ [#301](https://github.com/pirdehi/xomoni/issues/301)، ۴ [#302](https://github.com/pirdehi/xomoni/issues/302)، ۵ [#303](https://github.com/pirdehi/xomoni/issues/303)، ۶ [#304](https://github.com/pirdehi/xomoni/issues/304)، ۷ [#305](https://github.com/pirdehi/xomoni/issues/305)، ۸ [#306](https://github.com/pirdehi/xomoni/issues/306).
 > - **پایه:** [تحلیل راه‌حل‌های نصب](INSTALL-UX-2026-11-21.fa.md) و issue [#295](https://github.com/pirdehi/xomoni/issues/295).
 > - **تصمیم شما:**
 >   - راه اصلی نصب از **Chrome Web Store** است (راه‌حل «د»)، به‌همراه **Edge Add-ons**.

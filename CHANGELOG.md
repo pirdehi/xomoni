@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-20
+
+Install this version to use the Library, Watch, Account health, Settings and Cleanup places on xomoni.com. Xomoni 0.3.0 can’t answer them, and the site says so.
+
 ### Added
 
 - **Plan a cleanup on xomoni.com, start it in Xomoni** (#235).

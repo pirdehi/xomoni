@@ -1,12 +1,12 @@
-// Calls to the three functions a device may use (ADR-0018): pair with a code, report status, disconnect.
-// Plain `fetch` to PostgREST with the publishable key and no session, from the dashboard page.
+// Calls to the functions a device may use (ADR-0018): pair with a code, report status, disconnect, and the daily
+// numbers with their choice (ADR-0026). Plain `fetch` to PostgREST with the publishable key and no session.
 import { asArray, asObject, asString } from '../shared/json';
 import { CLOUD_KEY, CLOUD_URL } from './config';
 import { type ReleaseNews, parseReleaseNews } from './release';
 import type { JobReport } from './summary';
 
 /** Why a call to the cloud failed, as far as the extension acts on it. */
-export type CloudErrorReason = 'bad_code' | 'device_limit' | 'unknown_device' | 'unreachable' | 'refused';
+export type CloudErrorReason = 'bad_code' | 'device_limit' | 'unknown_device' | 'stats_off' | 'unreachable' | 'refused';
 
 /** A failed call: `reason` for the code, `message` safe to show to the person. */
 export class CloudError extends Error {
@@ -20,8 +20,8 @@ export class CloudError extends Error {
 }
 
 /** Whether the database's hint names a failure the extension handles on its own. */
-const isKnownHint = (hint: string | undefined): hint is 'bad_code' | 'device_limit' | 'unknown_device' =>
-  hint === 'bad_code' || hint === 'device_limit' || hint === 'unknown_device';
+const isKnownHint = (hint: string | undefined): hint is 'bad_code' | 'device_limit' | 'unknown_device' | 'stats_off' =>
+  hint === 'bad_code' || hint === 'device_limit' || hint === 'unknown_device' || hint === 'stats_off';
 
 async function rpc(fn: string, body: Record<string, unknown>): Promise<unknown> {
   let response: Response;
@@ -55,16 +55,60 @@ export async function pairDevice(code: string, name: string, version: string) {
   return { deviceId, token, account: (asString(row?.account) ?? '').slice(0, 200) };
 }
 
+/** One day as `device_report_stats` takes it: the X handle, the day and the ADR's columns, nothing else. */
+export interface StatsRow {
+  x_handle: string;
+  day: string;
+  followers: number | null;
+  following: number | null;
+  posts_total: number | null;
+  likes_total: number | null;
+  posted_posts: number;
+  posted_replies: number;
+  posted_reposts: number;
+  posted_quotes: number;
+  received_likes: number;
+  received_replies: number;
+  received_reposts: number;
+  received_quotes: number;
+  received_views: number;
+  observed_posts: number;
+  posts_with_likes: number;
+  replies_with_likes: number;
+  removed_posts: number;
+  removed_replies: number;
+  removed_reposts: number;
+  removed_likes: number;
+}
+
+/** What a report's answer says: the newest release, and whether the account shows its daily numbers (#250). */
+export interface StatusAnswer {
+  news: ReleaseNews | null;
+  /** False from a server older than daily numbers. */
+  stats: boolean;
+}
+
 /**
  * Says the extension is still there and reports its jobs' status (up to 50). Answers with the newest release
- * (#151), or null when xomoni.com didn't say.
+ * (#151), or null when xomoni.com didn't say, and whether the account shows its daily numbers (#250).
  */
-export async function reportStatus(
-  token: string,
-  version: string,
-  jobs: readonly JobReport[],
-): Promise<ReleaseNews | null> {
-  return parseReleaseNews(await rpc('device_report', { token, version, jobs }));
+export async function reportStatus(token: string, version: string, jobs: readonly JobReport[]): Promise<StatusAnswer> {
+  const answer = await rpc('device_report', { token, version, jobs });
+  return { news: parseReleaseNews(answer), stats: asObject(answer)?.stats === true };
+}
+
+/**
+ * Sends days of numbers (`device_report_stats`, ADR-0026): at most 60, only the ADR's columns. Fails with
+ * `stats_off` when the account doesn't show its numbers. Returns how many days were stored.
+ */
+export async function reportStats(token: string, rows: readonly StatsRow[]): Promise<number> {
+  const stored = await rpc('device_report_stats', { token, rows });
+  return typeof stored === 'number' ? stored : 0;
+}
+
+/** Turns the account's daily numbers on or off; off deletes every day already sent. Returns the choice as stored. */
+export async function setStats(token: string, enabled: boolean): Promise<boolean> {
+  return (await rpc('device_set_daily_stats', { token, enabled })) === true;
 }
 
 /** Disconnects this browser; its jobs leave the website too. */

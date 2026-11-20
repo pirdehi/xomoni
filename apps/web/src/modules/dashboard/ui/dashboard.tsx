@@ -16,6 +16,7 @@ import {
   ProgressBar,
   type ProgressBarProps,
   Spinner,
+  Switch,
   makeStyles,
   mergeClasses,
   tokens,
@@ -158,7 +159,13 @@ const useStyles = makeStyles({
     margin: `${tokens.spacingVerticalXS} 0 0`,
     color: tokens.colorNeutralForeground1,
   },
-  numbersNote: { marginTop: tokens.spacingVerticalM },
+  numbersChoice: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalM,
+    padding: tokens.spacingHorizontalL,
+  },
   setup: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalL },
   setupIcon: {
     display: 'grid',
@@ -369,7 +376,10 @@ export function Dashboard({
   section: Section;
 }) {
   const s = useStyles();
-  const { devices, jobs, live, disconnect, createPairingCode } = useLiveDashboard(viewer.id, initial);
+  const { devices, jobs, live, disconnect, createPairingCode, numbersShown, showNumbers } = useLiveDashboard(
+    viewer.id,
+    initial,
+  );
   const now = useNow(30_000);
   const justConnected = useJustConnected(devices);
   const [leaving, setLeaving] = useState<Device | null>(null);
@@ -397,7 +407,7 @@ export function Dashboard({
         {devices.length === 0 && <SetupBar />}
         {needsYou.length > 0 && <NeedsYou jobs={needsYou} deviceName={deviceName} />}
         {risks.length > 0 && <AccountRisks risks={risks} deviceName={deviceName} now={now} />}
-        <Numbers removed={removedIn(inPeriod)} />
+        <Numbers removed={removedIn(inPeriod)} shown={numbersShown} onShow={showNumbers} />
         <section aria-labelledby="recent-title">
           <div className={mergeClasses(s.row, s.center)}>
             <h2 id="recent-title" className={s.sectionTitle}>
@@ -527,11 +537,22 @@ function JobList({
 
 /**
  * Overview's figures. *Removed* comes from Xomoni's jobs today; the others come with daily numbers, which the person
- * turns on (ADR-0026, #250). Until then they say so, instead of showing zeros.
+ * turns on here or in Xomoni (ADR-0026, #250). Until they show, the tiles say so instead of showing zeros.
  */
-function Numbers({ removed }: { removed: number }) {
+function Numbers({
+  removed,
+  shown,
+  onShow,
+}: {
+  removed: number;
+  /** Whether the account shows its daily numbers; null while it is read. */
+  shown: boolean | null;
+  onShow: (enabled: boolean) => Promise<string | null>;
+}) {
   const s = useStyles();
-  const pending = 'With daily numbers';
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pending = shown ? 'From the next report' : 'With daily numbers';
   const tiles: { label: string; value: string; note: string }[] = [
     { label: 'Followers', value: '—', note: pending },
     { label: 'Posts', value: '—', note: pending },
@@ -540,6 +561,11 @@ function Numbers({ removed }: { removed: number }) {
     { label: 'Engagement rate', value: '—', note: pending },
     { label: 'Removed by Xomoni', value: removed.toLocaleString('en-US'), note: 'by jobs in this period' },
   ];
+  async function change(enabled: boolean) {
+    setBusy(true);
+    setError(await onShow(enabled));
+    setBusy(false);
+  }
   return (
     <section aria-labelledby="numbers-title">
       <h2 id="numbers-title" className={s.sectionTitle}>
@@ -554,10 +580,24 @@ function Numbers({ removed }: { removed: number }) {
           </li>
         ))}
       </ul>
-      <p className={mergeClasses(s.meta, s.numbersNote)}>
-        Followers, posts and what you receive will come from Xomoni on your computer, once you turn on daily numbers
-        (coming soon): only counts per day, never your posts.
-      </p>
+      <div className={mergeClasses(s.card, s.numbersChoice)}>
+        <Switch
+          label="Show my numbers on xomoni.com"
+          checked={shown === true}
+          disabled={busy || shown === null}
+          onChange={(_, data) => void change(data.checked)}
+        />
+        <p className={s.meta}>
+          Counts per day only, sent by Xomoni on your computer: followers, posts, what your posts received and what
+          Xomoni removed. Never your posts, replies, likes or anyone’s name. Turning it off deletes them.{' '}
+          <TextLink href="/privacy">What is stored</TextLink>
+        </p>
+        {error && (
+          <MessageBar intent="error">
+            <MessageBarBody>{error}</MessageBarBody>
+          </MessageBar>
+        )}
+      </div>
     </section>
   );
 }

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Privacy Policy' };
 /** `/privacy`: the privacy policy. */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="November 1, 2026">
+    <LegalPage title="Privacy Policy" updated="November 20, 2026">
       <p>
         Xomoni is a free, open-source tool made by Omid Pirdehi. It has two parts: a browser extension that cleans up
         your own X account on your computer, and this website, where you can follow that work from any device. This
@@ -80,17 +80,27 @@ export default function PrivacyPage() {
         <li>
           <strong>Connected browsers:</strong> a name such as “Chrome on macOS”, the extension version and when it last
           checked in. You connect a browser by typing a one-time code from your dashboard into the extension; we keep
-          the code and the browser’s key only as one-way hashes, and the key can only report job status.
+          the code and the browser’s key only as one-way hashes, and the key can only report job status and, if you turn
+          them on, your daily numbers.
         </li>
         <li>
           <strong>Job summaries:</strong> the job’s title (for example “Delete posts before Jan 2024”), its type, state
           and phase, counts (matched, deleted, skipped, failed, scanned), timestamps, the X handle the job ran on, and
           the account’s risk level (a number from 0 to 4). Never the text of a post or a message from X.
         </li>
+        <li>
+          <strong>Daily numbers, only if you turn them on:</strong> one row per X account per day, made only of counts:
+          followers, following, posts and likes as X showed them that day; how many posts, replies, reposts and quotes
+          you published; the likes, replies, reposts, quotes and views your posts received, as far as the extension saw
+          them; and how many items Xomoni removed. Never the text, ID or link of a post, and never anyone else’s name.
+          They are off until you turn on <em>Show my numbers on xomoni.com</em> in the extension or on your dashboard.
+          Turning it off deletes every day already sent, and deleting your account deletes them too. The extension
+          collects them only from pages X already showed you: it never asks X for them.
+        </li>
       </ul>
       <p>
-        We use this data only to show you your dashboard. Job summaries contain counts, not the content or IDs of your
-        posts.
+        We use this data only to show you your dashboard. Job summaries and daily numbers contain counts, not the
+        content or IDs of your posts.
       </p>
 
       <h2>Emails we send</h2>

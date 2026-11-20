@@ -1,4 +1,4 @@
-import { Body1, Input, Link, makeStyles, tokens } from '@fluentui/react-components';
+import { Body1, Caption1, Input, Link, Switch, makeStyles, tokens } from '@fluentui/react-components';
 import {
   Checkmark20Regular,
   CloudOff20Regular,
@@ -11,6 +11,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { CloudError } from '../../cloud/client';
+import { chooseStats, statsShown } from '../../cloud/daily-report';
 import { suggestedDeviceName } from '../../cloud/device-name';
 import { type CloudConnection, getConnection, watchConnection } from '../../cloud/connection';
 import { ConnectionMap, type XLink } from './ConnectionMap';
@@ -22,6 +23,7 @@ import { toast } from '../hooks';
 import { Button, Card, Disclosure, Field } from './ui';
 
 const useStyles = makeStyles({
+  numbers: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalXS, flexBasis: '100%' },
   connected: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -157,7 +159,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
   return (
     <Card
       title="xomoni.com"
-      subtitle="Follow your jobs from any device. Only their status is sent: titles, states and counts, never what you posted or liked."
+      subtitle="Follow your jobs from any device. Only their status is sent, and your daily numbers if you choose: titles, states and counts, never what you posted or liked."
     >
       <div className={styles.map}>
         <ConnectionMap
@@ -194,6 +196,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
             )}{' '}
             since {fmtDateTime(connection.connectedAt)}.
           </Body1>
+          <DailyNumbersSwitch token={connection.token} />
           <Button icon={<CloudOff20Regular />} disabled={busy} onClick={() => void onSignOut()}>
             Sign out of xomoni.com
           </Button>
@@ -284,5 +287,53 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
         </div>
       ) : null}
     </Card>
+  );
+}
+
+/**
+ * *Show my numbers on xomoni.com* (#250, ADR-0026): off until the person turns it on, here or on the website. Only
+ * counts per day travel; turning it off deletes every day already sent.
+ */
+function DailyNumbersSwitch({ token }: { token: string }) {
+  const styles = useStyles();
+  const shown = useLiveQuery(statsShown, []);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const onChange = async (on: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const stored = await chooseStats(token, on);
+      toast(
+        stored
+          ? 'Your daily numbers are shown on xomoni.com: counts only, never your posts'
+          : 'Your daily numbers were removed from xomoni.com',
+        stored ? 'good' : 'neutral',
+      );
+    } catch (err) {
+      setError(err instanceof CloudError ? err.message : errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={styles.numbers}>
+      <Switch
+        label="Show my numbers on xomoni.com"
+        checked={shown === true}
+        disabled={busy || shown === undefined}
+        onChange={(_, data) => void onChange(data.checked)}
+      />
+      <Caption1 as="p" block className={styles.text}>
+        Counts per day only, on any device: followers, posts, what your posts received, and what Xomoni removed. Never
+        your posts, replies, likes or anyone’s name. Turning it off deletes them from xomoni.com.
+      </Caption1>
+      {error && (
+        <p role="alert" className={styles.error} data-tone="critical">
+          <ErrorCircle16Regular className={styles.errorIcon} />
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

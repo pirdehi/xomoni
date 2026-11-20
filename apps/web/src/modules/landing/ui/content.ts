@@ -108,6 +108,7 @@ export const SYNCS = [
   'The browsers you connect',
   'Job summaries: type, state and counts',
   'The X handle each job ran on',
+  'Daily numbers, only if you turn them on: counts per day, never your posts',
 ];
 
 /** The questions people ask first, with their answers. */

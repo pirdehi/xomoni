@@ -72,6 +72,10 @@ function fakeServices() {
     },
     registry: { disconnect: vi.fn<LiveDashboardServices['registry']['disconnect']>() },
     pairing: { createCode: vi.fn<LiveDashboardServices['pairing']['createCode']>() },
+    numbers: {
+      get: vi.fn<LiveDashboardServices['numbers']['get']>(() => Promise.resolve(false)),
+      set: vi.fn<LiveDashboardServices['numbers']['set']>(),
+    },
     feed: {
       subscribe: vi.fn<LiveDashboardServices['feed']['subscribe']>((_viewerId, h) => {
         handlers = h;
@@ -186,7 +190,44 @@ describe('Dashboard', () => {
       // A scan removes nothing; a job last updated before the 30 days isn't counted.
       expect(tiles[5]).toHaveTextContent('75');
       expect(tiles[0]).toHaveTextContent('—With daily numbers');
-      expect(numbers).toHaveTextContent('only counts per day, never your posts');
+      expect(numbers).toHaveTextContent('Counts per day only');
+      expect(numbers).toHaveTextContent('Never your posts, replies, likes or anyone’s name.');
+    });
+
+    it('turns the daily numbers on and off, saying what travels and that off deletes them (#250)', async () => {
+      fake.services.numbers.set.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      renderDashboard({ devices: [device()], jobs: [] });
+      const numbers = screen.getByRole('region', { name: 'Your account in numbers' });
+      const toggle = within(numbers).getByRole('switch', { name: 'Show my numbers on xomoni.com' });
+      await waitFor(() => expect(toggle).toBeEnabled());
+      expect(toggle).not.toBeChecked();
+      expect(numbers).toHaveTextContent('Turning it off deletes them.');
+      expect(within(numbers).getByRole('link', { name: 'What is stored' })).toHaveAttribute('href', '/privacy');
+
+      await userEvent.click(toggle);
+      await waitFor(() => expect(toggle).toBeChecked());
+      expect(fake.services.numbers.set).toHaveBeenLastCalledWith(true);
+      expect(within(numbers).getAllByRole('listitem')[0]).toHaveTextContent('From the next report');
+
+      await userEvent.click(toggle);
+      await waitFor(() => expect(toggle).not.toBeChecked());
+      expect(fake.services.numbers.set).toHaveBeenLastCalledWith(false);
+    });
+
+    it('says when the choice couldn’t be saved, and leaves the switch as it was', async () => {
+      fake.services.numbers.set.mockRejectedValueOnce(new Error('offline'));
+      renderDashboard({ devices: [device()], jobs: [] });
+      const toggle = screen.getByRole('switch', { name: 'Show my numbers on xomoni.com' });
+      await waitFor(() => expect(toggle).toBeEnabled());
+      await userEvent.click(toggle);
+      expect(await screen.findByText('Couldn’t turn your numbers on. Try again in a moment.')).toBeInTheDocument();
+      expect(toggle).not.toBeChecked();
+    });
+
+    it('reads the stored choice when the page opens', async () => {
+      fake.services.numbers.get.mockResolvedValueOnce(true);
+      renderDashboard({ devices: [device()], jobs: [] });
+      await waitFor(() => expect(screen.getByRole('switch', { name: 'Show my numbers on xomoni.com' })).toBeChecked());
     });
 
     it('lists the five newest jobs, with the way to all of them', () => {

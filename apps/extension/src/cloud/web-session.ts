@@ -57,7 +57,8 @@ export async function signInFromWebsite(message: SignInMessage): Promise<SignInA
     await endSignOut();
     return { ok: true, account: connection.account, deviceId: connection.deviceId };
   } catch (err) {
-    return { ok: false, reason: err instanceof CloudError && err.reason !== 'unknown_device' ? err.reason : 'refused' };
+    const reason = err instanceof CloudError ? err.reason : 'refused';
+    return { ok: false, reason: reason === 'unknown_device' || reason === 'stats_off' ? 'refused' : reason };
   }
 }
 

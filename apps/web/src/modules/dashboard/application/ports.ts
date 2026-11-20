@@ -32,6 +32,14 @@ export interface LiveFeed {
   subscribe(viewerId: string, handlers: LiveHandlers): () => void;
 }
 
+/** Whether the signed-in account shows its daily numbers on xomoni.com (#250, ADR-0026). */
+export interface NumbersChoice {
+  /** The stored choice; false until the person turns it on. */
+  get(): Promise<boolean>;
+  /** Turns them on or off; off deletes every day already sent. Resolves with the stored choice. */
+  set(enabled: boolean): Promise<boolean>;
+}
+
 /** One-time codes that connect a browser's extension to the signed-in account (ADR-0018). */
 export interface DevicePairing {
   /** A new code, replacing any earlier one; it works once, for ten minutes. */

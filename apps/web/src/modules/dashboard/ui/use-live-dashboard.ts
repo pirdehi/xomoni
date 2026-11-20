@@ -14,6 +14,10 @@ export interface LiveDashboard extends DashboardSnapshot {
   disconnect: (device: Device) => Promise<string | null>;
   /** Makes a one-time code that connects a browser (ADR-0018). */
   createPairingCode: () => Promise<PairingResult>;
+  /** Whether the account shows its daily numbers (#250); null while it is read. */
+  numbersShown: boolean | null;
+  /** Turns the daily numbers on or off (off deletes them); resolves to an error message on failure. */
+  showNumbers: (enabled: boolean) => Promise<string | null>;
 }
 
 /**
@@ -25,6 +29,11 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   const [devices, setDevices] = useState(initial.devices);
   const [jobs, setJobs] = useState(initial.jobs);
   const [live, setLive] = useState(false);
+  const [numbersShown, setNumbersShown] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    services.numbers.get().then(setNumbersShown, () => setNumbersShown(false));
+  }, [services]);
 
   useEffect(() => {
     async function refetch() {
@@ -63,5 +72,24 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
     return null;
   }
 
-  return { devices, jobs, live, disconnect, createPairingCode: () => services.pairing.createCode() };
+  async function showNumbers(enabled: boolean) {
+    try {
+      setNumbersShown(await services.numbers.set(enabled));
+      return null;
+    } catch {
+      return enabled
+        ? 'Couldn’t turn your numbers on. Try again in a moment.'
+        : 'Couldn’t turn your numbers off. Try again in a moment.';
+    }
+  }
+
+  return {
+    devices,
+    jobs,
+    live,
+    disconnect,
+    createPairingCode: () => services.pairing.createCode(),
+    numbersShown,
+    showNumbers,
+  };
 }

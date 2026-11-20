@@ -32,7 +32,7 @@ describe('loadDashboardSnapshot', () => {
     for (const query of supabase.queries) {
       expect(query.calls.filter(([method]) => method === 'eq')).toEqual([]);
     }
-    expect(supabase.queries.map((q) => q.table).sort()).toEqual(['devices', 'jobs']);
+    expect(supabase.queries.map((q) => q.table).sort()).toEqual(['daily_stats', 'devices', 'jobs']);
   });
 
   it('asks for at most the 50 most recent jobs', async () => {

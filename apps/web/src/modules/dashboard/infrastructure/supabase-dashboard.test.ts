@@ -112,6 +112,70 @@ describe('createSupabaseDashboardReader', () => {
     ]);
   });
 
+  it('reads the daily numbers from a day on, oldest first, mapped to the domain model (#252)', async () => {
+    supabase.respond('daily_stats', {
+      data: [
+        {
+          user_id: 'u1',
+          x_handle: 'ada_x',
+          day: '2026-11-01',
+          followers: 120,
+          following: 80,
+          posts_total: 900,
+          likes_total: null,
+          posted_posts: 2,
+          posted_replies: 5,
+          posted_reposts: 1,
+          posted_quotes: 0,
+          received_likes: 40,
+          received_replies: 6,
+          received_reposts: 3,
+          received_quotes: 1,
+          received_views: 5200,
+          observed_posts: 30,
+          posts_with_likes: 12,
+          replies_with_likes: 4,
+          removed_posts: 7,
+          removed_replies: 0,
+          removed_reposts: 0,
+          removed_likes: 15,
+          updated_at: '2026-11-01T20:00:00Z',
+        },
+      ],
+      error: null,
+    });
+
+    const days = await createSupabaseDashboardReader(supabase.client).listDailyNumbers('2025-10-01');
+
+    expect(days).toEqual([
+      expect.objectContaining({
+        xHandle: 'ada_x',
+        day: '2026-11-01',
+        followers: 120,
+        likesTotal: null,
+        postedReplies: 5,
+        receivedViews: 5200,
+        observedPosts: 30,
+        removedLikes: 15,
+        updatedAt: '2026-11-01T20:00:00Z',
+      }),
+    ]);
+    expect(days[0]).not.toHaveProperty('userId');
+    expect(supabase.queries[0]?.calls).toEqual([
+      ['select', ['*']],
+      ['gte', ['day', '2025-10-01']],
+      ['order', ['day', { ascending: true }]],
+      ['limit', [5000]],
+    ]);
+  });
+
+  it('throws what Supabase said when the daily numbers can’t be read', async () => {
+    supabase.respond('daily_stats', { data: null, error: { message: 'permission denied' } });
+    await expect(createSupabaseDashboardReader(supabase.client).listDailyNumbers('2025-10-01')).rejects.toThrow(
+      'daily_stats: permission denied',
+    );
+  });
+
   it('lists the most recently updated jobs, up to the limit', async () => {
     supabase.respond('jobs', { data: [jobRow({ id: 'j2', state: 'completed' }), jobRow()], error: null });
 

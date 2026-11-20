@@ -2,7 +2,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLiveDashboardServices, type LiveDashboardServices } from '../client/live';
-import { RECENT_JOBS_LIMIT, type DashboardSnapshot, type Device, type JobSummary } from '../domain/model';
+import {
+  RECENT_JOBS_LIMIT,
+  type DailyNumbers,
+  type DashboardSnapshot,
+  type Device,
+  type JobSummary,
+} from '../domain/model';
 import { useLiveDashboard } from './use-live-dashboard';
 
 vi.mock('../client/live', () => ({ createLiveDashboardServices: vi.fn() }));
@@ -13,6 +19,7 @@ type Handlers = Parameters<LiveDashboardServices['feed']['subscribe']>[1];
 function fakeServices() {
   const listDevices = vi.fn<LiveDashboardServices['reader']['listDevices']>();
   const listRecentJobs = vi.fn<LiveDashboardServices['reader']['listRecentJobs']>();
+  const listDailyNumbers = vi.fn<LiveDashboardServices['reader']['listDailyNumbers']>(() => Promise.resolve([]));
   const disconnect = vi.fn<LiveDashboardServices['registry']['disconnect']>();
   const stop = vi.fn<() => void>();
   const subscriptions: { viewerId: string; handlers: Handlers }[] = [];
@@ -22,7 +29,7 @@ function fakeServices() {
   });
   return {
     services: {
-      reader: { listDevices, listRecentJobs },
+      reader: { listDevices, listRecentJobs, listDailyNumbers },
       registry: { disconnect },
       feed: { subscribe },
       pairing: { createCode: vi.fn<LiveDashboardServices['pairing']['createCode']>() },
@@ -33,6 +40,7 @@ function fakeServices() {
     },
     listDevices,
     listRecentJobs,
+    listDailyNumbers,
     disconnect,
     subscribe,
     stop,
@@ -78,6 +86,33 @@ function setVisibility(state: DocumentVisibilityState) {
   Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
   document.dispatchEvent(new Event('visibilitychange'));
 }
+
+/** A day of daily numbers (#252). */
+const NUMBERS: DailyNumbers = {
+  xHandle: 'ada_x',
+  day: '2026-10-31',
+  followers: 10,
+  following: 1,
+  postsTotal: 5,
+  likesTotal: 2,
+  postedPosts: 1,
+  postedReplies: 0,
+  postedReposts: 0,
+  postedQuotes: 0,
+  receivedLikes: 3,
+  receivedReplies: 0,
+  receivedReposts: 0,
+  receivedQuotes: 0,
+  receivedViews: 40,
+  observedPosts: 2,
+  postsWithLikes: 1,
+  repliesWithLikes: 0,
+  removedPosts: 0,
+  removedReplies: 0,
+  removedReposts: 0,
+  removedLikes: 0,
+  updatedAt: '2026-10-31T20:00:00Z',
+};
 
 const INITIAL: DashboardSnapshot = {
   devices: [device()],
@@ -128,6 +163,23 @@ describe('useLiveDashboard', () => {
     expect(fake.listRecentJobs).toHaveBeenCalledWith(RECENT_JOBS_LIMIT);
     await waitFor(() => expect(result.current.devices).toEqual(fresh.devices));
     expect(result.current.jobs).toEqual(fresh.jobs);
+  });
+
+  it('re-reads the daily numbers with everything else, and keeps them when that read fails (#252)', async () => {
+    const day = { ...NUMBERS, day: '2026-11-01' };
+    fake.listDevices.mockResolvedValue([]);
+    fake.listRecentJobs.mockResolvedValue([]);
+    fake.listDailyNumbers.mockResolvedValueOnce([day]).mockRejectedValueOnce(new Error('offline'));
+    const { result } = renderHook(() => useLiveDashboard('user-1', { ...INITIAL, days: [] }));
+    expect(result.current.days).toEqual([]);
+
+    act(() => fake.feed().onStatus(true));
+    await waitFor(() => expect(result.current.days).toEqual([day]));
+    expect(fake.listDailyNumbers).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+
+    act(() => fake.feed().onStatus(true));
+    await waitFor(() => expect(fake.listDailyNumbers).toHaveBeenCalledTimes(2));
+    expect(result.current.days).toEqual([day]);
   });
 
   it('shows the feed as down when it drops, without re-reading', () => {

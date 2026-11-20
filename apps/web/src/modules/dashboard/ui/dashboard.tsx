@@ -34,13 +34,26 @@ import {
   Search16Regular,
   ShieldError20Regular,
   Warning16Filled,
+  ArrowDown12Regular,
+  ArrowUp12Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { TextLink } from '@/shared/ui/links';
 import { isOnline, jobProgress, jobRemaining, jobStateView, relativeTime, type Tone } from '../domain/job-status';
-import type { DashboardSnapshot, Device, JobSummary } from '../domain/model';
-import { accountsIn, jobsInScope, removedIn, scopeQuery } from '../domain/scope';
+import {
+  type Figure,
+  change,
+  daysBefore,
+  daysInScope,
+  followersSeries,
+  isoDay,
+  overviewFigures,
+  publishedSeries,
+} from '../domain/insights';
+import type { DailyNumbers, DashboardSnapshot, Device, JobSummary } from '../domain/model';
+import { PERIODS, type Scope, accountsIn, jobsInScope, removedIn, scopeQuery } from '../domain/scope';
+import { ColumnChart, LineChart, formatCount } from './charts';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
@@ -159,6 +172,24 @@ const useStyles = makeStyles({
     margin: `${tokens.spacingVerticalXS} 0 0`,
     color: tokens.colorNeutralForeground1,
   },
+  numbersNote: { marginTop: tokens.spacingVerticalS },
+  charts: {
+    display: 'grid',
+    gap: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalM,
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    '@media (min-width: 900px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' },
+  },
+  chartCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalS,
+    padding: tokens.spacingHorizontalL,
+  },
+  chartTitle: { ...typographyStyles.subtitle2, margin: 0 },
+  delta: { display: 'inline-flex', alignItems: 'center', columnGap: '2px' },
+  up: { color: tokens.colorPaletteGreenForeground1 },
+  down: { color: tokens.colorPaletteRedForeground1 },
   numbersChoice: {
     display: 'flex',
     flexDirection: 'column',
@@ -376,7 +407,7 @@ export function Dashboard({
   section: Section;
 }) {
   const s = useStyles();
-  const { devices, jobs, live, disconnect, createPairingCode, numbersShown, showNumbers } = useLiveDashboard(
+  const { devices, jobs, days, live, disconnect, createPairingCode, numbersShown, showNumbers } = useLiveDashboard(
     viewer.id,
     initial,
   );
@@ -407,7 +438,14 @@ export function Dashboard({
         {devices.length === 0 && <SetupBar />}
         {needsYou.length > 0 && <NeedsYou jobs={needsYou} deviceName={deviceName} />}
         {risks.length > 0 && <AccountRisks risks={risks} deviceName={deviceName} now={now} />}
-        <Numbers removed={removedIn(inPeriod)} shown={numbersShown} onShow={showNumbers} />
+        <Numbers
+          removed={removedIn(inPeriod)}
+          days={days}
+          scope={scope}
+          now={now}
+          shown={numbersShown}
+          onShow={showNumbers}
+        />
         <section aria-labelledby="recent-title">
           <div className={mergeClasses(s.row, s.center)}>
             <h2 id="recent-title" className={s.sectionTitle}>
@@ -535,16 +573,63 @@ function JobList({
   );
 }
 
+/** How a figure reads: its value, and a note under it. */
+interface Tile {
+  label: string;
+  value: string;
+  note: ReactNode;
+}
+
+/** A change against the period before, with an arrow; `upIsGood` colors the arrow, and nothing is judged without it. */
+function Delta({
+  figure,
+  unit,
+  upIsGood,
+  period,
+}: {
+  figure: Figure;
+  unit?: string;
+  upIsGood?: boolean;
+  period: string;
+}) {
+  const s = useStyles();
+  const moved = change(figure);
+  if (!moved) return <>{period === 'all' ? 'all time' : 'nothing to compare yet'}</>;
+  const { change: diff, percent } = moved;
+  const sign = diff > 0 ? '+' : diff < 0 ? '−' : '±';
+  const amount = unit === '%' ? `${Math.abs(diff).toFixed(1)} pt` : formatCount(Math.abs(diff));
+  const tone = diff === 0 || upIsGood === undefined ? undefined : diff > 0 === upIsGood ? s.up : s.down;
+  return (
+    <span className={s.delta}>
+      {diff > 0 ? (
+        <ArrowUp12Regular className={tone} aria-hidden />
+      ) : diff < 0 ? (
+        <ArrowDown12Regular className={tone} aria-hidden />
+      ) : null}
+      {sign}
+      {amount}
+      {percent !== null && unit !== '%' && ` (${sign}${Math.abs(percent).toFixed(0)}%)`} vs the {period} before
+    </span>
+  );
+}
+
 /**
- * Overview's figures. *Removed* comes from Xomoni's jobs today; the others come with daily numbers, which the person
- * turns on here or in Xomoni (ADR-0026, #250). Until they show, the tiles say so instead of showing zeros.
+ * Overview's figures (#252) from the daily numbers the person chose to show (ADR-0026), against the period before,
+ * with followers over time and what was published. *Removed* comes from Xomoni's jobs. Without numbers the tiles say
+ * why, instead of showing zeros; received figures are labelled as estimates.
  */
 function Numbers({
   removed,
+  days,
+  scope,
+  now,
   shown,
   onShow,
 }: {
   removed: number;
+  days: readonly DailyNumbers[];
+  scope: Scope;
+  now: number;
   /** Whether the account shows its daily numbers; null while it is read. */
   shown: boolean | null;
   onShow: (enabled: boolean) => Promise<string | null>;
@@ -552,16 +637,38 @@ function Numbers({
   const s = useStyles();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pending = shown ? 'From the next report' : 'With daily numbers';
-  const tiles: { label: string; value: string; note: string }[] = [
-    { label: 'Followers', value: '—', note: pending },
-    { label: 'Posts', value: '—', note: pending },
-    { label: 'Likes received', value: '—', note: pending },
-    { label: 'Replies received', value: '—', note: pending },
-    { label: 'Engagement rate', value: '—', note: pending },
+  const current = daysInScope(days, scope, now);
+  const figures = overviewFigures(current, daysBefore(days, scope, now));
+  const today = isoDay(now);
+  const period =
+    PERIODS.find((p) => p.id === scope.period)
+      ?.label.replace(/^Last /, '')
+      .toLowerCase() ?? '';
+  const versus = scope.period === 'all' ? 'all' : period;
+  const missing = shown
+    ? days.length > 0
+      ? 'No numbers in this period'
+      : 'From the next report'
+    : 'With daily numbers';
+  const figure = (f: Figure, opts: { unit?: string; upIsGood?: boolean } = {}): Pick<Tile, 'value' | 'note'> =>
+    f.value === null
+      ? { value: '—', note: missing }
+      : {
+          value: opts.unit === '%' ? `${f.value.toFixed(1)}%` : formatCount(f.value),
+          note: <Delta figure={f} period={versus} {...opts} />,
+        };
+  const tiles: Tile[] = [
+    { label: 'Followers', ...figure(figures.followers, { upIsGood: true }) },
+    { label: 'Posts', ...figure(figures.posts) },
+    { label: 'Likes received', ...figure(figures.likesReceived, { upIsGood: true }) },
+    { label: 'Replies received', ...figure(figures.repliesReceived, { upIsGood: true }) },
+    { label: 'Engagement rate', ...figure(figures.engagementRate, { unit: '%', upIsGood: true }) },
     { label: 'Removed by Xomoni', value: removed.toLocaleString('en-US'), note: 'by jobs in this period' },
   ];
-  async function change(enabled: boolean) {
+  const followers = followersSeries(current, scope, now);
+  const published = publishedSeries(current, scope, now);
+
+  async function choose(enabled: boolean) {
     setBusy(true);
     setError(await onShow(enabled));
     setBusy(false);
@@ -580,12 +687,39 @@ function Numbers({
           </li>
         ))}
       </ul>
+      {current.length > 0 && (
+        <>
+          <div className={s.charts}>
+            <section className={mergeClasses(s.card, s.chartCard)} aria-labelledby="followers-chart">
+              <h3 id="followers-chart" className={s.chartTitle}>
+                Followers
+              </h3>
+              {followers.some((p) => p.value !== null) ? (
+                <LineChart points={followers} label="Followers" today={today} />
+              ) : (
+                <p className={s.meta}>No follower count in this period yet: it comes when you open your X profile.</p>
+              )}
+            </section>
+            <section className={mergeClasses(s.card, s.chartCard)} aria-labelledby="published-chart">
+              <h3 id="published-chart" className={s.chartTitle}>
+                Published
+              </h3>
+              <ColumnChart points={published} label="Posts, replies, reposts and quotes" today={today} />
+            </section>
+          </div>
+          <p className={mergeClasses(s.meta, s.numbersNote)}>
+            Likes, replies and views received are estimates, from {formatCount(figures.observedPosts)} sightings of your
+            posts by Xomoni.
+            {figures.updatedAt && <> Updated {relativeTime(figures.updatedAt, now)}.</>}
+          </p>
+        </>
+      )}
       <div className={mergeClasses(s.card, s.numbersChoice)}>
         <Switch
           label="Show my numbers on xomoni.com"
           checked={shown === true}
           disabled={busy || shown === null}
-          onChange={(_, data) => void change(data.checked)}
+          onChange={(_, data) => void choose(data.checked)}
         />
         <p className={s.meta}>
           Counts per day only, sent by Xomoni on your computer: followers, posts, what your posts received and what

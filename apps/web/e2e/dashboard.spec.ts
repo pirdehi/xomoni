@@ -1,4 +1,4 @@
-import { addDevice, addJobs, createConfirmedUser, updateJob } from './support/admin';
+import { addDailyNumbers, addDevice, addJobs, createConfirmedUser, updateJob } from './support/admin';
 import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
 
@@ -106,5 +106,32 @@ test.describe('dashboard (#41)', () => {
     await bar.getByRole('button', { name: 'More' }).click();
     await page.getByRole('menuitem', { name: 'Reports' }).click();
     await expect(page).toHaveURL(/\/dashboard\/reports$/);
+  });
+
+  test('Overview shows the daily numbers the person chose to show, with followers over time (#252)', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('numbers');
+    const userId = await createConfirmedUser(email, PASSWORD);
+    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+    await addDailyNumbers(userId, [
+      { x_handle: 'ada_x', day: day(40), followers: 100, posted_posts: 1, received_likes: 4, received_views: 200 },
+      { x_handle: 'ada_x', day: day(5), followers: 110, posted_posts: 2, received_likes: 9, received_views: 300 },
+      { x_handle: 'ada_x', day: day(1), followers: 125, posted_posts: 3, received_likes: 21, observed_posts: 18 },
+    ]);
+
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+
+    const numbers = page.getByRole('region', { name: 'Your account in numbers' });
+    await expect(numbers.getByRole('listitem').nth(0)).toContainText('125');
+    await expect(numbers.getByRole('listitem').nth(0)).toContainText('+25 (+25%) vs the 30 days before');
+    await expect(numbers.getByRole('listitem').nth(1)).toContainText('5');
+    await expect(numbers.getByRole('img', { name: /^Followers: 125 on / })).toBeVisible();
+    await expect(numbers.getByRole('switch', { name: 'Show my numbers on xomoni.com' })).toBeChecked();
+    await expect(numbers).toContainText('estimates, from 18 sightings of your posts by Xomoni');
+
+    await numbers.getByRole('button', { name: 'Show as table' }).first().click();
+    await expect(numbers.getByRole('table').first()).toContainText('125');
   });
 });

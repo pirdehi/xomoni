@@ -35,6 +35,7 @@ function controlledReader() {
   const reader: DashboardReader = {
     listDevices: vi.fn(() => devices.promise),
     listRecentJobs: vi.fn(() => jobs.promise),
+    listDailyNumbers: vi.fn(() => Promise.resolve([])),
   };
   return { reader, devices, jobs };
 }
@@ -44,9 +45,10 @@ describe('loadDashboard', () => {
     const reader: DashboardReader = {
       listDevices: vi.fn(() => Promise.resolve([device])),
       listRecentJobs: vi.fn(() => Promise.resolve([job])),
+      listDailyNumbers: vi.fn(() => Promise.resolve([])),
     };
 
-    expect(await loadDashboard({ reader })).toEqual({ devices: [device], jobs: [job] });
+    expect(await loadDashboard({ reader })).toEqual({ devices: [device], jobs: [job], days: [] });
     expect(reader.listRecentJobs).toHaveBeenCalledWith(50);
   });
 
@@ -59,15 +61,16 @@ describe('loadDashboard', () => {
 
     jobs.resolve([job]);
     devices.resolve([]);
-    expect(await loading).toEqual({ devices: [], jobs: [job] });
+    expect(await loading).toEqual({ devices: [], jobs: [job], days: [] });
   });
 
   it('shows an empty dashboard for a person with no devices yet', async () => {
     const reader: DashboardReader = {
       listDevices: () => Promise.resolve([]),
       listRecentJobs: () => Promise.resolve([]),
+      listDailyNumbers: () => Promise.resolve([]),
     };
-    expect(await loadDashboard({ reader })).toEqual({ devices: [], jobs: [] });
+    expect(await loadDashboard({ reader })).toEqual({ devices: [], jobs: [], days: [] });
   });
 
   it('fails as a whole when either read fails, rather than showing a partial picture', async () => {
@@ -78,5 +81,19 @@ describe('loadDashboard', () => {
     jobs.reject(new Error('jobs: permission denied'));
 
     await expect(loading).rejects.toThrow('jobs: permission denied');
+  });
+
+  it('reads the daily numbers of the last 400 days, and shows the rest when they can’t be read (#252)', async () => {
+    const reader: DashboardReader = {
+      listDevices: () => Promise.resolve([device]),
+      listRecentJobs: () => Promise.resolve([job]),
+      listDailyNumbers: vi.fn(() => Promise.reject(new Error('daily_stats: offline'))),
+    };
+    expect(await loadDashboard({ reader }, Date.parse('2026-11-20T12:00:00Z'))).toEqual({
+      devices: [device],
+      jobs: [job],
+      days: [],
+    });
+    expect(reader.listDailyNumbers).toHaveBeenCalledWith('2025-10-16');
   });
 });

@@ -1,6 +1,6 @@
 import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database, DeviceRow, JobRow } from '@xomoni/db';
-import type { Device, JobSummary } from '../domain/model';
+import type { DailyStatsRow, Database, DeviceRow, JobRow } from '@xomoni/db';
+import type { DailyNumbers, Device, JobSummary } from '../domain/model';
 import { toRiskLevel } from '../domain/risk';
 import type { DashboardReader, DevicePairing, DeviceRegistry, LiveFeed, NumbersChoice } from '../application/ports';
 
@@ -38,7 +38,36 @@ export function toJobSummary(row: JobRow): JobSummary {
   };
 }
 
-/** Reads devices and jobs through PostgREST; RLS limits rows to the signed-in user. */
+/** Maps a `public.daily_stats` row to the domain model (#252). */
+export function toDailyNumbers(row: DailyStatsRow): DailyNumbers {
+  return {
+    xHandle: row.x_handle,
+    day: row.day,
+    followers: row.followers,
+    following: row.following,
+    postsTotal: row.posts_total,
+    likesTotal: row.likes_total,
+    postedPosts: row.posted_posts,
+    postedReplies: row.posted_replies,
+    postedReposts: row.posted_reposts,
+    postedQuotes: row.posted_quotes,
+    receivedLikes: row.received_likes,
+    receivedReplies: row.received_replies,
+    receivedReposts: row.received_reposts,
+    receivedQuotes: row.received_quotes,
+    receivedViews: row.received_views,
+    observedPosts: row.observed_posts,
+    postsWithLikes: row.posts_with_likes,
+    repliesWithLikes: row.replies_with_likes,
+    removedPosts: row.removed_posts,
+    removedReplies: row.removed_replies,
+    removedReposts: row.removed_reposts,
+    removedLikes: row.removed_likes,
+    updatedAt: row.updated_at,
+  };
+}
+
+/** Reads devices, jobs and daily numbers through PostgREST; RLS limits rows to the signed-in user. */
 export function createSupabaseDashboardReader(supabase: Client): DashboardReader {
   return {
     async listDevices() {
@@ -54,6 +83,16 @@ export function createSupabaseDashboardReader(supabase: Client): DashboardReader
         .limit(limit);
       if (error) throw new Error(`jobs: ${error.message}`);
       return data.map(toJobSummary);
+    },
+    async listDailyNumbers(since) {
+      const { data, error } = await supabase
+        .from('daily_stats')
+        .select('*')
+        .gte('day', since)
+        .order('day', { ascending: true })
+        .limit(5000);
+      if (error) throw new Error(`daily_stats: ${error.message}`);
+      return data.map(toDailyNumbers);
     },
   };
 }

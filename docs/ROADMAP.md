@@ -248,7 +248,7 @@ xomoni.com becomes the place to see and manage the X account: every place of the
 | ✅ | Daily numbers in the extension, from what X already sends | [#249](https://github.com/pirdehi/xomoni/issues/249) | [#265](https://github.com/pirdehi/xomoni/pull/265) |
 | ✅ | Daily numbers on xomoni.com, by the person's choice | [#250](https://github.com/pirdehi/xomoni/issues/250) | [#266](https://github.com/pirdehi/xomoni/pull/266), [#268](https://github.com/pirdehi/xomoni/pull/268) |
 | ✅ | Release 0.3.0: everything since 0.2.1, actions from the website and daily numbers | [#260](https://github.com/pirdehi/xomoni/issues/260) | [#270](https://github.com/pirdehi/xomoni/pull/270), [v0.3.0](https://github.com/pirdehi/xomoni/releases/tag/v0.3.0), [#272](https://github.com/pirdehi/xomoni/pull/272) |
-| ⬜ | Overview | [#252](https://github.com/pirdehi/xomoni/issues/252) | |
+| ✅ | Overview: the figures against the period before, followers over time, what was published (top posts come with #233) | [#252](https://github.com/pirdehi/xomoni/issues/252) | [#273](https://github.com/pirdehi/xomoni/pull/273) |
 | ⬜ | Audience | [#253](https://github.com/pirdehi/xomoni/issues/253) | |
 | ⬜ | Content | [#254](https://github.com/pirdehi/xomoni/issues/254) | |
 | ⬜ | Engagement | [#255](https://github.com/pirdehi/xomoni/issues/255) | |

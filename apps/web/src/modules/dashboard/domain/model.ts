@@ -55,10 +55,49 @@ export interface JobSummary {
 /** How many jobs the dashboard shows, newest first. */
 export const RECENT_JOBS_LIMIT = 50;
 
+/**
+ * One X account's counts on one day, as Xomoni sent them when the person chose to show them (ADR-0026, #250).
+ * Numbers only. The profile's are null when no profile was seen that day; *received* are estimates.
+ */
+export interface DailyNumbers {
+  /** The X account, without the @. */
+  xHandle: string;
+  /** The day, `YYYY-MM-DD`, on the person's computer. */
+  day: string;
+  followers: number | null;
+  following: number | null;
+  postsTotal: number | null;
+  likesTotal: number | null;
+  postedPosts: number;
+  postedReplies: number;
+  postedReposts: number;
+  postedQuotes: number;
+  receivedLikes: number;
+  receivedReplies: number;
+  receivedReposts: number;
+  receivedQuotes: number;
+  receivedViews: number;
+  /** How many of the person's own posts Xomoni saw that day: how complete *received* is. */
+  observedPosts: number;
+  postsWithLikes: number;
+  repliesWithLikes: number;
+  removedPosts: number;
+  removedReplies: number;
+  removedReposts: number;
+  removedLikes: number;
+  /** When Xomoni last sent the day (ISO 8601). */
+  updatedAt: string;
+}
+
+/** How many days of numbers the dashboard reads: the cloud keeps 400. */
+export const DAILY_NUMBERS_DAYS = 400;
+
 /** Everything the dashboard needs for its first paint. */
 export interface DashboardSnapshot {
   /** Connected browsers. */
   devices: Device[];
   /** Recent jobs across those browsers. */
   jobs: JobSummary[];
+  /** Daily numbers, oldest first; none until the person turns them on (#250). */
+  days?: DailyNumbers[];
 }

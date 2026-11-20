@@ -4,6 +4,14 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Added
+
+- **Overview shows your numbers** (#252), once you turn them on.
+  - Followers, posts, likes and replies received, and the engagement rate, each against the period before.
+  - Followers over time, and what you published each day (or week, over a long period).
+  - Each chart answers on hover and by keyboard, and has a table view.
+  - What was received is marked as an estimate, with how many of your posts Xomoni saw.
+
 ## [0.3.0] - 2026-11-20
 
 ### Security

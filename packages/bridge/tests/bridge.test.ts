@@ -9,6 +9,7 @@ import {
   MAX_PLAN_IDS,
   MAX_PLAN_KEYWORDS,
   MAX_REPLIED_TO,
+  INCOMING_DAYS,
   parseRepliesFilter,
   MAX_WATCH_SEARCHES,
   PLAN,
@@ -684,6 +685,94 @@ describe('replies (#256)', () => {
       null,
     ]) {
       expect(parseReadAnswer({ ok: true, what: 'replies', page: bad }, 'replies')).toEqual({
+        ok: false,
+        reason: 'refused',
+      });
+    }
+  });
+});
+
+describe('replies to you (ADR-0030, #256)', () => {
+  it('reads an incoming read with an author, words and an offset, and nothing more', () => {
+    const read = { type: READ, what: 'incoming', deviceId: DEVICE, author: 'Ada_L', query: 'thanks', offset: 100 };
+    expect(parseReadMessage(read)).toEqual(read);
+    expect(parseWebsiteMessage({ ...read, author: '' })).toEqual({ ...read, author: '' });
+    for (const bad of [
+      { author: '@ada' },
+      { author: 'x'.repeat(16) },
+      { author: null },
+      { query: 'x'.repeat(101) },
+      { query: 1 },
+      { offset: -1 },
+      { offset: '0' },
+      { hide: true },
+      { deviceId: 'me' },
+    ]) {
+      expect(parseReadMessage({ ...read, ...bad }), JSON.stringify(bad)).toBeNull();
+    }
+  });
+
+  const reply = {
+    id: '1800000000000000021',
+    author: 'bob',
+    text: 'Nice one',
+    createdAt: 5,
+    toId: '1800000000000000020',
+  };
+  const page = {
+    handle: 'me',
+    total: 2,
+    since: 1,
+    perDay: [
+      { day: '2026-11-19', replies: 1 },
+      { day: '2026-11-20', replies: 1 },
+    ],
+    people: [{ handle: 'bob', replies: 2 }],
+    matching: 1,
+    items: [reply],
+    next: null,
+  };
+
+  it('reads a page of replies to you strictly, bounded by days, people and a page', () => {
+    expect(parseReadAnswer({ ok: true, what: 'incoming', page }, 'incoming')).toEqual({
+      ok: true,
+      what: 'incoming',
+      page,
+    });
+    expect(parseReadAnswer({ ok: true, what: 'incoming', page: { ...page, since: null } }, 'incoming')).toMatchObject({
+      ok: true,
+    });
+    const long = {
+      ...page,
+      perDay: Array.from({ length: 200 }, () => ({ day: '2026-11-20', replies: 1 })),
+      people: Array.from({ length: 30 }, (_, i) => ({ handle: `p${i}`, replies: 1 })),
+      items: Array.from({ length: 150 }, () => ({ ...reply, text: 'x'.repeat(2000) })),
+      next: 100,
+    };
+    const read = parseReadAnswer({ ok: true, what: 'incoming', page: long }, 'incoming');
+    expect(read.ok && read.what === 'incoming' && read.page.perDay).toHaveLength(INCOMING_DAYS + 1);
+    expect(read.ok && read.what === 'incoming' && read.page.people).toHaveLength(MAX_REPLIED_TO);
+    expect(read.ok && read.what === 'incoming' && read.page.items).toHaveLength(READ_PAGE);
+    expect(read.ok && read.what === 'incoming' && read.page.items[0]?.text).toHaveLength(1000);
+    for (const bad of [
+      { ...page, items: [{ ...reply, author: '' }] },
+      { ...page, items: [{ ...reply, toId: 'post' }] },
+      { ...page, items: [{ ...reply, id: 7 }] },
+      { ...page, items: [{ ...reply, createdAt: -1 }] },
+      { ...page, items: [{ ...reply, text: null }] },
+      { ...page, items: null },
+      { ...page, perDay: [{ day: 'Nov 20', replies: 1 }] },
+      { ...page, perDay: [{ day: '2026-11-20', replies: -1 }] },
+      { ...page, perDay: 'daily' },
+      { ...page, people: [{ handle: 'not a handle', replies: 1 }] },
+      { ...page, since: 'long ago' },
+      { ...page, total: 1.5 },
+      { ...page, matching: null },
+      { ...page, next: -1 },
+      { ...page, handle: '@me' },
+      null,
+    ]) {
+      expect(parseReadAnswer({ ok: true, what: 'incoming', page: bad }, 'incoming')).toEqual({
         ok: false,
         reason: 'refused',
       });

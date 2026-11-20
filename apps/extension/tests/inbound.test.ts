@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_DRAFTS, fromXPage, fromXomoniPage, parseRuntimeMessage } from '../src/shared/inbound';
+import { MAX_DRAFTS, MAX_TEXT, fromXPage, fromXomoniPage, parseRuntimeMessage } from '../src/shared/inbound';
 import { POST_TIME_SLACK_MS, timeMatchesId } from '../src/shared/time';
 import type { ItemDraft } from '../src/shared/types';
 import { MAX_RESET_AHEAD_MS, capReset } from '../src/shared/x-limits';
@@ -69,6 +69,41 @@ describe('messages from the content script, checked before the service worker st
       { kind: 'post', replyTo: 'ada' },
     ]) {
       expect(parseRuntimeMessage({ ...ingest, drafts: [{ ...draft, ...bad }] }, NOW), JSON.stringify(bad)).toBeNull();
+    }
+  });
+
+  it('passes replies others wrote to the viewer with every field checked, and nothing more (ADR-0030)', () => {
+    const reply = {
+      id: '1800000000000000001',
+      author: 'bob',
+      text: 'nice',
+      createdAt: Date.parse('2026-11-01T00:00:00Z'),
+      toId: '1700000000000000000',
+    };
+    const message = { type: 'incoming', accountId: ME, replies: [reply], observedAt: NOW };
+    expect(parseRuntimeMessage(message, NOW)).toEqual(message);
+    expect(parseRuntimeMessage({ ...message, replies: [{ ...reply, name: 'Bob', avatar: 'x' }] }, NOW)).toEqual(
+      message,
+    );
+    for (const bad of [
+      { author: '@bob' },
+      { author: 5 },
+      { toId: 'post' },
+      { id: '1/../2' },
+      { text: 'x'.repeat(MAX_TEXT + 1) },
+      { createdAt: NOW + 3 * 86_400_000 },
+    ]) {
+      expect(parseRuntimeMessage({ ...message, replies: [{ ...reply, ...bad }] }, NOW), JSON.stringify(bad)).toBeNull();
+    }
+    for (const bad of [
+      { accountId: 'acct' },
+      { observedAt: NOW + 3 * 86_400_000 },
+      { replies: [] },
+      { replies: [null] },
+      { replies: 'all' },
+      { replies: Array.from({ length: MAX_DRAFTS + 1 }, () => reply) },
+    ]) {
+      expect(parseRuntimeMessage({ ...message, ...bad }, NOW)).toBeNull();
     }
   });
 

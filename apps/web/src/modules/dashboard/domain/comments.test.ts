@@ -1,7 +1,7 @@
 import { MAX_PLAN_IDS, parsePlan, parseRepliesFilter } from '@xomoni/bridge';
 import { describe, expect, it } from 'vitest';
 import { TOO_EARLY } from './cleanup-plan';
-import { DEFAULT_REPLIES_FORM, pickedPlan, toRepliesFilter, typedHandle } from './comments';
+import { DEFAULT_REPLIES_FORM, dayText, incomingSeries, pickedPlan, toRepliesFilter, typedHandle } from './comments';
 
 const NOW = new Date(2026, 10, 20, 15, 30).getTime();
 const day = (y: number, m: number, d: number) => new Date(y, m - 1, d).getTime();
@@ -79,5 +79,37 @@ describe('Your replies: the picked ones, handed to Xomoni (#256)', () => {
   it('never names more than Xomoni takes at a time', () => {
     const many = Array.from({ length: MAX_PLAN_IDS + 20 }, (_, i) => `18000000000000${String(i).padStart(5, '0')}`);
     expect(pickedPlan(many, NOW).onlyIds).toHaveLength(MAX_PLAN_IDS);
+  });
+});
+
+describe('Replies to you: each day (ADR-0030)', () => {
+  it('names local days as Xomoni does', () => {
+    expect(dayText(day(2026, 1, 5))).toBe('2026-01-05');
+  });
+
+  it('counts the last 30 days to today: 0 where Xomoni saw none, nothing before it began keeping', () => {
+    const series = incomingSeries(
+      {
+        since: day(2026, 11, 18) + 3_600_000,
+        perDay: [
+          { day: '2026-11-18', replies: 2 },
+          { day: '2026-11-20', replies: 5 },
+        ],
+      },
+      NOW,
+    );
+    expect(series).toHaveLength(30);
+    expect(series[0]).toEqual({ day: '2026-10-22', value: null });
+    expect(series.slice(-4)).toEqual([
+      { day: '2026-11-17', value: null },
+      { day: '2026-11-18', value: 2 },
+      { day: '2026-11-19', value: 0 },
+      { day: '2026-11-20', value: 5 },
+    ]);
+    expect(incomingSeries({ since: null, perDay: [] }, NOW, 3)).toEqual([
+      { day: '2026-11-18', value: null },
+      { day: '2026-11-19', value: null },
+      { day: '2026-11-20', value: null },
+    ]);
   });
 });

@@ -1,7 +1,9 @@
-// The Comments place's *Your replies* (#256): which of the person's replies to list, as the form holds the answers,
-// and the plan that hands the picked ones to Xomoni. Pure: dates are local days, read with the browser's clock.
-import { type CleanupPlan, MAX_PLAN_IDS, MAX_READ_QUERY, type RepliesFilter } from '@xomoni/bridge';
+// The Comments place (#256). *Your replies*: which of the person's replies to list, as the form holds the answers, and
+// the plan that hands the picked ones to Xomoni. *Replies to you*: how many replies Xomoni kept each day (ADR-0030),
+// as a chart's days. Pure: dates are local days, read with the browser's clock.
+import { type CleanupPlan, type IncomingPage, MAX_PLAN_IDS, MAX_READ_QUERY, type RepliesFilter } from '@xomoni/bridge';
 import { FIRST_DAY, TOO_EARLY, localDay } from './cleanup-plan';
+import type { SeriesPoint } from './insights';
 
 /** The filter as the form holds it: days as `YYYY-MM-DD`, numbers and words as typed. */
 export interface RepliesForm {
@@ -81,4 +83,30 @@ export function pickedPlan(ids: readonly string[], now: number): CleanupPlan {
     skipSelfReplies: false,
     onlyIds: [...new Set(ids)].slice(0, MAX_PLAN_IDS),
   };
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** The local day of `ms` as `YYYY-MM-DD`, as Xomoni names the days it counts. */
+export function dayText(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Replies to the person on each of the last `days` local days, ending today, for a chart: how many Xomoni kept, 0 on a
+ * day it saw none, and no value before `since`, when it had not started keeping them.
+ */
+export function incomingSeries(page: Pick<IncomingPage, 'perDay' | 'since'>, now: number, days = 30): SeriesPoint[] {
+  const counts = new Map(page.perDay.map((d) => [d.day, d.replies]));
+  const first = page.since === null ? null : dayText(page.since);
+  const points: SeriesPoint[] = [];
+  for (let back = days - 1; back >= 0; back--) {
+    const date = new Date(now);
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() - back);
+    const day = dayText(date.getTime());
+    points.push({ day, value: first !== null && day >= first ? (counts.get(day) ?? 0) : null });
+  }
+  return points;
 }

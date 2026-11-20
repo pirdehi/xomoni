@@ -130,6 +130,7 @@ async function installFakeXomoni(page: Page) {
 const SECRET_POST = 'A post only Xomoni keeps 7f3a';
 const SECRET_SEARCH = 'search only Xomoni keeps 9c1d';
 const SECRET_REPLY = 'A reply only Xomoni keeps 2b8e';
+const SECRET_INCOMING = 'Someone else’s reply only Xomoni keeps 5d1a';
 
 /** Xomoni's answer to a read, as the extension builds it from its own database (#233). */
 function readAnswer(message: Record<string, unknown>) {
@@ -217,6 +218,29 @@ function readAnswer(message: Record<string, unknown>) {
         },
       };
     }
+    case 'incoming':
+      return {
+        ok: true,
+        what: 'incoming',
+        page: {
+          handle: 'ada',
+          total: 1,
+          since: Date.now() - 86_400_000,
+          perDay: [{ day: new Date(Date.now() - 86_400_000).toISOString().slice(0, 10), replies: 1 }],
+          people: [{ handle: 'carol', replies: 1 }],
+          matching: 1,
+          items: [
+            {
+              id: '1800000000000000031',
+              author: 'carol',
+              text: SECRET_INCOMING,
+              createdAt: Date.now() - 86_400_000,
+              toId: '1800000000000000001',
+            },
+          ],
+          next: null,
+        },
+      };
     case 'health':
       return {
         ok: true,
@@ -457,6 +481,41 @@ test.describe('Your replies on xomoni.com, picked for a cleanup in Xomoni (#256)
     expect(
       sent.filter((line) => line.includes(SECRET_REPLY) || line.includes(encodeURIComponent(SECRET_REPLY))),
     ).toEqual([]);
+  });
+});
+
+test.describe('Replies to you on xomoni.com, kept by Xomoni (#256, ADR-0030)', () => {
+  test('shows what Xomoni kept, links each reply to X, offers no way to hide or block, and sends it nowhere', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('incoming');
+    await createConfirmedUser(email, PASSWORD);
+    const fake = await installFakeXomoni(page);
+    const sent: string[] = [];
+    page.on('request', (request) => sent.push(`${request.url()} ${request.postData() ?? ''}`));
+    await page.goto(`/#ext=${EXT}`);
+    await expect(page).toHaveURL(/\/$/);
+    await signIn(page, email, PASSWORD);
+    await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => fake.state.connection?.deviceId).toBeTruthy();
+
+    await page.goto('/dashboard/comments');
+    await page.getByRole('tab', { name: 'Replies to you' }).click();
+    const replies = page.getByRole('list', { name: 'Replies to you' });
+    await expect(replies).toContainText(SECRET_INCOMING);
+    await expect(replies.getByRole('link', { name: /Open on X/ })).toHaveAttribute(
+      'href',
+      'https://x.com/i/status/1800000000000000031',
+    );
+    await expect(page.getByRole('heading', { name: 'Replies to you each day' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '@carol · 1' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /hide|block|report|mute/i })).toHaveCount(0);
+
+    const reads = fake.received.filter((m) => m.type === 'xomoni-read' && m.what === 'incoming');
+    expect(reads.length).toBeGreaterThanOrEqual(1);
+    expect(sent.filter((line) => line.includes('5d1a') || line.includes(encodeURIComponent(SECRET_INCOMING)))).toEqual(
+      [],
+    );
   });
 });
 

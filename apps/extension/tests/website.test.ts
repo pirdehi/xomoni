@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HELLO, PAIR, SETTINGS, SIGN_IN, SIGN_OUT } from '@xomoni/bridge';
+import { HELLO, PAIR, PLAN, SETTINGS, SIGN_IN, SIGN_OUT } from '@xomoni/bridge';
 import { type CloudConnection, getConnection, saveConnection } from '../src/cloud/connection';
 import { startWebConnect } from '../src/cloud/web-connect';
 import { type ActionPorts, type WebsiteSender, answerWebsite } from '../src/cloud/website';
@@ -59,6 +59,24 @@ describe('answerWebsite: who is heard (ADR-0025)', () => {
       await expect(ask(raw, SITE)).resolves.toEqual({ ok: false, reason: 'invalid' });
     }
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('hands a cleanup plan over only from a signed-in page, and refuses one that would start work (#235)', async () => {
+    const plan = {
+      target: 'post',
+      before: Date.UTC(2019, 0, 1),
+      after: null,
+      keepMinLikes: null,
+      keepKeywords: [],
+      skipSelfReplies: true,
+    };
+    const deviceId = CONNECTED.deviceId;
+    await expect(ask({ type: PLAN, deviceId, plan }, SITE)).resolves.toEqual({ ok: false, reason: 'not_connected' });
+    await expect(ask({ type: PLAN, deviceId, plan: { ...plan, start: true } }, SITE)).resolves.toEqual({
+      ok: false,
+      reason: 'invalid',
+    });
+    expect(PORTS.openDashboard).not.toHaveBeenCalled();
   });
 
   it('hands a settings change to Xomoni’s own rules, and refuses one faster than Careful (ADR-0029)', async () => {

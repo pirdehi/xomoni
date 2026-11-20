@@ -30,7 +30,15 @@ import {
   Prohibited16Regular,
   Send20Regular,
 } from '@fluentui/react-icons';
-import type { JobAction, LibraryKind, ReadAnswer, SettingsAnswer, SettingsChange, XomoniPage } from '@xomoni/bridge';
+import type {
+  CleanupPlan,
+  JobAction,
+  LibraryKind,
+  ReadAnswer,
+  SettingsAnswer,
+  SettingsChange,
+  XomoniPage,
+} from '@xomoni/bridge';
 import { type ReactElement, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { ButtonLink } from '@/shared/ui/links';
@@ -63,14 +71,16 @@ const useStyles = makeStyles({
 /** What a page wants from Xomoni: an action on one of its jobs, or one of its pages. */
 export type XomoniWant =
   | { kind: 'job'; action: JobAction; jobId: string; deviceId: string; deviceName?: string }
-  | { kind: 'open'; page: XomoniPage };
+  | { kind: 'open'; page: XomoniPage }
+  | { kind: 'plan'; plan: CleanupPlan };
 
 /** A read a page asks of Xomoni (ADR-0028); the device is added by `useXomoni`. */
 export type XomoniReadRequest =
   | { what: 'library'; kind: LibraryKind; query: string; offset: number }
   | { what: 'health' }
   | { what: 'watch' }
-  | { what: 'settings' };
+  | { what: 'settings' }
+  | { what: 'cleanup'; plan: CleanupPlan };
 
 /** What `useXomoni` gives a page. */
 export interface XomoniControls {
@@ -112,7 +122,7 @@ function usePhone(): boolean {
 
 /** The key of a request, for `busy`. */
 function keyOf(want: XomoniWant): string {
-  return want.kind === 'job' ? `${want.action}:${want.jobId}` : `open:${want.page}`;
+  return want.kind === 'job' ? `${want.action}:${want.jobId}` : want.kind === 'open' ? `open:${want.page}` : 'plan';
 }
 
 /** How long a request made while the page is still looking for Xomoni waits for the answer before the dialog shows. */
@@ -169,10 +179,12 @@ export function useXomoni(
     const answer = await get().ask(
       want.kind === 'job'
         ? { kind: 'job', action: want.action, jobId: want.jobId, deviceId: here.deviceId }
-        : { kind: 'open', page: want.page, deviceId: here.deviceId },
+        : want.kind === 'open'
+          ? { kind: 'open', page: want.page, deviceId: here.deviceId }
+          : { kind: 'plan', plan: want.plan, deviceId: here.deviceId },
     );
     setBusy(null);
-    setNotice({ text: answerMessage(answer, want.kind === 'job' ? want.action : 'open'), ok: answer.ok });
+    setNotice({ text: answerMessage(answer, want.kind === 'job' ? want.action : want.kind), ok: answer.ok });
   }
 
   const ui = (

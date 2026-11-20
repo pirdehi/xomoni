@@ -6,6 +6,13 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Plan a cleanup on xomoni.com, start it in Xomoni** (#235).
+  - The same three questions as Xomoni: what to remove, how old, and what to keep.
+  - In the browser where Xomoni runs, how many items the plan matches in Xomoni's copy, and how many days it takes at the current pace.
+  - *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in. Nothing starts until you confirm there.
+  - The plan is kept in the page's address, so *Send to my computer* on a phone carries it to your computer.
+  - Changing the account or period no longer drops a place's own choices from the address.
+
 - **Settings on xomoni.com** (#234), in the browser where Xomoni runs.
   - See Xomoni's pace with each action's caps, and set custom pacing back to Careful.
   - Change active hours, the failures in a row before a job pauses, notifications and *Keep going while away*.

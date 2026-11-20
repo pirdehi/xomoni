@@ -6,7 +6,11 @@ import {
   PAIR,
   READ,
   READ_PAGE,
+  MAX_PLAN_KEYWORDS,
   MAX_WATCH_SEARCHES,
+  PLAN,
+  parsePlan,
+  parsePlanMessage,
   PACE_ACTIONS,
   SETTINGS,
   parseReadAnswer,
@@ -474,5 +478,84 @@ describe('settings (ADR-0029, #234)', () => {
     expect(parseSettingsAnswer({ ok: false, reason: 'signed_out' })).toEqual({ ok: false, reason: 'signed_out' });
     expect(parseSettingsAnswer({ ok: false, reason: 'later' })).toEqual({ ok: false, reason: 'refused' });
     expect(parseSettingsAnswer(undefined)).toEqual({ ok: false, reason: 'no_answer' });
+  });
+});
+
+describe('cleanup plans (#235)', () => {
+  const NOW = Date.UTC(2026, 10, 20);
+  const plan = {
+    target: 'reply',
+    before: Date.UTC(2025, 10, 20),
+    after: Date.UTC(2015, 0, 1),
+    keepMinLikes: 10,
+    keepKeywords: ['xomoni', 'my launch'],
+    skipSelfReplies: true,
+  };
+
+  it('reads a plan with the three questions, and nothing more', () => {
+    expect(parsePlan(plan, NOW)).toEqual(plan);
+    const open = { ...plan, after: null, keepMinLikes: null, keepKeywords: [] };
+    expect(parsePlan(open, NOW)).toEqual(open);
+    expect(parseWebsiteMessage({ type: PLAN, deviceId: DEVICE, plan: open })).toEqual({
+      type: PLAN,
+      deviceId: DEVICE,
+      plan: open,
+    });
+    expect(parseReadMessage({ type: READ, what: 'cleanup', deviceId: DEVICE, plan: open })).toEqual({
+      type: READ,
+      what: 'cleanup',
+      deviceId: DEVICE,
+      plan: open,
+    });
+  });
+
+  it('refuses a plan with a wrong field, impossible dates or too much to keep', () => {
+    for (const bad of [
+      { ...plan, target: 'everything' },
+      { ...plan, before: Date.UTC(2005, 0, 1) },
+      { ...plan, before: NOW + 3 * 86_400_000 },
+      { ...plan, before: '2025-01-01' },
+      { ...plan, after: plan.before },
+      { ...plan, after: 'later' },
+      { ...plan, keepMinLikes: 0 },
+      { ...plan, keepMinLikes: 2_000_000 },
+      { ...plan, keepMinLikes: 1.5 },
+      { ...plan, keepKeywords: Array.from({ length: MAX_PLAN_KEYWORDS + 1 }, () => 'a') },
+      { ...plan, keepKeywords: [''] },
+      { ...plan, keepKeywords: ['x'.repeat(51)] },
+      { ...plan, keepKeywords: 'xomoni' },
+      { ...plan, skipSelfReplies: 'yes' },
+      { ...plan, start: true },
+      { target: 'post', before: plan.before },
+      null,
+    ]) {
+      expect(parsePlan(bad, NOW), JSON.stringify(bad)).toBeNull();
+    }
+    expect(parsePlanMessage({ type: PLAN, deviceId: 'me', plan })).toBeNull();
+    expect(parsePlanMessage({ type: PLAN, deviceId: DEVICE, plan, start: true })).toBeNull();
+    expect(parsePlanMessage({ type: READ, deviceId: DEVICE, plan })).toBeNull();
+    expect(parseReadMessage({ type: READ, what: 'cleanup', deviceId: DEVICE })).toBeNull();
+    expect(parseReadMessage({ type: READ, what: 'cleanup', deviceId: DEVICE, plan, x: 1 })).toBeNull();
+  });
+
+  it('reads an estimate strictly: counts only', () => {
+    const estimate = { handle: 'ada', matching: 1200, archive: false, perDay: 100 };
+    expect(parseReadAnswer({ ok: true, what: 'cleanup', estimate }, 'cleanup')).toEqual({
+      ok: true,
+      what: 'cleanup',
+      estimate,
+    });
+    for (const bad of [
+      { ...estimate, matching: -1 },
+      { ...estimate, perDay: 'many' },
+      { ...estimate, archive: 'no' },
+      { ...estimate, handle: 'not a handle' },
+      null,
+    ]) {
+      expect(parseReadAnswer({ ok: true, what: 'cleanup', estimate: bad }, 'cleanup')).toEqual({
+        ok: false,
+        reason: 'refused',
+      });
+    }
   });
 });

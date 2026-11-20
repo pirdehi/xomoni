@@ -33,8 +33,9 @@ import {
   Warning16Regular,
 } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { createCleanupJob } from '../../engine/runner';
+import { type PlannedCleanup, clearPlannedCleanup, plannedCleanup } from '../../shared/cleanup-plan';
 import { archiveImported, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration, findCandidates, normalizeKeywords, parseIdList } from '../../shared/filter';
 import { DAY } from '../../shared/time';
@@ -335,24 +336,43 @@ export function findingSummary(target: CleanupTarget, options: CleanupOptions): 
  * Without an imported archive it warns that old posts can be missed (PLAYBOOK E2) and starts only once the
  * person acknowledges it. The job is created and started only after the user types DELETE in the
  * confirmation dialog. Drawn with Fluent UI (ADR-0019): the targets are selectable cards (`aria-pressed`).
+ *
+ * A plan made on xomoni.com for this account (#235) fills the page in, also while it is open, and says so: it is
+ * only a starting point, and the same confirmation is needed to start.
  */
-export function CleanupPage({ account, navigate }: PageProps) {
+export function CleanupPage(props: PageProps) {
+  const waiting = useLiveQuery(() => plannedCleanup(), []);
+  const [taken, setTaken] = useState<PlannedCleanup | null>(null);
+  const mine = waiting && waiting.accountId === props.account.id ? waiting : null;
+  useEffect(() => {
+    if (!mine) return;
+    // Taken once: the plan is forgotten, and the form starts again from it.
+    void clearPlannedCleanup(mine.at).then(() => setTaken(mine));
+  }, [mine]);
+  return <CleanupForm key={taken?.at ?? 0} {...props} planned={taken} />;
+}
+
+/** `ms` as the date input's value, or `fallback` when there is none. */
+const dateOr = (ms: number | null | undefined, fallback: number) => toDateInput(ms ?? fallback);
+
+function CleanupForm({ account, navigate, planned }: PageProps & { planned: PlannedCleanup | null }) {
   const styles = useStyles();
+  const plan = planned?.filter;
   const counts = useKindCounts(account.id);
   const settings = useLiveQuery(getSettings, []);
   const run = useRunner();
 
   // Latest date the custom picker allows; fixed for the life of the page.
   const [today] = useState(() => toDateInput(Date.now()));
-  const [target, setTarget] = useState<CleanupTarget>('post');
-  const [age, setAge] = useState<Age>('1y');
-  const [customDate, setCustomDate] = useState(toDateInput(startOfToday() - 365 * DAY));
-  const [useAfter, setUseAfter] = useState(false);
-  const [afterDate, setAfterDate] = useState(toDateInput(startOfToday() - 5 * 365 * DAY));
-  const [minLikes, setMinLikes] = useState('');
-  const [keywords, setKeywords] = useState('');
+  const [target, setTarget] = useState<CleanupTarget>(plan?.target ?? 'post');
+  const [age, setAge] = useState<Age>(plan ? 'custom' : '1y');
+  const [customDate, setCustomDate] = useState(dateOr(plan?.before, startOfToday() - 365 * DAY));
+  const [useAfter, setUseAfter] = useState(plan?.after != null);
+  const [afterDate, setAfterDate] = useState(dateOr(plan?.after, startOfToday() - 5 * 365 * DAY));
+  const [minLikes, setMinLikes] = useState(plan?.keepMinLikes ? String(plan.keepMinLikes) : '');
+  const [keywords, setKeywords] = useState(plan ? plan.keepKeywords.join(', ') : '');
   const [ids, setIds] = useState('');
-  const [skipSelfReplies, setSkipSelfReplies] = useState(true);
+  const [skipSelfReplies, setSkipSelfReplies] = useState(plan?.skipSelfReplies ?? true);
   const [options, setOptions] = useState<CleanupOptions>({ sweep: true, deep: true, ghostLikes: false });
   const [confirming, setConfirming] = useState(false);
   const hasArchive = useLiveQuery(() => archiveImported(account.id), [account.id]);
@@ -431,6 +451,16 @@ export function CleanupPage({ account, navigate }: PageProps) {
         title="Cleanup"
         description="Choose what to remove, preview exactly what matches, then let Xomoni work through it at a safe pace."
       />
+      {planned && (
+        <div className={styles.notice}>
+          <Callout tone="accent" icon={<Info16Regular />} title="Planned on xomoni.com">
+            <p className={styles.noticeText}>
+              The choices below come from the plan you made on xomoni.com. Review them and what matches, then press
+              Start: nothing starts until you confirm here.
+            </p>
+          </Callout>
+        </div>
+      )}
       {needsArchive && (
         <div className={styles.notice}>
           <Callout tone="critical" icon={<Warning16Regular />} title="No archive imported: old posts can be missed">

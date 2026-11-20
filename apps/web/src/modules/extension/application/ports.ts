@@ -3,6 +3,7 @@ import type {
   ExtensionState,
   JobMessage,
   OpenMessage,
+  PlanMessage,
   ReadAnswer,
   ReadMessage,
   SettingsAnswer,
@@ -30,6 +31,8 @@ export interface ActionChannel {
   open(extensionId: string, message: Omit<OpenMessage, 'type'>): Promise<ActionAnswer>;
   /** Reads one of its places' data (ADR-0028); `no_answer` when it doesn't answer. */
   read(extensionId: string, message: DistributiveOmit<ReadMessage, 'type'>): Promise<ReadAnswer>;
+  /** Hands it a cleanup plan to review on its Cleanup page (#235); `no_answer` when it doesn't answer. */
+  plan(extensionId: string, message: Omit<PlanMessage, 'type'>): Promise<ActionAnswer>;
   /** Changes some of its settings within its own rules (ADR-0029); `no_answer` when it doesn't answer. */
   settings(extensionId: string, message: Omit<SettingsMessage, 'type'>): Promise<SettingsAnswer>;
 }

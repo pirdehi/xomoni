@@ -226,7 +226,12 @@ export function useScope(): [Scope, (next: Scope) => void] {
   const router = useRouter();
   const scope = parseScope(new URLSearchParams(params.toString()));
   const change = (next: Scope) => {
-    const query = scopeQuery(next);
+    // A place's own answers in the address (such as Cleanup's plan, #235) stay; only the scope changes.
+    const merged = new URLSearchParams(params.toString());
+    merged.delete('account');
+    merged.delete('period');
+    for (const [key, value] of new URLSearchParams(scopeQuery(next))) merged.set(key, value);
+    const query = merged.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
   return [scope, change];

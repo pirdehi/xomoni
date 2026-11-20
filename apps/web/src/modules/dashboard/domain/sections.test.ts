@@ -39,6 +39,7 @@ describe('the dashboard’s places (#245)', () => {
       'content',
       'engagement',
       'library',
+      'cleanup',
       'watch',
       'activity',
       'health',

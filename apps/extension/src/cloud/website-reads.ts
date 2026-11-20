@@ -19,6 +19,7 @@ import { assessRisk } from '../shared/risk';
 import type { Item } from '../shared/types';
 import { normalizeTabs } from '../shared/watch';
 import { accessRefusal, activeAccount } from './website-access';
+import { estimatePlan } from './website-plans';
 import { readSettings } from './website-settings';
 
 /** Whether an item matches a search: in its text or its author, ignoring case. */
@@ -126,5 +127,7 @@ export async function answerRead(message: ReadMessage): Promise<ReadAnswer> {
       return { ok: true, what: 'watch', tabs: await readWatch() };
     case 'settings':
       return { ok: true, what: 'settings', settings: await readSettings() };
+    case 'cleanup':
+      return { ok: true, what: 'cleanup', estimate: await estimatePlan(message.plan) };
   }
 }

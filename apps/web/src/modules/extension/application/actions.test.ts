@@ -11,6 +11,7 @@ function deps(extensionId: string | null) {
       open: vi.fn(() => Promise.resolve({ ok: true as const, outcome: 'opened' as const })),
       read: vi.fn(() => Promise.resolve({ ok: true as const, what: 'watch' as const, tabs: [] })),
       settings: vi.fn(() => Promise.resolve({ ok: false as const, reason: 'signed_out' as const })),
+      plan: vi.fn(() => Promise.resolve({ ok: true as const, outcome: 'opened' as const })),
     },
     memory: { extensionId: () => extensionId },
   };
@@ -43,6 +44,25 @@ describe('askXomoni (ADR-0027, #251)', () => {
       outcome: 'opened',
     });
     expect(d.channel.open).toHaveBeenCalledWith(EXT, { page: 'settings', deviceId: DEVICE });
+  });
+});
+
+describe('askXomoni: a cleanup plan (#235)', () => {
+  it('hands the plan to the extension it knows, to fill in its Cleanup page', async () => {
+    const d = deps(EXT);
+    const plan = {
+      target: 'post' as const,
+      before: Date.UTC(2019, 0, 1),
+      after: null,
+      keepMinLikes: null,
+      keepKeywords: [],
+      skipSelfReplies: true,
+    };
+    await expect(askXomoni(d, { kind: 'plan', plan, deviceId: DEVICE })).resolves.toEqual({
+      ok: true,
+      outcome: 'opened',
+    });
+    expect(d.channel.plan).toHaveBeenCalledWith(EXT, { plan, deviceId: DEVICE });
   });
 });
 

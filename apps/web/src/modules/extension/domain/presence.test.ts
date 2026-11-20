@@ -62,6 +62,9 @@ describe('answerMessage', () => {
     expect(answerMessage({ ok: true, outcome: 'cancelled' }, 'cancel')).toBe('The job is cancelled.');
     expect(answerMessage({ ok: true, outcome: 'asked' }, 'resume')).toMatch(/nothing runs until you do/);
     expect(answerMessage({ ok: true, outcome: 'opened' }, 'open')).toBe('Xomoni opened on this computer.');
+    expect(answerMessage({ ok: true, outcome: 'opened' }, 'plan')).toMatch(
+      /^Xomoni opened its Cleanup page with your plan.*nothing starts until you confirm in Xomoni\.$/,
+    );
   });
 
   it('says why it didn’t, in plain words, for every refusal', () => {
@@ -71,7 +74,8 @@ describe('answerMessage', () => {
     expect(answerMessage({ ok: false, reason: 'no_job' }, 'pause')).toMatch(/doesn’t have this job/);
     expect(answerMessage({ ok: false, reason: 'not_running' }, 'pause')).toMatch(/isn’t running/);
     expect(answerMessage({ ok: false, reason: 'finished' }, 'cancel')).toMatch(/already ended/);
-    expect(answerMessage({ ok: false, reason: 'invalid' }, 'pause')).toMatch(/Update Xomoni/);
+    // Only a Xomoni older than the message answers invalid: it doesn't know the type.
+    expect(answerMessage({ ok: false, reason: 'invalid' }, 'pause')).toMatch(/older than this page.*newest version/);
     expect(answerMessage({ ok: false, reason: 'refused' }, 'pause')).toMatch(/Update Xomoni/);
     expect(answerMessage({ ok: false, reason: 'no_answer' }, 'open')).toMatch(/didn’t answer/);
   });

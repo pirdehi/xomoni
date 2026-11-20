@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerState } from '../../src/engine/runner';
+import { clearPlannedCleanup, plannedCleanup, savePlannedCleanup } from '../../src/shared/cleanup-plan';
 import { db, kvSet, markArchiveImported } from '../../src/shared/db';
 import { estimateDuration } from '../../src/shared/filter';
 import { PRESETS } from '../../src/shared/settings';
@@ -115,6 +116,48 @@ describe('Cleanup page', () => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  describe('a plan made on xomoni.com (#235)', () => {
+    const PLAN: CleanupFilter = {
+      target: 'post',
+      before: Date.UTC(2019, 0, 1),
+      after: null,
+      keepMinLikes: 100,
+      keepKeywords: ['launch'],
+      keepIds: [],
+      skipSelfReplies: true,
+    };
+
+    it('fills the page in, says so, is forgotten once taken, and still needs the confirmation to start', async () => {
+      await savePlannedCleanup({ accountId: ME, filter: PLAN, at: Date.now() });
+      await renderWithArchive(1);
+      expect(screen.getByText('Planned on xomoni.com')).toBeInTheDocument();
+      expect(screen.getByLabelText('Remove everything before')).toHaveValue(toDateInput(PLAN.before));
+      await waitFor(async () => expect(await plannedCleanup()).toBeNull());
+
+      const confirm = await openConfirm();
+      expect(confirm).toBeInTheDocument();
+      expect(await jobs()).toEqual([]);
+      expect(mocks.startJob).not.toHaveBeenCalled();
+    });
+
+    it('fills the page in when the plan comes while it is open', async () => {
+      await renderWithArchive(3);
+      expect(screen.queryByText('Planned on xomoni.com')).not.toBeInTheDocument();
+      await savePlannedCleanup({ accountId: ME, filter: PLAN, at: Date.now() });
+      expect(await screen.findByText('Planned on xomoni.com')).toBeInTheDocument();
+      await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
+    });
+
+    it('leaves a plan for another X account alone', async () => {
+      const at = Date.now();
+      await savePlannedCleanup({ accountId: 'someone-else', filter: PLAN, at });
+      await renderWithArchive(3);
+      expect(screen.queryByText('Planned on xomoni.com')).not.toBeInTheDocument();
+      expect(await plannedCleanup()).not.toBeNull();
+      await clearPlannedCleanup(at);
+    });
   });
 
   describe('without an imported X archive', () => {

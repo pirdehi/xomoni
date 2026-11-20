@@ -210,7 +210,8 @@ test.describe('the install guide (#299)', () => {
         'Right-click xomoni-extension.zip in your Downloads folder, choose Extract All…',
       );
       await expect(steps).toContainText('Turn on Developer mode, in the panel on the left.');
-      await expect(steps.getByRole('listitem').filter({ hasText: 'Drag the folder' })).toBeVisible();
+      // The bold first way, not the list items around it, which hold the same words.
+      await expect(steps.getByText('Drag the folder onto the extensions page')).toBeVisible();
       await steps.getByRole('button', { name: 'Copy edge://extensions' }).click();
       await expect(steps.getByRole('status')).toHaveText('Copied');
       expect(await page.evaluate(() => (window as unknown as { copied?: string }).copied)).toBe('edge://extensions');

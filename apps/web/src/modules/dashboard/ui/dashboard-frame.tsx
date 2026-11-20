@@ -265,7 +265,7 @@ export function DashboardFrame({
 
   return (
     <div className={s.frame}>
-      <nav className={s.sidebar} aria-label="Dashboard">
+      <nav className={s.sidebar} aria-label="Dashboard" data-print="hide">
         {GROUPS.map((group) => (
           <div key={group.id}>
             {group.id !== 'overview' && <p className={s.groupLabel}>{group.label}</p>}
@@ -298,7 +298,7 @@ export function DashboardFrame({
 
       <div className={s.main}>
         {siblings.length > 1 && (
-          <nav aria-label={GROUPS.find((g) => g.id === section.group)?.label}>
+          <nav aria-label={GROUPS.find((g) => g.id === section.group)?.label} data-print="hide">
             <ul className={s.tabs}>
               {siblings.map((item) => (
                 <li key={item.id} className={s.item}>
@@ -320,7 +320,7 @@ export function DashboardFrame({
             <h1 className={s.title}>{section.label}</h1>
             <p className={s.summary}>{section.summary}</p>
           </div>
-          <div className={s.pickers}>
+          <div className={s.pickers} data-print="hide">
             <span className={mergeClasses(s.live, s.liveRow)} role="status">
               <span className={mergeClasses(s.dot, live && s.dotOn)} aria-hidden />
               {live ? 'Live' : 'Connecting…'}
@@ -356,7 +356,7 @@ export function DashboardFrame({
         {children}
       </div>
 
-      <nav className={s.phoneBar} aria-label="Dashboard, on a phone">
+      <nav className={s.phoneBar} aria-label="Dashboard, on a phone" data-print="hide">
         {PHONE_BAR.map((item) => {
           const Icon = item.icon;
           const current = SECTIONS.find((x) => x.id === item.id)?.group === section.group;

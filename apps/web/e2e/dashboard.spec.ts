@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { addDailyNumbers, addDevice, addJobs, createConfirmedUser, updateJob } from './support/admin';
 import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
@@ -85,7 +86,7 @@ test.describe('dashboard (#41)', () => {
     await sidebar.getByRole('link', { name: /^Reports/ }).click();
     await expect(page).toHaveURL(/\/dashboard\/reports$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Reports' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Reports: coming soon' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Weekly report · All accounts/ })).toBeVisible();
 
     await page.getByRole('combobox', { name: 'Period' }).selectOption('7d');
     await expect(page).toHaveURL(/\/dashboard\/reports\?period=7d$/);
@@ -178,6 +179,41 @@ test.describe('dashboard (#41)', () => {
       'Quotes',
     );
     await expect(page.getByRole('region', { name: 'When you publish' })).toContainText('You publish most on');
+  });
+
+  test('Reports show the week against the week before, download as CSV and print without the menus (#257)', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('reports');
+    const userId = await createConfirmedUser(email, PASSWORD);
+    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+    await addDailyNumbers(userId, [
+      { x_handle: 'ada_x', day: day(10), followers: 100, posted_posts: 1 },
+      { x_handle: 'ada_x', day: day(2), followers: 120, posted_posts: 4, received_likes: 9, observed_posts: 5 },
+    ]);
+
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+    await page.goto('/dashboard/reports');
+    await expect(page.getByRole('heading', { name: 'Weekly report · All accounts · Last 7 days' })).toBeVisible();
+    const summary = page.getByRole('table').first();
+    await expect(summary.getByRole('row', { name: /^Followers/ })).toContainText('120');
+    await expect(summary.getByRole('row', { name: /^Followers/ })).toContainText('+20 (+20%)');
+    await expect(summary.getByRole('row', { name: /^Posts published/ })).toContainText('4');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download CSV' }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^xomoni-weekly-all-accounts-\d{4}-\d{2}-\d{2}\.csv$/);
+    const text = await readFile(await download.path(), 'utf8');
+    expect(text.split('\r\n')[1]).toBe(`${day(2)},120,4,0,9,0,0,0`);
+
+    await page.emulateMedia({ media: 'print' });
+    await expect(page.getByRole('heading', { name: /^Weekly report/ })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Dashboard' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Download CSV' })).toBeHidden();
+    await expect(page.getByRole('combobox', { name: 'Period' })).toBeHidden();
   });
 
   test('Engagement shows what the posts received, as estimates, with views and the rate (#255)', async ({ page }) => {

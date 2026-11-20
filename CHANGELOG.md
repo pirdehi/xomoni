@@ -6,6 +6,13 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Reports on xomoni.com** (#257), from your daily numbers and your jobs.
+  - Weekly, monthly and the year in review: each number against the period before, then each day (or each month for a year).
+  - Cleanup: what Xomoni removed in the period, by kind and job by job, even without daily numbers.
+  - Your own: pick the numbers, for the account and period picked above.
+  - *Download CSV* makes the file in your browser. *Save as PDF* opens your browser's print window, which leaves the menus and buttons off the page.
+  - Received counts are marked as estimates. A cell a spreadsheet would run as a formula is written as text.
+
 - **Comments on xomoni.com** (#256), in the browser where Xomoni runs. Needs Xomoni 0.5.0 or newer.
   - *Your replies:* find your replies by date, at most a number of likes, who you replied to and words, with or without your own threads.
   - See who you reply to most, and pick someone to see only your replies to them.

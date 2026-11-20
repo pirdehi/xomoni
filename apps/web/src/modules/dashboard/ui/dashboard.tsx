@@ -410,10 +410,18 @@ export function Dashboard({
   section: Section;
 }) {
   const s = useStyles();
-  const { devices, jobs, days, live, disconnect, createPairingCode, numbersShown, showNumbers } = useLiveDashboard(
-    viewer.id,
-    initial,
-  );
+  const {
+    devices,
+    jobs,
+    days,
+    live,
+    disconnect,
+    createPairingCode,
+    numbersShown,
+    showNumbers,
+    weeklyEmail,
+    setWeeklyEmail,
+  } = useLiveDashboard(viewer.id, initial);
   const now = useNow(30_000);
   const justConnected = useJustConnected(devices);
   const [leaving, setLeaving] = useState<Device | null>(null);
@@ -514,7 +522,16 @@ export function Dashboard({
   } else if (section.id === 'cleanup') {
     content = <CleanupPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'reports') {
-    content = <ReportsPlace days={days} jobs={jobs} scope={scope} now={now} shown={numbersShown} />;
+    content = (
+      <ReportsPlace
+        days={days}
+        jobs={jobs}
+        scope={scope}
+        now={now}
+        shown={numbersShown}
+        email={{ on: weeklyEmail, set: setWeeklyEmail }}
+      />
+    );
   } else if (section.id === 'comments') {
     content = <CommentsPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'settings') {

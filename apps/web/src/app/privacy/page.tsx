@@ -105,8 +105,13 @@ export default function PrivacyPage() {
 
       <h2>Emails we send</h2>
       <p>
-        We only send emails about your account: confirming your address, resetting your password, confirming an email
-        change, and security notices when your password, email or sign-in methods change. No newsletters or marketing.
+        We send emails about your account: confirming your address, resetting your password, confirming an email change,
+        and security notices when your password, email or sign-in methods change. No newsletters or marketing.
+      </p>
+      <p>
+        If you ask for it in Reports, and only while your daily numbers are on, we also send you a weekly email of your
+        numbers from the week before: counts only, never your posts or anyone’s names. Every one has a link that stops
+        it without signing in, and turning your daily numbers off stops it too.
       </p>
       <h2>Cookies</h2>
       <p>
@@ -127,8 +132,8 @@ export default function PrivacyPage() {
           <strong>Google</strong> handles “Sign in with Google”. Xomoni requests only your basic profile and email.
         </li>
         <li>
-          <strong>Resend</strong> delivers our account emails (servers in the United States). It receives your email
-          address and the message.
+          <strong>Resend</strong> delivers our account emails, and the weekly email if you asked for it (servers in the
+          United States). It receives your email address and the message.
         </li>
         <li>
           <strong>Cloudflare</strong> runs Turnstile on the sign-in, sign-up and password forms, and hosts our domain’s

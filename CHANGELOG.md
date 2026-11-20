@@ -6,6 +6,11 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **A weekly email of your numbers, if you ask for it** (#257).
+  - Turn it on in Reports, while your daily numbers are on. Every Monday morning, last week's numbers come against the week before: counts only.
+  - Every email has a link that stops it without signing in, and your mail app's own *Unsubscribe* button works too. Turning your daily numbers off stops it as well.
+  - The database sends it, through Resend, with a key the website never sees ([ADR-0031](docs/adr/0031-weekly-email-of-the-daily-numbers.md)). The privacy policy says so.
+
 - **Reports on xomoni.com** (#257), from your daily numbers and your jobs.
   - Weekly, monthly and the year in review: each number against the period before, then each day (or each month for a year).
   - Cleanup: what Xomoni removed in the period, by kind and job by job, even without daily numbers.

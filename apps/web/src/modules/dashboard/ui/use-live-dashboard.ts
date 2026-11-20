@@ -27,6 +27,10 @@ export interface LiveDashboard extends DashboardSnapshot {
   numbersShown: boolean | null;
   /** Turns the daily numbers on or off (off deletes them); resolves to an error message on failure. */
   showNumbers: (enabled: boolean) => Promise<string | null>;
+  /** Whether the account gets the weekly email (#257, ADR-0031); null while it is read. */
+  weeklyEmail: boolean | null;
+  /** Turns the weekly email on or off; resolves to an error message on failure. */
+  setWeeklyEmail: (enabled: boolean) => Promise<string | null>;
 }
 
 /**
@@ -40,9 +44,11 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   const [days, setDays] = useState(initial.days ?? []);
   const [live, setLive] = useState(false);
   const [numbersShown, setNumbersShown] = useState<boolean | null>(null);
+  const [weeklyEmail, setWeeklyEmailState] = useState<boolean | null>(null);
 
   useEffect(() => {
     services.numbers.get().then(setNumbersShown, () => setNumbersShown(false));
+    services.weeklyEmail.get().then(setWeeklyEmailState, () => setWeeklyEmailState(false));
   }, [services]);
 
   useEffect(() => {
@@ -90,11 +96,24 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   async function showNumbers(enabled: boolean) {
     try {
       setNumbersShown(await services.numbers.set(enabled));
+      // Turning the numbers off turns the weekly email off too (ADR-0031).
+      if (!enabled) setWeeklyEmailState(false);
       return null;
     } catch {
       return enabled
         ? 'Couldn’t turn your numbers on. Try again in a moment.'
         : 'Couldn’t turn your numbers off. Try again in a moment.';
+    }
+  }
+
+  async function setWeeklyEmail(enabled: boolean) {
+    try {
+      setWeeklyEmailState(await services.weeklyEmail.set(enabled));
+      return null;
+    } catch {
+      return enabled
+        ? 'Couldn’t turn the weekly email on. Turn your numbers on first, then try again.'
+        : 'Couldn’t turn the weekly email off. Try again in a moment.';
     }
   }
 
@@ -107,5 +126,7 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
     createPairingCode: () => services.pairing.createCode(),
     numbersShown,
     showNumbers,
+    weeklyEmail,
+    setWeeklyEmail,
   };
 }

@@ -7,6 +7,7 @@ import {
   Checkbox,
   Radio,
   RadioGroup,
+  Switch,
   makeStyles,
   mergeClasses,
   tokens,
@@ -107,6 +108,7 @@ export function ReportsPlace({
   scope,
   now,
   shown: numbersShown,
+  email,
 }: {
   days: readonly DailyNumbers[];
   jobs: readonly JobSummary[];
@@ -114,6 +116,8 @@ export function ReportsPlace({
   now: number;
   /** Whether the person shows their numbers on xomoni.com; null while that isn't known. */
   shown: boolean | null;
+  /** The weekly email (ADR-0031): whether it is on (null while read), and how to change it. */
+  email: { on: boolean | null; set: (enabled: boolean) => Promise<string | null> };
 }) {
   const s = useStyles();
   const [reportId, setReportId] = useState<ReportId>('week');
@@ -328,6 +332,7 @@ export function ReportsPlace({
           </fieldset>
         )}
       </section>
+      <WeeklyEmail email={email} numbersShown={numbersShown} />
       <section className={s.card} aria-labelledby="report-title">
         <div>
           <h2 id="report-title" className={s.title}>
@@ -352,5 +357,53 @@ export function ReportsPlace({
         </div>
       </section>
     </div>
+  );
+}
+
+/**
+ * The weekly email (#257, ADR-0031): last week's numbers every Monday, only for those who turn it on, and only while
+ * their daily numbers are on. Each email carries its own way to stop it.
+ */
+function WeeklyEmail({
+  email,
+  numbersShown,
+}: {
+  email: { on: boolean | null; set: (enabled: boolean) => Promise<string | null> };
+  numbersShown: boolean | null;
+}) {
+  const s = useStyles();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Off can always be chosen; on needs the daily numbers.
+  const canTurnOn = numbersShown === true;
+  return (
+    <section className={s.card} aria-labelledby="email-title" data-print="hide">
+      <h2 id="email-title" className={s.subtitle}>
+        Weekly email
+      </h2>
+      <Switch
+        label="Email me my week every Monday"
+        checked={email.on === true}
+        disabled={email.on === null || busy || (!email.on && !canTurnOn)}
+        onChange={(_, data) => {
+          setBusy(true);
+          setError(null);
+          void email.set(data.checked).then((message) => {
+            setError(message);
+            setBusy(false);
+          });
+        }}
+      />
+      <p className={s.meta}>
+        {canTurnOn
+          ? 'Last week’s numbers, against the week before, on Monday morning, to the address you sign in with. Counts only, and every email has a link to stop it.'
+          : 'Turn on your daily numbers first: the email is made of them.'}
+      </p>
+      {error && (
+        <p className={s.text} role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }

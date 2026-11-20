@@ -60,16 +60,21 @@ describe('App before an account is known', () => {
 });
 
 describe('App sign-out (#226)', () => {
+  // This file's own Web Locks (tests/setup.ts), put back after each test: deleting the stub instead would leave the
+  // later tests on Node's process-wide locks, which other test files' runners hold too (#271).
+  let fileLocks: PropertyDescriptor | undefined;
   beforeEach(async () => {
     await upsertAccount(account());
     // No job runs: no dashboard tab holds the runner's lock.
+    fileLocks = Object.getOwnPropertyDescriptor(navigator, 'locks');
     Object.defineProperty(navigator, 'locks', {
       configurable: true,
       value: { query: () => Promise.resolve({ held: [] }) },
     });
   });
   afterEach(() => {
-    Reflect.deleteProperty(navigator, 'locks');
+    if (fileLocks) Object.defineProperty(navigator, 'locks', fileLocks);
+    else Reflect.deleteProperty(navigator, 'locks');
   });
 
   it('signs out from the account menu and shows the signed-out page, keeping the data', async () => {
@@ -85,8 +90,22 @@ describe('App sign-out (#226)', () => {
 
     // Signing out pauses, disconnects and closes the X window first: on a busy machine (CI, or the push hook while
     // other builds run) that has taken over 15 seconds.
+    // While the dialog is open the page behind it is hidden, so a sign-out still waiting shows as a missing heading:
+    // the error says what it waited for (#271).
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'You’re signed out' }, { timeout: 30_000 }),
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'You’re signed out' },
+        {
+          timeout: 30_000,
+          onTimeout: (error) =>
+            new Error(
+              `${error.message.split('\n')[0]}\nStill signing out: dialog open ${String(
+                screen.queryByRole('dialog', { name: 'Sign out of Xomoni?' }) !== null,
+              )}, runner busy ${String(runner.busy)}, runner status ${runner.getState().status}.`,
+            ),
+        },
+      ),
     ).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Sign out of Xomoni?' })).not.toBeInTheDocument());
     expect(within(sidebar()).queryByRole('button', { name: /^Connections: / })).not.toBeInTheDocument();

@@ -338,7 +338,8 @@ export function findingSummary(target: CleanupTarget, options: CleanupOptions): 
  * confirmation dialog. Drawn with Fluent UI (ADR-0019): the targets are selectable cards (`aria-pressed`).
  *
  * A plan made on xomoni.com for this account (#235) fills the page in, also while it is open, and says so: it is
- * only a starting point, and the same confirmation is needed to start.
+ * only a starting point, and the same confirmation is needed to start. A plan of replies picked there (#256) removes
+ * only those, found one by one, until the person goes back to the form.
  */
 export function CleanupPage(props: PageProps) {
   const waiting = useLiveQuery(() => plannedCleanup(), []);
@@ -358,6 +359,10 @@ const dateOr = (ms: number | null | undefined, fallback: number) => toDateInput(
 function CleanupForm({ account, navigate, planned }: PageProps & { planned: PlannedCleanup | null }) {
   const styles = useStyles();
   const plan = planned?.filter;
+  // Picked on xomoni.com (#256): only these, which Xomoni already knows, so it visits each instead of searching X. The
+  // plan's end is just when they were picked, so the form below keeps its own defaults for when the person leaves them.
+  const pickedIds = plan?.onlyIds?.length ? plan.onlyIds : null;
+  const byDate = pickedIds ? undefined : plan;
   const counts = useKindCounts(account.id);
   const settings = useLiveQuery(getSettings, []);
   const run = useRunner();
@@ -365,23 +370,26 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
   // Latest date the custom picker allows; fixed for the life of the page.
   const [today] = useState(() => toDateInput(Date.now()));
   const [target, setTarget] = useState<CleanupTarget>(plan?.target ?? 'post');
-  const [age, setAge] = useState<Age>(plan ? 'custom' : '1y');
-  const [customDate, setCustomDate] = useState(dateOr(plan?.before, startOfToday() - 365 * DAY));
-  const [useAfter, setUseAfter] = useState(plan?.after != null);
-  const [afterDate, setAfterDate] = useState(dateOr(plan?.after, startOfToday() - 5 * 365 * DAY));
+  const [age, setAge] = useState<Age>(byDate ? 'custom' : '1y');
+  const [customDate, setCustomDate] = useState(dateOr(byDate?.before, startOfToday() - 365 * DAY));
+  const [useAfter, setUseAfter] = useState(byDate?.after != null);
+  const [afterDate, setAfterDate] = useState(dateOr(byDate?.after, startOfToday() - 5 * 365 * DAY));
   const [minLikes, setMinLikes] = useState(plan?.keepMinLikes ? String(plan.keepMinLikes) : '');
   const [keywords, setKeywords] = useState(plan ? plan.keepKeywords.join(', ') : '');
   const [ids, setIds] = useState('');
   const [skipSelfReplies, setSkipSelfReplies] = useState(plan?.skipSelfReplies ?? true);
-  const [options, setOptions] = useState<CleanupOptions>({ sweep: true, deep: true, ghostLikes: false });
+  const [picked, setPicked] = useState(pickedIds);
+  const [options, setOptions] = useState<CleanupOptions>({ sweep: !picked, deep: true, ghostLikes: false });
   const [confirming, setConfirming] = useState(false);
   const hasArchive = useLiveQuery(() => archiveImported(account.id), [account.id]);
   const [missAcknowledged, setMissAcknowledged] = useState(false);
 
   // A date the person cleared or mistyped never falls back to "today", which would match everything: it matches
   // nothing and keeps Start off until the dates make sense.
-  const pickedBefore = age === 'custom' ? fromDateInput(customDate) : startOfToday() - AGE_DAYS[age] * DAY;
-  const pickedAfter = useAfter ? fromDateInput(afterDate) : null;
+  // Picked posts keep the plan's own end, the moment they were picked, so today's are in.
+  const pickedBefore =
+    picked && plan ? plan.before : age === 'custom' ? fromDateInput(customDate) : startOfToday() - AGE_DAYS[age] * DAY;
+  const pickedAfter = useAfter && !picked ? fromDateInput(afterDate) : null;
   const dateProblem =
     pickedBefore == null
       ? 'Pick the date to clean up before.'
@@ -400,8 +408,9 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
       keepKeywords: normalizeKeywords(keywords),
       keepIds: parseIdList(ids),
       skipSelfReplies,
+      ...(picked && { onlyIds: picked }),
     }),
-    [target, before, pickedAfter, minLikes, keywords, ids, skipSelfReplies],
+    [target, before, pickedAfter, minLikes, keywords, ids, skipSelfReplies, picked],
   );
   const filterKey = JSON.stringify(filter);
   const candidates = useLiveQuery(() => findCandidates(account.id, filter), [account.id, filterKey]);
@@ -410,7 +419,9 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
   const rule = settings?.pacing[action];
   const eta = rule && candidates ? estimateDuration(candidates.length, rule) : 0;
   const days = rule && candidates ? Math.ceil(candidates.length / rule.dailyCap) : 0;
-  const title = `${VERB[target]} ${TARGET_PLURAL[target]} older than ${fmtDate(before)}`;
+  const title = picked
+    ? `${VERB[target]} the ${TARGET_PLURAL[target]} picked on xomoni.com (${fmtNumber(picked.length)})`
+    : `${VERB[target]} ${TARGET_PLURAL[target]} older than ${fmtDate(before)}`;
   // Reposts gain little from the archive: it doesn't say which post a repost points to.
   const needsArchive = hasArchive === false && target !== 'repost';
   const canStart =
@@ -455,8 +466,10 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
         <div className={styles.notice}>
           <Callout tone="accent" icon={<Info16Regular />} title="Planned on xomoni.com">
             <p className={styles.noticeText}>
-              The choices below come from the plan you made on xomoni.com. Review them and what matches, then press
-              Start: nothing starts until you confirm here.
+              {picked
+                ? `Only the ${TARGET_PLURAL[target]} you picked on xomoni.com are removed.`
+                : 'The choices below come from the plan you made on xomoni.com.'}{' '}
+              Review them and what matches, then press Start: nothing starts until you confirm here.
             </p>
           </Callout>
         </div>
@@ -484,93 +497,119 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
       )}
       <div className={styles.layout}>
         <div className={styles.form}>
-          <Card title="1 · What to clean up">
-            <div className={styles.targets}>
-              {TARGETS.map((t) => {
-                const chosen = target === t.value;
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    aria-pressed={chosen}
-                    onClick={() => setTarget(t.value)}
-                    className={mergeClasses(styles.target, chosen && styles.targetChosen)}
-                  >
-                    <span className={styles.targetHead}>
-                      <span className={mergeClasses(styles.targetIcon, chosen && styles.targetIconChosen)}>
-                        {chosen ? t.chosenIcon : t.icon}
-                      </span>
-                      <span className={mergeClasses(styles.targetMark, chosen && styles.targetMarkChosen)}>
-                        {chosen ? <CheckmarkCircle20Filled /> : <Circle20Regular />}
-                      </span>
-                    </span>
-                    <Body1Strong>{t.label}</Body1Strong>
-                    <Caption1 className={styles.targetCount}>
-                      {fmtNumber(counts?.[t.value].present ?? 0)} in your copy
-                    </Caption1>
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-
-          <Card title="2 · Older than">
-            <Segmented value={age} onChange={setAge} options={AGES.map((a) => ({ value: a.value, label: a.label }))} />
-            <div className={mergeClasses(styles.fieldGrid, styles.spaced)}>
-              {age === 'custom' ? (
-                <Field label="Remove everything before">
-                  <Input
-                    type="date"
-                    className={styles.control}
-                    value={customDate}
-                    max={today}
-                    onChange={(_, data) => setCustomDate(data.value)}
-                  />
-                </Field>
-              ) : (
-                <Body1 className={styles.before}>
-                  <CalendarClock16Regular className={styles.beforeIcon} /> Before{' '}
-                  <span className={styles.strong}>{fmtDate(before)}</span>
-                </Body1>
-              )}
-            </div>
-            {dateProblem && (
-              <Caption1 as="p" role="alert" className={styles.problem}>
-                <ErrorCircle16Regular className={styles.problemIcon} />
-                {dateProblem}
-              </Caption1>
-            )}
-            <div className={mergeClasses(styles.stack, styles.spaced)}>
-              <Toggle
-                checked={useAfter}
-                onChange={setUseAfter}
-                label="Only within a date range"
-                description="Leave anything older than a start date untouched."
-              />
-              {useAfter && (
-                <div className={styles.rangeField}>
-                  <Field label="Start date (inclusive)">
-                    <Input
-                      type="date"
-                      className={styles.control}
-                      value={afterDate}
-                      onChange={(_, data) => setAfterDate(data.value)}
-                    />
-                  </Field>
-                </div>
-              )}
-            </div>
-            {target === 'like' && (
+          {picked ? (
+            <Card title="1 · Picked on xomoni.com">
+              <Body1 as="p">
+                {fmtNumber(picked.length)} {TARGET_PLURAL[target]} you picked. Only these are removed, and only while
+                the exceptions below allow it.
+              </Body1>
               <div className={styles.spaced}>
-                <Callout tone="accent" icon={<Info16Regular />} title="How like dates work">
-                  X doesn’t record when you liked something. Xomoni uses the like time when it can be derived from your
-                  Likes page, otherwise the liked post’s own date — so a recent like on an old post may also match.
-                </Callout>
+                <Button
+                  onClick={() => {
+                    setPicked(null);
+                    setOptions((o) => ({ ...o, sweep: true }));
+                  }}
+                >
+                  Use the form instead
+                </Button>
               </div>
-            )}
-          </Card>
+            </Card>
+          ) : (
+            <>
+              <Card title="1 · What to clean up">
+                <div className={styles.targets}>
+                  {TARGETS.map((t) => {
+                    const chosen = target === t.value;
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        aria-pressed={chosen}
+                        onClick={() => setTarget(t.value)}
+                        className={mergeClasses(styles.target, chosen && styles.targetChosen)}
+                      >
+                        <span className={styles.targetHead}>
+                          <span className={mergeClasses(styles.targetIcon, chosen && styles.targetIconChosen)}>
+                            {chosen ? t.chosenIcon : t.icon}
+                          </span>
+                          <span className={mergeClasses(styles.targetMark, chosen && styles.targetMarkChosen)}>
+                            {chosen ? <CheckmarkCircle20Filled /> : <Circle20Regular />}
+                          </span>
+                        </span>
+                        <Body1Strong>{t.label}</Body1Strong>
+                        <Caption1 className={styles.targetCount}>
+                          {fmtNumber(counts?.[t.value].present ?? 0)} in your copy
+                        </Caption1>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Card>
 
-          <Card title="3 · Exceptions" subtitle="Optional: what to keep even when it matches.">
+              <Card title="2 · Older than">
+                <Segmented
+                  value={age}
+                  onChange={setAge}
+                  options={AGES.map((a) => ({ value: a.value, label: a.label }))}
+                />
+                <div className={mergeClasses(styles.fieldGrid, styles.spaced)}>
+                  {age === 'custom' ? (
+                    <Field label="Remove everything before">
+                      <Input
+                        type="date"
+                        className={styles.control}
+                        value={customDate}
+                        max={today}
+                        onChange={(_, data) => setCustomDate(data.value)}
+                      />
+                    </Field>
+                  ) : (
+                    <Body1 className={styles.before}>
+                      <CalendarClock16Regular className={styles.beforeIcon} /> Before{' '}
+                      <span className={styles.strong}>{fmtDate(before)}</span>
+                    </Body1>
+                  )}
+                </div>
+                {dateProblem && (
+                  <Caption1 as="p" role="alert" className={styles.problem}>
+                    <ErrorCircle16Regular className={styles.problemIcon} />
+                    {dateProblem}
+                  </Caption1>
+                )}
+                <div className={mergeClasses(styles.stack, styles.spaced)}>
+                  <Toggle
+                    checked={useAfter}
+                    onChange={setUseAfter}
+                    label="Only within a date range"
+                    description="Leave anything older than a start date untouched."
+                  />
+                  {useAfter && (
+                    <div className={styles.rangeField}>
+                      <Field label="Start date (inclusive)">
+                        <Input
+                          type="date"
+                          className={styles.control}
+                          value={afterDate}
+                          onChange={(_, data) => setAfterDate(data.value)}
+                        />
+                      </Field>
+                    </div>
+                  )}
+                </div>
+                {target === 'like' && (
+                  <div className={styles.spaced}>
+                    <Callout tone="accent" icon={<Info16Regular />} title="How like dates work">
+                      X doesn’t record when you liked something. Xomoni uses the like time when it can be derived from
+                      your Likes page, otherwise the liked post’s own date — so a recent like on an old post may also
+                      match.
+                    </Callout>
+                  </div>
+                )}
+              </Card>
+            </>
+          )}
+
+          <Card title={`${picked ? 2 : 3} · Exceptions`} subtitle="Optional: what to keep even when it matches.">
             <Disclosure label="Choose what to keep" summary={keepSummary}>
               <div className={styles.fieldGrid}>
                 {(target === 'post' || target === 'reply') && (

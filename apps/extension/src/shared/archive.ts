@@ -1,5 +1,6 @@
 // Parsing of the official X data archive ("Download an archive of your data").
 // Files look like `window.YTD.tweets.part0 = [ { "tweet": { ... } } ]`.
+import { isHandle } from './ids';
 import { asId, asNumber, asObject, asPostId, asString, at } from './json';
 import { parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
@@ -57,6 +58,7 @@ export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, 
     const createdAt = parseTwitterDate(t.created_at) ?? snowflakeTime(id) ?? 0;
     const repost = text.match(/^RT @(\w+):/);
     const inReplyToId = asPostId(t.in_reply_to_status_id_str) ?? null;
+    const replyTo = asString(t.in_reply_to_screen_name);
     drafts.push({
       kind: repost ? 'repost' : inReplyToId ? 'reply' : 'post',
       id,
@@ -67,6 +69,7 @@ export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, 
       text,
       author: repost ? (repost[1] ?? '') : handle,
       inReplyToId: repost ? null : inReplyToId,
+      ...(!repost && inReplyToId && replyTo && isHandle(replyTo) && { replyTo }),
       selfReply: !repost && !!inReplyToId && asId(t.in_reply_to_user_id_str) === accountId,
       likes: asNumber(t.favorite_count) ?? 0,
       reposts: asNumber(t.retweet_count) ?? 0,

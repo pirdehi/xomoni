@@ -72,6 +72,25 @@ describe('a plan from xomoni.com (#235)', () => {
     expect(describePlan({ ...PLAN_2019, target: 'like', keepKeywords: [] })).toBe('likes older than 2019-01-01');
   });
 
+  it('carries the posts picked on xomoni.com, counts and logs them (#256)', async () => {
+    const picked: CleanupPlan = { ...PLAN_2019, before: Date.UTC(2026, 0, 1), keepMinLikes: null, keepKeywords: [] };
+    const two = { ...picked, onlyIds: ['1000000001', '1000000004'] };
+    expect(toFilter(two).onlyIds).toEqual(['1000000001', '1000000004']);
+    expect(toFilter(picked)).not.toHaveProperty('onlyIds');
+    expect(describePlan(two)).toBe('2 posts picked on xomoni.com');
+    expect(describePlan({ ...two, target: 'reply', onlyIds: ['1'], skipSelfReplies: false })).toBe(
+      '1 reply picked on xomoni.com',
+    );
+    // Only the picked ones match, of the four posts that would match by date.
+    await expect(estimatePlan(two)).resolves.toMatchObject({ matching: 2 });
+    await expect(answerPlan({ type: PLAN, deviceId: DEVICE, plan: two }, ports)).resolves.toEqual({
+      ok: true,
+      outcome: 'opened',
+    });
+    expect((await plannedCleanup())?.filter.onlyIds).toEqual(['1000000001', '1000000004']);
+    expect((await db.logs.toArray()).at(-1)?.message).toContain('2 posts picked on xomoni.com');
+  });
+
   it('is estimated from Xomoni’s copy: counts only, with the archive and the pace per day', async () => {
     expect(await estimatePlan(PLAN_2019)).toEqual({
       handle: 'me',

@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react';
 import { type XomoniControls, useXomoniRead } from '@/modules/extension/ui/xomoni-actions';
 import {
   PLAN_AGES,
+  FIRST_DAY,
   PLAN_KEYS,
   type PlanAge,
   type PlanForm,
@@ -61,8 +62,8 @@ const useStyles = makeStyles({
 const TARGET_LABEL: Record<LibraryKind, string> = { post: 'Posts', reply: 'Replies', repost: 'Reposts', like: 'Likes' };
 const VERB: Record<LibraryKind, string> = { post: 'Delete', reply: 'Delete', repost: 'Undo', like: 'Unlike' };
 
-/** `value`, once it has stayed the same for `ms`: counting in Xomoni waits for typing to pause. */
-function useSettled(value: string, ms: number): string {
+/** `value`, once it has stayed the same for `ms`: asking Xomoni waits for typing to pause. */
+export function useSettled(value: string, ms: number): string {
   const [settled, setSettled] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setSettled(value), ms);
@@ -133,11 +134,16 @@ export function CleanupPlace({ xomoni, now }: { xomoni: XomoniControls; now: num
         <div className={s.row}>
           {form.age === 'custom' && (
             <Field label="Remove everything before" className={s.field}>
-              <Input type="date" value={form.before} onChange={(_, data) => set('before', data.value)} />
+              <Input
+                type="date"
+                min={FIRST_DAY}
+                value={form.before}
+                onChange={(_, data) => set('before', data.value)}
+              />
             </Field>
           )}
           <Field label="Only from (optional)" hint="Leave empty for no start date" className={s.field}>
-            <Input type="date" value={form.from} onChange={(_, data) => set('from', data.value)} />
+            <Input type="date" min={FIRST_DAY} value={form.from} onChange={(_, data) => set('from', data.value)} />
           </Field>
         </div>
       </section>

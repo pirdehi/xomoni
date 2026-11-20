@@ -41,6 +41,8 @@ ADR-0006 exists so that a stolen website session or a cross-site bug can't becom
 
 Built in [#251](https://github.com/pirdehi/xomoni/issues/251).
 
+Amended 2026-11-20 (#256): a cleanup plan may name at most 500 posts picked on the website, by X's id. Xomoni opens its Cleanup page with only those, still under every keep rule, and starts nothing until the person types `DELETE` there. A plan by date carries no such list, so a Xomoni older than the selection still takes it.
+
 ## Consequences
 
 - A compromised website session on another device still can't act on X.

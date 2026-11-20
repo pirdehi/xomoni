@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { READ } from '@xomoni/bridge';
+import { READ, type RepliesFilter } from '@xomoni/bridge';
 import { type CloudConnection, saveConnection } from '../src/cloud/connection';
-import { answerRead, readHealth, readLibrary, readWatch } from '../src/cloud/website-reads';
+import { answerRead, readHealth, readLibrary, readReplies, readWatch } from '../src/cloud/website-reads';
 import { db, kvSet, recordRisk, saveWatchResult, saveWatchTabs, upsertAccount, upsertItems } from '../src/shared/db';
 import { markSignedOut } from '../src/shared/session';
 import type { ItemDraft } from '../src/shared/types';
@@ -81,6 +81,104 @@ describe('answerRead: who it answers (ADR-0028)', () => {
       what: 'watch',
     });
     expect(await db.items.toArray()).toEqual(before);
+  });
+});
+
+describe('readReplies (#256)', () => {
+  const ALL: RepliesFilter = { after: null, before: null, maxLikes: null, replyTo: '', query: '', threads: true };
+  const reply = (id: number, over: Partial<ItemDraft> = {}) =>
+    draft({
+      kind: 'reply',
+      id: String(id),
+      targetId: String(id),
+      inReplyToId: '5',
+      createdAt: Date.UTC(2024, 0, 1) + id * 60_000,
+      ...over,
+    });
+
+  it('lists the replies still on X, newest first, a page at a time, with whom each answers', async () => {
+    await upsertItems(
+      ME,
+      Array.from({ length: 105 }, (_, i) => reply(100 + i, { replyTo: 'ada' })),
+      'archive',
+    );
+    await upsertItems(ME, [draft({ id: '1' }), reply(9, { replyTo: 'bob' })], 'archive');
+    await db.items.update(`${ME}:reply:9`, { status: 'deleted' });
+
+    const first = await readReplies(ALL, 0);
+    expect(first).toMatchObject({ handle: 'me', total: 105, matching: 105, next: 100 });
+    expect(first.items).toHaveLength(100);
+    expect(first.items[0]).toEqual({
+      id: '204',
+      replyTo: 'ada',
+      text: 'hello world',
+      createdAt: Date.UTC(2024, 0, 1) + 204 * 60_000,
+      likes: 1,
+      reposts: 0,
+      replies: 0,
+      thread: false,
+    });
+    expect(first.people).toEqual([{ handle: 'ada', replies: 105 }]);
+    const last = await readReplies(ALL, 100);
+    expect(last.items.map((i) => i.id)).toEqual(['104', '103', '102', '101', '100']);
+    expect(last.next).toBeNull();
+  });
+
+  it('filters by date, likes, whom it answers (any case), words and threads', async () => {
+    await upsertItems(
+      ME,
+      [
+        reply(1, { replyTo: 'Ada', likes: 0, text: 'Rust is fine' }),
+        reply(2, { replyTo: 'ada', likes: 10, text: 'rust again' }),
+        reply(3, { replyTo: 'bob', likes: 0, text: 'hello' }),
+        reply(4, { replyTo: 'me', selfReply: true, likes: 0, text: 'thread rust' }),
+        reply(5, { likes: 0, text: 'who knows' }),
+      ],
+      'archive',
+    );
+    const ids = async (filter: Partial<RepliesFilter>) =>
+      (await readReplies({ ...ALL, ...filter }, 0)).items.map((i) => i.id);
+    expect(await ids({})).toEqual(['5', '4', '3', '2', '1']);
+    expect(await ids({ threads: false })).toEqual(['5', '3', '2', '1']);
+    expect(await ids({ replyTo: 'ADA' })).toEqual(['2', '1']);
+    expect(await ids({ maxLikes: 0, query: ' RUST ' })).toEqual(['4', '1']);
+    const at = (id: number) => Date.UTC(2024, 0, 1) + id * 60_000;
+    expect(await ids({ after: at(2), before: at(4) })).toEqual(['3', '2']);
+    const page = await readReplies({ ...ALL, replyTo: 'nobody' }, 0);
+    expect(page).toMatchObject({ total: 5, matching: 0, items: [], next: null });
+    // One person however X capitalized them (as the newest reply has it), the person's own threads left out; most
+    // first, then by name.
+    expect(page.people).toEqual([
+      { handle: 'ada', replies: 2 },
+      { handle: 'bob', replies: 1 },
+    ]);
+  });
+
+  it('learns whom a reply answers from X live over the archive, and from the archive only when unknown', async () => {
+    await upsertItems(ME, [reply(1), reply(2, { replyTo: 'old_name' })], 'archive');
+    await upsertItems(ME, [reply(1, { replyTo: 'ada' }), reply(2, { replyTo: 'new_name' })], 'scan');
+    await upsertItems(ME, [reply(1, { replyTo: 'stale' })], 'archive');
+    const page = await readReplies(ALL, 0);
+    expect(page.items.map((i) => [i.id, i.replyTo])).toEqual([
+      ['2', 'new_name'],
+      ['1', 'ada'],
+    ]);
+  });
+
+  it('answers empty without an X account, and through answerRead with the access checks', async () => {
+    await upsertItems(ME, [reply(1, { replyTo: 'ada' })], 'archive');
+    await expect(
+      answerRead({ type: READ, what: 'replies', deviceId: DEVICE, filter: ALL, offset: 0 }),
+    ).resolves.toMatchObject({ ok: true, what: 'replies', page: { matching: 1 } });
+    await db.accounts.clear();
+    await expect(readReplies(ALL, 0)).resolves.toEqual({
+      handle: '',
+      total: 0,
+      matching: 0,
+      items: [],
+      next: null,
+      people: [],
+    });
   });
 });
 

@@ -4,6 +4,18 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Added
+
+- **Your replies on xomoni.com** (#256), in the browser where Xomoni runs. Needs Xomoni 0.5.0 or newer.
+  - Find your replies by date, at most a number of likes, who you replied to and words, with or without your own threads.
+  - See who you reply to most, and pick someone to see only your replies to them.
+  - Pick replies and press *Review and remove in Xomoni*: Xomoni opens its Cleanup page with only those, and removes nothing until you confirm there.
+  - Xomoni now keeps who each reply answers, from X and from your archive.
+
+### Fixed
+
+- Cleanup on xomoni.com says that X began in 2006 when a date is earlier, instead of asking Xomoni for a plan it refuses.
+
 ## [0.4.0] - 2026-11-20
 
 Install this version to use the Library, Watch, Account health, Settings and Cleanup places on xomoni.com. Xomoni 0.3.0 can’t answer them, and the site says so.

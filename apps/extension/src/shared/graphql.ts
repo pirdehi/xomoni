@@ -2,6 +2,7 @@
 // traffic. The walker is deliberately schema-agnostic: X reshuffles timeline
 // payloads often, but tweets are always reachable through `tweet_results`.
 import { type JsonObject, asArray, asId, asNumber, asObject, asPostId, asString, at } from './json';
+import { isHandle } from './ids';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
 
@@ -18,6 +19,8 @@ export interface ParsedTweet {
   text: string;
   inReplyToId: string | null;
   inReplyToUserId: string | null;
+  /** The handle of the author it answers (`in_reply_to_screen_name`), or null. */
+  inReplyToHandle: string | null;
   likes: number;
   reposts: number;
   replies: number;
@@ -119,6 +122,7 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
     text: asString(at(t, 'note_tweet', 'note_tweet_results', 'result', 'text')) ?? asString(legacy.full_text) ?? '',
     inReplyToId: asPostId(legacy.in_reply_to_status_id_str) ?? null,
     inReplyToUserId: asId(legacy.in_reply_to_user_id_str) ?? null,
+    inReplyToHandle: handleOf(legacy.in_reply_to_screen_name),
     likes: asNumber(legacy.favorite_count) ?? 0,
     reposts: asNumber(legacy.retweet_count) ?? 0,
     replies: asNumber(legacy.reply_count) ?? 0,
@@ -130,6 +134,11 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
     source: sourceResult ? parseTweet(sourceResult, null) : null,
     sortIndex,
   };
+}
+
+/** A handle X sent, or null when it isn't one. */
+function handleOf(value: unknown): string | null {
+  return typeof value === 'string' && isHandle(value) ? value : null;
 }
 
 /** X's view count, sent as a string of digits (sometimes a number); null when absent or malformed. */
@@ -282,6 +291,7 @@ export function draftsFromTimeline(
       text: t.text,
       author: t.authorHandle,
       inReplyToId: t.inReplyToId,
+      ...(t.inReplyToId && t.inReplyToHandle && { replyTo: t.inReplyToHandle }),
       selfReply: !!t.inReplyToId && t.inReplyToUserId === viewerId,
       likes: t.likes,
       reposts: t.reposts,

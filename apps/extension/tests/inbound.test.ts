@@ -57,6 +57,21 @@ describe('messages from the content script, checked before the service worker st
     expect(plain?.type === 'ingest' && plain.drafts[0]).not.toHaveProperty('views');
   });
 
+  it('keeps whom a reply answers when it is a handle, on replies only (#256)', () => {
+    const answered = { ...draft, replyTo: 'Ada_L' };
+    const message = parseRuntimeMessage({ ...ingest, drafts: [answered] }, NOW);
+    expect(message?.type === 'ingest' && message.drafts[0]?.replyTo).toBe('Ada_L');
+    for (const bad of [
+      { replyTo: '@ada' },
+      { replyTo: '' },
+      { replyTo: 'x'.repeat(16) },
+      { replyTo: 7 },
+      { kind: 'post', replyTo: 'ada' },
+    ]) {
+      expect(parseRuntimeMessage({ ...ingest, drafts: [{ ...draft, ...bad }] }, NOW), JSON.stringify(bad)).toBeNull();
+    }
+  });
+
   it('passes well-formed messages through as copies', () => {
     expect(parseRuntimeMessage(ingest, NOW)).toEqual(ingest);
     expect(parseRuntimeMessage({ type: 'profile', profile }, NOW)).toEqual({ type: 'profile', profile });

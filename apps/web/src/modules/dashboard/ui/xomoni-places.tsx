@@ -63,10 +63,10 @@ const LEVEL_LABEL = ['Normal', 'Caution', 'Retreat', 'Defensive', 'Full stop'];
 const LEVEL_COLOR = ['success', 'warning', 'warning', 'danger', 'danger'] as const;
 
 /** A post on X, by its id (digits only, checked by the bridge). */
-const postUrl = (id: string) => `https://x.com/i/status/${id}`;
+export const postUrl = (id: string) => `https://x.com/i/status/${id}`;
 
 /** The day of an epoch-ms time, as "Nov 20, 2026". */
-function formatDate(ms: number): string {
+export function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 

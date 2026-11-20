@@ -45,6 +45,15 @@ export const DEFAULT_PLAN_FORM: PlanForm = {
 
 const DAY_TEXT = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * The earliest day a plan or filter may name. X began in 2006, and Xomoni refuses dates before it; a day later than
+ * 2006-01-01, so the start of the day is in 2006 in every time zone.
+ */
+export const FIRST_DAY = '2006-01-02';
+
+/** What the form says for a day before `FIRST_DAY`. */
+export const TOO_EARLY = 'X began in 2006: pick a day from then on.';
+
 /** The query parameters the answers use, beside the dashboard's scope. */
 export const PLAN_KEYS: readonly string[] = ['what', 'older', 'before', 'from', 'likes', 'keep', 'threads'];
 
@@ -112,8 +121,10 @@ export function toPlan(form: PlanForm, now: number): { plan: CleanupPlan } | { p
     form.age === 'custom' ? localDay(form.before) : daysAgo(PLAN_AGES.find((a) => a.id === form.age)?.days ?? 365, now);
   if (before === null) return { problem: 'Pick the date to remove everything before.' };
   if (before > now) return { problem: 'The date must be today or earlier.' };
+  if (form.age === 'custom' && form.before < FIRST_DAY) return { problem: TOO_EARLY };
   const after = form.from ? localDay(form.from) : null;
   if (form.from && after === null) return { problem: 'Pick the start date, or leave it empty.' };
+  if (form.from && form.from < FIRST_DAY) return { problem: TOO_EARLY };
   if (after !== null && after >= before) return { problem: 'The start date must be before the end date.' };
   const likes = form.likes.trim() ? Number(form.likes) : null;
   if (likes !== null && (!Number.isInteger(likes) || likes < 1 || likes > 1_000_000))

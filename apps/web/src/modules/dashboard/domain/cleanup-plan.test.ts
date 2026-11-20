@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PLAN_FORM,
+  FIRST_DAY,
   type PlanForm,
+  TOO_EARLY,
   daysFor,
   keepWords,
   localDay,
@@ -78,6 +80,10 @@ describe('toPlan (#235)', () => {
     expect(problem({ age: 'custom', before: '2026-02-30' })).toBe('Pick the date to remove everything before.');
     expect(problem({ age: 'custom', before: '2027-01-01' })).toBe('The date must be today or earlier.');
     expect(problem({ from: '2026-13-01' })).toBe('Pick the start date, or leave it empty.');
+    // Xomoni refuses dates before X began: the form says so instead of handing it a plan it would refuse.
+    expect(problem({ age: 'custom', before: '2005-12-31' })).toBe(TOO_EARLY);
+    expect(problem({ from: '2006-01-01' })).toBe(TOO_EARLY);
+    expect(problem({ from: FIRST_DAY })).toBeNull();
     expect(problem({ age: 'custom', before: '2020-01-01', from: '2020-01-01' })).toBe(
       'The start date must be before the end date.',
     );

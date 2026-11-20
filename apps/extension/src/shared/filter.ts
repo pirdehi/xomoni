@@ -29,6 +29,8 @@ export function parseIdList(raw: string): string[] {
 /** Whether an item should be removed under the filter (false = keep it). */
 export function matchesFilter(filter: CleanupFilter, item: Item): boolean {
   if (item.kind !== filter.target || item.status !== 'present') return false;
+  // Picked on xomoni.com (#256): only those, and still only while every other rule allows.
+  if (filter.onlyIds && !filter.onlyIds.includes(item.id)) return false;
   const t = effectiveTime(item);
   if (!t || t >= filter.before) return false;
   if (filter.after != null && t < filter.after) return false;

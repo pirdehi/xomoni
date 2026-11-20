@@ -84,7 +84,7 @@ function draft(value: unknown, now: number): ItemDraft | null {
   if ((inReplyToId !== null && !isId(inReplyToId)) || typeof selfReply !== 'boolean') return null;
   if (!isCount(likes) || !isCount(reposts) || !isCount(replies)) return null;
   // X's other counts for own posts (#249): each optional, and a count when present.
-  const extra: Pick<ItemDraft, 'quotes' | 'bookmarks' | 'views' | 'quote'> = {};
+  const extra: Pick<ItemDraft, 'quotes' | 'bookmarks' | 'views' | 'quote' | 'replyTo'> = {};
   for (const name of ['quotes', 'bookmarks', 'views'] as const) {
     const value = d[name];
     if (value === undefined) continue;
@@ -94,6 +94,11 @@ function draft(value: unknown, now: number): ItemDraft | null {
   if (d.quote !== undefined) {
     if (typeof d.quote !== 'boolean') return null;
     extra.quote = d.quote;
+  }
+  // Whom a reply answers (#256): a handle, on replies only.
+  if (d.replyTo !== undefined) {
+    if (kind !== 'reply' || typeof d.replyTo !== 'string' || !isHandle(d.replyTo)) return null;
+    extra.replyTo = d.replyTo;
   }
   return {
     kind: kind as ItemKind,

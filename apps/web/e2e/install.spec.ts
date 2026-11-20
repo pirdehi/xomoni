@@ -245,3 +245,73 @@ test.describe('the install guide (#299)', () => {
     });
   });
 });
+
+test.describe('the install questions (#306)', () => {
+  test('a step’s Trouble link scrolls to its answer, clear of the header, and the guide keeps its step', async ({
+    page,
+  }) => {
+    await page.goto('/install');
+    const steps = page.getByRole('region', { name: 'Install steps' });
+    for (let i = 0; i < 3; i++) await steps.getByRole('button', { name: 'Next' }).click();
+    await expect(steps.getByText('Step 4 of 5')).toBeVisible();
+
+    await steps.getByRole('link', { name: 'Where is Developer mode?' }).click();
+    await expect(page).toHaveURL(/\/install#developer-mode$/);
+    const answer = page.locator('#developer-mode');
+    await expect(answer.getByRole('heading', { level: 3, name: 'Where is Developer mode?' })).toBeInViewport();
+    // Scrolled up to it, and not under the sticky header (64 px).
+    await expect.poll(async () => (await answer.boundingBox())!.y).toBeLessThanOrEqual(120);
+    expect((await answer.boundingBox())!.y).toBeGreaterThanOrEqual(64);
+    await expect(steps.getByText('Step 4 of 5')).toBeAttached();
+  });
+
+  test('every question is listed at the top and leads to its own answer', async ({ page }) => {
+    await page.goto('/install');
+    const help = page.getByRole('region', { name: 'Install help' });
+    await expect(help.getByRole('heading', { level: 2, name: 'Install help' })).toBeVisible();
+    const links = help.getByRole('navigation', { name: 'Install questions' }).getByRole('link');
+    await expect(links).toHaveCount(9);
+    for (const link of await links.all()) {
+      const href = await link.getAttribute('href');
+      expect(href).toMatch(/^#[a-z]+(?:-[a-z]+)*$/);
+      await expect(help.locator(href!).getByRole('heading', { level: 3 })).toHaveText((await link.textContent())!);
+    }
+    await expect(help.locator('#ask').getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/pirdehi/xomoni/issues',
+    );
+  });
+
+  test.describe('in Edge on Windows', () => {
+    test.use({ userAgent: EDGE_WINDOWS });
+
+    test('Developer mode marks Edge’s line, and updating names Edge’s extensions page', async ({ page }) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(Navigator.prototype, 'userAgentData', {
+          configurable: true,
+          get: () => ({ brands: [{ brand: 'Microsoft Edge', version: '131' }], platform: 'Windows', mobile: false }),
+        });
+      });
+      await page.goto('/install');
+      const help = page.getByRole('region', { name: 'Install help' });
+      const marked = help.locator('#developer-mode').getByRole('listitem').filter({ hasText: 'Your browser' });
+      await expect(marked).toHaveCount(1);
+      await expect(marked).toContainText('edge://extensions, in the panel on the left.');
+      await expect(help.locator('#update')).toContainText('Open edge://extensions and press the reload button');
+    });
+  });
+
+  test.describe('on a phone', () => {
+    test.use({ userAgent: IPHONE, viewport: { width: 390, height: 844 } });
+
+    test('the questions stay, the one about phones marked, with nothing wider than the phone', async ({ page }) => {
+      await page.goto('/install');
+      await expect(page.getByRole('region', { name: 'Xomoni runs on a computer' })).toBeVisible();
+      const browsers = page.getByRole('region', { name: 'Install help' }).locator('#browsers');
+      await expect(browsers.getByText('Your device')).toBeVisible();
+      await expect(browsers).toContainText('neither can phones or tablets');
+      await browsers.scrollIntoViewIfNeeded();
+      expect(await overflow(page)).toBeLessThanOrEqual(0);
+    });
+  });
+});

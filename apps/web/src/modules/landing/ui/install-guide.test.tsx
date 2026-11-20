@@ -265,6 +265,45 @@ describe('InstallGuide for each browser and computer (#299)', () => {
   });
 });
 
+describe('InstallGuide’s way to the install questions (#306)', () => {
+  /** The links in the step shown now that lead to an answer further down the page. */
+  const answerLinks = () =>
+    within(guide())
+      .queryAllByRole('link')
+      .filter((link) => link.getAttribute('href')?.startsWith('#'));
+
+  it('links unzipping, adding and following it here to their answers, and no step before them', async () => {
+    const user = userEvent.setup();
+    render(<Guide />);
+    const seen: string[][] = [];
+    for (let i = 0; i < 5; i++) {
+      seen.push(answerLinks().map((link) => link.getAttribute('href') ?? ''));
+      if (i < 4) await user.click(screen.getByRole('button', { name: 'Next' }));
+    }
+
+    expect(seen).toEqual([
+      [],
+      [],
+      ['#wrong-folder', '#turned-off'],
+      ['#developer-mode', '#wrong-folder', '#developer-mode-warning'],
+      ['#not-recognized'],
+    ]);
+    expect(within(guide()).getByRole('link', { name: 'Why doesn’t xomoni.com see Xomoni yet?' })).toBeInTheDocument();
+  });
+
+  it('names each answer by its question in the add step', async () => {
+    const user = userEvent.setup();
+    render(<Guide />);
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(answerLinks().map((link) => link.textContent)).toEqual([
+      'Where is Developer mode?',
+      'Which folder do I add?',
+      'Why does the browser warn about developer mode?',
+    ]);
+  });
+});
+
 describe('CopyText (#299)', () => {
   it('copies the address and says so', async () => {
     const writeText = vi.fn(() => Promise.resolve());

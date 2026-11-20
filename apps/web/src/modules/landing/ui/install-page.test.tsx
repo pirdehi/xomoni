@@ -54,6 +54,7 @@ afterEach(() => {
 
 const where = () => screen.getByRole('region', { name: 'Where you are' });
 const guide = () => screen.getByRole('region', { name: 'Install steps' });
+const help = () => screen.getByRole('region', { name: 'Install help' });
 
 describe('InstallPage (#44)', () => {
   it('downloads the latest release and links every version with its checksums', () => {
@@ -67,16 +68,28 @@ describe('InstallPage (#44)', () => {
     expect(screen.getByText(/with a SHA-256 checksum/)).toBeInTheDocument();
   });
 
-  it('says how to update without losing data, on the browser’s own extensions page', () => {
+  it('ends with the install questions, how to update among them, on the browser’s own extensions page (#306)', () => {
     Object.defineProperty(window.navigator, 'userAgentData', {
       value: { brands: [{ brand: 'Microsoft Edge', version: '131' }], platform: 'Windows', mobile: false },
       configurable: true,
     });
     render(<InstallPage />);
 
-    const update = screen.getByText(/replace the folder’s contents/);
-    expect(update).toHaveTextContent('Your data stays.');
-    expect(update).toHaveTextContent('edge://extensions');
+    expect(guide().compareDocumentPosition(help()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(help()).getByRole('heading', { level: 3, name: 'How do I update Xomoni?' })).toBeInTheDocument();
+    const update = help().querySelector('#update');
+    expect(update).toHaveTextContent('Open edge://extensions and press the reload button on Xomoni’s card.');
+    expect(update).toHaveTextContent('Your data stays');
+  });
+
+  it('leads from a step to its answer on the same page (#306)', () => {
+    render(<InstallPage />);
+
+    for (let i = 0; i < 3; i++) fireEvent.click(within(guide()).getByRole('button', { name: 'Next' }));
+    const link = within(guide()).getByRole('link', { name: 'Where is Developer mode?' });
+    const target = document.getElementById(link.getAttribute('href')!.slice(1));
+    expect(help()).toContainElement(target);
+    expect(within(target!).getByRole('heading', { level: 3 })).toHaveTextContent('Where is Developer mode?');
   });
 
   it('sits between the site header and footer', () => {
@@ -141,5 +154,8 @@ describe('InstallPage on a phone (#299)', () => {
     expect(screen.queryByRole('link', { name: 'All versions and checksums' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Install steps' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Where you are' })).not.toBeInTheDocument();
+    // The questions stay, with the one about phones marked, and no way to download among them.
+    expect(within(help()).getByText('Your device')).toBeInTheDocument();
+    expect(within(help()).queryByRole('link', { name: /download/i })).not.toBeInTheDocument();
   });
 });

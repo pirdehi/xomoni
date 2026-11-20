@@ -13,6 +13,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - One step at a time, with a progress bar, or all steps at once. The guide moves on to unzipping when the download starts, and to the last step when Xomoni shows up.
   - On a phone, the page says Xomoni runs on a computer and offers nothing to install.
   - Once Xomoni is installed, /welcome says how to pin it to the toolbar.
+- **Install help** (#306), at the end of xomoni.com/install: short answers to what goes wrong when installing from the zip, each with its own link, such as xomoni.com/install#developer-mode.
+  - Where *Developer mode* is in Chrome, Edge and Brave; which folder to add (the one that holds `manifest.json`, unzipped first); why Xomoni disappeared or is turned off (its folder was moved or deleted); the browser's warning about developer mode; how to update today, and that one-click updates and the stores are coming; why xomoni.com doesn't see Xomoni yet; Firefox, Safari and phones; where your data is, and exporting it before removing Xomoni; where to ask.
+  - The steps link to the answers they need under *Trouble?*, and the guide stays on your step. Your browser's line, or your phone, is marked.
+  - *How do I update Xomoni?* replaces the short update note at the end of the page.
 
 - **Move your data to a new Xomoni** (#300). A Xomoni with another id, such as the coming Chrome Web Store version, starts empty, because Chrome keeps each extension's data apart.
   - In the Xomoni you're leaving, *Settings › Move your data › Export everything* saves one file in Downloads. It holds your accounts, posts, replies, reposts and likes, jobs, the activity log, daily numbers, replies to you, settings and Watch, plus what keeps Xomoni within X's limits and the risk ladder's warnings.

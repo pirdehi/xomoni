@@ -18,6 +18,42 @@ if (typeof CSSStyleSheet !== 'undefined') CSSStyleSheet.prototype.insertRule = (
 // animations, as it does in browsers without the API (ADR-0019).
 if (typeof Element !== 'undefined') Reflect.deleteProperty(Element.prototype, 'animate');
 
+// Each test file gets its own Web Locks (#271). Node's `navigator.locks` is shared by the whole process, so a runner in
+// one file holding `xomoni-runner` made another file's sign-out wait for it, up to 30 s on a busy machine. These are
+// exclusive locks with `ifAvailable` and waiting in order, which is all the extension asks of them.
+class FileLocks {
+  private readonly held = new Set<string>();
+  private readonly waiting = new Map<string, (() => void)[]>();
+
+  async request<T>(
+    name: string,
+    ...args: [(lock: Lock | null) => Promise<T>] | [LockOptions, (lock: Lock | null) => Promise<T>]
+  ): Promise<T> {
+    const [options, callback] = args.length === 1 ? [{} as LockOptions, args[0]] : args;
+    if (this.held.has(name)) {
+      if (options.ifAvailable) return callback(null);
+      // Handed over by the holder's release below, still marked held.
+      await new Promise<void>((resolve) => this.waiting.set(name, [...(this.waiting.get(name) ?? []), resolve]));
+    } else this.held.add(name);
+    try {
+      return await callback({ name, mode: options.mode ?? 'exclusive' });
+    } finally {
+      const next = this.waiting.get(name)?.shift();
+      if (next) next();
+      else this.held.delete(name);
+    }
+  }
+
+  query(): Promise<LockManagerSnapshot> {
+    return Promise.resolve({
+      held: [...this.held].map((name) => ({ name, mode: 'exclusive' as const })),
+      pending: [...this.waiting].flatMap(([name, queue]) => queue.map(() => ({ name, mode: 'exclusive' as const }))),
+    });
+  }
+}
+if (typeof navigator !== 'undefined')
+  Object.defineProperty(navigator, 'locks', { value: new FileLocks(), configurable: true });
+
 afterEach(async () => {
   if (typeof document === 'undefined') return;
   const { cleanup } = await import('@testing-library/react');

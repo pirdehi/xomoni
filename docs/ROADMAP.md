@@ -247,7 +247,7 @@ xomoni.com becomes the place to see and manage the X account: every place of the
 | ✅ | The extension's actions from the website, and the dialog when Xomoni isn't there | [#251](https://github.com/pirdehi/xomoni/issues/251) | [#263](https://github.com/pirdehi/xomoni/pull/263), [#264](https://github.com/pirdehi/xomoni/pull/264) |
 | ✅ | Daily numbers in the extension, from what X already sends | [#249](https://github.com/pirdehi/xomoni/issues/249) | [#265](https://github.com/pirdehi/xomoni/pull/265) |
 | ✅ | Daily numbers on xomoni.com, by the person's choice | [#250](https://github.com/pirdehi/xomoni/issues/250) | [#266](https://github.com/pirdehi/xomoni/pull/266), [#268](https://github.com/pirdehi/xomoni/pull/268) |
-| ⬜ | Release 0.3.0: everything since 0.2.1, actions from the website and daily numbers | [#260](https://github.com/pirdehi/xomoni/issues/260) | |
+| ⏸ | Release 0.3.0: everything since 0.2.1, actions from the website and daily numbers | [#260](https://github.com/pirdehi/xomoni/issues/260) | [#269](https://github.com/pirdehi/xomoni/pull/269), waits for the maintainer's go |
 | ⬜ | Overview | [#252](https://github.com/pirdehi/xomoni/issues/252) | |
 | ⬜ | Audience | [#253](https://github.com/pirdehi/xomoni/issues/253) | |
 | ⬜ | Content | [#254](https://github.com/pirdehi/xomoni/issues/254) | |

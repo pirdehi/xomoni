@@ -6,6 +6,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Signing up keeps where you were going** (#244): create an account from a page that asked you to, such as connecting Xomoni, and the confirmation email brings you back to it instead of the dashboard.
 - **xomoni.com on a phone has a menu** (#242): *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, one tap away, and it works with the keyboard. On a computer, *Install* is always in the header.
 - **A full footer**: Install, What's new, Risks, Privacy, Terms, Security, Support and GitHub.
 

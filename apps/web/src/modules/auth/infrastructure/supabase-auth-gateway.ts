@@ -81,12 +81,14 @@ export function createSupabaseAuthGateway(supabase: SupabaseClient<Database>): A
       return done(await supabase.auth.exchangeCodeForSession(code));
     },
 
-    async signUp({ email, password, name, captchaToken, emailRedirectTo }) {
+    async signUp({ email, password, name, captchaToken, emailRedirectTo, next }) {
+      // `next` rides in the account's metadata, where the confirmation template reads it as `{{ .Data.next }}` (#244):
+      // a template value can't start the link, or Supabase's html/template refuses it as ambiguous.
       return done(
         await supabase.auth.signUp({
           email,
           password,
-          options: { captchaToken, emailRedirectTo, data: name ? { full_name: name } : {} },
+          options: { captchaToken, emailRedirectTo, data: { ...(name && { full_name: name }), next } },
         }),
       );
     },

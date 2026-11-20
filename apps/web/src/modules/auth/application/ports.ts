@@ -20,13 +20,17 @@ export interface AuthGateway {
   startOAuth(provider: OAuthProvider, redirectTo: string): Promise<{ ok: true; url: string } | AuthFailure>;
   /** Trades a one-time OAuth code for a session cookie. */
   exchangeCode(code: string): Promise<AuthResult>;
-  /** Creates an account and emails a confirmation link. Must not reveal whether the email is taken. */
+  /**
+   * Creates an account and emails a confirmation link, which returns to `next`, a same-site path (#244). Must not
+   * reveal whether the email is taken.
+   */
   signUp(input: {
     email: string;
     password: string;
     name?: string;
     captchaToken?: string;
     emailRedirectTo: string;
+    next: string;
   }): Promise<AuthResult>;
   /** Signs in with email and password. */
   signInWithPassword(input: { email: string; password: string; captchaToken?: string }): Promise<AuthResult>;

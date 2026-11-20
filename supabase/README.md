@@ -23,6 +23,8 @@ supabase stop
 
 Templates are Go templates rendered by Supabase Auth. Action links point to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…&next=…`; the website verifies the token only when the person clicks ([ADR-0011](../docs/adr/0011-email-and-password-sign-in.md)). Locally every email lands in Mailpit (http://127.0.0.1:54324); in production they go through Resend from `no-reply@xomoni.com`.
 
+The sign-up confirmation returns to where the person was going (#244): the website keeps the same-site path in the account's metadata at sign-up, and the template writes it as `next={{ with .Data.next }}{{ . }}{{ else }}/dashboard{{ end }}`. A template value can't start a link: Supabase renders with Go's `html/template`, which refuses a token after an unknown URL prefix as ambiguous, and sign-up then fails. So test a template change locally (`supabase stop && supabase start`, then the auth e2e tests) before `supabase config push`.
+
 ## Secrets and the `SUPABASE_` prefix
 
 The CLI maps any environment variable named `SUPABASE_<SECTION>_<KEY>` onto `config.toml`, locally as well as on push. Production-only secrets therefore use other names (`TURNSTILE_SECRET_KEY`, `RESEND_SMTP_API_KEY`) and are referenced only from `[remotes.production]`, so the local stack keeps Cloudflare's always-pass test secret and Mailpit.

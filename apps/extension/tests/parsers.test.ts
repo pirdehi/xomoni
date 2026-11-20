@@ -11,6 +11,7 @@ import {
   extractErrors,
   extractProfile,
   extractTweets,
+  incomingFromTimeline,
   opName,
   parseTweet,
   parseVariables,
@@ -204,6 +205,25 @@ describe('graphql parsing', () => {
       ['post', undefined],
     ]);
     expect(drafts[1]).not.toHaveProperty('replyTo');
+  });
+
+  it('picks the replies others wrote to the viewer, never the viewer’s own, others’ threads or reposts (ADR-0030)', () => {
+    const parsed = [
+      tweet('10', { user: '7', handle: 'bob', replyTo: '1', replyToUser: ME, text: 'nice one' }),
+      tweet('11', { replyTo: '10', replyToUser: '7' }),
+      tweet('12', { user: '8', handle: 'carol', replyTo: '99', replyToUser: '8' }),
+      tweet('13', { user: '9', handle: 'not a handle', replyTo: '1', replyToUser: ME }),
+      tweet('14', { user: '7', handle: 'bob', replyTo: '1', replyToUser: ME, rt: tweet('15', { user: '3' }) }),
+      tweet('16', { user: '', handle: 'ghost', replyTo: '1', replyToUser: ME }),
+    ].map((t) => parseTweet(t, null));
+    const tweets = parsed.filter((t) => t !== null);
+    expect(incomingFromTimeline('TweetDetail', tweets, ME)).toEqual([
+      { id: '10', author: 'bob', text: 'nice one', createdAt: Date.UTC(2018, 9, 10, 20, 19, 24), toId: '1' },
+    ]);
+    // A post without a time is left out, and the Likes timeline is about what the viewer liked.
+    const timeless = tweets.map((t) => (t.id === '10' ? { ...t, createdAt: 0 } : t));
+    expect(incomingFromTimeline('TweetDetail', timeless, ME)).toEqual([]);
+    expect(incomingFromTimeline('Likes', tweets, ME)).toEqual([]);
   });
 
   it('records likes only from the viewer’s own Likes timeline, with checked like times', () => {

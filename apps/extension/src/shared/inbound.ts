@@ -6,7 +6,7 @@ import type { ParsedProfile } from './graphql';
 import { isHandle, isXId } from './ids';
 import { asObject } from './json';
 import type { RuntimeMessage } from './messages';
-import type { ItemDraft, ItemKind, RateObservation } from './types';
+import type { IncomingDraft, ItemDraft, ItemKind, RateObservation } from './types';
 import { capReset } from './x-limits';
 import { TIMELINE_OPS, WATCHED_OPS, X_ORIGIN } from './x-operations';
 
@@ -131,6 +131,29 @@ function ingest(m: Record<string, unknown>, now: number): RuntimeMessage | null 
   return { type: 'ingest', accountId, handle, op, drafts: copies, observedAt };
 }
 
+/** A copy of one reply to the viewer (ADR-0030), or null when any field is out of shape. */
+function incomingReply(value: unknown, now: number): IncomingDraft | null {
+  const r = asObject(value);
+  if (!r) return null;
+  const { id, author, text, createdAt, toId } = r;
+  if (!isId(id) || !isId(toId) || typeof author !== 'string' || !isHandle(author)) return null;
+  if (!isText(text, MAX_TEXT) || !isTime(createdAt, now)) return null;
+  return { id, author, text, createdAt, toId };
+}
+
+function incoming(m: Record<string, unknown>, now: number): RuntimeMessage | null {
+  const { accountId, replies, observedAt } = m;
+  if (!isId(accountId) || !isTime(observedAt, now)) return null;
+  if (!Array.isArray(replies) || !replies.length || replies.length > MAX_DRAFTS) return null;
+  const copies: IncomingDraft[] = [];
+  for (const value of replies as unknown[]) {
+    const copy = incomingReply(value, now);
+    if (!copy) return null;
+    copies.push(copy);
+  }
+  return { type: 'incoming', accountId, replies: copies, observedAt };
+}
+
 function profile(m: Record<string, unknown>, now: number): RuntimeMessage | null {
   const p = asObject(m.profile);
   if (!p) return null;
@@ -182,6 +205,8 @@ export function parseRuntimeMessage(message: unknown, now = Date.now()): Runtime
       return profile(m, now);
     case 'rate':
       return rate(m, now);
+    case 'incoming':
+      return incoming(m, now);
     default:
       return null;
   }

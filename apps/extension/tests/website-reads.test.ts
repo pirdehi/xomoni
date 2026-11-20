@@ -2,7 +2,9 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { READ, type RepliesFilter } from '@xomoni/bridge';
 import { type CloudConnection, saveConnection } from '../src/cloud/connection';
-import { answerRead, readHealth, readLibrary, readReplies, readWatch } from '../src/cloud/website-reads';
+import { answerRead, readHealth, readIncoming, readLibrary, readReplies, readWatch } from '../src/cloud/website-reads';
+import { localDay } from '../src/shared/daily';
+import { saveIncoming } from '../src/shared/incoming';
 import { db, kvSet, recordRisk, saveWatchResult, saveWatchTabs, upsertAccount, upsertItems } from '../src/shared/db';
 import { markSignedOut } from '../src/shared/session';
 import type { ItemDraft } from '../src/shared/types';
@@ -179,6 +181,65 @@ describe('readReplies (#256)', () => {
       next: null,
       people: [],
     });
+  });
+});
+
+describe('readIncoming: replies to you (ADR-0030)', () => {
+  const NOW = Date.parse('2026-11-20T12:00:00Z');
+  const DAY = 86_400_000;
+  const reply = (n: number, author: string, at: number, text = `reply ${n}`) => ({
+    id: String(5000 + n),
+    author,
+    text,
+    createdAt: at,
+    toId: '42',
+  });
+
+  it('counts each day and each person, newest first, and pages what matches', async () => {
+    await saveIncoming(
+      ME,
+      [
+        reply(1, 'Bob', NOW - 2 * DAY, 'Thanks!'),
+        reply(2, 'bob', NOW - DAY),
+        reply(3, 'carol', NOW - DAY - 1000),
+        ...Array.from({ length: 101 }, (_, i) => reply(10 + i, 'dave', NOW - 3 * DAY - i * 1000)),
+      ],
+      NOW,
+    );
+    const page = await readIncoming('', '', 0, NOW);
+    expect(page).toMatchObject({ handle: 'me', total: 104, matching: 104, next: 100 });
+    expect(page.since).toBe(NOW - 3 * DAY - 100_000);
+    expect(page.perDay).toEqual([
+      { day: localDay(NOW - 3 * DAY - 100_000), replies: 101 },
+      { day: localDay(NOW - 2 * DAY), replies: 1 },
+      { day: localDay(NOW - DAY), replies: 2 },
+    ]);
+    expect(page.people).toEqual([
+      { handle: 'dave', replies: 101 },
+      { handle: 'bob', replies: 2 },
+      { handle: 'carol', replies: 1 },
+    ]);
+    expect(page.items[0]).toEqual({ id: '5002', author: 'bob', text: 'reply 2', createdAt: NOW - DAY, toId: '42' });
+
+    expect((await readIncoming('BOB', '', 0, NOW)).items.map((r) => r.id)).toEqual(['5002', '5001']);
+    expect((await readIncoming('', ' thanks ', 0, NOW)).items.map((r) => r.id)).toEqual(['5001']);
+    expect((await readIncoming('', '', 100, NOW)).items).toHaveLength(4);
+  });
+
+  it('leaves out what is past the 90 days even before it is dropped, and answers through answerRead', async () => {
+    await saveIncoming(ME, [reply(1, 'bob', NOW - 89 * DAY)], NOW);
+    expect((await readIncoming('', '', 0, NOW)).total).toBe(1);
+    expect(await readIncoming('', '', 0, NOW + 2 * DAY)).toMatchObject({
+      total: 0,
+      since: null,
+      perDay: [],
+      people: [],
+    });
+    await expect(
+      answerRead({ type: READ, what: 'incoming', deviceId: DEVICE, author: '', query: '', offset: 0 }),
+    ).resolves.toMatchObject({ ok: true, what: 'incoming', page: { handle: 'me' } });
+    await db.accounts.clear();
+    await expect(readIncoming('', '', 0, NOW)).resolves.toMatchObject({ handle: '', total: 0, items: [] });
   });
 });
 

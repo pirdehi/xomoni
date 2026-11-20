@@ -6,6 +6,7 @@ import {
   TIMELINE_OPS,
   draftsFromTimeline,
   extractProfile,
+  incomingFromTimeline,
   extractTweets,
   parseVariables,
   unavailableTweetIds,
@@ -188,9 +189,13 @@ export function handleCapture(raw: {
   if (ev.status >= 400 || !(json as { data?: unknown } | null)?.data) return;
 
   if (TIMELINE_OPS.has(ev.op)) {
-    const drafts = draftsFromTimeline(ev.op, extractTweets(json), viewerId, ev.variables);
+    const tweets = extractTweets(json);
+    const drafts = draftsFromTimeline(ev.op, tweets, viewerId, ev.variables);
     if (drafts.length)
       send({ type: 'ingest', accountId: viewerId, handle: viewerHandle(), op: ev.op, drafts, observedAt: ev.at });
+    // Replies others wrote to the viewer, from the same response: never a request of its own (ADR-0030).
+    const replies = incomingFromTimeline(ev.op, tweets, viewerId);
+    if (replies.length) send({ type: 'incoming', accountId: viewerId, replies, observedAt: ev.at });
   } else if (PROFILE_OPS.has(ev.op)) {
     const profile = extractProfile(json);
     if (profile?.id === viewerId) send({ type: 'profile', profile });

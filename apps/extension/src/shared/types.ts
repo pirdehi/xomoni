@@ -64,6 +64,30 @@ export interface Item {
   lastJobId: string | null;
 }
 
+/**
+ * A reply someone else wrote to one of the person's posts, as X showed it (#256, ADR-0030). Kept at most 90 days and
+ * 5,000 per account, never in a backup, and never acted on: no hiding, blocking, muting or reporting.
+ */
+export interface IncomingReply {
+  /** `${accountId}:${id}` */
+  key: string;
+  /** The person's X account whose post it answers. */
+  accountId: string;
+  /** The reply's post id. */
+  id: string;
+  /** Its author's handle, without `@`. */
+  author: string;
+  /** Its text, at most 1,000 characters. */
+  text: string;
+  /** When it was posted, epoch ms. */
+  createdAt: number;
+  /** The id of the person's post it answers. */
+  toId: string;
+}
+
+/** A reply to the person as read from X's response, before it is kept. */
+export type IncomingDraft = Omit<IncomingReply, 'key' | 'accountId'>;
+
 /** Item fields known at extraction time, before merging into the store. */
 export type ItemDraft = Pick<
   Item,

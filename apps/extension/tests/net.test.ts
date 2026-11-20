@@ -269,6 +269,30 @@ describe('handleCapture: what goes to the service worker', () => {
     ]);
   });
 
+  it('passes on the replies others wrote to the viewer from the same response, as their own message (ADR-0030)', () => {
+    const reply = tweetResult('3', '2000', 'bob');
+    Object.assign(reply.legacy, { in_reply_to_status_id_str: '1', in_reply_to_user_id_str: VIEWER });
+    const entries = [
+      { entryId: 'tweet-1', content: { itemContent: { tweet_results: { result: tweetResult('1', VIEWER, 'me') } } } },
+      { entryId: 'tweet-3', content: { itemContent: { tweet_results: { result: reply } } } },
+    ];
+    net.handleCapture(
+      timelineCapture({
+        op: 'TweetDetail',
+        url: 'https://x.com/i/api/graphql/q/TweetDetail',
+        body: JSON.stringify({ data: { threaded_conversation_with_injections_v2: { instructions: [{ entries }] } } }),
+      }),
+    );
+    const messages = sent() as { type: string }[];
+    expect(messages.map((m) => m.type)).toEqual(['ingest', 'incoming']);
+    expect(messages[1]).toEqual({
+      type: 'incoming',
+      accountId: VIEWER,
+      observedAt: NOW,
+      replies: [{ id: '3', author: 'bob', text: 'post 3', createdAt: Date.UTC(2026, 10, 1, 10), toId: '1' }],
+    });
+  });
+
   it('reports no limits when X sent none, or none that are numbers', () => {
     net.handleCapture(capture());
     net.handleCapture(capture({ headers: { 'x-rate-limit-limit': 'many', 'x-rate-limit-remaining': '' } }));

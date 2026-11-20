@@ -225,6 +225,28 @@ describe('CommentsPlace: your replies (#256)', () => {
     expect(await screen.findByText('None of your replies match.')).toBeInTheDocument();
   });
 
+  it('shows replies to you in the other tab, and keeps the filter and picks while it is open (ADR-0030)', async () => {
+    const { xomoni, read } = controls((request) =>
+      request.what === 'incoming'
+        ? {
+            ok: true,
+            what: 'incoming',
+            page: { handle: 'me', total: 0, since: null, perDay: [], people: [], matching: 0, items: [], next: null },
+          }
+        : { ok: true, what: 'replies', page: page() },
+    );
+    render(<CommentsPlace xomoni={xomoni} now={NOW} />);
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Pick your reply of Jan 1, 2025' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Words' }), 'rust');
+    // Fluent keeps a hidden copy of an unselected tab's label, to reserve its bold width.
+    await userEvent.click(screen.getByRole('tab', { name: /^Replies to you/ }));
+    expect(await screen.findByText(/^Xomoni hasn’t kept a reply to your posts yet\./)).toBeInTheDocument();
+    expect(read).toHaveBeenCalledWith({ what: 'incoming', author: '', query: '', offset: 0 });
+    await userEvent.click(screen.getByRole('tab', { name: /^Your replies/ }));
+    expect(screen.getByRole('textbox', { name: 'Words' })).toHaveValue('rust');
+    expect(screen.getByRole('status')).toHaveTextContent('1 reply picked');
+  });
+
   it('says to install the newest Xomoni when an older one can’t list replies', async () => {
     const { xomoni } = controls(() => ({ ok: false, reason: 'invalid' }));
     render(<CommentsPlace xomoni={xomoni} now={NOW} />);
@@ -236,7 +258,7 @@ describe('CommentsPlace: your replies (#256)', () => {
   it('says where your replies live when Xomoni isn’t in this browser, and reads nothing', () => {
     const { xomoni, read } = controls(undefined, { kind: 'not-installed' });
     render(<CommentsPlace xomoni={xomoni} now={NOW} />);
-    expect(screen.getByRole('region', { name: 'Your replies: in Xomoni' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Comments: in Xomoni' })).toBeInTheDocument();
     expect(read).not.toHaveBeenCalled();
   });
 });

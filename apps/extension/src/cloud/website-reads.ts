@@ -1,9 +1,12 @@
 // What xomoni.com may read of Xomoni's own data in this browser (ADR-0028, #233): the Library, account health,
-// Watch, the settings (ADR-0029), and the person's replies with whom each answers (#256). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
+// Watch, the settings (ADR-0029), the person's replies with whom each answers, and the replies others wrote to the
+// person, which Xomoni keeps for 90 days (ADR-0030) (#256). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
 // device this extension is connected as. The answers are X content: they go to that page in this browser and nowhere
 // else (ADR-0004).
 import {
   type AccountHealth,
+  type IncomingPage,
+  type IncomingReply as IncomingView,
   type LibraryItem,
   type LibraryKind,
   LIBRARY_KINDS,
@@ -19,7 +22,9 @@ import {
   type ReplyItem,
   type WatchTabView,
 } from '@xomoni/bridge';
+import { localDay } from '../shared/daily';
 import { db, kvGet, riskEvents, watchResults, watchTabsKey } from '../shared/db';
+import { incomingSince } from '../shared/incoming';
 import { assessRisk } from '../shared/risk';
 import type { Item } from '../shared/types';
 import { normalizeTabs } from '../shared/watch';
@@ -136,6 +141,65 @@ export async function readReplies(filter: RepliesFilter, offset: number): Promis
   return { handle: account.handle, total, matching, items, next, people: most };
 }
 
+/**
+ * The replies others wrote to the active account's posts that Xomoni kept (ADR-0030), newest first: how many each local
+ * day, who replies most, and a page of those by `author` (any case) holding `query`, from `offset`. One pass over at
+ * most `INCOMING_MAX` replies; replies older than the kept window are left out even before they are dropped.
+ */
+export async function readIncoming(
+  author: string,
+  query: string,
+  offset: number,
+  now = Date.now(),
+): Promise<IncomingPage> {
+  const empty: IncomingPage = {
+    handle: '',
+    total: 0,
+    since: null,
+    perDay: [],
+    people: [],
+    matching: 0,
+    items: [],
+    next: null,
+  };
+  const account = await activeAccount();
+  if (!account) return empty;
+  const who = author.toLowerCase();
+  const words = query.trim().toLowerCase();
+  const people = new Map<string, RepliedTo>();
+  const days = new Map<string, number>();
+  const items: IncomingView[] = [];
+  let total = 0;
+  let matching = 0;
+  let since: number | null = null;
+  await db.incoming
+    .where('[accountId+createdAt]')
+    .between([account.id, incomingSince(now)], [account.id, Infinity])
+    .reverse()
+    .each((reply) => {
+      total++;
+      since = reply.createdAt;
+      const day = localDay(reply.createdAt);
+      days.set(day, (days.get(day) ?? 0) + 1);
+      const key = reply.author.toLowerCase();
+      const person = people.get(key) ?? { handle: reply.author, replies: 0 };
+      person.replies++;
+      people.set(key, person);
+      if ((who && key !== who) || (words && !reply.text.toLowerCase().includes(words))) return;
+      if (matching >= offset && items.length < READ_PAGE) {
+        const { id, author: by, text, createdAt, toId } = reply;
+        items.push({ id, author: by, text: text.slice(0, MAX_READ_TEXT), createdAt, toId });
+      }
+      matching++;
+    });
+  const most = [...people.values()]
+    .sort((a, b) => b.replies - a.replies || a.handle.localeCompare(b.handle))
+    .slice(0, MAX_REPLIED_TO);
+  const perDay = [...days].map(([day, replies]) => ({ day, replies })).reverse();
+  const next = offset + items.length < matching ? offset + items.length : null;
+  return { handle: account.handle, total, since, perDay, people: most, matching, items, next };
+}
+
 /** Each known X account's health, as the risk ladder sees it at `now`. */
 export async function readHealth(now = Date.now()): Promise<AccountHealth[]> {
   const accounts = await db.accounts.orderBy('updatedAt').reverse().limit(50).toArray();
@@ -195,5 +259,7 @@ export async function answerRead(message: ReadMessage): Promise<ReadAnswer> {
       return { ok: true, what: 'cleanup', estimate: await estimatePlan(message.plan) };
     case 'replies':
       return { ok: true, what: 'replies', page: await readReplies(message.filter, message.offset) };
+    case 'incoming':
+      return { ok: true, what: 'incoming', page: await readIncoming(message.author, message.query, message.offset) };
   }
 }

@@ -5,6 +5,7 @@
 import type { XomoniPage } from '@xomoni/bridge';
 import { type ActionPorts, answerWebsite } from '../cloud/website';
 import { db, kvSet, recordProfileDay, upsertAccount, upsertItems } from '../shared/db';
+import { saveIncoming } from '../shared/incoming';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID } from '../shared/notify';
@@ -99,6 +100,10 @@ async function handle(message: RuntimeMessage) {
       await kvSet('activeAccount', message.accountId);
       break;
     }
+    case 'incoming':
+      // Only for an X account Xomoni knows, so its data goes when that account's data goes (ADR-0030).
+      if (await db.accounts.get(message.accountId)) await saveIncoming(message.accountId, message.replies);
+      break;
     case 'profile': {
       const { profile } = message;
       const at = Date.now();

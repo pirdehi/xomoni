@@ -380,6 +380,7 @@ The ladder is built from dated events per account (`apps/extension/src/shared/ri
 - Use proxies, rotate IPs, or run several accounts at the same time
 - Take or store passwords or session cookies
 - Continue after X has explicitly said "stop"
+- Hide, block, mute or report anyone, or act on other people's replies in any way ([ADR-0030](adr/0030-replies-to-you-kept-on-the-computer.md)): Xomoni only links them to X
 
 **Reason:** Each of these means entering an "arms race" with X's anti-bot system. That race always ends in X's favor, and the consequences for the user are heavier: lock, suspension and loss of the account. The right way to delete your own content is to work **slowly, transparently and obediently**.
 

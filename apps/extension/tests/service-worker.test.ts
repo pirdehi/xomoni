@@ -311,6 +311,19 @@ describe('service worker: observations from x.com tabs', () => {
     expect(await db.accounts.get(X_ME)).toMatchObject({ id: X_ME, handle: 'me' });
   });
 
+  it('keeps replies others wrote to an account Xomoni knows, and none for an unknown one (ADR-0030)', async () => {
+    const replies = [{ id: '222', author: 'bob', text: 'nice', createdAt: Date.now() - 60_000, toId: '111' }];
+    on.message!({ type: 'incoming', accountId: X_ME, replies, observedAt: Date.now() }, FROM_TAB);
+    await settle();
+    expect(await db.incoming.count()).toBe(0);
+
+    on.message!(ingest('me'), FROM_TAB);
+    await vi.waitFor(async () => expect(await db.accounts.get(X_ME)).toBeDefined());
+    on.message!({ type: 'incoming', accountId: X_ME, replies, observedAt: Date.now() }, FROM_TAB);
+    await vi.waitFor(async () => expect(await db.incoming.count()).toBe(1));
+    expect(await db.incoming.get(`${X_ME}:222`)).toMatchObject({ author: 'bob', toId: '111', accountId: X_ME });
+  });
+
   it('creates an account without a handle when the page showed none', async () => {
     on.message!(ingest(null), FROM_TAB);
 

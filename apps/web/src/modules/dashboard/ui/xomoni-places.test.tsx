@@ -106,6 +106,15 @@ describe('LibraryPlace (#233, ADR-0028)', () => {
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
   });
 
+  it('says to install the newest Xomoni when this one is older than the page (it answers invalid)', async () => {
+    const { xomoni } = controls(() => ({ ok: false, reason: 'invalid' }));
+    render(<LibraryPlace xomoni={xomoni} />);
+    expect(
+      await screen.findByText(/Your Xomoni is older than this page and can’t show this here yet/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Install the newest version' })).toHaveAttribute('href', '/install');
+  });
+
   it('reads nothing while Xomoni isn’t here, and says where the Library lives', () => {
     const { xomoni, read } = controls(() => null, { kind: 'not-installed' });
     render(<LibraryPlace xomoni={xomoni} />);

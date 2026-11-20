@@ -18,6 +18,8 @@ import { ArrowClockwise16Regular, Open12Regular, Search16Regular } from '@fluent
 import { LIBRARY_KINDS, type LibraryItem, type LibraryKind, type XomoniPage } from '@xomoni/bridge';
 import { type ReactNode, useEffect, useState } from 'react';
 import { OpenInXomoni, type XomoniControls, useXomoniRead } from '@/modules/extension/ui/xomoni-actions';
+import { TextLink } from '@/shared/ui/links';
+import { INSTALL_URL } from '@/shared/config/site';
 import { relativeTime } from '../domain/job-status';
 import { formatCount } from './charts';
 
@@ -109,6 +111,23 @@ export function NotHere({
   );
 }
 
+/**
+ * What a place says when Xomoni didn't give it what it asked for. `invalid` comes from a Xomoni older than the
+ * message (it answers `invalid` to a type it doesn't know), so it says to install the newest version.
+ */
+export function NoAnswer({ reason, doing = 'show this' }: { reason: string; doing?: string }) {
+  const s = useStyles();
+  return reason === 'invalid' ? (
+    <p className={s.text}>
+      Your Xomoni is older than this page and can’t {doing} here yet.{' '}
+      <TextLink href={INSTALL_URL}>Install the newest version</TextLink>, reload it in your browser’s extensions page,
+      then try again.
+    </p>
+  ) : (
+    <p className={s.text}>Xomoni didn’t answer. Open it on this computer and try again.</p>
+  );
+}
+
 /** A small line above a place's content, such as where its data was read. */
 export function Notice({ children }: { children: ReactNode }) {
   const s = useStyles();
@@ -177,7 +196,7 @@ export function LibraryPlace({ xomoni }: { xomoni: XomoniControls }) {
         {loading && <Spinner size="extra-tiny" />}
       </div>
       {answer && !answer.ok ? (
-        <p className={s.text}>Xomoni didn’t answer. Open it on this computer and try again.</p>
+        <NoAnswer reason={answer.reason} />
       ) : items.length === 0 && page ? (
         <p className={s.text}>
           {query ? 'Nothing matches that search.' : `No ${KIND_LABEL[kind].toLowerCase()} in your Library yet.`}
@@ -237,7 +256,7 @@ export function HealthPlace({ xomoni, now }: { xomoni: XomoniControls; now: numb
     <div className={s.root}>
       <Notice>Read from Xomoni in this browser.</Notice>
       {loading && !accounts && <Spinner size="small" label="Reading Xomoni…" />}
-      {answer && !answer.ok && <p className={s.text}>Xomoni didn’t answer. Open it on this computer and try again.</p>}
+      {answer && !answer.ok && <NoAnswer reason={answer.reason} />}
       {accounts?.length === 0 && <p className={s.text}>Xomoni doesn’t know an X account yet.</p>}
       <ul className={s.list} aria-label="Your X accounts">
         {(accounts ?? []).map((a) => (
@@ -281,7 +300,7 @@ export function WatchPlace({ xomoni, now }: { xomoni: XomoniControls; now: numbe
         Read from Xomoni in this browser. Watch looks while Xomoni’s dashboard is open; change the searches in Settings.
       </Notice>
       {loading && !tabs && <Spinner size="small" label="Reading Xomoni…" />}
-      {answer && !answer.ok && <p className={s.text}>Xomoni didn’t answer. Open it on this computer and try again.</p>}
+      {answer && !answer.ok && <NoAnswer reason={answer.reason} />}
       {tabs?.length === 0 && <p className={s.text}>No searches yet.</p>}
       {(tabs ?? []).map((tab) => (
         <section key={tab.query} className={mergeClasses(s.card, s.stack)} aria-label={`Watch: ${tab.query}`}>

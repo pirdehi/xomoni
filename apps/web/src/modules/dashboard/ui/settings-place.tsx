@@ -30,7 +30,7 @@ import {
 import { type ReactNode, useState } from 'react';
 import { OpenInXomoni, type XomoniControls, useXomoniRead } from '@/modules/extension/ui/xomoni-actions';
 import { formatCount } from './charts';
-import { NotHere, Notice } from './xomoni-places';
+import { NoAnswer, NotHere, Notice } from './xomoni-places';
 
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalL },
@@ -88,6 +88,8 @@ function refusalText(reason: string): string {
       return 'Xomoni in this browser isn’t signed in to this account, so nothing changed.';
     case 'no_answer':
       return 'Xomoni didn’t answer, so nothing changed. Open it on this computer and try again.';
+    case 'invalid':
+      return 'Your Xomoni is older than this page and can’t change its settings from here yet, so nothing changed. Install the newest version, then try again.';
     default:
       return 'Xomoni didn’t take that change, so nothing changed.';
   }
@@ -143,7 +145,7 @@ export function SettingsPlace({ xomoni, numbers }: { xomoni: XomoniControls; num
     <div className={s.root}>
       <Notice>Read from Xomoni in this browser and changed there, within its safety rules.</Notice>
       {loading && !settings && <Spinner size="small" label="Reading Xomoni…" />}
-      {answer && !answer.ok && <p className={s.text}>Xomoni didn’t answer. Open it on this computer and try again.</p>}
+      {answer && !answer.ok && <NoAnswer reason={answer.reason} doing="show its settings" />}
       {message && (
         <MessageBar intent={message.ok ? 'success' : 'warning'}>
           <MessageBarBody>{message.text}</MessageBarBody>

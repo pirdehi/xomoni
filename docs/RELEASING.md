@@ -1,6 +1,6 @@
 # Releasing
 
-A release ships the extension as a zip on [GitHub Releases](https://github.com/pirdehi/xomoni/releases). The website deploys from `main` on its own and needs no release.
+A release ships the extension as a zip on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), then sends that same zip to the Chrome Web Store and Microsoft Edge Add-ons ([stores](#stores)). The website deploys from `main` on its own and needs no release.
 
 ## Steps
 
@@ -41,6 +41,11 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
    ```
 
    A zip install never updates by itself, so this notice, together with the release notes, is how people hear about a fix. Installed from a store, Xomoni updates itself ([ADR-0034](adr/0034-distribution-through-the-browsers-stores.md)).
+
+7. Send the release to the stores (#303), once it is on GitHub Releases:
+   1. In **Actions → Stores → Run workflow**, from `main`: the tag, the store (`both`, `chrome` or `edge`) and **upload**. Approve the run when the `stores` environment asks. The zip becomes each store's draft; nothing goes to review yet.
+   2. Look at the drafts in the [Chrome Web Store dashboard](https://chrome.google.com/webstore/devconsole) and in [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview): the version, and the listing if it needs a change.
+   3. Run it again with **publish**. Each draft goes to review and goes live once approved, with the visibility set in the store (unlisted at first).
 
 ## Signing key
 
@@ -120,10 +125,11 @@ Set on GitHub, not in code (#142):
 - **`main`:** branches up to date before merging, and the `verify`, `database` and `e2e` checks. GitHub signs the squash merges it makes.
 - **Not yet: signed commits.** GitHub refuses to merge a pull request whose own commits are unsigned, even as a squash. So the rule waits until the maintainer signs commits (an SSH signing key added to GitHub, and `git config commit.gpgsign true` with `gpg.format ssh`). It was turned on with #142 and taken back off the same day.
 - **Workflows from forks:** need approval for every outside contributor.
+- **Environment `stores`** (#303): holds the store keys, which only runs from `main` can read, after the maintainer approves ([below](#the-stores-environment)).
 
 ## Checked on every pull request
 
-CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. `npm run verify` builds it too and runs `node tooling/check-remote-code.mjs` on the build, which fails on code from a string or from another site, which the stores refuse (#301). The helpers are tested by `tooling/release.test.mjs` (reproducible zips included), and the workflows by `tooling/workflows.test.mjs`: actions pinned by SHA, no token left in a checkout, no write access by default, a release build that can't write, and the signing step, run with a throwaway key, whose signatures the extension's check accepts. It skips signing with a warning while no key is trusted, and refuses once one is, without the secret or with another key. The step that creates the release attaches the signatures only when there are some, and the build installs without install scripts. Both run with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`.
+CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. `npm run verify` builds it too and runs `node tooling/check-remote-code.mjs` on the build, which fails on code from a string or from another site, which the stores refuse (#301). The helpers are tested by `tooling/release.test.mjs` (reproducible zips included), and the store calls by `tooling/store-api.test.mjs`, against a fake network. The workflows are tested by `tooling/workflows.test.mjs`: actions pinned by SHA and only from GitHub or `supabase/setup-cli`, no token left in a checkout, no input pasted into a script, no write access by default, a release build that can't write, the signing step, run with a throwaway key, whose signatures the extension's check accepts, and a store workflow that never builds and keeps each store's keys in the `stores` environment. Signing is skipped with a warning while no key is trusted, and refused once one is, without the secret or with another key. The step that creates the release attaches the signatures only when there are some, and the build installs without install scripts. They run with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`.
 
 ## The fixed id: the Chrome Web Store's key (#302)
 
@@ -161,6 +167,52 @@ npm run build:store -w @xomoni/extension   # → apps/extension/dist, without sr
 - the permission justifications and the privacy answers;
 - the listing text and the notes for reviewers;
 - the images, made by `npm run store:images -w @xomoni/extension`.
+
+The [store workflow](../.github/workflows/store.yml) (#303) sends a release that is already on GitHub to the Chrome Web Store and Microsoft Edge Add-ons. It runs only by hand, from `main`, one run at a time:
+
+| Input | What it takes |
+| --- | --- |
+| `tag` | `vX.Y.Z`: a release already on GitHub Releases. |
+| `store` | `both`, `chrome` or `edge`. |
+| `action` | `upload`: the zip becomes the store's draft. `publish`: the draft goes to review, and live once approved. |
+| `percentage` | Chrome, `publish` only, optional: the share of users who get the update, 1 to 100; empty means everyone. The store allows it only for items with more than 10,000 weekly users. Raise it later in the dashboard. |
+
+What it does:
+- **release**, read-only and without any store key: checks that it runs from `main` for a `vX.Y.Z` tag and that the release exists. For `upload`, it downloads `xomoni-extension-X.Y.Z.zip` and `SHA256SUMS` from that release, checks the checksum, and checks the build provenance with `gh attestation verify --signer-workflow …/release.yml --source-ref refs/tags/vX.Y.Z`. Only a zip that the release workflow built from that tag goes on. It never builds one.
+- **chrome** and **edge**, in the `stores` environment, each with only its own store's keys: check the checksum again and run `node tooling/store.mjs`. The calls live in [`tooling/store-api.mjs`](../tooling/store-api.mjs), with Node's own `fetch` and no dependency.
+  - Chrome Web Store, [API v2](https://developer.chrome.com/docs/webstore/using-api) (v1.1 was supported until 2026-10-15): trades the refresh token for a one-hour access token, hidden in the log; uploads the zip to the item and checks that the store read the tag's version. `publish` submits the draft for review with the visibility set in the dashboard, then reads which version went to review: when it isn't the tag's, it cancels the submission and fails.
+  - Microsoft Edge Add-ons, [API v1.1](https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api): uploads the zip to the draft submission, or submits the draft with notes that link the release notes, and follows each operation until it ends. Edge's answers don't name the version, so look at the draft in Partner Center before `publish`.
+- A failure names the missing secret or quotes the store's answer on one line, never a key or a token. A store that is still busy after 10 minutes stops the run; check its dashboard before running again.
+
+Neither API can create an item or change its visibility. The first package, the listing and **Unlisted** or **Public** are set by hand in each store. If the visibility changes in the Chrome dashboard, publish once there by hand before the API can publish again.
+
+### The `stores` environment
+
+Create it before the first run, in **Settings → Environments → New environment**, named `stores`. A run that names a missing environment creates one without any protection.
+- **Deployment branches and tags:** *Selected branches and tags*, with `main` only, so no other branch's copy of the workflow can read the keys.
+- **Required reviewers** (recommended): yourself, with *Prevent self-review* off. Every run then waits for your approval before a store key is read.
+- **Environment secrets:** the eight below. Not repository secrets: any workflow could read those.
+
+### Chrome Web Store keys
+
+API v2 takes an OAuth client with a refresh token, or a service account. Xomoni uses the OAuth client: a service account would need its JSON private key in the secrets, which Google warns about, or Workload Identity Federation through an action the repository doesn't allow.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), signed in with your personal Google account, create a project (for example `xomoni-store`) and enable the **Chrome Web Store API**.
+2. **OAuth consent screen:** user type **External**; app name `Xomoni store upload`; your email as support and developer contact; yourself as a test user. Then publish the app (**Audience → Publish app**, *In production*): an app left in *Testing* gets refresh tokens that expire after 7 days ([Google](https://developers.google.com/identity/protocols/oauth2#expiration)). Google's verification isn't needed for your own use; the sign-in page warns that the app isn't verified, and you continue under *Advanced*.
+3. **Credentials → Create credentials → OAuth client ID**, type **Web application**, with the authorized redirect URI `https://developers.google.com/oauthplayground`. Its client ID is `CWS_CLIENT_ID`, its client secret `CWS_CLIENT_SECRET`.
+4. In the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground): the gear → **Use your own OAuth credentials**, with that client; the scope `https://www.googleapis.com/auth/chromewebstore`; **Authorize APIs** with the Google account that owns the item; **Exchange authorization code for tokens**. The refresh token is `CWS_REFRESH_TOKEN`.
+5. `CWS_PUBLISHER_ID`: in the [developer dashboard](https://chrome.google.com/webstore/devconsole), the publisher's **Settings** page.
+6. `CWS_ITEM_ID`: the item's 32-letter ID, on its **Package** page; the same as Xomoni's ID in `chrome://extensions`.
+
+A refresh token stops working when it is revoked, unused for six months, or its client secret changes. The log then says `invalid_grant`: repeat step 4 and update the secret. Steps from [Use the Chrome Web Store API](https://developer.chrome.com/docs/webstore/using-api).
+
+### Edge Add-ons keys
+
+1. In [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/public/login?ref=dd): **Microsoft Edge → Publish API**, **Enable** the new experience (API v1.1), then **Create API credentials**. The **Client ID** is `EDGE_CLIENT_ID`, the **API key** `EDGE_API_KEY`.
+2. `EDGE_PRODUCT_ID`: **Microsoft Edge → Overview**, then Xomoni; the **Extension identity** section shows its Product ID, a GUID that is also in the address bar between `microsoftedge/` and `/packages`. It isn't the extension's ID in the browser.
+3. API keys expire: the Publish API page shows the date, Partner Center emails before it, and Microsoft's [announcement](https://blogs.windows.com/msedgedev/2024/09/30/enhanced-security-for-extensions-with-new-publish-api/) gives 72 days. A run that fails with HTTP 401 usually means a lapsed key: create a new one and update `EDGE_API_KEY`.
+
+Steps from [Use the REST API to update an extension](https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api).
 
 ### Turning on the install button
 

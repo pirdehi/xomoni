@@ -3,7 +3,16 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SeriesPoint } from '../domain/insights';
-import { ColumnChart, LineChart, columnsOf, formatCount, formatDay, niceTicks } from './charts';
+import {
+  ColumnChart,
+  LineChart,
+  StackedColumnChart,
+  columnsOf,
+  formatCount,
+  formatDay,
+  niceTicks,
+  stackedColumnsOf,
+} from './charts';
 
 const TODAY = '2026-11-20';
 const points = (values: (number | null)[], start = '2026-11-14'): SeriesPoint[] =>
@@ -198,5 +207,83 @@ describe('ColumnChart with gains and losses (#253)', () => {
   it('keeps the minus sign without signing gains when not asked to', () => {
     render(<ColumnChart points={points([-2, 1])} label="Change" today={TODAY} />);
     expect(screen.getByRole('img', { name: 'Change: −1 in all' })).toBeInTheDocument();
+  });
+});
+
+describe('StackedColumnChart (#254)', () => {
+  const series = [
+    { id: 'posts', label: 'Posts' },
+    { id: 'replies', label: 'Replies' },
+  ];
+  const stack = (values: (Record<string, number> | null)[]) =>
+    values.map((v, i) => ({ day: points([0], '2026-11-14')[0]!.day.replace('14', String(14 + i)), values: v }));
+
+  it('names the total, draws a segment per series with a value, and has a legend', () => {
+    render(
+      <StackedColumnChart
+        points={stack([{ posts: 2, replies: 1 }, null, { posts: 0, replies: 3 }])}
+        series={series}
+        label="Published"
+        today={TODAY}
+      />,
+    );
+    const chart = screen.getByRole('img', { name: 'Published: 6 in all' });
+    expect(chart.querySelectorAll('path')).toHaveLength(3);
+    expect(screen.getByRole('list', { name: 'Published: legend' })).toHaveTextContent('PostsReplies');
+  });
+
+  it('lists every series for a column, by keyboard and by pointer', async () => {
+    render(
+      <StackedColumnChart
+        points={stack([{ posts: 2, replies: 1 }, null, { posts: 0, replies: 3 }])}
+        series={series}
+        label="Published"
+        today={TODAY}
+      />,
+    );
+    const chart = screen.getByRole('img', { name: /^Published/ });
+    chart.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('status')).toHaveTextContent('Nov 142Posts1Replies');
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('status')).toHaveTextContent('Nov 160Posts3Replies');
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    chart.getBoundingClientRect = () => ({ left: 0, top: 0, width: 640, height: 180 }) as DOMRect;
+    fireEvent.pointerMove(chart, { clientX: 100, clientY: 90 });
+    expect(screen.getByRole('status')).toHaveTextContent('Nov 14');
+    fireEvent.pointerMove(chart, { clientX: 330, clientY: 90 });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    fireEvent.pointerLeave(chart);
+    await userEvent.keyboard('q');
+    fireEvent.blur(chart);
+  });
+
+  it('shows a table with a column per series and the total', async () => {
+    render(
+      <StackedColumnChart
+        points={stack([{ posts: 2, replies: 1 }, null])}
+        series={series}
+        label="Published"
+        today={TODAY}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
+    expect(screen.getAllByRole('row').map((r) => r.textContent)).toEqual(['DayPostsRepliesTotal', 'Nov 14213']);
+    await userEvent.click(screen.getByRole('button', { name: 'Show as chart' }));
+    expect(screen.getByRole('img', { name: /^Published/ })).toBeInTheDocument();
+  });
+
+  it('groups a long period by week, and its table says so', async () => {
+    const days = Array.from({ length: 50 }, (_, i) => ({
+      day: new Date(Date.parse('2026-09-21T00:00:00Z') + i * 86_400_000).toISOString().slice(0, 10),
+      values: i === 3 ? null : { posts: 1, replies: 0 },
+    }));
+    const { points: weeks, weekly } = stackedColumnsOf(days);
+    expect(weekly).toBe(true);
+    expect(weeks[0]).toEqual({ day: '2026-09-21', values: { posts: 6, replies: 0 } });
+    render(<StackedColumnChart points={days} series={series} label="Published" today={TODAY} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
+    expect(screen.getAllByRole('row')[0]).toHaveTextContent('Week of');
   });
 });

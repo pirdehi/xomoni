@@ -82,6 +82,7 @@ export interface SeedDay {
   day: string;
   followers?: number | null;
   posted_posts?: number;
+  posted_replies?: number;
   received_likes?: number;
   received_views?: number;
   observed_posts?: number;
@@ -101,6 +102,7 @@ export async function addDailyNumbers(userId: string, days: SeedDay[]): Promise<
       user_id: userId,
       followers: null,
       posted_posts: 0,
+      posted_replies: 0,
       received_likes: 0,
       received_views: 0,
       observed_posts: 0,

@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   audienceFigures,
   change,
+  contentFigures,
+  publishedByType,
+  weekdayAverages,
   daysBefore,
   daysInScope,
   firstDay,
@@ -226,5 +229,47 @@ describe('audience (#253)', () => {
     });
     const none = [day('2026-11-18', { following: 0 })];
     expect(audienceFigures(none, followersSeries(none, week, NOW)).ratio).toBeNull();
+  });
+});
+
+describe('content (#254)', () => {
+  const week = { account: null, period: '7d' as const };
+
+  it('adds up each type per day over the accounts in scope, with gaps on days without numbers', () => {
+    const series = publishedByType(
+      [
+        day('2026-11-18', { postedPosts: 1, postedReplies: 2, postedReposts: 3, postedQuotes: 4 }),
+        day('2026-11-18', { xHandle: 'bob', postedPosts: 5 }),
+      ],
+      week,
+      NOW,
+    );
+    expect(series.find((p) => p.day === '2026-11-18')?.values).toEqual({ posts: 6, replies: 2, reposts: 3, quotes: 4 });
+    expect(series.find((p) => p.day === '2026-11-17')?.values).toBeNull();
+    expect(publishedByType([], week, NOW)).toEqual([]);
+  });
+
+  it('compares each type with the period before', () => {
+    const figures = contentFigures(
+      [day('2026-11-18', { postedPosts: 3, postedQuotes: 1 })],
+      [day('2026-11-10', { postedPosts: 1 })],
+    );
+    expect(figures.posts).toEqual({ value: 3, previous: 1 });
+    expect(figures.quotes).toEqual({ value: 1, previous: 0 });
+    expect(contentFigures([], []).replies).toEqual({ value: null, previous: null });
+  });
+
+  it('averages each weekday over the days with numbers, and names the best one', () => {
+    // 2026-11-16 is a Monday.
+    const { averages, best } = weekdayAverages([
+      day('2026-11-16', { postedPosts: 2 }),
+      day('2026-11-09', { postedPosts: 4, postedReplies: 2 }),
+      day('2026-11-18', { postedReplies: 1 }),
+      day('2026-11-22', { postedPosts: 0 }),
+      day('2026-11-22', { xHandle: 'bob', postedPosts: 0 }),
+    ]);
+    expect(averages).toEqual([4, null, 1, null, null, null, 0]);
+    expect(best).toBe(0);
+    expect(weekdayAverages([day('2026-11-16')]).best).toBeNull();
   });
 });

@@ -34,8 +34,6 @@ import {
   Search16Regular,
   ShieldError20Regular,
   Warning16Filled,
-  ArrowDown12Regular,
-  ArrowUp12Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
@@ -43,7 +41,6 @@ import { TextLink } from '@/shared/ui/links';
 import { isOnline, jobProgress, jobRemaining, jobStateView, relativeTime, type Tone } from '../domain/job-status';
 import {
   type Figure,
-  change,
   daysBefore,
   daysInScope,
   followersSeries,
@@ -54,7 +51,9 @@ import {
 import type { DailyNumbers, DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { PERIODS, type Scope, accountsIn, jobsInScope, removedIn, scopeQuery } from '../domain/scope';
 import { Audience } from './audience';
+import { Content } from './content';
 import { ColumnChart, LineChart, formatCount } from './charts';
+import { Delta } from './delta';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
@@ -188,9 +187,6 @@ const useStyles = makeStyles({
     padding: tokens.spacingHorizontalL,
   },
   chartTitle: { ...typographyStyles.subtitle2, margin: 0 },
-  delta: { display: 'inline-flex', alignItems: 'center', columnGap: '2px' },
-  up: { color: tokens.colorPaletteGreenForeground1 },
-  down: { color: tokens.colorPaletteRedForeground1 },
   numbersChoice: {
     display: 'flex',
     flexDirection: 'column',
@@ -479,6 +475,16 @@ export function Dashboard({
         archives={<OpenInXomoni xomoni={xomoni} page="library" />}
       />
     );
+  } else if (section.id === 'content') {
+    content = (
+      <Content
+        days={days}
+        scope={scope}
+        now={now}
+        shown={numbersShown}
+        inXomoni={<OpenInXomoni xomoni={xomoni} page="library" />}
+      />
+    );
   } else if (section.id === 'browsers') {
     content =
       devices.length === 0 ? (
@@ -589,39 +595,6 @@ interface Tile {
   label: string;
   value: string;
   note: ReactNode;
-}
-
-/** A change against the period before, with an arrow; `upIsGood` colors the arrow, and nothing is judged without it. */
-function Delta({
-  figure,
-  unit,
-  upIsGood,
-  period,
-}: {
-  figure: Figure;
-  unit?: string;
-  upIsGood?: boolean;
-  period: string;
-}) {
-  const s = useStyles();
-  const moved = change(figure);
-  if (!moved) return <>{period === 'all' ? 'all time' : 'nothing to compare yet'}</>;
-  const { change: diff, percent } = moved;
-  const sign = diff > 0 ? '+' : diff < 0 ? '−' : '±';
-  const amount = unit === '%' ? `${Math.abs(diff).toFixed(1)} pt` : formatCount(Math.abs(diff));
-  const tone = diff === 0 || upIsGood === undefined ? undefined : diff > 0 === upIsGood ? s.up : s.down;
-  return (
-    <span className={s.delta}>
-      {diff > 0 ? (
-        <ArrowUp12Regular className={tone} aria-hidden />
-      ) : diff < 0 ? (
-        <ArrowDown12Regular className={tone} aria-hidden />
-      ) : null}
-      {sign}
-      {amount}
-      {percent !== null && unit !== '%' && ` (${sign}${Math.abs(percent).toFixed(0)}%)`} vs the {period} before
-    </span>
-  );
 }
 
 /**

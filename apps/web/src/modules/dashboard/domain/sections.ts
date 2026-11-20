@@ -105,8 +105,7 @@ export const SECTIONS: readonly Section[] = [
     ],
     source: DAILY_NUMBERS,
     needsXomoni: false,
-    ready: false,
-    issue: 255,
+    ready: true,
   },
   {
     id: 'reports',

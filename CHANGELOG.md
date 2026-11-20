@@ -6,6 +6,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Engagement on xomoni.com** (#255), from your daily numbers.
+  - Likes, replies, reposts and quotes, views and the engagement rate, each against the period before.
+  - What your posts received each day by type, views, and the rate over time.
+  - How many of your posts Xomoni saw had at least one like.
+  - Marked as estimates, with how many sightings they rest on; your most-liked replies stay in Xomoni.
+
 - **Content on xomoni.com** (#254), from your daily numbers.
   - Posts, replies, reposts and quotes published, each against the period before.
   - What you published each day (or week) by type, stacked, with a legend and a table view.

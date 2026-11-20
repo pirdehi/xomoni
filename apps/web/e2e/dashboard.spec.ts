@@ -82,13 +82,13 @@ test.describe('dashboard (#41)', () => {
     await expect(page.getByRole('region', { name: 'Your account in numbers' })).toBeVisible();
 
     const sidebar = page.getByRole('navigation', { name: 'Dashboard' });
-    await sidebar.getByRole('link', { name: /^Engagement/ }).click();
-    await expect(page).toHaveURL(/\/dashboard\/engagement$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Engagement' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Engagement: coming soon' })).toBeVisible();
+    await sidebar.getByRole('link', { name: /^Comments/ }).click();
+    await expect(page).toHaveURL(/\/dashboard\/comments$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Comments' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Comments: coming soon' })).toBeVisible();
 
     await page.getByRole('combobox', { name: 'Period' }).selectOption('7d');
-    await expect(page).toHaveURL(/\/dashboard\/engagement\?period=7d$/);
+    await expect(page).toHaveURL(/\/dashboard\/comments\?period=7d$/);
     await expect(sidebar.getByRole('link', { name: 'Activity' })).toHaveAttribute(
       'href',
       '/dashboard/activity?period=7d',
@@ -178,5 +178,26 @@ test.describe('dashboard (#41)', () => {
       'Quotes',
     );
     await expect(page.getByRole('region', { name: 'When you publish' })).toContainText('You publish most on');
+  });
+
+  test('Engagement shows what the posts received, as estimates, with views and the rate (#255)', async ({ page }) => {
+    const email = uniqueEmail('engagement');
+    const userId = await createConfirmedUser(email, PASSWORD);
+    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+    await addDailyNumbers(userId, [
+      { x_handle: 'ada_x', day: day(3), received_likes: 30, received_views: 1000, observed_posts: 12 },
+      { x_handle: 'ada_x', day: day(1), received_likes: 12, received_views: 500, observed_posts: 8 },
+    ]);
+
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+    await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Engagement' }).click();
+
+    await expect(page.getByText(/over 20 sightings in this period/)).toBeVisible();
+    const tiles = page.getByRole('list', { name: 'What your posts received' }).getByRole('listitem');
+    await expect(tiles.nth(0)).toContainText('42');
+    await expect(tiles.nth(3)).toContainText('1,500');
+    await expect(tiles.nth(4)).toContainText('2.8%');
+    await expect(page.getByRole('img', { name: 'Views: 1,500 in all' })).toBeVisible();
   });
 });

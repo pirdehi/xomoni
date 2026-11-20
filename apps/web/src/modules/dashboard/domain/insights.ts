@@ -346,3 +346,95 @@ export function weekdayAverages(days: readonly DailyNumbers[]): { averages: (num
   });
   return { averages, best };
 }
+
+/** What the person's posts receive, by type (#255). Views are kept apart: their scale is far larger. */
+export type ReceivedType = 'likes' | 'replies' | 'reposts' | 'quotes';
+
+/** The received types in the order the Engagement place stacks them. */
+export const RECEIVED_TYPES: readonly { id: ReceivedType; label: string }[] = [
+  { id: 'likes', label: 'Likes' },
+  { id: 'replies', label: 'Replies' },
+  { id: 'reposts', label: 'Reposts' },
+  { id: 'quotes', label: 'Quotes' },
+];
+
+function received(d: DailyNumbers): Record<ReceivedType, number> {
+  return { likes: d.receivedLikes, replies: d.receivedReplies, reposts: d.receivedReposts, quotes: d.receivedQuotes };
+}
+
+/** What the person's posts received each day, by type, summed over the accounts in scope (estimates). */
+export function receivedByType(
+  days: readonly DailyNumbers[],
+  scope: Scope,
+  now: number,
+): { day: string; values: Record<ReceivedType, number> | null }[] {
+  const span = range(days, scope, now);
+  if (!span) return [];
+  const byDay = new Map<string, Record<ReceivedType, number>>();
+  for (const d of days) {
+    const total = byDay.get(d.day) ?? { likes: 0, replies: 0, reposts: 0, quotes: 0 };
+    const add = received(d);
+    for (const t of RECEIVED_TYPES) total[t.id] += add[t.id];
+    byDay.set(d.day, total);
+  }
+  return eachDay(...span).map((day) => ({ day, values: byDay.get(day) ?? null }));
+}
+
+/** Views received each day, summed over the accounts in scope; null on a day with no numbers. */
+export function viewsSeries(days: readonly DailyNumbers[], scope: Scope, now: number): SeriesPoint[] {
+  const span = range(days, scope, now);
+  if (!span) return [];
+  const byDay = new Map<string, number>();
+  for (const d of days) byDay.set(d.day, (byDay.get(d.day) ?? 0) + d.receivedViews);
+  return eachDay(...span).map((day) => ({ day, value: byDay.get(day) ?? null }));
+}
+
+/** Likes, replies, reposts and quotes per 100 views each day; null on a day without views. */
+export function rateSeries(days: readonly DailyNumbers[], scope: Scope, now: number): SeriesPoint[] {
+  const span = range(days, scope, now);
+  if (!span) return [];
+  const byDay = new Map<string, DailyNumbers[]>();
+  for (const d of days) byDay.set(d.day, [...(byDay.get(d.day) ?? []), d]);
+  return eachDay(...span).map((day) => ({ day, value: rate(byDay.get(day) ?? []) }));
+}
+
+/** The Engagement place's figures, each against the period before where it can be. */
+export interface EngagementFigures {
+  likes: Figure;
+  replies: Figure;
+  reposts: Figure;
+  quotes: Figure;
+  views: Figure;
+  /** Likes, replies, reposts and quotes per 100 views. */
+  rate: Figure;
+  /** The share of the sightings of the person's posts, and of their replies, that had at least one like; null without sightings. */
+  postsLiked: number | null;
+  /** Own replies seen with at least one like. */
+  repliesLiked: number;
+  /** Sightings of the person's posts in the period: how complete the estimates are. */
+  observedPosts: number;
+}
+
+/** The Engagement place's figures for `current` days, against `previous` ones. */
+export function engagementFigures(
+  current: readonly DailyNumbers[],
+  previous: readonly DailyNumbers[],
+): EngagementFigures {
+  const fig = (pick: (d: DailyNumbers) => number): Figure => ({
+    value: sum(current, pick),
+    previous: sum(previous, pick),
+  });
+  const observed = current.reduce((total, d) => total + d.observedPosts, 0);
+  const liked = current.reduce((total, d) => total + d.postsWithLikes + d.repliesWithLikes, 0);
+  return {
+    likes: fig((d) => d.receivedLikes),
+    replies: fig((d) => d.receivedReplies),
+    reposts: fig((d) => d.receivedReposts),
+    quotes: fig((d) => d.receivedQuotes),
+    views: fig((d) => d.receivedViews),
+    rate: { value: rate(current), previous: rate(previous) },
+    postsLiked: observed === 0 ? null : Math.min(100, (liked / observed) * 100),
+    repliesLiked: current.reduce((total, d) => total + d.repliesWithLikes, 0),
+    observedPosts: observed,
+  };
+}

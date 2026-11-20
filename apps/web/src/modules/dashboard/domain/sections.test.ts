@@ -37,6 +37,7 @@ describe('the dashboard’s places (#245)', () => {
       'overview',
       'audience',
       'content',
+      'engagement',
       'activity',
       'browsers',
     ]);

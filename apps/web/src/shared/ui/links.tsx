@@ -83,6 +83,7 @@ function Anchor({
   children: ReactNode;
   'data-appearance'?: string;
   'data-size'?: string;
+  onClick?: () => void;
 }) {
   return href.startsWith('/') ? <NextLink href={href} {...rest} /> : <a href={href} {...rest} />;
 }
@@ -93,6 +94,7 @@ export type ButtonLinkAppearance = 'primary' | 'secondary' | 'subtle';
 /**
  * A link styled as a Fluent button, for calls to action and navigation. `icon` sits before the text; `size="large"`
  * is for the landing page's calls to action. Appearance and size are exposed as `data-appearance` and `data-size`.
+ * `onClick` runs as the link is followed, without stopping it (the install guide moves on when a download starts).
  */
 export function ButtonLink({
   href,
@@ -100,6 +102,7 @@ export function ButtonLink({
   size = 'medium',
   icon,
   className,
+  onClick,
   children,
 }: {
   href: string;
@@ -107,6 +110,7 @@ export function ButtonLink({
   size?: 'medium' | 'large';
   icon?: ReactNode;
   className?: string;
+  onClick?: () => void;
   children: ReactNode;
 }) {
   const s = useStyles();
@@ -116,6 +120,7 @@ export function ButtonLink({
       className={mergeClasses(s.button, s[appearance], size === 'large' && s.large, className)}
       data-appearance={appearance}
       data-size={size}
+      onClick={onClick}
     >
       {icon && (
         <span className={s.icon} aria-hidden>

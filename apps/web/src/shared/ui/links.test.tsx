@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { ButtonLink, TextLink } from './links';
 
 describe('ButtonLink', () => {
@@ -36,6 +36,30 @@ describe('ButtonLink', () => {
     const link = screen.getByRole('link', { name: 'Home' });
     expect(link).toHaveAttribute('data-appearance', 'subtle');
     expect(screen.getByTestId('icon').parentElement).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('runs its click handler as the link is followed, without stopping it (#299)', () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonLink href="https://github.com/pirdehi/xomoni/releases" onClick={onClick}>
+        Download
+      </ButtonLink>,
+    );
+
+    // Following the link would leave the test page: stop it here, after React's handler ran, noting whether it had.
+    let stoppedByLink: boolean | undefined;
+    document.addEventListener(
+      'click',
+      (event) => {
+        stoppedByLink = event.defaultPrevented;
+        event.preventDefault();
+      },
+      { once: true },
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Download' }));
+
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(stoppedByLink).toBe(false);
   });
 
   it('adds the class it is given', () => {

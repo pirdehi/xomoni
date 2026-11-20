@@ -9,6 +9,7 @@ import {
   type ExtensionSessionServices,
   createExtensionSessionServices,
   currentLink,
+  onLinkCheckRequest,
   rememberExtensionId,
   subscribeLink,
 } from '../client/extension-session';
@@ -37,8 +38,9 @@ export function useExtensionLink(): ExtensionLinkState {
 /**
  * Keeps the site and the extension signed in and out together:
  * - an `#ext=<id>` fragment is kept and cleared from the address bar;
- * - a sync runs when the page opens, when it comes back into view and when the browser signs in or out; a sync that
- *   signed the website out goes to the sign-in page;
+ * - a sync runs when the page opens, when it comes back into view, when the browser signs in or out and when a page
+ *   asks to look again (`requestLinkCheck`, the live checklist); a sync that signed the website out goes to the
+ *   sign-in page;
  * - a form posting to the sign-out route (the header's *Sign out*, the account page's) first signs the extension out,
  *   then posts as before.
  */
@@ -90,12 +92,14 @@ export function ExtensionSessionSync({ services }: { services?: () => ExtensionS
     window.addEventListener('focus', sync);
     document.addEventListener('submit', onSubmit, true);
     const stopWatching = live.onSessionChange(sync);
+    const stopChecks = onLinkCheckRequest(sync);
     return () => {
       alive = false;
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', sync);
       document.removeEventListener('submit', onSubmit, true);
       stopWatching();
+      stopChecks();
     };
   }, [pathname, router, services]);
   return null;

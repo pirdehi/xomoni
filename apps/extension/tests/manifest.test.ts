@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CLOUD_URL } from '../src/cloud/config';
+import { RELEASE_ASSETS, RELEASE_DOWNLOADS, RELEASE_HOSTS } from '../src/update/download';
 import manifestJson from '../public/manifest.json';
 
 const manifest: Record<string, unknown> = manifestJson;
@@ -20,8 +21,10 @@ function csp(): Map<string, string[]> {
 const sources = import.meta.glob<string>('../src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true });
 
 describe('the manifest locks the extension down (#143)', () => {
-  it('lets extension pages reach only Xomoni’s own API: never X, never anything else (ADR-0002, ADR-0004)', () => {
-    expect(csp().get('connect-src')).toEqual(["'self'", CLOUD_URL]);
+  it('lets extension pages reach only Xomoni’s own API and its releases: never X, never anything else (ADR-0002, ADR-0004)', () => {
+    // GitHub's release downloads of this repository, and the host GitHub redirects them to (#305, ADR-0033).
+    expect(csp().get('connect-src')).toEqual(["'self'", CLOUD_URL, RELEASE_DOWNLOADS, RELEASE_ASSETS]);
+    expect(RELEASE_DOWNLOADS).toBe('https://github.com/pirdehi/xomoni/releases/download/');
   });
 
   it('runs only the extension’s own scripts, with no plugins, frames, forms or base tricks', () => {
@@ -54,6 +57,8 @@ describe('the manifest locks the extension down (#143)', () => {
 
   it('asks for no host access and exposes nothing to web pages but a channel from xomoni.com (ADR-0024)', () => {
     expect(manifest).not.toHaveProperty('host_permissions');
+    // Only optional access to GitHub's release downloads, asked for on the person's click (#305, ADR-0033).
+    expect(manifest.optional_host_permissions).toEqual([...RELEASE_HOSTS]);
     expect(manifest).not.toHaveProperty('web_accessible_resources');
     // Only xomoni.com's own pages may send, and no other extension (no `ids`); it adds no permission warning.
     expect(manifest.externally_connectable).toEqual({ matches: ['https://xomoni.com/*'] });
@@ -117,6 +122,21 @@ describe('the manifest locks the extension down (#143)', () => {
     expect((manifest.name as string).length).toBeLessThanOrEqual(75);
     expect((manifest.short_name as string).length).toBeLessThanOrEqual(12);
     expect((manifest.description as string).length).toBeLessThanOrEqual(132);
+  });
+
+  it('downloads, asks for GitHub, writes its own folder and reloads only in the one-click update (#305)', () => {
+    const using = (pattern: RegExp) =>
+      Object.entries(sources)
+        .filter(([, text]) => pattern.test(text))
+        .map(([file]) => file.replace(/^\.\.\/src\//, ''))
+        .sort();
+    expect(using(/chrome\.permissions\./)).toEqual(['update/update.ts']);
+    expect(using(/chrome\.runtime\.reload\(/)).toEqual(['update/update.ts']);
+    expect(using(/mode: 'readwrite'/)).toEqual(['update/own-folder.ts']);
+    expect(using(/github\.com\/pirdehi\/xomoni\/releases\/download|release-assets\.githubusercontent/)).toEqual([
+      'update/download.ts',
+    ]);
+    expect(using(/createWritable\(/)).toEqual(['update/own-folder.ts', 'update/write.ts']);
   });
 
   it('listens to no other extension or web page, but the service worker to xomoni.com’s one-time code (#228)', () => {

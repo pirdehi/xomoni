@@ -10,7 +10,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - A Xomoni that opened xomoni.com itself is still asked first, so a zip install keeps working, even beside a store copy.
   - Nothing changes until the stores' ids are written; that is a one-line change ([ADR-0025](docs/adr/0025-one-sign-in-for-the-website-and-the-extension.md)).
   - A later release carries the store's key in the extension, so a zip install shares the Chrome Web Store's id. That changes the id once: export your data from 0.5.0 first, then import it ([ADR-0024](docs/adr/0024-connect-a-browser-with-one-click.md), [ADR-0032](docs/adr/0032-move-data-between-xomoni-versions.md)). How to take the key: [docs/RELEASING.md](docs/RELEASING.md#the-fixed-id-the-chrome-web-stores-key-302).
-
+- **Update Xomoni in one click** (#305), for Xomoni installed from the zip, which Chrome never updates by itself.
+  - When a new version is out, *Set up one-click updates* asks once for the folder you loaded Xomoni from, and Chrome asks to let Xomoni change it. *Settings › Updates* does the same at any time.
+  - Then *Update now* downloads the new version from Xomoni's GitHub releases, checks its signature and every file, writes it into that folder and restarts Xomoni. Your data stays.
+  - Nothing is written before every check passes, never while a job runs, and a write that fails puts the old files back. The activity log says what was installed.
+  - It needs Chrome 137 or later. Older browsers keep the download link.
+  - Each release is now signed with a key only the release workflow holds, beside the zips as `.sig` files ([ADR-0033](docs/adr/0033-one-click-updates-for-the-zip-install.md), [releasing](docs/RELEASING.md#signing-key)).
 - **An easier install page** (#299).
   - *Where you are* is now a card at the top of xomoni.com/install. It looks for Xomoni every few seconds and ticks as soon as Xomoni opens xomoni.com in this browser.
   - The steps follow your browser and computer: Chrome, Edge or Brave, on a Mac or Windows. The extensions page's address comes with a *Copy* button, since web pages can't link to it, and unzipping is explained for your system.

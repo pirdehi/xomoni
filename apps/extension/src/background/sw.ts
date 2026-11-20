@@ -10,6 +10,7 @@ import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID } from '../shared/notify';
 import { getSignedOut } from '../shared/session';
+import { recentUpdate } from '../shared/update-record';
 import { suggestArchivePath } from './archive-downloads';
 
 const DASHBOARD = chrome.runtime.getURL('dashboard.html');
@@ -64,8 +65,13 @@ chrome.notifications.onClicked.addListener((id) => {
 chrome.downloads.onDeterminingFilename.addListener(suggestArchivePath);
 
 // On install, Xomoni's dashboard, and xomoni.com/welcome in front of it with this extension's id in the fragment, so the
-// site knows Xomoni is in this browser and offers the one sign-in (#244, ADR-0025). Only on install, never an update.
+// site knows Xomoni is in this browser and offers the one sign-in (#244, ADR-0025). On an update, only the dashboard,
+// and only after a one-click update (#305, ADR-0033): Chrome closed it to reload, and it says how the update went.
 chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'update') {
+    void recentUpdate().then((update) => (update ? openDashboard() : undefined));
+    return;
+  }
   if (details.reason !== 'install') return;
   void openDashboard().then(() =>
     chrome.tabs.create({ url: `${WEBSITE_ORIGIN}/welcome#ext=${chrome.runtime.id}`, active: true }),

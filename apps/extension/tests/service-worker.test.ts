@@ -7,6 +7,7 @@ import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
 import { getConnection, saveConnection } from '../src/cloud/connection';
 import { PAIR_MESSAGE, startWebConnect } from '../src/cloud/web-connect';
 import { markSignedOut } from '../src/shared/session';
+import { recordUpdate } from '../src/shared/update-record';
 import { FOLDER_NOTE, FOLDER_NOTE_URL } from '../src/shared/x-archive';
 import type { ItemDraft, RateObservation } from '../src/shared/types';
 import { account, resetDb } from './support/fixtures';
@@ -156,6 +157,24 @@ describe('service worker: opening the dashboard', () => {
     );
     expect(chrome.tabs.create).toHaveBeenCalledWith({ url: DASHBOARD });
     expect(chrome.tabs.create).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('service worker: after a one-click update (#305)', () => {
+  it('opens the dashboard again, which Chrome closed to reload, to say how the update went', async () => {
+    await recordUpdate({ from: '0.4.0', to: '0.5.0', at: Date.now() });
+    on.installed!({ reason: 'update' });
+    await vi.waitFor(() => expect(chrome.tabs.create).toHaveBeenCalledWith({ url: DASHBOARD }));
+    expect(chrome.tabs.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens nothing after an update made by hand, or one recorded long ago', async () => {
+    await recordUpdate({ from: '0.4.0', to: '0.5.0', at: Date.now() - 60 * 60 * 1000 });
+    on.installed!({ reason: 'update' });
+    await settle();
+    on.installed!({ reason: 'chrome_update' });
+    await settle();
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
   });
 });
 

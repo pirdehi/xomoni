@@ -31,6 +31,7 @@ import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
 import { CloudCard } from '../components/CloudCard';
 import { LimitsPanel } from '../components/LimitsPanel';
 import { MoveDataCard } from '../components/MoveData';
+import { UpdatesCard } from '../components/OneClickUpdate';
 import { xLinkOf } from '../components/ConnectionMap';
 
 const ACTIONS: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
@@ -390,6 +391,8 @@ export function SettingsPage({ account, worker }: PageProps) {
           </Card>
 
           <MoveDataCard />
+
+          <UpdatesCard />
         </div>
       </div>
 

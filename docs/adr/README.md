@@ -36,3 +36,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0030](0030-replies-to-you-kept-on-the-computer.md) | Replies to you, kept by Xomoni on the computer and never acted on | Accepted |
 | [0031](0031-weekly-email-of-the-daily-numbers.md) | A weekly email of the daily numbers, only for those who ask, sent by the database | Accepted |
 | [0032](0032-move-data-between-xomoni-versions.md) | Moving data between Xomoni versions: one checked file, on the computer, merged without deleting | Accepted |
+| [0033](0033-one-click-updates-for-the-zip-install.md) | One-click updates for the zip install: signed releases, written into Xomoni's own folder | Accepted |

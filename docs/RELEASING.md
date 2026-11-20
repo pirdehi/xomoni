@@ -21,14 +21,16 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
      - runs `npm run verify`;
      - checks the versions against the tag;
      - builds the extension, checks that it has no remotely hosted code (#301), and packages it reproducibly.
-   - **publish**, which runs no npm code:
+   - **publish**, which runs no npm code and is the only job that sees the signing key (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)):
+     - signs each zip with the release signing key (Ed25519, with OpenSSL only), after checking that the release trusts that key, and checks each signature;
      - signs the zips with [build provenance](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) (SLSA);
      - creates the release, with the changelog section as notes.
 
    It attaches:
    - `xomoni-extension.zip`: the same name in every release, so `https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip` always serves the newest one (the website's install page links there);
    - `xomoni-extension-X.Y.Z.zip`: the same file, named for its version;
-   - `SHA256SUMS`: the SHA-256 of both, to check a download.
+   - `xomoni-extension.zip.sig` and `xomoni-extension-X.Y.Z.zip.sig`: the Ed25519 signature of each, 64 bytes, which a zip install checks before *Update now* writes anything;
+   - `SHA256SUMS`: the SHA-256 of both zips, to check a download.
 
 6. Record the release, so connected browsers show that it is out (#151): add a migration that inserts it into `public.extension_releases`, with `security` true when it fixes a vulnerability, merge it, then run `supabase db push`.
 
@@ -39,9 +41,53 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
 
    A zip install never updates by itself, so this notice, together with the release notes, is how people hear about a fix until the Chrome Web Store ships updates (#43).
 
+## Signing key
+
+Every release is signed for one-click updates of a zip install (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). The release fails without the key, and `node tooling/release.mjs check vX.Y.Z` fails while the extension trusts none.
+
+### Once, before the first signed release
+
+On your own computer, with OpenSSL 3 (`brew install openssl@3` on macOS; macOS's own `openssl` is LibreSSL and can't do this):
+
+1. Make the key pair. The private key never goes into the repository.
+
+   ```bash
+   openssl genpkey -algorithm ed25519 -out xomoni-release-signing.pem
+   ```
+
+2. Make the `release` environment, which only the release workflow's `publish` job uses: *Settings › Environments › New environment*, named `release`. Under *Deployment branches and tags*, choose *Selected branches and tags* and add the tag rule `v*`.
+3. Add the private key as that environment's secret:
+
+   ```bash
+   gh secret set RELEASE_SIGNING_KEY --env release --repo pirdehi/xomoni < xomoni-release-signing.pem
+   ```
+4. Print the public key as the extension keeps it: base64 of its 32 raw bytes.
+
+   ```bash
+   openssl pkey -in xomoni-release-signing.pem -pubout -outform DER | tail -c 32 | base64
+   ```
+
+   Put it in `apps/extension/src/update/release-keys.json` (`{"keys": ["…"]}`), commit it in a pull request, and merge it before you tag.
+5. Keep `xomoni-release-signing.pem` offline, for example in your password manager, and delete the file. Anyone with it can sign a release that every zip install with one-click updates would accept.
+
+### Replacing the key
+
+1. Make a new pair as above.
+2. Add its public key to `release-keys.json` beside the old one, and release that version, still signed with the old key.
+3. Once that release is out, set the secret to the new key, and remove the old public key in the next release.
+
+A Xomoni only accepts releases signed with a key it already trusts. A lost key can't be replaced this way: zip installs then update by hand once, to a version that trusts the new key. A leaked key: remove it from `release-keys.json` and release at once, signed with a new key, as a security release, so the dashboard's notice can't be dismissed. Zip installs then update by hand once too.
+
 ## Checking a download
 
 - **Checksum:** `shasum -a 256 -c SHA256SUMS` next to the zip. `SHA256SUMS` comes from the same release, so this only catches a broken download.
+- **Signature:** what *Update now* checks. With the public key from `release-keys.json` (base64 of the raw key) and OpenSSL 3:
+
+  ```bash
+  (printf '\x30\x2a\x30\x05\x06\x03\x2b\x65\x70\x03\x21\x00'; echo 'THE_KEY_IN_BASE64' | base64 -d) > release.der
+  openssl pkey -pubin -inform DER -in release.der -out release.pub
+  openssl pkeyutl -verify -pubin -inkey release.pub -rawin -in xomoni-extension.zip -sigfile xomoni-extension.zip.sig
+  ```
 - **Provenance:** `gh attestation verify xomoni-extension.zip --repo pirdehi/xomoni` checks that GitHub Actions built this exact file from this repository's release workflow, and from which commit.
 - **Rebuild:** the zip is reproducible. Its files are sorted, dated with the tagged commit's time in UTC and readable by all, with no extra attributes. Rebuild it in the release's environment (Linux, Node 22) and compare the checksum:
 
@@ -62,7 +108,7 @@ Set on GitHub, not in code (#142):
 
 ## Checked on every pull request
 
-CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. `npm run verify` builds it too and runs `node tooling/check-remote-code.mjs` on the build, which fails on code from a string or from another site, which the stores refuse (#301). The helpers are tested by `tooling/release.test.mjs` (reproducible zips included), and the workflows by `tooling/workflows.test.mjs`: actions pinned by SHA, no token left in a checkout, no write access by default, and a release build that can't write. Both run with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`.
+CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, so a broken build or packaging step shows up before anyone tags. `npm run verify` builds it too and runs `node tooling/check-remote-code.mjs` on the build, which fails on code from a string or from another site, which the stores refuse (#301). The helpers are tested by `tooling/release.test.mjs` (reproducible zips included), and the workflows by `tooling/workflows.test.mjs`: actions pinned by SHA, no token left in a checkout, no write access by default, a release build that can't write, and the signing step, run with a throwaway key, whose signatures the extension's check accepts (it refuses without the secret, or with a key the release doesn't trust). Both run with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`.
 
 ## The fixed id: the Chrome Web Store's key (#302)
 

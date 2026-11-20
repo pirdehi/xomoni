@@ -176,6 +176,14 @@ module.exports = {
       to: { path: `${EXT}/(?!cloud/|shared/)` },
     },
     {
+      name: 'ext-update-is-isolated',
+      severity: 'error',
+      comment:
+        'update/ installs a signed release into the folder a zip install runs from (ADR-0033); it uses shared/ only, and only the dashboard UI imports it.',
+      from: { path: `${EXT}/update/` },
+      to: { path: `${EXT}/(?!update/|shared/)` },
+    },
+    {
       name: 'ext-ui-stays-out-of-the-page',
       severity: 'error',
       comment: 'The dashboard UI drives the engine; it never imports content, inject or background code.',

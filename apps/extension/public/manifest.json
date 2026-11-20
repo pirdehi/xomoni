@@ -7,12 +7,13 @@
   "homepage_url": "https://xomoni.com",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "unlimitedStorage", "notifications", "idle", "power", "downloads"],
+  "optional_host_permissions": ["https://github.com/*", "https://release-assets.githubusercontent.com/*"],
   "incognito": "not_allowed",
   "externally_connectable": {
     "matches": ["https://xomoni.com/*"]
   },
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pbs.twimg.com https://abs.twimg.com; connect-src 'self' https://ueegjwwmuuxlxyibgokx.supabase.co"
+    "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pbs.twimg.com https://abs.twimg.com; connect-src 'self' https://ueegjwwmuuxlxyibgokx.supabase.co https://github.com/pirdehi/xomoni/releases/download/ https://release-assets.githubusercontent.com"
   },
   "background": {
     "service_worker": "sw.js",

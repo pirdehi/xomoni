@@ -268,6 +268,30 @@ export type Database = {
           },
         ];
       };
+      weekly_emails: {
+        Row: {
+          changed_at: string;
+          enabled: boolean;
+          last_sent_at: string | null;
+          stop_token: string;
+          user_id: string;
+        };
+        Insert: {
+          changed_at?: string;
+          enabled?: boolean;
+          last_sent_at?: string | null;
+          stop_token?: string;
+          user_id: string;
+        };
+        Update: {
+          changed_at?: string;
+          enabled?: boolean;
+          last_sent_at?: string | null;
+          stop_token?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -326,8 +350,33 @@ export type Database = {
         }[];
       };
       release_rank: { Args: { version: string }; Returns: number[] };
+      send_weekly_emails: { Args: { at_time?: string }; Returns: number };
       set_daily_stats: { Args: { enabled: boolean }; Returns: boolean };
+      set_weekly_email: { Args: { enabled: boolean }; Returns: boolean };
+      stop_weekly_email: { Args: { token: string }; Returns: boolean };
       unpair_device: { Args: { token: string }; Returns: undefined };
+      weekly_change: {
+        Args: { previous: number; value: number };
+        Returns: string;
+      };
+      weekly_count: { Args: { n: number }; Returns: string };
+      weekly_email_content: {
+        Args: { last_day: string; owner: string };
+        Returns: Json;
+      };
+      weekly_numbers: {
+        Args: { first_day: string; last_day: string; owner: string };
+        Returns: {
+          days: number;
+          followers: number;
+          likes_received: number;
+          posts: number;
+          removed: number;
+          replies: number;
+          replies_received: number;
+          views: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

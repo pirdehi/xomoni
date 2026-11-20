@@ -7,6 +7,7 @@ import {
   createSupabaseDashboardReader,
   createSupabaseDevicePairing,
   createSupabaseNumbersChoice,
+  createSupabaseWeeklyEmail,
   createSupabaseDeviceRegistry,
   createSupabaseLiveFeed,
   dashboardTopic,
@@ -480,5 +481,39 @@ describe('createSupabaseNumbersChoice (#250)', () => {
         clientWith({ data: null, error: null }, { data: null, error: { message: 'permission denied' } }).client,
       ).set(true),
     ).rejects.toThrow('set_daily_stats: permission denied');
+  });
+});
+
+describe('createSupabaseWeeklyEmail (#257, ADR-0031)', () => {
+  function clientWith(read: { data: { enabled: boolean } | null; error: { message: string } | null }, set?: unknown) {
+    const maybeSingle = vi.fn(() => Promise.resolve(read));
+    const select = vi.fn(() => ({ maybeSingle }));
+    const from = vi.fn(() => ({ select }));
+    const rpc = vi.fn(() => Promise.resolve(set));
+    return { from, select, rpc, client: { from, rpc } as unknown as Parameters<typeof createSupabaseWeeklyEmail>[0] };
+  }
+
+  it('reads only the choice, never the stop token, and off when there is no row yet', async () => {
+    const on = clientWith({ data: { enabled: true }, error: null });
+    expect(await createSupabaseWeeklyEmail(on.client).get()).toBe(true);
+    expect(on.from).toHaveBeenCalledWith('weekly_emails');
+    expect(on.select).toHaveBeenCalledWith('enabled');
+    expect(await createSupabaseWeeklyEmail(clientWith({ data: null, error: null }).client).get()).toBe(false);
+    await expect(
+      createSupabaseWeeklyEmail(clientWith({ data: null, error: { message: 'down' } }).client).get(),
+    ).rejects.toThrow('weekly_emails: down');
+  });
+
+  it('sets it through set_weekly_email, and passes on a refusal', async () => {
+    const ok = clientWith({ data: null, error: null }, { data: true, error: null });
+    expect(await createSupabaseWeeklyEmail(ok.client).set(true)).toBe(true);
+    expect(ok.rpc).toHaveBeenCalledWith('set_weekly_email', { enabled: true });
+    const refused = clientWith(
+      { data: null, error: null },
+      { data: null, error: { message: 'Turn on your daily numbers first.' } },
+    );
+    await expect(createSupabaseWeeklyEmail(refused.client).set(true)).rejects.toThrow(
+      'set_weekly_email: Turn on your daily numbers first.',
+    );
   });
 });

@@ -37,6 +37,10 @@ function fakeServices() {
         get: vi.fn<LiveDashboardServices['numbers']['get']>(() => Promise.resolve(false)),
         set: vi.fn<LiveDashboardServices['numbers']['set']>(),
       },
+      weeklyEmail: {
+        get: vi.fn<LiveDashboardServices['weeklyEmail']['get']>(() => Promise.resolve(false)),
+        set: vi.fn<LiveDashboardServices['weeklyEmail']['set']>(),
+      },
     },
     listDevices,
     listRecentJobs,
@@ -296,5 +300,45 @@ describe('useLiveDashboard', () => {
     expect(error).toBe('Could not disconnect. Try again.');
     expect(result.current.devices).toEqual(INITIAL.devices);
     expect(result.current.jobs).toEqual(INITIAL.jobs);
+  });
+
+  it('reads the weekly email choice, changes it, and says why when it can’t (#257, ADR-0031)', async () => {
+    fake.services.weeklyEmail.get.mockResolvedValue(true);
+    const { result } = renderHook(() => useLiveDashboard('user-1', INITIAL));
+    await waitFor(() => expect(result.current.weeklyEmail).toBe(true));
+
+    fake.services.weeklyEmail.set.mockResolvedValueOnce(false);
+    let error: string | null = 'unset';
+    await act(async () => {
+      error = await result.current.setWeeklyEmail(false);
+    });
+    expect(error).toBeNull();
+    expect(result.current.weeklyEmail).toBe(false);
+
+    fake.services.weeklyEmail.set.mockRejectedValueOnce(new Error('Turn on your daily numbers first.'));
+    await act(async () => {
+      error = await result.current.setWeeklyEmail(true);
+    });
+    expect(error).toBe('Couldn’t turn the weekly email on. Turn your numbers on first, then try again.');
+    fake.services.weeklyEmail.set.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      error = await result.current.setWeeklyEmail(false);
+    });
+    expect(error).toBe('Couldn’t turn the weekly email off. Try again in a moment.');
+  });
+
+  it('turns the weekly email off with the numbers, and reads it as off when that read fails', async () => {
+    fake.services.weeklyEmail.get.mockResolvedValue(true);
+    fake.services.numbers.set.mockResolvedValue(false);
+    const { result } = renderHook(() => useLiveDashboard('user-1', INITIAL));
+    await waitFor(() => expect(result.current.weeklyEmail).toBe(true));
+    await act(async () => {
+      await result.current.showNumbers(false);
+    });
+    expect(result.current.weeklyEmail).toBe(false);
+
+    fake.services.weeklyEmail.get.mockRejectedValue(new Error('offline'));
+    const again = renderHook(() => useLiveDashboard('user-1', INITIAL));
+    await waitFor(() => expect(again.result.current.weeklyEmail).toBe(false));
   });
 });

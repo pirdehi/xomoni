@@ -34,6 +34,16 @@ The CLI maps any environment variable named `SUPABASE_<SECTION>_<KEY>` onto `con
 3. `supabase db reset`, then `npm run gen -w @xomoni/db` to regenerate the types.
 4. After merge: `supabase db push` to production.
 
+## The weekly email's key
+
+`send_weekly_emails()` ([ADR-0031](../docs/adr/0031-weekly-email-of-the-daily-numbers.md)) reads a Resend API key, limited to sending from xomoni.com, from Supabase Vault. Until it is there, the weekly job sends nothing. Set it once in production from the SQL editor, or with `psql`, never in a migration or a file in the repository:
+
+```sql
+select vault.create_secret('<resend key>', 'resend_api_key');
+-- to rotate it later:
+select vault.update_secret((select id from vault.secrets where name = 'resend_api_key'), '<new key>');
+```
+
 ## Changing auth or API settings
 
 Edit `config.toml`, restart the stack (`supabase stop && supabase start`), run the auth tests (`npm run test:e2e -w @xomoni/web`), then after merge:

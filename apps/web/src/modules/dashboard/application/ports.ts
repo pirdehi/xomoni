@@ -42,6 +42,14 @@ export interface NumbersChoice {
   set(enabled: boolean): Promise<boolean>;
 }
 
+/** Whether the signed-in account gets the weekly email of its numbers (#257, ADR-0031). */
+export interface WeeklyEmailChoice {
+  /** The stored choice; false until the person turns it on. */
+  get(): Promise<boolean>;
+  /** Turns it on (only while the daily numbers are on) or off. Resolves with the stored choice. */
+  set(enabled: boolean): Promise<boolean>;
+}
+
 /** One-time codes that connect a browser's extension to the signed-in account (ADR-0018). */
 export interface DevicePairing {
   /** A new code, replacing any earlier one; it works once, for ten minutes. */

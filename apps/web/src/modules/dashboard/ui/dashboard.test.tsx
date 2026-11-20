@@ -107,6 +107,10 @@ function fakeServices() {
       get: vi.fn<LiveDashboardServices['numbers']['get']>(() => Promise.resolve(false)),
       set: vi.fn<LiveDashboardServices['numbers']['set']>(),
     },
+    weeklyEmail: {
+      get: vi.fn<LiveDashboardServices['weeklyEmail']['get']>(() => Promise.resolve(false)),
+      set: vi.fn<LiveDashboardServices['weeklyEmail']['set']>(),
+    },
     feed: {
       subscribe: vi.fn<LiveDashboardServices['feed']['subscribe']>((_viewerId, h) => {
         handlers = h;

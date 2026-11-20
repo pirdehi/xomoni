@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { addDailyNumbers, addDevice, addJobs, createConfirmedUser, updateJob } from './support/admin';
+import { addDailyNumbers, addDevice, addJobs, createConfirmedUser, updateJob, weeklyEmailOf } from './support/admin';
 import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
 
@@ -214,6 +214,46 @@ test.describe('dashboard (#41)', () => {
     await expect(page.getByRole('navigation', { name: 'Dashboard' })).toBeHidden();
     await expect(page.getByRole('button', { name: 'Download CSV' })).toBeHidden();
     await expect(page.getByRole('combobox', { name: 'Period' })).toBeHidden();
+  });
+
+  test('the weekly email is turned on in Reports, and stopped from its link or a mail app, signed out (#257)', async ({
+    page,
+    browser,
+  }) => {
+    const email = uniqueEmail('weekly');
+    const userId = await createConfirmedUser(email, PASSWORD);
+    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10);
+    await addDailyNumbers(userId, [{ x_handle: 'ada_x', day: day(2), followers: 120, posted_posts: 1 }]);
+
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+    await page.goto('/dashboard/reports');
+    const choice = page.getByRole('switch', { name: 'Email me my week every Monday' });
+    await expect(choice).toBeEnabled();
+    await choice.click();
+    await expect(choice).toBeChecked();
+    await expect.poll(async () => (await weeklyEmailOf(userId))?.enabled).toBe(true);
+    const token = (await weeklyEmailOf(userId))?.stop_token ?? '';
+
+    // The link in the email, opened where nobody is signed in: it asks first, then stops it.
+    const stranger = await browser.newPage();
+    await stranger.goto(`/weekly-email/stop?token=${token}`);
+    await expect(stranger.getByText('Stop the weekly email of your numbers?')).toBeVisible();
+    expect((await weeklyEmailOf(userId))?.enabled).toBe(true);
+    await stranger.getByRole('button', { name: 'Stop the weekly email' }).click();
+    await expect(stranger.getByText('The weekly email is stopped. Nothing more will come.')).toBeVisible();
+    expect((await weeklyEmailOf(userId))?.enabled).toBe(false);
+
+    // A mail app's own Unsubscribe button posts once, from anywhere (RFC 8058).
+    await page.reload();
+    await choice.click();
+    await expect.poll(async () => (await weeklyEmailOf(userId))?.enabled).toBe(true);
+    const oneClick = await stranger.request.post(`/api/weekly-email/stop?token=${token}`, {
+      form: { 'List-Unsubscribe': 'One-Click' },
+    });
+    expect(oneClick.status()).toBe(200);
+    expect((await weeklyEmailOf(userId))?.enabled).toBe(false);
+    await stranger.close();
   });
 
   test('Engagement shows what the posts received, as estimates, with views and the rate (#255)', async ({ page }) => {

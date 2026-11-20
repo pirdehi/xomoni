@@ -34,3 +34,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0028](0028-xomoni-data-on-the-website-in-the-same-browser.md) | Xomoni's own data on xomoni.com, read in the same browser and kept nowhere | Accepted |
 | [0029](0029-xomoni-settings-from-the-website.md) | Xomoni's settings on xomoni.com, applied by Xomoni in the same browser within its safety rules | Accepted |
 | [0030](0030-replies-to-you-kept-on-the-computer.md) | Replies to you, kept by Xomoni on the computer and never acted on | Accepted |
+| [0031](0031-weekly-email-of-the-daily-numbers.md) | A weekly email of the daily numbers, only for those who ask, sent by the database | Accepted |

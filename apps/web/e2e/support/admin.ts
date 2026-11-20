@@ -111,3 +111,12 @@ export async function addDailyNumbers(userId: string, days: SeedDay[]): Promise<
     prefer: 'return=minimal',
   });
 }
+
+/** The account's weekly email as the database holds it (#257, ADR-0031): the choice and the token its link carries. */
+export async function weeklyEmailOf(userId: string): Promise<{ enabled: boolean; stop_token: string } | null> {
+  const rows = await call<{ enabled: boolean; stop_token: string }[]>(
+    `/rest/v1/weekly_emails?user_id=eq.${userId}&select=enabled,stop_token`,
+    { method: 'GET' },
+  );
+  return rows[0] ?? null;
+}

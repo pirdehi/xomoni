@@ -2,7 +2,14 @@ import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel, type SupabaseClient } 
 import type { DailyStatsRow, Database, DeviceRow, JobRow } from '@xomoni/db';
 import type { DailyNumbers, Device, JobSummary } from '../domain/model';
 import { toRiskLevel } from '../domain/risk';
-import type { DashboardReader, DevicePairing, DeviceRegistry, LiveFeed, NumbersChoice } from '../application/ports';
+import type {
+  DashboardReader,
+  DevicePairing,
+  DeviceRegistry,
+  LiveFeed,
+  NumbersChoice,
+  WeeklyEmailChoice,
+} from '../application/ports';
 
 type Client = SupabaseClient<Database>;
 
@@ -167,6 +174,25 @@ export function createSupabaseLiveFeed(supabase: Client): LiveFeed {
         stopped.abort();
         if (channel) void supabase.removeChannel(channel);
       };
+    },
+  };
+}
+
+/**
+ * The account's weekly email (#257, ADR-0031): read from `weekly_emails` (only the choice; the stop token stays in the
+ * database), set through `set_weekly_email`, which refuses to turn it on while the daily numbers are off.
+ */
+export function createSupabaseWeeklyEmail(supabase: Client): WeeklyEmailChoice {
+  return {
+    async get() {
+      const { data, error } = await supabase.from('weekly_emails').select('enabled').maybeSingle();
+      if (error) throw new Error(`weekly_emails: ${error.message}`);
+      return data?.enabled === true;
+    },
+    async set(enabled) {
+      const { data, error } = await supabase.rpc('set_weekly_email', { enabled });
+      if (error) throw new Error(`set_weekly_email: ${error.message}`);
+      return data;
     },
   };
 }

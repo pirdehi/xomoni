@@ -796,7 +796,7 @@ describe('Dashboard', () => {
     });
 
     it('offers no Open in Xomoni where the data will come from the cloud', () => {
-      renderDashboard({ devices: [device()], jobs: [] }, 'engagement');
+      renderDashboard({ devices: [device()], jobs: [] }, 'reports');
       expect(screen.queryByRole('button', { name: 'Open in Xomoni' })).not.toBeInTheDocument();
     });
   });

@@ -3,6 +3,10 @@ import {
   audienceFigures,
   change,
   contentFigures,
+  engagementFigures,
+  rateSeries,
+  receivedByType,
+  viewsSeries,
   publishedByType,
   weekdayAverages,
   daysBefore,
@@ -271,5 +275,54 @@ describe('content (#254)', () => {
     expect(averages).toEqual([4, null, 1, null, null, null, 0]);
     expect(best).toBe(0);
     expect(weekdayAverages([day('2026-11-16')]).best).toBeNull();
+  });
+});
+
+describe('engagement (#255)', () => {
+  const week = { account: null, period: '7d' as const };
+
+  it('adds up what was received each day by type, and views apart, with gaps on days without numbers', () => {
+    const days = [
+      day('2026-11-18', { receivedLikes: 5, receivedReplies: 2, receivedReposts: 1, receivedViews: 400 }),
+      day('2026-11-18', { xHandle: 'bob', receivedLikes: 1, receivedQuotes: 1, receivedViews: 100 }),
+    ];
+    expect(receivedByType(days, week, NOW).find((p) => p.day === '2026-11-18')?.values).toEqual({
+      likes: 6,
+      replies: 2,
+      reposts: 1,
+      quotes: 1,
+    });
+    expect(receivedByType(days, week, NOW).find((p) => p.day === '2026-11-17')?.values).toBeNull();
+    expect(viewsSeries(days, week, NOW).find((p) => p.day === '2026-11-18')?.value).toBe(500);
+    expect(rateSeries(days, week, NOW).find((p) => p.day === '2026-11-18')?.value).toBeCloseTo(2);
+    expect(rateSeries([day('2026-11-18')], week, NOW).find((p) => p.day === '2026-11-18')?.value).toBeNull();
+    expect(receivedByType([], week, NOW)).toEqual([]);
+    expect(viewsSeries([], week, NOW)).toEqual([]);
+    expect(rateSeries([], week, NOW)).toEqual([]);
+  });
+
+  it('compares what was received with the period before, and shares the sightings that had a like', () => {
+    const figures = engagementFigures(
+      [
+        day('2026-11-18', {
+          receivedLikes: 8,
+          receivedViews: 400,
+          observedPosts: 10,
+          postsWithLikes: 3,
+          repliesWithLikes: 1,
+        }),
+        day('2026-11-19', { receivedReplies: 2, observedPosts: 10, postsWithLikes: 2 }),
+      ],
+      [day('2026-11-10', { receivedLikes: 4, receivedViews: 100 })],
+    );
+    expect(figures.likes).toEqual({ value: 8, previous: 4 });
+    expect(figures.replies).toEqual({ value: 2, previous: 0 });
+    expect(figures.views).toEqual({ value: 400, previous: 100 });
+    expect(figures.rate.value).toBeCloseTo(2.5);
+    expect(figures.rate.previous).toBeCloseTo(4);
+    expect(figures.postsLiked).toBe(30);
+    expect(figures.repliesLiked).toBe(1);
+    expect(figures.observedPosts).toBe(20);
+    expect(engagementFigures([], []).postsLiked).toBeNull();
   });
 });

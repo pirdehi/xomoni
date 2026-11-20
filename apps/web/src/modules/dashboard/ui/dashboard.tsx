@@ -52,6 +52,7 @@ import type { DailyNumbers, DashboardSnapshot, Device, JobSummary } from '../dom
 import { PERIODS, type Scope, accountsIn, jobsInScope, removedIn, scopeQuery } from '../domain/scope';
 import { Audience } from './audience';
 import { Content } from './content';
+import { Engagement } from './engagement';
 import { ColumnChart, LineChart, formatCount } from './charts';
 import { Delta } from './delta';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
@@ -478,6 +479,16 @@ export function Dashboard({
   } else if (section.id === 'content') {
     content = (
       <Content
+        days={days}
+        scope={scope}
+        now={now}
+        shown={numbersShown}
+        inXomoni={<OpenInXomoni xomoni={xomoni} page="library" />}
+      />
+    );
+  } else if (section.id === 'engagement') {
+    content = (
+      <Engagement
         days={days}
         scope={scope}
         now={now}

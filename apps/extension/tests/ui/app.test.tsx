@@ -79,6 +79,8 @@ describe('App sign-out (#226)', () => {
     await userEvent.click(within(sidebar()).getByRole('button', { name: /^Connections: / }));
     await userEvent.click(await screen.findByRole('button', { name: 'Sign out of Xomoni' }));
     const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' });
+    // No job runs, so signing out has none to wait for: a running one would hold it up to 30 seconds (#271).
+    expect(runner.busy, 'a job runs in this tab').toBe(false);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }));
 
     // Signing out pauses, disconnects and closes the X window first: on a busy machine (CI, or the push hook while

@@ -47,6 +47,22 @@ async function waitForStored(check: (s: Settings) => void) {
   });
 }
 
+/** The toasts on screen, as `useToasts` keeps them. */
+type ToastsHook = { result: { current: readonly { id: number; text: string; tone: string }[] } };
+
+/**
+ * The toasts shown after `since`, the newest id seen before an action. Toasts are module-wide and stay 5 seconds, so
+ * an earlier test's *All local Xomoni data was deleted* is still listed when the next test wipes (#271).
+ */
+function toastsAfter(toasts: ToastsHook, since: number) {
+  return toasts.result.current.filter((t) => t.id > since);
+}
+
+/** The newest toast id so far: pass it to `toastsAfter` to see only what an action shows. */
+function lastToastId(toasts: ToastsHook) {
+  return Math.max(0, ...toasts.result.current.map((t) => t.id));
+}
+
 async function renderPage() {
   const props = await pageProps();
   render(<SettingsPage {...props} />);
@@ -480,12 +496,13 @@ describe('Settings page', () => {
       await kvSet('settings', { ...DEFAULT_SETTINGS, notifications: false });
       await renderPage();
       const toasts = renderHook(() => useToasts());
+      const since = lastToastId(toasts);
 
       await userEvent.click(screen.getByRole('button', { name: 'Delete local data' }));
       await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete local data' }));
 
       await waitFor(() => {
-        expect(toasts.result.current).toContainEqual(
+        expect(toastsAfter(toasts, since)).toContainEqual(
           expect.objectContaining({ text: 'All local Xomoni data was deleted', tone: 'good' }),
         );
       });
@@ -523,6 +540,7 @@ describe('Settings page', () => {
       vi.stubGlobal('fetch', fetch);
       await renderPage();
       const toasts = renderHook(() => useToasts());
+      const since = lastToastId(toasts);
 
       const open = await screen.findByRole('button', { name: 'Delete local data' });
       await userEvent.click(open);
@@ -532,7 +550,7 @@ describe('Settings page', () => {
       await userEvent.click(within(dialog).getByRole('button', { name: 'Delete local data' }));
 
       await waitFor(() => {
-        expect(toasts.result.current).toContainEqual(
+        expect(toastsAfter(toasts, since)).toContainEqual(
           expect.objectContaining({ text: 'All local Xomoni data was deleted' }),
         );
       });
@@ -541,7 +559,7 @@ describe('Settings page', () => {
       for (const table of db.tables) {
         expect(await table.count(), table.name).toBe(KEPT_ON_WIPE.includes(table.name) ? 1 : 0);
       }
-      expect(toasts.result.current).not.toContainEqual(expect.objectContaining({ text: FORGOTTEN_HERE }));
+      expect(toastsAfter(toasts, since)).not.toContainEqual(expect.objectContaining({ text: FORGOTTEN_HERE }));
     });
 
     it('says to remove this browser on xomoni.com when the website couldn’t be reached', async () => {
@@ -560,6 +578,7 @@ describe('Settings page', () => {
       );
       await renderPage();
       const toasts = renderHook(() => useToasts());
+      const since = lastToastId(toasts);
 
       await userEvent.click(await screen.findByRole('button', { name: 'Delete local data' }));
       await userEvent.click(
@@ -567,7 +586,7 @@ describe('Settings page', () => {
       );
 
       await waitFor(() => {
-        expect(toasts.result.current).toContainEqual(
+        expect(toastsAfter(toasts, since)).toContainEqual(
           expect.objectContaining({ text: FORGOTTEN_HERE, tone: 'critical' }),
         );
       });

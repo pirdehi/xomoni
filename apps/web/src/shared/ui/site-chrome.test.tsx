@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { GITHUB_URL } from '@/shared/config/site';
+import { GITHUB_URL, ISSUES_URL, RELEASES_URL, SECURITY_URL } from '@/shared/config/site';
 import { GithubMark, Logo, SiteFooter, SiteHeader } from './site-chrome';
 
 // A visitor: the session cookie names no one.
@@ -51,6 +52,33 @@ describe('SiteHeader', () => {
     expect(within(banner).getByRole('link', { name: 'Sign in' })).toHaveAttribute('data-appearance', 'primary');
     expect(within(banner).getByRole('link', { name: 'Safety' })).toHaveAttribute('data-appearance', 'subtle');
     expect(within(banner).getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
+    // Install is always one click away, without outshining Sign in (#242).
+    expect(within(banner).getByRole('link', { name: 'Install' })).toHaveAttribute('href', '/install');
+    expect(within(banner).getByRole('link', { name: 'Install' })).toHaveAttribute('data-appearance', 'secondary');
+  });
+
+  it('folds the links into a menu on a phone, opened and closed with the keyboard (#242)', async () => {
+    render(<SiteHeader />);
+    const button = screen.getByRole('button', { name: 'Menu' });
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    const menu = await screen.findByRole('menu');
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => [item.textContent, item.getAttribute('href')]),
+    ).toEqual([
+      ['How it works', '/#how'],
+      ['Safety', '/#safety'],
+      ['Privacy', '/#privacy'],
+      ['Install', '/install'],
+      ['GitHub', GITHUB_URL],
+    ]);
+    // It closes with Escape and gives focus back to the button; that focus moves into it is checked in a real
+    // browser (e2e/install.spec.ts), as happy-dom doesn't run Fluent's focus management.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    expect(button).toHaveFocus();
   });
 
   it('shows only the account corner on pages of the signed-in app', () => {
@@ -59,12 +87,14 @@ describe('SiteHeader', () => {
     const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).queryByRole('link', { name: 'How it works' })).not.toBeInTheDocument();
     expect(within(nav).queryByRole('link', { name: 'GitHub' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Install' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('button', { name: 'Menu' })).not.toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
   });
 });
 
 describe('SiteFooter', () => {
-  it('credits the author, disclaims X and links the legal pages', () => {
+  it('credits the author, disclaims X, and links every page a visitor may look for (#242)', () => {
     render(<SiteFooter />);
 
     const footer = screen.getByRole('contentinfo');
@@ -74,10 +104,20 @@ describe('SiteFooter', () => {
       'href',
       'https://github.com/pirdehi',
     );
-    expect(within(footer).getByRole('link', { name: 'Risks' })).toHaveAttribute('href', '/risks');
-    expect(within(footer).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
-    expect(within(footer).getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
-    expect(within(footer).getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', GITHUB_URL);
-    expect(within(footer).getByRole('navigation', { name: 'Legal' })).toBeInTheDocument();
+    const nav = within(footer).getByRole('navigation', { name: 'Site' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => [link.textContent, link.getAttribute('href')]),
+    ).toEqual([
+      ['Install', '/install'],
+      ['What’s new', RELEASES_URL],
+      ['Risks', '/risks'],
+      ['Privacy', '/privacy'],
+      ['Terms', '/terms'],
+      ['Security', SECURITY_URL],
+      ['Support', ISSUES_URL],
+      ['GitHub', GITHUB_URL],
+    ]);
   });
 });

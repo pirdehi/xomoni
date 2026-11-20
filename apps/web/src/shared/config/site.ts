@@ -15,6 +15,9 @@ export const DOWNLOAD_URL = `${RELEASES_URL}/latest/download/xomoni-extension.zi
 /** Where people report bugs and ask questions. */
 export const ISSUES_URL = `${GITHUB_URL}/issues`;
 
+/** How to report a vulnerability: the repository's security policy (SECURITY.md). */
+export const SECURITY_URL = `${GITHUB_URL}/security/policy`;
+
 /** The privacy and support contact; forwarded by Cloudflare Email Routing. */
 export const CONTACT_EMAIL = 'privacy@xomoni.com';
 

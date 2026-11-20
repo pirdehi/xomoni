@@ -6,6 +6,9 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **xomoni.com on a phone has a menu** (#242): *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, one tap away, and it works with the keyboard. On a computer, *Install* is always in the header.
+- **A full footer**: Install, What's new, Risks, Privacy, Terms, Security, Support and GitHub.
+
 - **A weekly email of your numbers, if you ask for it** (#257).
   - Turn it on in Reports, while your daily numbers are on. Every Monday morning, last week's numbers come against the week before: counts only.
   - Every email has a link that stops it without signing in, and your mail app's own *Unsubscribe* button works too. Turning your daily numbers off stops it as well.

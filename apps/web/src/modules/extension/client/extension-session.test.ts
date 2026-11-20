@@ -4,7 +4,10 @@ import {
   createExtensionSessionServices,
   currentLink,
   linkStateOf,
+  onLinkCheckRequest,
   rememberExtensionId,
+  requestLinkCheck,
+  sameLink,
   subscribeLink,
 } from './extension-session';
 
@@ -83,5 +86,57 @@ describe('the browser composition root (#232)', () => {
     const stop = services.onSessionChange(vi.fn());
     expect(stop).toBeTypeOf('function');
     stop();
+  });
+});
+
+describe('sameLink (#299)', () => {
+  it('compares the status, and for a signed-in extension the device and the account', () => {
+    const signedIn = { status: 'signed-in', deviceId: DEVICE, account: 'o•••@example.com' } as const;
+    expect(sameLink({ status: 'none' }, { status: 'none' })).toBe(true);
+    expect(sameLink({ status: 'none' }, { status: 'unreachable' })).toBe(false);
+    expect(sameLink(signedIn, { ...signedIn })).toBe(true);
+    expect(sameLink(signedIn, { ...signedIn, deviceId: 'other' })).toBe(false);
+    expect(sameLink(signedIn, { ...signedIn, account: 'a•••@example.com' })).toBe(false);
+    expect(sameLink(signedIn, { status: 'signed-out' })).toBe(false);
+  });
+});
+
+describe('looking again (#299)', () => {
+  it('doesn’t tell the pages when a sync found the link as it was', async () => {
+    const services = createExtensionSessionServices();
+    await services.sync();
+    expect(currentLink()).toEqual({ status: 'none' });
+    const changed = vi.fn();
+    const stop = subscribeLink(changed);
+
+    await services.sync();
+    expect(changed).not.toHaveBeenCalled();
+
+    rememberExtensionId(EXT);
+    vi.stubGlobal('chrome', {
+      runtime: {
+        sendMessage: (_id: string, _m: unknown, callback: (a: unknown) => void) => callback({ ok: true, state: STATE }),
+      },
+    });
+    await services.sync();
+    expect(currentLink()).toEqual({ status: 'signed-out' });
+    expect(changed).toHaveBeenCalledOnce();
+    stop();
+  });
+
+  it('hands a request to look again to every listener, until it stops listening', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const stopFirst = onLinkCheckRequest(first);
+    const stopSecond = onLinkCheckRequest(second);
+
+    requestLinkCheck();
+    stopFirst();
+    requestLinkCheck();
+    stopSecond();
+    requestLinkCheck();
+
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).toHaveBeenCalledTimes(2);
   });
 });

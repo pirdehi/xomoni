@@ -1,8 +1,59 @@
 // @vitest-environment happy-dom
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DOWNLOAD_URL, RELEASES_URL } from '@/shared/config/site';
+import { onLinkCheckRequest } from '@/modules/extension/client/extension-session';
+import type { ExtensionLinkState } from '@/modules/extension/ui/extension-session-sync';
+import { LIVE_CHECK_MS } from '@/modules/extension/ui/getting-started';
 import { InstallPage } from './install-page';
+
+const page = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  const state: { link: ExtensionLinkState } = { link: { status: 'unknown' } };
+  return {
+    state,
+    listeners,
+    /** What the page's sync would publish after looking for Xomoni. */
+    publish(link: ExtensionLinkState) {
+      state.link = link;
+      listeners.forEach((listener) => listener());
+    },
+  };
+});
+vi.mock('@/modules/extension/ui/extension-session-sync', async () => {
+  const { useSyncExternalStore } = await import('react');
+  return {
+    useExtensionLink: () =>
+      useSyncExternalStore(
+        (onChange: () => void) => {
+          page.listeners.add(onChange);
+          return () => page.listeners.delete(onChange);
+        },
+        () => page.state.link,
+      ),
+  };
+});
+vi.mock('@/shared/supabase/browser-session', () => ({
+  watchSessionEmail: (onChange: (email: string | null) => void) => {
+    onChange(null);
+    return () => undefined;
+  },
+}));
+
+const IPHONE =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+
+beforeEach(() => {
+  page.state.link = { status: 'none' };
+});
+afterEach(() => {
+  vi.useRealTimers();
+  Reflect.deleteProperty(window.navigator, 'userAgent');
+  Reflect.deleteProperty(window.navigator, 'userAgentData');
+});
+
+const where = () => screen.getByRole('region', { name: 'Where you are' });
+const guide = () => screen.getByRole('region', { name: 'Install steps' });
 
 describe('InstallPage (#44)', () => {
   it('downloads the latest release and links every version with its checksums', () => {
@@ -16,25 +67,16 @@ describe('InstallPage (#44)', () => {
     expect(screen.getByText(/with a SHA-256 checksum/)).toBeInTheDocument();
   });
 
-  it('starts with the risks, then walks through loading the extension and connecting it, in order', () => {
+  it('says how to update without losing data, on the browser’s own extensions page', () => {
+    Object.defineProperty(window.navigator, 'userAgentData', {
+      value: { brands: [{ brand: 'Microsoft Edge', version: '131' }], platform: 'Windows', mobile: false },
+      configurable: true,
+    });
     render(<InstallPage />);
 
-    const steps = within(screen.getByRole('list', { name: 'Install steps' })).getAllByRole('listitem');
-    expect(steps.map((step) => within(step).getByRole('heading', { level: 2 }).textContent)).toEqual([
-      'Read what can go wrong',
-      'Download and unzip',
-      'Load it in Chrome, Edge or Brave',
-      'Follow it here (optional)',
-    ]);
-    expect(within(steps[0]!).getByRole('link', { name: 'the risks' })).toHaveAttribute('href', '/risks');
-    expect(steps[2]).toHaveTextContent('chrome://extensions');
-    expect(steps[3]).toHaveTextContent('Only job status is sent');
-  });
-
-  it('says how to update without losing data', () => {
-    render(<InstallPage />);
-
-    expect(screen.getByText(/replace the folder’s contents/)).toHaveTextContent('Your data stays.');
+    const update = screen.getByText(/replace the folder’s contents/);
+    expect(update).toHaveTextContent('Your data stays.');
+    expect(update).toHaveTextContent('edge://extensions');
   });
 
   it('sits between the site header and footer', () => {
@@ -42,5 +84,62 @@ describe('InstallPage (#44)', () => {
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+  });
+});
+
+describe('InstallPage: where you are (#299)', () => {
+  it('shows the checklist first, in a card with a heading, before the steps', () => {
+    render(<InstallPage />);
+
+    expect(within(where()).getByRole('heading', { level: 2, name: 'Where you are' })).toBeInTheDocument();
+    expect(within(where()).getAllByRole('listitem')).toHaveLength(3);
+    expect(where().compareDocumentPosition(guide()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The steps are right below: no link back to this page.
+    expect(within(where()).queryByRole('link', { name: 'Install Xomoni' })).not.toBeInTheDocument();
+    expect(where()).toHaveTextContent('Follow the steps below.');
+  });
+
+  it('looks for Xomoni every few seconds, and ticks and moves the steps on as soon as it answers', async () => {
+    vi.useFakeTimers();
+    const looks = vi.fn();
+    const stop = onLinkCheckRequest(looks);
+    render(<InstallPage />);
+    await act(async () => vi.advanceTimersByTime(LIVE_CHECK_MS));
+    expect(looks).toHaveBeenCalledOnce();
+    stop();
+    expect(within(where()).getAllByRole('listitem')[0]).toHaveTextContent(/^Install Xomoni in this browser$/);
+    expect(within(guide()).getByText('Step 1 of 5')).toBeInTheDocument();
+
+    await act(async () => page.publish({ status: 'signed-out' }));
+
+    expect(within(where()).getAllByRole('listitem')[0]).toHaveTextContent('Install Xomoni in this browser: done');
+    expect(within(guide()).getByText('Step 5 of 5')).toBeInTheDocument();
+    expect(guide()).toHaveTextContent('Xomoni is installed in this browser.');
+  });
+});
+
+describe('InstallPage: the download (#299)', () => {
+  it('moves the steps on to unzipping, with the focus there', () => {
+    render(<InstallPage />);
+
+    document.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    fireEvent.click(screen.getByRole('link', { name: 'Download the latest version' }));
+
+    expect(within(guide()).getByText('Step 3 of 5')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Unzip it into a folder you keep' })).toHaveFocus();
+  });
+});
+
+describe('InstallPage on a phone (#299)', () => {
+  it('says Xomoni runs on a computer, and offers nothing to install', () => {
+    Object.defineProperty(window.navigator, 'userAgent', { value: IPHONE, configurable: true });
+    render(<InstallPage />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Install Xomoni' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Xomoni runs on a computer' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Download the latest version' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'All versions and checksums' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Install steps' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Where you are' })).not.toBeInTheDocument();
   });
 });

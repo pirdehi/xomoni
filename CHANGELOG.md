@@ -6,6 +6,14 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **An easier install page** (#299).
+  - *Where you are* is now a card at the top of xomoni.com/install. It looks for Xomoni every few seconds and ticks as soon as Xomoni opens xomoni.com in this browser.
+  - The steps follow your browser and computer: Chrome, Edge or Brave, on a Mac or Windows. The extensions page's address comes with a *Copy* button, since web pages can't link to it, and unzipping is explained for your system.
+  - Adding Xomoni: drag the unzipped folder onto the extensions page, or use *Load unpacked* if that doesn't work. Both need *Developer mode*.
+  - One step at a time, with a progress bar, or all steps at once. The guide moves on to unzipping when the download starts, and to the last step when Xomoni shows up.
+  - On a phone, the page says Xomoni runs on a computer and offers nothing to install.
+  - Once Xomoni is installed, /welcome says how to pin it to the toolbar.
+
 - **Move your data to a new Xomoni** (#300). A Xomoni with another id, such as the coming Chrome Web Store version, starts empty, because Chrome keeps each extension's data apart.
   - In the Xomoni you're leaving, *Settings › Move your data › Export everything* saves one file in Downloads. It holds your accounts, posts, replies, reposts and likes, jobs, the activity log, daily numbers, replies to you, settings and Watch, plus what keeps Xomoni within X's limits and the risk ladder's warnings.
   - In the new one, *Import from a file* checks the whole file first and shows what it holds. A file that was changed or damaged, is too large, or comes from another version is refused, and nothing is imported.

@@ -62,9 +62,32 @@ export function subscribeLink(onChange: () => void): () => void {
   return () => listeners.delete(onChange);
 }
 
+/** Whether two link states say the same, so a sync that changed nothing doesn't redraw every page that reads it. */
+export function sameLink(a: ExtensionLinkState, b: ExtensionLinkState): boolean {
+  if (a.status === 'signed-in' && b.status === 'signed-in') return a.deviceId === b.deviceId && a.account === b.account;
+  return a.status === b.status;
+}
+
 function publish(next: ExtensionLinkState) {
+  if (sameLink(link, next)) return;
   link = next;
   listeners.forEach((listener) => listener());
+}
+
+const checkRequests = new Set<() => void>();
+
+/**
+ * Asks the page's sync to look for Xomoni again now, for a page that waits for it to appear (the install guide's
+ * live checklist, #299). `ExtensionSessionSync` runs it, unless a sync is already running; without it, nothing happens.
+ */
+export function requestLinkCheck(): void {
+  checkRequests.forEach((onRequest) => onRequest());
+}
+
+/** Calls `onRequest` on every `requestLinkCheck`; returns the function that stops listening. */
+export function onLinkCheckRequest(onRequest: () => void): () => void {
+  checkRequests.add(onRequest);
+  return () => checkRequests.delete(onRequest);
 }
 
 let memory: BrowserMemory | null = null;

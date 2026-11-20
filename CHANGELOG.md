@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Security
+
+- **xomoni.com runs Next.js 16.4.6** (from 16.4.3). It carries the fixes for four advisories in Next.js's `use cache`: cross-tenant and cross-user cache disclosure, a cache leak across root parameters, and cache poisoning of shared fallback shells ([GHSA-mfr8-8qww-v76h](https://github.com/vercel/next.js/security/advisories/GHSA-mfr8-8qww-v76h), [GHSA-vc7v-qv4w-wrv8](https://github.com/vercel/next.js/security/advisories/GHSA-vc7v-qv4w-wrv8), [GHSA-vvgp-ww4w-46vf](https://github.com/vercel/next.js/security/advisories/GHSA-vvgp-ww4w-46vf), [GHSA-rhh4-g77r-r9qj](https://github.com/vercel/next.js/security/advisories/GHSA-rhh4-g77r-r9qj)).
+
 ### Added
 
 - **Show my numbers on xomoni.com** (#250, ADR-0026): a switch in the extension's xomoni.com card and on the dashboard's Overview, off until you turn it on.

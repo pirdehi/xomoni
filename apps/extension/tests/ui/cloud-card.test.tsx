@@ -198,14 +198,14 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
 
     fetch.mockReturnValueOnce(json(200, true));
     await userEvent.click(toggle);
-    await waitFor(() => expect(toggle).toBeChecked());
+    await waitFor(() => expect(toggle).toBeChecked(), { timeout: 8_000 });
     expect(fetch.mock.calls.map(([url]) => url.split('/').pop())).toEqual(['device_set_daily_stats']);
     const body = fetch.mock.calls[0]?.[1]?.body;
     expect(JSON.parse(typeof body === 'string' ? body : '{}')).toEqual({ token: 'secret', enabled: true });
 
     fetch.mockReturnValueOnce(json(200, false));
     await userEvent.click(toggle);
-    await waitFor(() => expect(toggle).not.toBeChecked());
+    await waitFor(() => expect(toggle).not.toBeChecked(), { timeout: 8_000 });
     await waitFor(() =>
       expect(toasts.result.current.map((t) => t.text)).toContain('Your daily numbers were removed from xomoni.com'),
     );
@@ -226,7 +226,7 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     const toggle = await screen.findByRole('switch', { name: 'Show my numbers on xomoni.com' });
     fetch.mockReturnValueOnce(json(500, { message: 'The server is busy.' }));
     await userEvent.click(toggle);
-    expect(await screen.findByText('The server is busy.')).toBeInTheDocument();
+    expect(await screen.findByText('The server is busy.', undefined, { timeout: 8_000 })).toBeInTheDocument();
     expect(toggle).not.toBeChecked();
     // Busy machines (the push hook, CI) have run this past the default five seconds.
   }, 15_000);

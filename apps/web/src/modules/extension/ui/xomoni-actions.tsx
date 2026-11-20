@@ -30,7 +30,7 @@ import {
   Prohibited16Regular,
   Send20Regular,
 } from '@fluentui/react-icons';
-import type { JobAction, XomoniPage } from '@xomoni/bridge';
+import type { JobAction, LibraryKind, ReadAnswer, XomoniPage } from '@xomoni/bridge';
 import { type ReactElement, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { INSTALL_URL } from '@/shared/config/site';
 import { ButtonLink } from '@/shared/ui/links';
@@ -65,6 +65,10 @@ export type XomoniWant =
   | { kind: 'job'; action: JobAction; jobId: string; deviceId: string; deviceName?: string }
   | { kind: 'open'; page: XomoniPage };
 
+/** A read a page asks of Xomoni (ADR-0028); the device is added by `useXomoni`. */
+export type XomoniReadRequest =
+  { what: 'library'; kind: LibraryKind; query: string; offset: number } | { what: 'health' } | { what: 'watch' };
+
 /** What `useXomoni` gives a page. */
 export interface XomoniControls {
   /** Whether Xomoni can act from this page, and if not, why. */
@@ -75,6 +79,11 @@ export interface XomoniControls {
   busy: string | null;
   /** The notice and the dialog: render once, where the page's content starts. */
   ui: ReactNode;
+  /**
+   * Reads one of Xomoni's places in this browser (ADR-0028): null unless Xomoni is here and signed in to this account.
+   * The answer is X content: keep it in memory, never store, log or send it.
+   */
+  read: (request: XomoniReadRequest) => Promise<ReadAnswer | null>;
 }
 
 type DialogState = { kind: 'away' } | { kind: 'elsewhere'; deviceName: string | undefined };
@@ -169,7 +178,51 @@ export function useXomoni(
       />
     </>
   );
-  return { presence, request, busy, ui };
+  async function read(request: XomoniReadRequest): Promise<ReadAnswer | null> {
+    const here = latest.current;
+    if (here.kind !== 'here') return null;
+    return get().read({ ...request, deviceId: here.deviceId });
+  }
+
+  return { presence, request, busy, ui, read };
+}
+
+/**
+ * Reads one of Xomoni's places for a page while Xomoni is here (ADR-0028), and again when `key` changes or `reload`
+ * is called. `answer` is null until Xomoni answers, and stays null while it isn't here.
+ */
+export function useXomoniRead(
+  xomoni: XomoniControls,
+  request: XomoniReadRequest,
+): { answer: ReadAnswer | null; loading: boolean; reload: () => void } {
+  const [answer, setAnswer] = useState<ReadAnswer | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [round, setRound] = useState(0);
+  const here = xomoni.presence.kind === 'here';
+  const key = JSON.stringify(request);
+  const reader = useRef(xomoni.read);
+  useEffect(() => {
+    reader.current = xomoni.read;
+  });
+  useEffect(() => {
+    if (!here) return;
+    let live = true;
+    const ask = JSON.parse(key) as XomoniReadRequest;
+    void Promise.resolve()
+      .then(() => {
+        if (live) setLoading(true);
+        return reader.current(ask);
+      })
+      .then((result) => {
+        if (!live) return;
+        setAnswer(result);
+        setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [here, key, round]);
+  return { answer: here ? answer : null, loading, reload: () => setRound((n) => n + 1) };
 }
 
 function XomoniNotice({ text, ok, onDismiss }: { text: string; ok: boolean; onDismiss: () => void }) {

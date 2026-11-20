@@ -4,6 +4,10 @@ import {
   JOB,
   OPEN,
   PAIR,
+  READ,
+  READ_PAGE,
+  parseReadAnswer,
+  parseReadMessage,
   SIGN_IN,
   SIGN_OUT,
   WEBSITE_ORIGIN,
@@ -231,5 +235,137 @@ describe('parseActionAnswer (ADR-0027)', () => {
   it('says when nothing answered', () => {
     expect(parseActionAnswer(undefined)).toEqual({ ok: false, reason: 'no_answer' });
     expect(parseActionAnswer(null)).toEqual({ ok: false, reason: 'no_answer' });
+  });
+});
+
+describe('reads (ADR-0028, #233)', () => {
+  it('reads a Library read with its kind, search and offset, and health and Watch with nothing more', () => {
+    const library = { type: READ, what: 'library', deviceId: DEVICE, kind: 'reply', query: 'rust', offset: 100 };
+    expect(parseWebsiteMessage(library)).toEqual(library);
+    expect(parseWebsiteMessage({ type: READ, what: 'health', deviceId: DEVICE })).toEqual({
+      type: READ,
+      what: 'health',
+      deviceId: DEVICE,
+    });
+    expect(parseWebsiteMessage({ type: READ, what: 'watch', deviceId: DEVICE })).not.toBeNull();
+  });
+
+  it('refuses anything else: other places, bad kinds, long searches, odd offsets, extra fields, no device', () => {
+    const base = { type: READ, what: 'library', deviceId: DEVICE, kind: 'post', query: '', offset: 0 };
+    for (const bad of [
+      { what: 'settings' },
+      { kind: 'dm' },
+      { query: 'x'.repeat(101) },
+      { query: 3 },
+      { offset: -1 },
+      { offset: 1.5 },
+      { offset: 2e6 },
+      { deviceId: 'nope' },
+      { token: 't' },
+    ]) {
+      expect(parseWebsiteMessage({ ...base, ...bad })).toBeNull();
+    }
+    expect(parseWebsiteMessage({ type: READ, what: 'health', deviceId: DEVICE, kind: 'post' })).toBeNull();
+    expect(parseReadMessage({ type: HELLO })).toBeNull();
+  });
+
+  const item = {
+    kind: 'post',
+    id: '1800000000000000000',
+    author: 'me',
+    text: 'hello',
+    createdAt: 1,
+    likes: 2,
+    reposts: 0,
+    replies: 1,
+    removed: false,
+  };
+  const zero = { present: 0, removed: 0 };
+  const page = {
+    handle: 'me',
+    counts: { post: { present: 1, removed: 0 }, reply: zero, repost: zero, like: zero },
+    matching: 1,
+    items: [item],
+    next: null,
+  };
+
+  it('reads a Library page strictly, and keeps at most a page of items with text cut short', () => {
+    expect(parseReadAnswer({ ok: true, what: 'library', page }, 'library')).toEqual({
+      ok: true,
+      what: 'library',
+      page,
+    });
+    const long = {
+      ...page,
+      items: Array.from({ length: 150 }, () => ({ ...item, text: 'x'.repeat(2000) })),
+      next: 100,
+    };
+    const read = parseReadAnswer({ ok: true, what: 'library', page: long }, 'library');
+    expect(read.ok && read.what === 'library' && read.page.items).toHaveLength(READ_PAGE);
+    expect(read.ok && read.what === 'library' && read.page.items[0]?.text).toHaveLength(1000);
+    for (const bad of [
+      { ...page, items: [{ ...item, id: 'abc' }] },
+      { ...page, items: [{ ...item, kind: 'dm' }] },
+      { ...page, items: [{ ...item, likes: -1 }] },
+      { ...page, items: [{ ...item, text: 5 }] },
+      { ...page, counts: { ...page.counts, like: { present: 1 } } },
+      { ...page, next: 'later' },
+      { ...page, handle: 'not a handle!' },
+    ]) {
+      expect(parseReadAnswer({ ok: true, what: 'library', page: bad }, 'library')).toEqual({
+        ok: false,
+        reason: 'refused',
+      });
+    }
+    // An answer for another read than the one asked is refused.
+    expect(parseReadAnswer({ ok: true, what: 'library', page }, 'watch')).toEqual({ ok: false, reason: 'refused' });
+  });
+
+  it('reads health and Watch strictly', () => {
+    const health = {
+      handle: 'me',
+      level: 2,
+      reason: 'X asked to prove you are human',
+      pace: 0.5,
+      reducedUntil: 10,
+      resumeAt: null,
+      fullStop: false,
+    };
+    expect(parseReadAnswer({ ok: true, what: 'health', accounts: [health] }, 'health')).toEqual({
+      ok: true,
+      what: 'health',
+      accounts: [health],
+    });
+    for (const bad of [{ level: 7 }, { pace: 2 }, { resumeAt: -1 }, { fullStop: 'no' }]) {
+      expect(parseReadAnswer({ ok: true, what: 'health', accounts: [{ ...health, ...bad }] }, 'health').ok).toBe(false);
+    }
+    const tab = {
+      query: 'xomoni',
+      checkedAt: null,
+      error: '',
+      posts: [{ id: '42', handle: 'ada', name: 'Ada', text: 'hi', time: null }],
+    };
+    expect(parseReadAnswer({ ok: true, what: 'watch', tabs: [tab] }, 'watch')).toEqual({
+      ok: true,
+      what: 'watch',
+      tabs: [tab],
+    });
+    expect(
+      parseReadAnswer({ ok: true, what: 'watch', tabs: [{ ...tab, posts: [{ ...tab.posts[0], id: 'x' }] }] }, 'watch')
+        .ok,
+    ).toBe(false);
+    expect(parseReadAnswer({ ok: true, what: 'watch', tabs: 'many' }, 'watch').ok).toBe(false);
+    expect(parseReadAnswer({ ok: true, what: 'watch', tabs: [{ ...tab, posts: 'many' }] }, 'watch').ok).toBe(false);
+    expect(parseReadAnswer({ ok: true, what: 'watch', tabs: [{ ...tab, query: 5 }] }, 'watch').ok).toBe(false);
+    expect(parseReadAnswer({ ok: true, what: 'health', accounts: 'all' }, 'health').ok).toBe(false);
+  });
+
+  it('keeps the known refusals, and says when nothing answered', () => {
+    expect(parseReadAnswer({ ok: false, reason: 'other_account' }, 'library')).toEqual({
+      ok: false,
+      reason: 'other_account',
+    });
+    expect(parseReadAnswer({ ok: false, reason: 'later' }, 'library')).toEqual({ ok: false, reason: 'refused' });
+    expect(parseReadAnswer(undefined, 'watch')).toEqual({ ok: false, reason: 'no_answer' });
   });
 });

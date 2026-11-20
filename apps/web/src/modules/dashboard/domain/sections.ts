@@ -131,8 +131,7 @@ export const SECTIONS: readonly Section[] = [
     shows: ['Search and filter everything', 'Pick what to clean up', 'Download your copy'],
     source: 'Xomoni on this computer: your posts never reach our servers',
     needsXomoni: true,
-    ready: false,
-    issue: 233,
+    ready: true,
   },
   {
     id: 'comments',
@@ -168,8 +167,7 @@ export const SECTIONS: readonly Section[] = [
     shows: ['The newest posts for each phrase or #hashtag', 'Mentions of you each day'],
     source: 'Xomoni on this computer, while it watches',
     needsXomoni: true,
-    ready: false,
-    issue: 233,
+    ready: true,
   },
   {
     id: 'activity',
@@ -189,8 +187,7 @@ export const SECTIONS: readonly Section[] = [
     shows: ['Your account’s risk level and X’s warnings', 'Today’s pace against X’s limits'],
     source: 'Xomoni on this computer',
     needsXomoni: true,
-    ready: false,
-    issue: 233,
+    ready: true,
   },
   {
     id: 'browsers',

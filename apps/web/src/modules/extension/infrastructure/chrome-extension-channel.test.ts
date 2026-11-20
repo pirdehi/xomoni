@@ -70,6 +70,15 @@ describe('the extension channel (#232, ADR-0025)', () => {
     });
   });
 
+  it('reads one of Xomoni’s places, strictly, for the read asked (ADR-0028)', async () => {
+    const { page, sent } = runtime({ ok: true, what: 'watch', tabs: [] });
+    const channel = createChromeExtensionChannel(() => page);
+
+    expect(await channel.read(EXT, { what: 'watch', deviceId: DEVICE })).toEqual({ ok: true, what: 'watch', tabs: [] });
+    expect(sent).toEqual([{ id: EXT, message: { type: 'xomoni-read', what: 'watch', deviceId: DEVICE } }]);
+    expect(await channel.read(EXT, { what: 'health', deviceId: DEVICE })).toEqual({ ok: false, reason: 'refused' });
+  });
+
   it('signs out', async () => {
     const { page, sent } = runtime({ ok: true, signedOut: true });
     const channel = createChromeExtensionChannel(() => page);
@@ -101,7 +110,7 @@ describe('the extension channel (#232, ADR-0025)', () => {
   it('stops waiting after the timeout', async () => {
     vi.useFakeTimers();
     const silent: PageRuntime = { sendMessage: vi.fn() };
-    const channel = createChromeExtensionChannel(() => silent, { answer: 100, signIn: 1_000 });
+    const channel = createChromeExtensionChannel(() => silent, { answer: 100, signIn: 1_000, read: 2_000 });
 
     const hello = channel.hello(EXT);
     const signIn = channel.signIn(EXT, { code: 'ABCDE-FGHJK' });

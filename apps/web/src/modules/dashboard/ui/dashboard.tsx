@@ -55,6 +55,7 @@ import { Content } from './content';
 import { Engagement } from './engagement';
 import { ColumnChart, LineChart, formatCount } from './charts';
 import { Delta } from './delta';
+import { HealthPlace, LibraryPlace, WatchPlace } from './xomoni-places';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
 import type { PairingResult } from '../domain/pairing';
@@ -496,6 +497,12 @@ export function Dashboard({
         inXomoni={<OpenInXomoni xomoni={xomoni} page="library" />}
       />
     );
+  } else if (section.id === 'library') {
+    content = <LibraryPlace xomoni={xomoni} />;
+  } else if (section.id === 'watch') {
+    content = <WatchPlace xomoni={xomoni} now={now} />;
+  } else if (section.id === 'health') {
+    content = <HealthPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'browsers') {
     content =
       devices.length === 0 ? (

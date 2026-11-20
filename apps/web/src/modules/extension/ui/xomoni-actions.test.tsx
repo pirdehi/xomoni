@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { XomoniActionServices } from '../client/xomoni-actions';
-import { OpenInXomoni, XomoniJobActions, useXomoni } from './xomoni-actions';
+import { OpenInXomoni, XomoniJobActions, useXomoni, useXomoniRead } from './xomoni-actions';
 
 const MINE = '0b5e0b9e-7c1a-4d55-9a53-8f3f6a1c2d3e';
 const OTHER = '9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f';
@@ -18,7 +18,11 @@ interface Link {
 const link = vi.hoisted((): { current: Link } => ({ current: { status: 'unknown' } }));
 vi.mock('./extension-session-sync', () => ({ useExtensionLink: () => link.current }));
 
-let services: { ask: ReturnType<typeof vi.fn>; recheck: ReturnType<typeof vi.fn> };
+let services: {
+  ask: ReturnType<typeof vi.fn>;
+  recheck: ReturnType<typeof vi.fn>;
+  read: ReturnType<typeof vi.fn>;
+};
 
 /** A page with one running job of this browser and *Open in Xomoni* for the Library. */
 function Page({
@@ -54,6 +58,7 @@ beforeEach(() => {
   services = {
     ask: vi.fn(() => Promise.resolve({ ok: true, outcome: 'stopping' })),
     recheck: vi.fn(() => Promise.resolve()),
+    read: vi.fn(() => Promise.resolve({ ok: true, what: 'watch', tabs: [] })),
   };
 });
 afterEach(() => {
@@ -200,5 +205,64 @@ describe('useXomoni: the dialog when Xomoni isn’t here', () => {
     rerender(<Page checkWaitMs={200} />);
     expect(await screen.findByRole('dialog', { name: 'Xomoni is ready' })).toBeInTheDocument();
     expect(services.ask).not.toHaveBeenCalled();
+  });
+});
+
+/** A page reading Watch from Xomoni, showing what came back. */
+function Reader() {
+  const xomoni = useXomoni([MINE], () => services as unknown as XomoniActionServices);
+  const { answer, loading, reload } = useXomoniRead(xomoni, { what: 'watch' });
+  return (
+    <>
+      <p>{loading ? 'loading' : answer ? JSON.stringify(answer) : 'nothing'}</p>
+      <button onClick={reload}>again</button>
+    </>
+  );
+}
+
+describe('useXomoniRead (ADR-0028, #233)', () => {
+  it('reads from Xomoni in this browser, naming the device, and reads again on request', async () => {
+    render(<Reader />);
+    expect(await screen.findByText('{"ok":true,"what":"watch","tabs":[]}')).toBeInTheDocument();
+    expect(services.read).toHaveBeenCalledWith({ what: 'watch', deviceId: MINE });
+    await userEvent.click(screen.getByRole('button', { name: 'again' }));
+    await waitFor(() => expect(services.read).toHaveBeenCalledTimes(2));
+  });
+
+  it('reads nothing while Xomoni isn’t here, or is signed in as another device', () => {
+    link.current = { status: 'signed-in', deviceId: OTHER };
+    const { unmount } = render(<Reader />);
+    expect(screen.getByText('nothing')).toBeInTheDocument();
+    unmount();
+    link.current = { status: 'none' };
+    render(<Reader />);
+    expect(screen.getByText('nothing')).toBeInTheDocument();
+    expect(services.read).not.toHaveBeenCalled();
+  });
+
+  it('keeps nothing it read once Xomoni is gone', async () => {
+    const { rerender } = render(<Reader />);
+    expect(await screen.findByText(/"what":"watch"/)).toBeInTheDocument();
+    link.current = { status: 'signed-out' };
+    rerender(<Reader />);
+    expect(screen.getByText('nothing')).toBeInTheDocument();
+  });
+
+  it('leaves no trace of an answer in storage, and asks no server (ADR-0028)', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    localStorage.clear();
+    sessionStorage.clear();
+    services.read.mockResolvedValue({
+      ok: true,
+      what: 'watch',
+      tabs: [{ query: 'secret words', checkedAt: null, error: '', posts: [] }],
+    });
+    render(<Reader />);
+    expect(await screen.findByText(/secret words/)).toBeInTheDocument();
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+    expect(document.cookie).not.toContain('secret');
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

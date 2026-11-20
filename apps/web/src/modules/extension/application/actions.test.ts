@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { askXomoni } from './actions';
+import { askXomoni, readXomoni } from './actions';
 
 const EXT = 'abcdefghijklmnopabcdefghijklmnop';
 const DEVICE = '0b5e0b9e-7c1a-4d55-9a53-8f3f6a1c2d3e';
@@ -9,6 +9,7 @@ function deps(extensionId: string | null) {
     channel: {
       job: vi.fn(() => Promise.resolve({ ok: true as const, outcome: 'stopping' as const })),
       open: vi.fn(() => Promise.resolve({ ok: true as const, outcome: 'opened' as const })),
+      read: vi.fn(() => Promise.resolve({ ok: true as const, what: 'watch' as const, tabs: [] })),
     },
     memory: { extensionId: () => extensionId },
   };
@@ -41,5 +42,23 @@ describe('askXomoni (ADR-0027, #251)', () => {
       outcome: 'opened',
     });
     expect(d.channel.open).toHaveBeenCalledWith(EXT, { page: 'settings', deviceId: DEVICE });
+  });
+});
+
+describe('readXomoni (ADR-0028, #233)', () => {
+  it('reads from the extension it knows, and sends nothing without one', async () => {
+    const d = deps(EXT);
+    await expect(readXomoni(d, { what: 'watch', deviceId: DEVICE })).resolves.toEqual({
+      ok: true,
+      what: 'watch',
+      tabs: [],
+    });
+    expect(d.channel.read).toHaveBeenCalledWith(EXT, { what: 'watch', deviceId: DEVICE });
+    const none = deps(null);
+    await expect(readXomoni(none, { what: 'health', deviceId: DEVICE })).resolves.toEqual({
+      ok: false,
+      reason: 'no_answer',
+    });
+    expect(none.channel.read).not.toHaveBeenCalled();
   });
 });

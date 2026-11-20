@@ -63,7 +63,12 @@ test.describe('connecting a browser with a one-time code (ADR-0018)', () => {
     });
     // The answer names the newest release, for the extension's update notice (#151).
     expect(report.status).toBe(200);
-    expect(report.json).toEqual({ latest: expect.stringMatching(/^\d+\.\d+\.\d+$/), security: expect.any(Boolean) });
+    expect(report.json).toEqual({
+      latest: expect.stringMatching(/^\d+\.\d+\.\d+$/),
+      security: expect.any(Boolean),
+      // Daily numbers are off until the person turns them on (#250).
+      stats: false,
+    });
     await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Activity' }).click();
     await expect(page.getByRole('region', { name: 'Jobs' })).toContainText('Delete posts older than Jan 1, 2018');
 

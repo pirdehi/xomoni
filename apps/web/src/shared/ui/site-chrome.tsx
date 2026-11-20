@@ -1,9 +1,20 @@
 'use client';
-// The header and footer of every page, on Fluent UI tokens (ADR-0019).
-import { makeStyles, tokens } from '@fluentui/react-components';
+// The header and footer of every page, on Fluent UI tokens (ADR-0019). On a phone, the header's links fold into one
+// menu (#242).
+import {
+  Button,
+  Menu,
+  MenuItemLink,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components';
+import { Navigation24Regular } from '@fluentui/react-icons';
 import Image from 'next/image';
 import Link from 'next/link';
-import { GITHUB_URL } from '@/shared/config/site';
+import { GITHUB_URL, INSTALL_URL, ISSUES_URL, RELEASES_URL, SECURITY_URL } from '@/shared/config/site';
 import { HeaderAccount } from './header-account';
 import { ButtonLink } from './links';
 
@@ -42,9 +53,10 @@ const useStyles = makeStyles({
     '@media (min-width: 640px)': { padding: `0 ${tokens.spacingHorizontalXXL}` },
   },
   nav: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
-  // Section links only fit next to the logo on wider screens; GitHub fits from a small tablet up.
+  // Section links only fit next to the logo on wider screens.
   wide: { display: 'none', '@media (min-width: 768px)': { display: 'inline-flex' } },
-  medium: { display: 'none', '@media (min-width: 640px)': { display: 'inline-flex' } },
+  // The menu that holds them below 768 px.
+  phone: { display: 'inline-flex', '@media (min-width: 768px)': { display: 'none' } },
   account: { display: 'inline-flex', marginLeft: tokens.spacingHorizontalXS },
   footer: {
     marginTop: 'auto',
@@ -99,10 +111,19 @@ export function GithubMark({ className }: { className?: string }) {
   );
 }
 
+/** The home page's sections and the install guide, as public pages link them. */
+const SECTIONS = [
+  { href: '/#how', label: 'How it works' },
+  { href: '/#safety', label: 'Safety' },
+  { href: '/#privacy', label: 'Privacy' },
+] as const;
+
 /**
  * Sticky, translucent site header. Every page gets the account corner (`HeaderAccount`): "Sign in" for visitors,
  * the dashboard and an account menu with "Sign out" for signed-in people. Public pages also link the home page's
- * sections; pages of the signed-in app (`app`) don't.
+ * sections, GitHub and *Install*; below 768 px those fold into one menu, which Fluent's `Menu` opens and closes with
+ * the keyboard, keeping focus inside and returning it to the button (#242). Pages of the signed-in app (`app`) show
+ * only the account corner.
  */
 export function SiteHeader({ app = false }: { app?: boolean }) {
   const s = useStyles();
@@ -113,18 +134,35 @@ export function SiteHeader({ app = false }: { app?: boolean }) {
         <nav className={s.nav} aria-label="Main">
           {!app && (
             <>
-              <ButtonLink href="/#how" appearance="subtle" className={s.wide}>
-                How it works
-              </ButtonLink>
-              <ButtonLink href="/#safety" appearance="subtle" className={s.wide}>
-                Safety
-              </ButtonLink>
-              <ButtonLink href="/#privacy" appearance="subtle" className={s.wide}>
-                Privacy
-              </ButtonLink>
-              <ButtonLink href={GITHUB_URL} appearance="subtle" className={s.medium}>
+              {SECTIONS.map((section) => (
+                <ButtonLink key={section.href} href={section.href} appearance="subtle" className={s.wide}>
+                  {section.label}
+                </ButtonLink>
+              ))}
+              <ButtonLink href={GITHUB_URL} appearance="subtle" className={s.wide}>
                 GitHub
               </ButtonLink>
+              <ButtonLink href={INSTALL_URL} appearance="secondary" className={s.wide}>
+                Install
+              </ButtonLink>
+              <span className={s.phone}>
+                <Menu positioning="below-end">
+                  <MenuTrigger disableButtonEnhancement>
+                    <Button appearance="subtle" icon={<Navigation24Regular />} aria-label="Menu" />
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      {SECTIONS.map((section) => (
+                        <MenuItemLink key={section.href} href={section.href}>
+                          {section.label}
+                        </MenuItemLink>
+                      ))}
+                      <MenuItemLink href={INSTALL_URL}>Install</MenuItemLink>
+                      <MenuItemLink href={GITHUB_URL}>GitHub</MenuItemLink>
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
+              </span>
             </>
           )}
           <span className={s.account}>
@@ -136,7 +174,7 @@ export function SiteHeader({ app = false }: { app?: boolean }) {
   );
 }
 
-/** Site footer: credits and legal links. */
+/** Site footer: credits, and every page a visitor may look for (#242). */
 export function SiteFooter() {
   const s = useStyles();
   const link = (href: string, label: string) =>
@@ -155,10 +193,14 @@ export function SiteFooter() {
         <p className={s.credits}>
           © 2026 {link('https://github.com/pirdehi', 'Omid Pirdehi')} · MIT license · Not affiliated with X Corp.
         </p>
-        <nav className={s.footerNav} aria-label="Legal">
+        <nav className={s.footerNav} aria-label="Site">
+          {link(INSTALL_URL, 'Install')}
+          {link(RELEASES_URL, 'What’s new')}
           {link('/risks', 'Risks')}
           {link('/privacy', 'Privacy')}
           {link('/terms', 'Terms')}
+          {link(SECURITY_URL, 'Security')}
+          {link(ISSUES_URL, 'Support')}
           {link(GITHUB_URL, 'GitHub')}
         </nav>
       </div>

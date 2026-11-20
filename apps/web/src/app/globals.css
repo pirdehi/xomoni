@@ -118,3 +118,20 @@ body {
     color: #f0efec;
   }
 }
+
+/*
+  Printing, for Reports' Save as PDF (#257): what is marked `data-print="hide"` (the site's header and footer, the
+  dashboard's menus, pickers and buttons) stays off paper, and the page prints dark on white in either theme.
+*/
+@media print {
+  [data-print='hide'] {
+    display: none !important;
+  }
+
+  body,
+  body * {
+    color: #0b0b0b !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}

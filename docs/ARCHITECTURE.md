@@ -222,6 +222,7 @@ One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](
 - **Realtime:** each dashboard listens on a private channel, `dashboard:<user id>`, which a policy on `realtime.messages` lets only its owner join. A trigger on `devices` and `jobs` broadcasts each change there (`dashboard_broadcast`, #149), and nowhere else. The tables are not in the `supabase_realtime` publication, so no subscriber hears Postgres changes of them, deletions included.
 - **Types:** [`packages/db`](../packages/db/README.md) holds the generated `Database` type. CI regenerates it from the migrations and fails on drift.
 - **What is never stored:** post text, likes, the inventory, X credentials, X cookies.
+- **In the browser, daily numbers** (#249, [ADR-0026](adr/0026-daily-numbers-in-the-cloud.md)): the extension's `daily` table keeps one row of counts per X account per local day, from pages X already showed (the profile's counts, and the rise in the counts of the person's own posts). No request is made to collect them. They reach the cloud only by the person's choice (#250).
 
 ## 7. Enforced rules
 

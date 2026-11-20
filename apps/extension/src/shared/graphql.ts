@@ -21,6 +21,13 @@ export interface ParsedTweet {
   likes: number;
   reposts: number;
   replies: number;
+  /** Quotes and bookmarks; 0 when X leaves them out. */
+  quotes: number;
+  bookmarks: number;
+  /** Views (`views.count`, a string in X's responses); null when X doesn't show them. */
+  views: number | null;
+  /** Whether it quotes another post (`is_quote_status`). */
+  quote: boolean;
   /** Whether the viewer currently likes it, when X says so. */
   favorited: boolean | null;
   /** The original post when this is a repost. */
@@ -115,10 +122,21 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
     likes: asNumber(legacy.favorite_count) ?? 0,
     reposts: asNumber(legacy.retweet_count) ?? 0,
     replies: asNumber(legacy.reply_count) ?? 0,
+    quotes: asNumber(legacy.quote_count) ?? 0,
+    bookmarks: asNumber(legacy.bookmark_count) ?? 0,
+    views: viewCount(at(t, 'views', 'count')),
+    quote: legacy.is_quote_status === true,
     favorited: typeof favorited === 'boolean' ? favorited : null,
     source: sourceResult ? parseTweet(sourceResult, null) : null,
     sortIndex,
   };
+}
+
+/** X's view count, sent as a string of digits (sometimes a number); null when absent or malformed. */
+function viewCount(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  if (typeof value !== 'string' || !/^\d{1,15}$/.test(value)) return null;
+  return Number(value);
 }
 
 /** Every timeline tweet in a response, in document order, de-duplicated. */
@@ -268,6 +286,10 @@ export function draftsFromTimeline(
       likes: t.likes,
       reposts: t.reposts,
       replies: t.replies,
+      quotes: t.quotes,
+      bookmarks: t.bookmarks,
+      ...(t.views !== null && { views: t.views }),
+      quote: t.quote,
     });
   }
   return drafts;

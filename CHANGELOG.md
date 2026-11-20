@@ -6,6 +6,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Daily numbers in the extension** (#249, ADR-0026), kept in this browser.
+  - One row per X account per day: followers, following, posts and likes from the profile X showed that day.
+  - What your posts and replies received that day, from the rise Xomoni saw in their likes, replies, reposts, quotes and views, with how many posts it saw (an estimate).
+  - What you published and what Xomoni removed each day, from the Library and the activity log.
+  - Nothing new is asked of X: only pages X already showed count. A day without an X page has no row.
+
 - **Xomoni's actions on xomoni.com** (#251, ADR-0027).
   - Job cards have *Pause*, *Cancel* and *Resume*, and places whose lists live in Xomoni have *Open in Xomoni*. They go to Xomoni in the same browser, for jobs of this browser.
   - When Xomoni can't act from here, one dialog says why: *You haven't installed Xomoni yet* (with the install steps), *Xomoni runs on a computer* (with *Send to my computer*), or *Sign in to Xomoni in this browser*.

@@ -12,6 +12,7 @@ import {
   extractProfile,
   extractTweets,
   opName,
+  parseTweet,
   parseVariables,
 } from '../src/shared/graphql';
 import { estimateDuration, matchesFilter, parseIdList } from '../src/shared/filter';
@@ -87,6 +88,31 @@ describe('time', () => {
 });
 
 describe('graphql parsing', () => {
+  it('reads quotes, bookmarks, views and whether a post quotes another (#249)', () => {
+    const base = tweet('1');
+    const withCounts = {
+      ...base,
+      views: { count: '1234', state: 'EnabledWithCount' },
+      legacy: { ...base.legacy, quote_count: 2, bookmark_count: 5, is_quote_status: true },
+    };
+    expect(parseTweet(withCounts, null)).toMatchObject({ quotes: 2, bookmarks: 5, views: 1234, quote: true });
+    expect(parseTweet(base, null)).toMatchObject({ quotes: 0, bookmarks: 0, views: null, quote: false });
+    for (const count of ['12a', '', '-3', 1.5, -1]) {
+      expect(parseTweet({ ...base, views: { count } }, null)?.views).toBeNull();
+    }
+    expect(parseTweet({ ...base, views: { count: 77 } }, null)?.views).toBe(77);
+  });
+
+  it('keeps those counts on the viewer’s own posts only, never on likes or reposts', () => {
+    const own = { ...tweet('1'), views: { count: '10' }, legacy: { ...tweet('1').legacy, quote_count: 1 } };
+    const [post] = draftsFromTimeline('UserTweets', [parseTweet(own, null)!], ME, {});
+    expect(post).toMatchObject({ kind: 'post', quotes: 1, bookmarks: 0, views: 10, quote: false });
+    const liked = parseTweet({ ...tweet('2', { user: '9', handle: 'x' }), views: { count: '10' } }, '1')!;
+    const [like] = draftsFromTimeline('Likes', [liked], ME, { userId: ME });
+    expect(like).not.toHaveProperty('views');
+    expect(like).not.toHaveProperty('quotes');
+  });
+
   it('reads op names and variables', () => {
     const url =
       'https://x.com/i/api/graphql/abc123/UserTweets?variables=%7B%22userId%22%3A%221000%22%7D&features=%7B%7D';

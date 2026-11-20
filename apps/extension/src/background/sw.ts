@@ -1,9 +1,10 @@
 // Service worker: stores what the content script observes, opens the dashboard, and answers xomoni.com in the same
 // browser: a one-time code the person asked for (#228), one sign-in for the website and the extension (#232), and the
-// website's actions, which stop a job or open Xomoni's pages (#251).
+// website's actions, which stop a job or open Xomoni's pages (#251). Profile counts X shows also make the day's numbers
+// (#249).
 import type { XomoniPage } from '@xomoni/bridge';
 import { type ActionPorts, answerWebsite } from '../cloud/website';
-import { db, kvSet, upsertAccount, upsertItems } from '../shared/db';
+import { db, kvSet, recordProfileDay, upsertAccount, upsertItems } from '../shared/db';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID } from '../shared/notify';
@@ -100,7 +101,10 @@ async function handle(message: RuntimeMessage) {
     }
     case 'profile': {
       const { profile } = message;
-      await upsertAccount({ ...profile, profileAt: Date.now() });
+      const at = Date.now();
+      await upsertAccount({ ...profile, profileAt: at });
+      // The day's profile counts, from the page X already showed (#249): never a request of its own.
+      await recordProfileDay(profile.id, profile, at);
       break;
     }
     case 'rate':

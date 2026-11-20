@@ -299,6 +299,10 @@ describe('handleCapture: what goes to the service worker', () => {
             likes: 2,
             reposts: 1,
             replies: 0,
+            // X's other counts for own posts (#249); no views when X leaves them out.
+            quotes: 0,
+            bookmarks: 0,
+            quote: false,
           },
         ],
       },

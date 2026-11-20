@@ -46,6 +46,17 @@ const obs = {
 };
 
 describe('messages from the content script, checked before the service worker stores them (#145)', () => {
+  it('keeps the other counts of an own post when they are counts, and refuses them otherwise (#249)', () => {
+    const extra = { ...draft, quotes: 2, bookmarks: 0, views: 1500, quote: true };
+    const message = parseRuntimeMessage({ ...ingest, drafts: [extra] }, NOW);
+    expect(message?.type === 'ingest' && message.drafts[0]).toEqual(extra);
+    for (const bad of [{ quotes: -1 }, { views: 1.5 }, { bookmarks: '3' }, { quote: 'yes' }]) {
+      expect(parseRuntimeMessage({ ...ingest, drafts: [{ ...draft, ...bad }] }, NOW)).toBeNull();
+    }
+    const plain = parseRuntimeMessage(ingest, NOW);
+    expect(plain?.type === 'ingest' && plain.drafts[0]).not.toHaveProperty('views');
+  });
+
   it('passes well-formed messages through as copies', () => {
     expect(parseRuntimeMessage(ingest, NOW)).toEqual(ingest);
     expect(parseRuntimeMessage({ type: 'profile', profile }, NOW)).toEqual({ type: 'profile', profile });

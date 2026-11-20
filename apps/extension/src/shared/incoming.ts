@@ -32,6 +32,17 @@ export async function saveIncoming(accountId: string, drafts: readonly IncomingD
     .map((d) => ({ ...d, text: d.text.slice(0, INCOMING_TEXT), key: incomingKey(accountId, d.id), accountId }));
   await db.transaction('rw', db.incoming, async () => {
     if (rows.length) await db.incoming.bulkPut(rows);
+    await trimIncoming(accountId, now);
+  });
+}
+
+/**
+ * Drops `accountId`'s replies posted more than `INCOMING_KEEP_DAYS` before `now` and all but the newest
+ * `INCOMING_MAX`: the limits of ADR-0030, applied after every save and after a move brings replies in (ADR-0032).
+ */
+export async function trimIncoming(accountId: string, now = Date.now()) {
+  const since = incomingSince(now);
+  await db.transaction('rw', db.incoming, async () => {
     const byTime = () => db.incoming.where('[accountId+createdAt]');
     await byTime().between([accountId, -Infinity], [accountId, since], true, false).delete();
     const kept = byTime().between([accountId, since], [accountId, Infinity], true, true);

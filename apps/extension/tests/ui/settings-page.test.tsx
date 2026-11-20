@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createScanJob } from '../../src/engine/runner';
 import { getConnection, saveConnection } from '../../src/cloud/connection';
 import { FORGOTTEN_HERE } from '../../src/cloud/sync';
-import { KEPT_ON_WIPE, db, kvGet, kvSet } from '../../src/shared/db';
+import { KEPT_ON_WIPE, db, itemKey, kvGet, kvSet } from '../../src/shared/db';
+import { checkMoveText } from '../../src/shared/move-file';
 import { FINISHED_ID } from '../../src/shared/notify';
 import { ACTION_LABELS, DEFAULT_SETTINGS, PRESETS } from '../../src/shared/settings';
 import type { ActionKind, PacingRule, Settings } from '../../src/shared/types';
@@ -15,7 +16,7 @@ import { toDateInput } from '../../src/ui/format';
 import { useToasts } from '../../src/ui/hooks';
 import { SettingsPage } from '../../src/ui/pages/Settings';
 import { stubChrome } from '../support/chrome';
-import { ME, pageProps, resetDb } from '../support/fixtures';
+import { ME, account, pageProps, resetDb } from '../support/fixtures';
 import { captureDownloads, fakeRunner, item, logEntry } from '../support/shell';
 
 const ACTIONS: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
@@ -441,14 +442,19 @@ describe('Settings page', () => {
       expect(localStorage.getItem('xomoni.theme')).toBeNull();
     });
 
-    it('exports every local table as one dated JSON file', async () => {
-      await db.items.add(item('post', 'present', { text: 'hello' }));
-      await db.logs.add(logEntry({ message: 'Deleted' }));
-      const job = await createScanJob(ME, 'Scan: posts', 'posts');
-      await renderPage();
+    it('moves data from the Move your data card: every moved table in one dated file, with a checksum (#300)', async () => {
+      const X = '1234567890';
+      await db.items.add(
+        item('post', 'present', { accountId: X, key: itemKey(X, 'post', '42'), id: '42', text: 'hello' }),
+      );
+      await db.logs.add(logEntry({ accountId: X, message: 'Deleted' }));
+      const job = await createScanJob(X, 'Scan: posts', 'posts');
+      const props = await pageProps({ account: account({ id: X, handle: 'mover' }) });
+      render(<SettingsPage {...props} />);
+      const card = (await screen.findByRole('heading', { name: 'Move your data' })).closest('section')!;
       const downloads = captureDownloads();
 
-      await userEvent.click(screen.getByRole('button', { name: 'Export everything' }));
+      await userEvent.click(within(card).getByRole('button', { name: 'Export everything' }));
 
       await waitFor(() => {
         expect(downloads).toHaveLength(1);
@@ -456,12 +462,14 @@ describe('Settings page', () => {
       const file = downloads[0]!;
       expect(file.name).toBe(`xomoni-export-${toDateInput(Date.now())}.json`);
       expect(file.type).toBe('application/json');
-      const data = JSON.parse(await file.text()) as Record<string, { id?: string; text?: string }[]>;
-      expect(Object.keys(data).sort()).toEqual(['accounts', 'exportedAt', 'items', 'jobs', 'logs']);
-      expect(data.accounts?.map((a) => a.id)).toEqual([ME]);
-      expect(data.items?.map((i) => i.text)).toEqual(['hello']);
-      expect(data.jobs?.map((j) => j.id)).toEqual([job.id]);
-      expect(data.logs).toHaveLength(1);
+      const checked = await checkMoveText(await file.text());
+      if (!checked.ok) throw new Error(checked.message);
+      expect(checked.file).toMatchObject({ format: 'xomoni-export', version: 1, app: '0.3.0' });
+      expect(checked.file.data.accounts.map((a) => a.id)).toEqual([X]);
+      expect(checked.file.data.items.map((i) => i.text)).toEqual(['hello']);
+      expect(checked.file.data.jobs.map((j) => j.id)).toEqual([job.id]);
+      expect(checked.file.data.logs).toHaveLength(1);
+      expect(within(card).getByRole('button', { name: 'Import from a file' })).toBeEnabled();
     });
 
     it('asks before deleting local data and deletes nothing when cancelled', async () => {

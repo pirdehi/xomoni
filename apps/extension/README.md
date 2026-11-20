@@ -44,6 +44,10 @@ Build entry points: `dashboard.html` and `src/background/sw.ts` (Vite, `vite.con
 - **No incognito** (`not_allowed`), so incognito X tabs never write to this profile's database.
 - **Nothing outside the extension listens:** no web-accessible resources, and no `onMessageExternal` or `onConnectExternal` listener (the test checks the source).
 
+## Moving to a new Xomoni
+
+Chrome keeps each extension's data apart, so a Xomoni with another id (a fixed id, or the Chrome Web Store version) starts empty. In the Xomoni you're leaving, **Settings › Move your data › Export everything** saves one checked file in Downloads; in the new one, **Import from a file** (also offered on a new install) checks it and adds it to what is there, deleting nothing. The file never leaves the computer ([ADR-0032](../../docs/adr/0032-move-data-between-xomoni-versions.md)).
+
 ## Safety
 
 Every behavior toward X follows the [safety playbook](../../docs/PLAYBOOK.md). Never forge headers, solve captchas, touch passwords or cookies, or hide automation ([ADR-0003](../../docs/adr/0003-no-credentials-no-evasion.md)).

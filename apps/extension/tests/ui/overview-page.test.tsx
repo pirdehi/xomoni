@@ -346,3 +346,27 @@ describe('Home (#201)', () => {
     expect(screen.queryByText('Not mine')).not.toBeInTheDocument();
   });
 });
+
+describe('Overview offers to bring data from another Xomoni (#300)', () => {
+  it('on a new install, under the onboarding steps', async () => {
+    render(<OverviewPage account={null} worker={CLOSED} navigate={vi.fn()} />);
+
+    const offer = await screen.findByRole('region', { name: 'Move your data' });
+    expect(within(offer).getByRole('heading', { name: 'Coming from another Xomoni?' })).toBeInTheDocument();
+    expect(within(offer).getByRole('button', { name: 'Import your data' })).toBeEnabled();
+    // The three onboarding steps are still the only steps.
+    expect(await steps()).toHaveLength(3);
+  });
+
+  it('on Home while Xomoni hasn’t done anything yet, and no longer once it has', async () => {
+    const props = await pageProps();
+    const { unmount } = render(<OverviewPage {...props} />);
+    expect(await screen.findByRole('region', { name: 'Move your data' })).toBeInTheDocument();
+    unmount();
+
+    await createCleanupJob(ME, 'First cleanup', FILTER, OPTIONS);
+    render(<OverviewPage {...props} />);
+    await screen.findByRole('region', { name: 'Status' });
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Move your data' })).not.toBeInTheDocument());
+  });
+});

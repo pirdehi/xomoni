@@ -27,7 +27,8 @@ vi.mock('../../src/ui/format', async (importOriginal) => ({
   downloadFile: mocks.downloadFile,
 }));
 
-const ME = account({ name: 'Me', handle: 'me' });
+// X's ids are digits: the copy offered before removing the data is a move file, which keeps only X ids (#300).
+const ME = account({ id: '1234567890', name: 'Me', handle: 'me' });
 
 const CONNECTED: CloudConnection = {
   deviceId: 'd1',
@@ -116,7 +117,10 @@ describe('the sign-out dialog (#226)', () => {
     await waitFor(() => expect(mocks.downloadFile).toHaveBeenCalled());
     const [name, content] = mocks.downloadFile.mock.calls[0]!;
     expect(name).toMatch(/^xomoni-me-\d{4}-\d{2}-\d{2}\.json$/);
-    expect(JSON.parse(content)).toMatchObject({ accounts: [expect.objectContaining({ handle: 'me' })] });
+    expect(JSON.parse(content)).toMatchObject({
+      format: 'xomoni-export',
+      data: { accounts: [expect.objectContaining({ handle: 'me' })] },
+    });
 
     await userEvent.click(button);
     await waitFor(() => expect(mocks.signOut).toHaveBeenCalledWith(ME, { removeData: true, signOutOfX: false }));

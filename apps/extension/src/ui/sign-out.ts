@@ -5,7 +5,8 @@ import { disconnect } from '../cloud/sync';
 import { runner } from '../engine/platform';
 import { jobRunning } from '../engine/runner';
 import { workerTab } from '../engine/worker-tab';
-import { db, forgetAccount } from '../shared/db';
+import { forgetAccount } from '../shared/db';
+import { exportData } from '../shared/move';
 import { type SignedOut, markSignedOut } from '../shared/session';
 import type { Account } from '../shared/types';
 import { SIGNED_OUT_PAUSE } from './hooks';
@@ -114,15 +115,11 @@ export function finishSignOutMadeElsewhere(signedOut: SignedOut, finish: () => P
 }
 
 /**
- * One account's data as *Export everything* in Settings writes it (#226): the account, its inventory, jobs and log,
- * as JSON text, for a copy before removing it.
+ * One account's data for a copy before removing it (#226), in the file *Export everything* writes (#300, ADR-0032):
+ * every moved table, only this account's records and `kv` values, with a checksum. It can be imported again, here or
+ * in another Xomoni.
  */
 export async function accountCopy(accountId: string, now = new Date()): Promise<string> {
-  const [account, items, jobs, logs] = await Promise.all([
-    db.accounts.get(accountId),
-    db.items.where('accountId').equals(accountId).toArray(),
-    db.jobs.where('accountId').equals(accountId).toArray(),
-    db.logs.where('[accountId+ts]').between([accountId, -Infinity], [accountId, Infinity], true, true).toArray(),
-  ]);
-  return JSON.stringify({ exportedAt: now.toISOString(), accounts: account ? [account] : [], items, jobs, logs });
+  const { text } = await exportData({ app: chrome.runtime.getManifest().version, accountId, now: now.getTime() });
+  return text;
 }

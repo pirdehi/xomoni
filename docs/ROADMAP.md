@@ -20,7 +20,7 @@ Both roadmaps are updated together: a pull request that finishes a task ticks it
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.4.0 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-20 · Next 20 tasks: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md) · Moving the backend to Rust, an analysis: [فارسی](RUST-BACKEND-ANALYSIS-2026-11-20.fa.md) · Dashboard plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
+**Last updated:** 2026-11-20 · Making installs easier, options: [فارسی](INSTALL-UX-2026-11-21.fa.md) · Next 20 tasks: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md) · Moving the backend to Rust, an analysis: [فارسی](RUST-BACKEND-ANALYSIS-2026-11-20.fa.md) · Dashboard plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 

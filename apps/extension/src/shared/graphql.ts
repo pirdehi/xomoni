@@ -4,7 +4,7 @@
 import { type JsonObject, asArray, asId, asNumber, asObject, asPostId, asString, at } from './json';
 import { isHandle } from './ids';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from './time';
-import type { ItemDraft } from './types';
+import type { IncomingDraft, ItemDraft } from './types';
 
 export { MUTATION_OPS, PROFILE_OPS, TIMELINE_OPS } from './x-operations';
 
@@ -303,6 +303,26 @@ export function draftsFromTimeline(
     });
   }
   return drafts;
+}
+
+/**
+ * Replies other people wrote to the viewer's posts or replies, from a response X already sent (#256, ADR-0030). Not
+ * from the Likes timeline, never a repost, and only with an author handle and a time. What is kept, and for how long,
+ * is up to `saveIncoming`.
+ */
+export function incomingFromTimeline(op: string, tweets: readonly ParsedTweet[], viewerId: string): IncomingDraft[] {
+  if (op === 'Likes') return [];
+  return tweets.flatMap((t) =>
+    t.inReplyToId &&
+    t.inReplyToUserId === viewerId &&
+    t.authorId &&
+    t.authorId !== viewerId &&
+    !t.source &&
+    isHandle(t.authorHandle) &&
+    t.createdAt > 0
+      ? [{ id: t.id, author: t.authorHandle, text: t.text, createdAt: t.createdAt, toId: t.inReplyToId }]
+      : [],
+  );
 }
 
 function likeDraft(t: ParsedTweet, likedAt: number | null): ItemDraft {

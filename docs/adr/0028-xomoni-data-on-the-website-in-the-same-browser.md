@@ -34,6 +34,7 @@ Amended 2026-11-20:
 - the settings are read the same way (ADR-0029, #234);
 - Cleanup reads how many items a plan matches, with whether the archive was imported and the pace per day: counts only, no items (#235).
 - *Your replies* on Comments reads the person's replies still on X, newest first, 100 at a time (#256). Each comes with the handle it answers, and the read can filter by date, at most a number of likes, that handle and words in the text. The answer also names the 20 people the person replies to most, with how many replies each, leaving the person's own threads out. Other people's replies to the person are not part of this read.
+- *Replies to you* on Comments reads the replies others wrote to the person that Xomoni kept ([ADR-0030](0030-replies-to-you-kept-on-the-computer.md)): replies per day, the 20 people who reply most, and 100 at a time by author and words (#256).
 
 ## Consequences
 

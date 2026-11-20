@@ -32,6 +32,7 @@ import { CONSENT_VERSION } from '@xomoni/consent';
 import type {
   Account,
   Consent,
+  IncomingReply,
   Item,
   ItemDraft,
   ItemKind,
@@ -74,6 +75,7 @@ class XomoniDB extends Dexie {
   checks!: Table<SampleCheck, number>;
   consents!: Table<Consent, string>;
   daily!: Table<DailyStats, [string, string]>;
+  incoming!: Table<IncomingReply, string>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -91,6 +93,7 @@ class XomoniDB extends Dexie {
     this.version(4).stores({ checks: '++seq, [accountId+dueAt]' });
     this.version(5).stores({ consents: 'accountId' });
     this.version(6).stores({ daily: '[accountId+day], accountId' });
+    this.version(7).stores({ incoming: 'key, accountId, [accountId+createdAt]' });
   }
 }
 
@@ -98,7 +101,8 @@ class XomoniDB extends Dexie {
  * The extension's IndexedDB database (`xomoni`), used by the dashboard and the service worker. Tables:
  * `accounts`, `items` (the inventory), `jobs`, `logs`, `limits` (X rate-limit observations), `reads` (page loads of
  * the last 24 hours), `risk` (the risk ladder's events, see `risk.ts`), `checks` (sampled actions to check again,
- * see `engine/samples.ts`), `consents` (informed consent per X account) and `kv`.
+ * see `engine/samples.ts`), `consents` (informed consent per X account), `daily` (each day's numbers), `incoming`
+ * (replies others wrote to the person, ADR-0030, see `incoming.ts`) and `kv`.
  * @remarks Content scripts cannot use it: they run under x.com's origin, so they message the service worker.
  */
 export const db = new XomoniDB();
@@ -129,7 +133,8 @@ const KEPT_ACCOUNT_VALUES: readonly string[] = ['viewCap'];
 
 /**
  * Removes one X account's data from this browser when the person signs out with *Remove its data* (#226): its
- * inventory, jobs, activity log, X's observed limits, sampled posts to check again, its consent, its daily numbers, every `kv` value
+ * inventory, jobs, activity log, X's observed limits, sampled posts to check again, its consent, its daily numbers, the
+ * replies others wrote to it (ADR-0030), every `kv` value
  * kept for it (Watch, the archive and its request, archive files seen) and the account itself, in one transaction.
  * Like `wipeLocalData`, it keeps `KEPT_ON_WIPE` and the view cap, so X's limits still hold; other accounts keep
  * everything. Stop the account's running job first.
@@ -139,7 +144,18 @@ export async function forgetAccount(accountId: string) {
     const at = key.indexOf(':');
     return at > 0 && key.slice(at + 1) === accountId && !KEPT_ACCOUNT_VALUES.includes(key.slice(0, at));
   };
-  const tables = [db.accounts, db.items, db.jobs, db.logs, db.limits, db.checks, db.consents, db.daily, db.kv];
+  const tables = [
+    db.accounts,
+    db.items,
+    db.jobs,
+    db.logs,
+    db.limits,
+    db.checks,
+    db.consents,
+    db.daily,
+    db.incoming,
+    db.kv,
+  ];
   await db.transaction('rw', tables, async () => {
     const whole: [string, number] = [accountId, -Infinity];
     const end: [string, number] = [accountId, Infinity];
@@ -150,6 +166,7 @@ export async function forgetAccount(accountId: string) {
     await db.checks.where('[accountId+dueAt]').between(whole, end, true, true).delete();
     await db.consents.delete(accountId);
     await db.daily.where('accountId').equals(accountId).delete();
+    await db.incoming.where('accountId').equals(accountId).delete();
     await db.kv.filter((row) => own(row.key)).delete();
     if ((await kvGet<string | null>('activeAccount', null)) === accountId) await db.kv.delete('activeAccount');
     await db.accounts.delete(accountId);

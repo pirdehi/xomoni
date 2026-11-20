@@ -798,7 +798,7 @@ describe('Dashboard', () => {
 
     it('shows the places Xomoni answers, and where their data lives while it isn’t here (#233, #235, #256)', () => {
       const { unmount } = renderDashboard({ devices: [device()], jobs: [] }, 'comments');
-      expect(screen.getByRole('region', { name: 'Your replies: in Xomoni' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Comments: in Xomoni' })).toBeInTheDocument();
       unmount();
       const library = renderDashboard({ devices: [device()], jobs: [] }, 'library');
       expect(screen.getByRole('region', { name: 'Your Library: in Xomoni' })).toBeInTheDocument();

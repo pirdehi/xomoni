@@ -1,8 +1,8 @@
 'use client';
-// Comments on xomoni.com (#256): *Your replies*, read from Xomoni in this browser (ADR-0028), found by date, likes,
-// whom they answer and words, and picked for a cleanup that Xomoni starts only after its own confirmation
-// (ADR-0027). What the place shows is X content: it stays in this page's memory, and is never stored, logged or
-// sent. On Fluent UI (ADR-0019).
+// Comments on xomoni.com (#256), in two tabs. *Your replies*, read from Xomoni in this browser (ADR-0028), found by
+// date, likes, whom they answer and words, and picked for a cleanup that Xomoni starts only after its own
+// confirmation (ADR-0027). *Replies to you* (`replies-to-you.tsx`, ADR-0030). What the place shows is X content: it
+// stays in this page's memory, and is never stored, logged or sent. On Fluent UI (ADR-0019).
 import {
   Badge,
   Button,
@@ -13,6 +13,8 @@ import {
   MessageBarBody,
   Spinner,
   Switch,
+  Tab,
+  TabList,
   makeStyles,
   mergeClasses,
   tokens,
@@ -26,6 +28,7 @@ import { FIRST_DAY } from '../domain/cleanup-plan';
 import { DEFAULT_REPLIES_FORM, type RepliesForm, pickedPlan, toRepliesFilter, typedHandle } from '../domain/comments';
 import { formatCount } from './charts';
 import { useSettled } from './cleanup-place';
+import { RepliesToYou } from './replies-to-you';
 import { NoAnswer, NotHere, Notice, formatDate, postUrl } from './xomoni-places';
 
 const useStyles = makeStyles({
@@ -63,19 +66,29 @@ const useStyles = makeStyles({
 });
 
 /**
- * Comments (#256), *Your replies*: the person's replies still on X, found by date, likes, whom they answer and words,
+ * Comments (#256). *Your replies*: the person's replies still on X, found by date, likes, whom they answer and words,
  * with whom they reply to most. Picked replies go to Xomoni, which opens its Cleanup page with only those; nothing is
- * removed until the person confirms there.
+ * removed until the person confirms there. *Replies to you*: what others replied, as Xomoni kept it (ADR-0030). The
+ * filter and the picks stay while the other tab is open.
  */
 export function CommentsPlace({ xomoni, now }: { xomoni: XomoniControls; now: number }) {
   const s = useStyles();
   const [form, setForm] = useState<RepliesForm>(DEFAULT_REPLIES_FORM);
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());
+  const [tab, setTab] = useState<'mine' | 'theirs'>('mine');
   const result = toRepliesFilter(form, now);
   // Settled by its text, so typing a word or a handle asks Xomoni once it pauses.
   const settled = useSettled('filter' in result ? JSON.stringify(result.filter) : '', 300);
 
-  if (xomoni.presence.kind !== 'here') return <NotHere xomoni={xomoni} page="library" what="Your replies" />;
+  if (xomoni.presence.kind !== 'here')
+    return (
+      <NotHere
+        xomoni={xomoni}
+        page="library"
+        what="Comments"
+        says="Your replies, and the replies you get, are read from Xomoni on your computer, in this browser: they never reach our servers. Open this page in the browser where Xomoni runs, signed in to this account."
+      />
+    );
 
   const set = <K extends keyof RepliesForm>(key: K, value: RepliesForm[K]) => setForm({ ...form, [key]: value });
   const pick = (ids: readonly string[], on: boolean) => {
@@ -88,89 +101,99 @@ export function CommentsPlace({ xomoni, now }: { xomoni: XomoniControls; now: nu
   };
   return (
     <div className={s.root}>
-      <Notice>Read from Xomoni in this browser: your replies never reach our servers.</Notice>
-      <section className={s.card} aria-labelledby="find-title">
-        <h2 id="find-title" className={s.title}>
-          Your replies
-        </h2>
-        <div className={s.row}>
-          <Field label="From" className={s.field}>
-            <Input type="date" min={FIRST_DAY} value={form.from} onChange={(_, d) => set('from', d.value)} />
-          </Field>
-          <Field label="Through" className={s.field}>
-            <Input type="date" min={FIRST_DAY} value={form.through} onChange={(_, d) => set('through', d.value)} />
-          </Field>
-          <Field label="At most … likes" className={s.field}>
-            <Input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={form.likes}
-              onChange={(_, d) => set('likes', d.value)}
+      <Notice>Read from Xomoni in this browser: replies never reach our servers.</Notice>
+      <TabList selectedValue={tab} onTabSelect={(_, d) => setTab(d.value === 'theirs' ? 'theirs' : 'mine')}>
+        <Tab value="mine">Your replies</Tab>
+        <Tab value="theirs">Replies to you</Tab>
+      </TabList>
+      {tab === 'theirs' ? (
+        <RepliesToYou xomoni={xomoni} now={now} />
+      ) : (
+        <>
+          <section className={s.card} aria-labelledby="find-title">
+            <h2 id="find-title" className={s.title}>
+              Find your replies
+            </h2>
+            <div className={s.row}>
+              <Field label="From" className={s.field}>
+                <Input type="date" min={FIRST_DAY} value={form.from} onChange={(_, d) => set('from', d.value)} />
+              </Field>
+              <Field label="Through" className={s.field}>
+                <Input type="date" min={FIRST_DAY} value={form.through} onChange={(_, d) => set('through', d.value)} />
+              </Field>
+              <Field label="At most … likes" className={s.field}>
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={form.likes}
+                  onChange={(_, d) => set('likes', d.value)}
+                />
+              </Field>
+              <Field label="Replying to" className={s.field}>
+                <Input
+                  contentBefore="@"
+                  placeholder="anyone"
+                  value={typedHandle(form.who)}
+                  onChange={(_, d) => set('who', d.value)}
+                />
+              </Field>
+              <Field label="Words" className={s.search}>
+                <Input
+                  contentBefore={<Search16Regular />}
+                  placeholder="In the text"
+                  value={form.words}
+                  onChange={(_, d) => set('words', d.value)}
+                />
+              </Field>
+            </div>
+            <Switch
+              label="Include replies in your own threads"
+              checked={form.threads}
+              onChange={(_, d) => set('threads', d.checked)}
             />
-          </Field>
-          <Field label="Replying to" className={s.field}>
-            <Input
-              contentBefore="@"
-              placeholder="anyone"
-              value={typedHandle(form.who)}
-              onChange={(_, d) => set('who', d.value)}
+            {'problem' in result && (
+              <MessageBar intent="warning">
+                <MessageBarBody>{result.problem}</MessageBarBody>
+              </MessageBar>
+            )}
+          </section>
+          {settled && (
+            <Replies
+              key={settled}
+              xomoni={xomoni}
+              filter={JSON.parse(settled) as RepliesFilter}
+              who={typedHandle(form.who)}
+              onWho={(handle) => set('who', handle)}
+              picked={picked}
+              onPick={pick}
             />
-          </Field>
-          <Field label="Words" className={s.search}>
-            <Input
-              contentBefore={<Search16Regular />}
-              placeholder="In the text"
-              value={form.words}
-              onChange={(_, d) => set('words', d.value)}
-            />
-          </Field>
-        </div>
-        <Switch
-          label="Include replies in your own threads"
-          checked={form.threads}
-          onChange={(_, d) => set('threads', d.checked)}
-        />
-        {'problem' in result && (
-          <MessageBar intent="warning">
-            <MessageBarBody>{result.problem}</MessageBarBody>
-          </MessageBar>
-        )}
-      </section>
-      {settled && (
-        <Replies
-          key={settled}
-          xomoni={xomoni}
-          filter={JSON.parse(settled) as RepliesFilter}
-          who={typedHandle(form.who)}
-          onWho={(handle) => set('who', handle)}
-          picked={picked}
-          onPick={pick}
-        />
-      )}
-      {picked.size > 0 && (
-        <section className={mergeClasses(s.card, s.picked)} aria-label="Picked replies">
-          <div className={mergeClasses(s.row, s.center)}>
-            <span className={s.text} role="status">
-              {formatCount(picked.size)} {picked.size === 1 ? 'reply' : 'replies'} picked
-              {picked.size >= MAX_PLAN_IDS && ` (the most at a time)`}
-            </span>
-            <Button
-              appearance="primary"
-              icon={<Open16Regular />}
-              disabled={xomoni.busy === 'plan'}
-              onClick={() => void xomoni.request({ kind: 'plan', plan: pickedPlan([...picked], Date.now()) })}
-            >
-              Review and remove in Xomoni
-            </Button>
-            <Button appearance="subtle" onClick={() => setPicked(new Set())}>
-              Clear
-            </Button>
-          </div>
-          <p className={s.meta}>
-            Xomoni opens its Cleanup page with only these replies. Nothing is removed until you confirm there.
-          </p>
-        </section>
+          )}
+          {picked.size > 0 && (
+            <section className={mergeClasses(s.card, s.picked)} aria-label="Picked replies">
+              <div className={mergeClasses(s.row, s.center)}>
+                <span className={s.text} role="status">
+                  {formatCount(picked.size)} {picked.size === 1 ? 'reply' : 'replies'} picked
+                  {picked.size >= MAX_PLAN_IDS && ` (the most at a time)`}
+                </span>
+                <Button
+                  appearance="primary"
+                  icon={<Open16Regular />}
+                  disabled={xomoni.busy === 'plan'}
+                  onClick={() => void xomoni.request({ kind: 'plan', plan: pickedPlan([...picked], Date.now()) })}
+                >
+                  Review and remove in Xomoni
+                </Button>
+                <Button appearance="subtle" onClick={() => setPicked(new Set())}>
+                  Clear
+                </Button>
+              </div>
+              <p className={s.meta}>
+                Xomoni opens its Cleanup page with only these replies. Nothing is removed until you confirm there.
+              </p>
+            </section>
+          )}
+        </>
       )}
     </div>
   );

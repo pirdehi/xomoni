@@ -41,7 +41,7 @@ flowchart LR
   person -- "signs up and in, follows progress" --> web
   ext -- "clicks X's own buttons in a normal tab" --> x
   ext -. "job status only, with a device token (ADR-0018)" .-> sb
-  web <-. "same browser: one sign-in, stop or ask, and read the Library, Watch, health and settings, change settings, hand over a cleanup plan (externally_connectable, ADR-0025, ADR-0027, ADR-0028, ADR-0029)" .-> ext
+  web <-. "same browser: one sign-in, stop or ask, and read the Library, Watch, health, settings and replies, change settings, hand over a cleanup plan (externally_connectable, ADR-0025, ADR-0027, ADR-0028, ADR-0029, ADR-0030)" .-> ext
   web -- "auth, reads status, live updates" --> sb
   web -- "captcha widget on auth forms" --> turnstile
   sb -- "sign-in with Google" --> google
@@ -55,7 +55,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | x.com page | Untrusted | X's JavaScript, X's DOM | Xomoni only reads X's responses and clicks visible controls. The page-world script never sends requests. |
 | Extension | Trusted executor | Engine, inventory, activity log, settings (IndexedDB) | The only component that acts on X. Owns all X data. |
-| Website | View-only | Account, live job status | Can't start or approve actions on X. In the same browser it may sign the extension in or out (ADR-0025), pause or cancel a job, open Xomoni's pages, and ask to resume a job, which only the person approves in Xomoni (ADR-0027). There it may also read the Library, Watch, account health and settings from Xomoni, at most 100 items at a time, kept in the page's memory only (ADR-0028), and change a few settings, which Xomoni checks against its own safety rules and logs (ADR-0029). A cleanup planned there only fills in Xomoni's Cleanup page, where the person confirms it (#235). |
+| Website | View-only | Account, live job status | Can't start or approve actions on X. In the same browser it may sign the extension in or out (ADR-0025), pause or cancel a job, open Xomoni's pages, and ask to resume a job, which only the person approves in Xomoni (ADR-0027). There it may also read the Library, Watch, account health, settings and replies (the person's own, and others' to the person, ADR-0030) from Xomoni, at most 100 items at a time, kept in the page's memory only (ADR-0028), and change a few settings, which Xomoni checks against its own safety rules and logs (ADR-0029). A cleanup planned there only fills in Xomoni's Cleanup page, where the person confirms it (#235). |
 | Cloud (Supabase) | Status store | Accounts, devices, job counters and states | Never stores post text, likes, X credentials or cookies. Row Level Security on every table. |
 
 ## 2. Containers
@@ -224,6 +224,7 @@ One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](
 - **Types:** [`packages/db`](../packages/db/README.md) holds the generated `Database` type. CI regenerates it from the migrations and fails on drift.
 - **What is never stored:** post text, likes, the inventory, X credentials, X cookies.
 - **In the browser, daily numbers** (#249, [ADR-0026](adr/0026-daily-numbers-in-the-cloud.md)): the extension's `daily` table keeps one row of counts per X account per local day, from pages X already showed (the profile's counts, and the rise in the counts of the person's own posts). No request is made to collect them. They reach the cloud only by the person's choice (#250).
+- **In the browser, replies to you** (#256, [ADR-0030](adr/0030-replies-to-you-kept-on-the-computer.md)): the extension's `incoming` table keeps replies other people wrote to the person's posts, from the same responses: id, author handle, text (at most 1,000 characters), time and the post it answers. At most 90 days and 5,000 per X account, removed with the account's data, never in a backup, never sent to a server, never acted on.
 
 ## 7. Enforced rules
 

@@ -1,5 +1,5 @@
 import type { ParsedProfile } from './graphql';
-import type { ActionKind, ItemDraft, Outcome, RateObservation } from './types';
+import type { ActionKind, IncomingDraft, ItemDraft, Outcome, RateObservation } from './types';
 
 /**
  * Commands the dashboard sends to the content script in the worker tab. `canary` checks, on post `id`, that
@@ -163,4 +163,6 @@ export interface ActionResult {
 export type RuntimeMessage =
   | { type: 'ingest'; accountId: string; handle: string | null; op: string; drafts: ItemDraft[]; observedAt: number }
   | { type: 'profile'; profile: ParsedProfile }
-  | { type: 'rate'; obs: RateObservation };
+  | { type: 'rate'; obs: RateObservation }
+  /** Replies others wrote to the viewer, from the same response (#256, ADR-0030). */
+  | { type: 'incoming'; accountId: string; replies: IncomingDraft[]; observedAt: number };

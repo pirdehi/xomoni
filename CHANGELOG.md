@@ -6,11 +6,13 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
-- **Your replies on xomoni.com** (#256), in the browser where Xomoni runs. Needs Xomoni 0.5.0 or newer.
-  - Find your replies by date, at most a number of likes, who you replied to and words, with or without your own threads.
+- **Comments on xomoni.com** (#256), in the browser where Xomoni runs. Needs Xomoni 0.5.0 or newer.
+  - *Your replies:* find your replies by date, at most a number of likes, who you replied to and words, with or without your own threads.
   - See who you reply to most, and pick someone to see only your replies to them.
   - Pick replies and press *Review and remove in Xomoni*: Xomoni opens its Cleanup page with only those, and removes nothing until you confirm there.
   - Xomoni now keeps who each reply answers, from X and from your archive.
+  - *Replies to you:* how many replies you got each day, who replies most, and each reply with *Open on X*, where you can hide it.
+  - Xomoni keeps the replies to your posts that X shows it, on your computer only, for 90 days and at most 5,000 per account. It never hides, blocks or reports anyone ([ADR-0030](docs/adr/0030-replies-to-you-kept-on-the-computer.md)).
 
 ### Fixed
 

@@ -325,10 +325,10 @@ export function parseActionAnswer(raw: unknown): ActionAnswer {
 export const READ = 'xomoni-read';
 
 /**
- * What the website may read: `settings` too, under ADR-0029, a cleanup plan's estimate (#235), and the person's
- * replies with whom each answers (#256).
+ * What the website may read: `settings` too, under ADR-0029, a cleanup plan's estimate (#235), the person's replies
+ * with whom each answers, and the replies other people wrote to the person (`incoming`, ADR-0030) (#256).
  */
-export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup' | 'replies';
+export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup' | 'replies' | 'incoming';
 
 /** The kinds of item the Library holds. */
 export type LibraryKind = 'post' | 'reply' | 'repost' | 'like';
@@ -372,7 +372,8 @@ export type ReadMessage =
   | { type: typeof READ; what: 'library'; deviceId: string; kind: LibraryKind; query: string; offset: number }
   | { type: typeof READ; what: 'health' | 'watch' | 'settings'; deviceId: string }
   | { type: typeof READ; what: 'cleanup'; deviceId: string; plan: CleanupPlan }
-  | { type: typeof READ; what: 'replies'; deviceId: string; filter: RepliesFilter; offset: number };
+  | { type: typeof READ; what: 'replies'; deviceId: string; filter: RepliesFilter; offset: number }
+  | { type: typeof READ; what: 'incoming'; deviceId: string; author: string; query: string; offset: number };
 
 function readOffset(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 1e6 ? value : null;
@@ -407,6 +408,15 @@ export function parseReadMessage(raw: unknown): ReadMessage | null {
   if (value.what === 'cleanup') {
     const plan = onlyKeys(value, ['type', 'what', 'deviceId', 'plan']) ? parsePlan(value.plan) : null;
     return plan ? { type: READ, what: 'cleanup', deviceId, plan } : null;
+  }
+  if (value.what === 'incoming') {
+    if (!onlyKeys(value, ['type', 'what', 'deviceId', 'author', 'query', 'offset'])) return null;
+    const author = matching(value.author, HANDLE_TEXT);
+    const query = typeof value.query === 'string' && value.query.length <= MAX_READ_QUERY ? value.query : null;
+    const offset = readOffset(value.offset);
+    return author !== null && query !== null && offset !== null
+      ? { type: READ, what: 'incoming', deviceId, author, query, offset }
+      : null;
   }
   if (value.what === 'replies') {
     if (!onlyKeys(value, ['type', 'what', 'deviceId', 'filter', 'offset'])) return null;
@@ -466,7 +476,7 @@ export interface ReplyItem {
   thread: boolean;
 }
 
-/** Someone the person replies to, and how many of the replies still on X answer them. */
+/** Someone, and how many replies: whom the person replies to (#256), or who replies to the person (ADR-0030). */
 export interface RepliedTo {
   handle: string;
   replies: number;
@@ -487,6 +497,42 @@ export interface RepliesPage {
   next: number | null;
   /** Up to `MAX_REPLIED_TO` people replied to most, most first; the person's own threads left out. */
   people: RepliedTo[];
+}
+
+/** The most days of replies to the person Xomoni keeps, and so the most days an `incoming` answer counts (ADR-0030). */
+export const INCOMING_DAYS = 90;
+
+/** A reply someone else wrote to one of the person's posts, as Xomoni saw it (ADR-0030). Ids are X's post ids. */
+export interface IncomingReply {
+  id: string;
+  /** Its author's handle, without `@`. */
+  author: string;
+  text: string;
+  /** When it was posted, epoch ms. */
+  createdAt: number;
+  /** The person's post it answers. */
+  toId: string;
+}
+
+/**
+ * An answer to an `incoming` read: replies to the person Xomoni kept (at most `INCOMING_DAYS` days), how many each day,
+ * who replies most, and a page of those matching the author and words asked for.
+ */
+export interface IncomingPage {
+  handle: string;
+  /** Replies kept now. */
+  total: number;
+  /** When the oldest kept reply was posted, or null without any: the counts start there. */
+  since: number | null;
+  /** Replies per local day (`YYYY-MM-DD`), days without any left out, oldest first. */
+  perDay: { day: string; replies: number }[];
+  /** Up to `MAX_REPLIED_TO` people who reply most, most first. */
+  people: RepliedTo[];
+  /** Replies matching the read, before paging. */
+  matching: number;
+  items: IncomingReply[];
+  /** The offset of the next page, or null on the last one. */
+  next: number | null;
 }
 
 /** One X account's health, as the risk ladder sees it now (ADR-0013). Times are epoch ms. */
@@ -519,6 +565,7 @@ export type ReadAnswer =
   | { ok: true; what: 'settings'; settings: XomoniSettings }
   | { ok: true; what: 'cleanup'; estimate: CleanupEstimate }
   | { ok: true; what: 'replies'; page: RepliesPage }
+  | { ok: true; what: 'incoming'; page: IncomingPage }
   | { ok: false; reason: ActionRefusal };
 
 const X_ID = /^\d{1,25}$/;
@@ -591,18 +638,61 @@ function parseReplies(raw: unknown): RepliesPage | null {
   const matchingCount = count(v?.matching);
   const next = v?.next === null ? null : (count(v?.next) ?? undefined);
   if (handle === null || total === null || matchingCount === null || next === undefined) return null;
-  if (!Array.isArray(v?.items) || !Array.isArray(v.people)) return null;
+  const people = parsePeople(v?.people);
+  if (!people || !Array.isArray(v?.items)) return null;
   const items = (v.items as unknown[]).slice(0, READ_PAGE).map(parseReply);
   if (items.some((i) => i === null)) return null;
+  return { handle, total, matching: matchingCount, items: items as ReplyItem[], next, people };
+}
+
+function parsePeople(raw: unknown): RepliedTo[] | null {
+  if (!Array.isArray(raw)) return null;
   const people: RepliedTo[] = [];
-  for (const raw of (v.people as unknown[]).slice(0, MAX_REPLIED_TO)) {
-    const person = record(raw);
+  for (const entry of (raw as unknown[]).slice(0, MAX_REPLIED_TO)) {
+    const person = record(entry);
     const who = matching(person?.handle, HANDLE_TEXT);
     const replies = count(person?.replies);
     if (!who || replies === null) return null;
     people.push({ handle: who, replies });
   }
-  return { handle, total, matching: matchingCount, items: items as ReplyItem[], next, people };
+  return people;
+}
+
+const DAY_TEXT = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseIncomingReply(raw: unknown): IncomingReply | null {
+  const v = record(raw);
+  const id = matching(v?.id, X_ID);
+  const author = matching(v?.author, HANDLE_TEXT);
+  const body = text(v?.text);
+  const createdAt = epoch(v?.createdAt);
+  const toId = matching(v?.toId, X_ID);
+  if (!id || !author || body === null || createdAt === null || !toId) return null;
+  return { id, author, text: body, createdAt, toId };
+}
+
+function parseIncoming(raw: unknown): IncomingPage | null {
+  const v = record(raw);
+  const handle = matching(v?.handle, HANDLE_TEXT);
+  const total = count(v?.total);
+  const since = time(v?.since);
+  const matchingCount = count(v?.matching);
+  const next = v?.next === null ? null : (count(v?.next) ?? undefined);
+  const people = parsePeople(v?.people);
+  if (handle === null || total === null || since === undefined || matchingCount === null || next === undefined)
+    return null;
+  if (!people || !Array.isArray(v?.items) || !Array.isArray(v.perDay)) return null;
+  const perDay: IncomingPage['perDay'] = [];
+  for (const entry of (v.perDay as unknown[]).slice(0, INCOMING_DAYS + 1)) {
+    const d = record(entry);
+    const day = matching(d?.day, DAY_TEXT);
+    const replies = count(d?.replies);
+    if (!day || replies === null) return null;
+    perDay.push({ day, replies });
+  }
+  const items = (v.items as unknown[]).slice(0, READ_PAGE).map(parseIncomingReply);
+  if (items.some((i) => i === null)) return null;
+  return { handle, total, since, perDay, people, matching: matchingCount, items: items as IncomingReply[], next };
 }
 
 function parseHealth(raw: unknown): AccountHealth | null {
@@ -660,6 +750,9 @@ export function parseReadAnswer(raw: unknown, what: ReadWhat): ReadAnswer {
       if (estimate) return { ok: true, what, estimate };
     } else if (what === 'replies') {
       const page = parseReplies(answer.page);
+      if (page) return { ok: true, what, page };
+    } else if (what === 'incoming') {
+      const page = parseIncoming(answer.page);
       if (page) return { ok: true, what, page };
     }
   }

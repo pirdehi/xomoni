@@ -36,6 +36,14 @@ function permissionRows() {
     .map((line) => line.split(' | ')[0].slice(2).trim());
 }
 
+/** Whether `text` holds a link to exactly `host` and `path`, compared as parsed URLs, not as substrings. */
+function linksTo(text, host, path) {
+  return [...text.matchAll(/https:\/\/[^\s)<>"'`]+/g)].some((match) => {
+    const url = new URL(match[0].replace(/[.,;:]+$/, ''));
+    return url.hostname === host && url.pathname === path;
+  });
+}
+
 describe('the permissions table (#301)', () => {
   const rows = permissionRows();
 
@@ -90,7 +98,7 @@ describe('the listing text (#301)', () => {
     const text = block('detailed-description');
     assert.ok(text.length >= 250 && text.length <= 10_000, `${text.length} characters`);
     assert.match(text, /Not affiliated with X Corp\./);
-    assert.ok(text.includes('https://xomoni.com/privacy'), 'links the privacy policy');
+    assert.ok(linksTo(text, 'xomoni.com', '/privacy'), 'links the privacy policy');
   });
 
   it('states one purpose, and gives the reviewers the safety rules and the privacy policy', () => {
@@ -99,7 +107,7 @@ describe('the listing text (#301)', () => {
     for (const rule of ['one fifth', 'No credentials', 'No evasion', 'Confirmation for every job', 'Data stays local'])
       assert.ok(notes.includes(rule), rule);
     assert.match(notes, /Not affiliated with X Corp\./);
-    assert.ok(notes.includes('https://xomoni.com/privacy'), 'links the privacy policy');
+    assert.ok(linksTo(notes, 'xomoni.com', '/privacy'), 'links the privacy policy');
   });
 
   it('names the homepage, the support page and the privacy policy the stores ask for', () => {

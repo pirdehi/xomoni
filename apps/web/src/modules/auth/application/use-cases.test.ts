@@ -100,7 +100,17 @@ describe('signUp', () => {
       name: 'Ada',
       captchaToken: 'tok',
       emailRedirectTo: `${SITE}/auth/confirm`,
+      next: '/dashboard',
     });
+  });
+
+  it('keeps where the person was going for the emailed link, but only on this site (#244)', async () => {
+    const d = deps();
+    const input = { email: 'ada@example.com', password: GOOD_PASSWORD };
+    await useCases.signUp(d, { ...input, next: '/connect' });
+    expect(d.auth.signUp).toHaveBeenLastCalledWith(expect.objectContaining({ next: '/connect' }));
+    await useCases.signUp(d, { ...input, next: 'https://evil.example/' });
+    expect(d.auth.signUp).toHaveBeenLastCalledWith(expect.objectContaining({ next: '/dashboard' }));
   });
 
   it('answers the same way when the account already exists (no enumeration)', async () => {

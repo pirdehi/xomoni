@@ -55,3 +55,30 @@ describe('changing the password (#148)', () => {
     expect(updateUser).toHaveBeenCalledWith({ password: 'new password 1' });
   });
 });
+
+describe('signing up (#244)', () => {
+  it('keeps the name and where the emailed link returns in the account’s metadata', async () => {
+    const signUp = vi.fn(async () => ({ data: { user: null, session: null }, error: null }));
+    const gateway = createSupabaseAuthGateway({ auth: { signUp } } as unknown as SupabaseClient<Database>);
+    const input = {
+      email: 'ada@example.com',
+      password: 'pw 1',
+      emailRedirectTo: 'https://x/auth/confirm',
+      next: '/connect',
+    };
+    expect(await gateway.signUp({ ...input, name: 'Ada', captchaToken: 'tok' })).toEqual({ ok: true });
+    expect(signUp).toHaveBeenLastCalledWith({
+      email: 'ada@example.com',
+      password: 'pw 1',
+      options: {
+        captchaToken: 'tok',
+        emailRedirectTo: 'https://x/auth/confirm',
+        data: { full_name: 'Ada', next: '/connect' },
+      },
+    });
+    await gateway.signUp(input);
+    expect(signUp).toHaveBeenLastCalledWith(
+      expect.objectContaining({ options: expect.objectContaining({ data: { next: '/connect' } }) }),
+    );
+  });
+});

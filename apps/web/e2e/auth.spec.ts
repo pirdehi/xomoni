@@ -54,6 +54,22 @@ test.describe('sign-up and email confirmation', () => {
     await expect(page.getByRole('button', { name: `Account menu for ${email}` })).toBeVisible();
   });
 
+  test('keeps where the person was going through the email, such as /connect (#244)', async ({ page }) => {
+    const email = uniqueEmail('signup-next');
+    await signUp(page, email, undefined, undefined, '/signup?next=%2Fconnect');
+    const link = await followEmailLink(page, email, 'Confirm your Xomoni account');
+    expect(new URL(link, 'http://site').searchParams.get('next')).toBe('/connect');
+    await expect(page).toHaveURL(/\/connect$/);
+  });
+
+  test('never follows a next that leaves the site, even from the email', async ({ page }) => {
+    const email = uniqueEmail('signup-evil');
+    await signUp(page, email, undefined, undefined, '/signup?next=https%3A%2F%2Fevil.example%2F');
+    const link = await followEmailLink(page, email, 'Confirm your Xomoni account');
+    expect(new URL(link, 'http://site').searchParams.get('next')).toBe('/dashboard');
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
   test('shows the password rules and rejects weak passwords before sending anything', async ({ page }) => {
     const email = uniqueEmail('weak');
     await page.goto('/signup');

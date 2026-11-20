@@ -2,6 +2,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetNavigation, setLocation } from '@test/fakes/navigation';
 import { TEST_TOKEN, resetTurnstile, turnstile } from '@test/fakes/turnstile';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES } from '../domain/auth-error';
@@ -38,6 +39,7 @@ describe('SignUpForm', () => {
       name: 'Ada',
       email: 'ada@example.com',
       password: 'correct horse 1',
+      next: null,
       captchaToken: TEST_TOKEN,
     });
     const status = await screen.findByRole('status');
@@ -46,6 +48,15 @@ describe('SignUpForm', () => {
     expect(screen.queryByRole('button', { name: 'Create account' })).not.toBeInTheDocument();
     // Tokens are single-use: the form asks for a new one after every submit.
     expect(turnstile.resets).toBe(1);
+  });
+
+  it('sends where the person was going, so the emailed link comes back to it (#244)', async () => {
+    setLocation('/signup', 'next=%2Fconnect');
+    signUp.mockResolvedValue({ ok: true, email: 'ada@example.com' });
+    render(<SignUpForm />);
+    await fillAndSubmit();
+    expect(signUp).toHaveBeenCalledWith(expect.objectContaining({ next: '/connect' }));
+    resetNavigation();
   });
 
   it('keeps the button off until the security check passes', () => {

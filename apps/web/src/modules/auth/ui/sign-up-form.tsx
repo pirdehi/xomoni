@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, makeStyles, tokens } from '@fluentui/react-components';
+import { useSearchParams } from 'next/navigation';
 import { useState, useTransition, type SubmitEvent } from 'react';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES, type AuthFailure } from '../domain/auth-error';
@@ -16,8 +17,9 @@ const useStyles = makeStyles({
 });
 
 /**
- * Creates an account with email and password, then asks the person to confirm their address.
- * The success screen is the same whether or not the address already had an account.
+ * Creates an account with email and password, then asks the person to confirm their address. The emailed link returns
+ * to `?next=`, such as /connect or /welcome (#244). The success screen is the same whether or not the address already
+ * had an account.
  */
 export function SignUpForm() {
   const s = useStyles();
@@ -26,6 +28,7 @@ export function SignUpForm() {
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
+  const next = useSearchParams().get('next');
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +38,7 @@ export function SignUpForm() {
         name: form.get('name'),
         email: form.get('email'),
         password: form.get('password'),
+        next,
         captchaToken: captcha.token,
       });
       captcha.reset();

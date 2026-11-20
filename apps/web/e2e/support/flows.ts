@@ -26,8 +26,14 @@ export async function submit(page: Page, name: string | RegExp): Promise<void> {
 }
 
 /** Fills the sign-up form and waits for the "check your inbox" screen. */
-export async function signUp(page: Page, email: string, password = PASSWORD, name = 'Test Person'): Promise<void> {
-  await page.goto('/signup');
+export async function signUp(
+  page: Page,
+  email: string,
+  password = PASSWORD,
+  name = 'Test Person',
+  path = '/signup',
+): Promise<void> {
+  await page.goto(path);
   await page.getByRole('textbox', { name: 'Name (optional)', exact: true }).fill(name);
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email);
   await passwordInput(page).fill(password);

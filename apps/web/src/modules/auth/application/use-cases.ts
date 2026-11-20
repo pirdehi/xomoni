@@ -34,6 +34,7 @@ export type EmailSent = { ok: true; email: string };
 const SAFE_TO_SHOW = new Set(['invalid_input', 'captcha_failed', 'rate_limited']);
 
 const confirmUrl = (siteUrl: string) => new URL(ROUTES.emailConfirm, siteUrl).toString();
+
 const captcha = (input: FormInput) => (typeof input.captchaToken === 'string' ? input.captchaToken : undefined);
 
 /** Returns the signed-in viewer, or `null` when signed out. */
@@ -67,8 +68,8 @@ export async function completeOAuthSignIn(
 }
 
 /**
- * Creates an account and sends the confirmation email. Answers the same way whether or not the
- * address already has an account, so the form can't be used to find out who uses Xomoni.
+ * Creates an account and sends the confirmation email, whose link returns to `input.next` (#244). Answers the same
+ * way whether or not the address already has an account, so the form can't be used to find out who uses Xomoni.
  */
 export async function signUp(deps: AuthDeps, input: FormInput): Promise<EmailSent | AuthFailure> {
   const form = validate(signUpSchema, input);
@@ -80,6 +81,7 @@ export async function signUp(deps: AuthDeps, input: FormInput): Promise<EmailSen
     name,
     captchaToken: captcha(input),
     emailRedirectTo: confirmUrl(deps.siteUrl),
+    next: safeNextPath(typeof input.next === 'string' ? input.next : null),
   });
   if (result.ok || result.code === 'account_exists') return { ok: true, email };
   return result;
@@ -108,7 +110,10 @@ export async function requestPasswordReset(deps: AuthDeps, input: FormInput): Pr
   return result.ok || !SAFE_TO_SHOW.has(result.code) ? { ok: true, email: form.value.email } : result;
 }
 
-/** Sends the confirmation email again. Like a reset request, it never reveals whether the account exists. */
+/**
+ * Sends the confirmation email again; its link returns where the first one did, since the account keeps that (#244).
+ * Like a reset request, it never reveals whether the account exists.
+ */
 export async function resendConfirmation(deps: AuthDeps, input: FormInput): Promise<EmailSent | AuthFailure> {
   const form = validate(emailOnlySchema, input);
   if (!form.ok) return invalidInput(form.fieldErrors);

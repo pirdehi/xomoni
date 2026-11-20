@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  audienceFigures,
   change,
   daysBefore,
   daysInScope,
   firstDay,
   followersSeries,
+  followingSeries,
   isoDay,
+  milestones,
+  netChanges,
+  nextMilestone,
   overviewFigures,
   publishedSeries,
 } from './insights';
@@ -156,5 +161,70 @@ describe('series', () => {
     expect(series[0]?.value).toBe(15);
     expect(series[1]?.value).toBeNull();
     expect(publishedSeries([], all, NOW)).toEqual([]);
+  });
+});
+
+describe('audience (#253)', () => {
+  const week = { account: null, period: '7d' as const };
+  const series = (values: (number | null)[]) =>
+    values.map((value, i) => ({ day: `2026-11-${String(14 + i).padStart(2, '0')}`, value }));
+
+  it('draws following like followers, from the following counts', () => {
+    const s = followingSeries([day('2026-11-19', { following: 300, followers: 9 })], week, NOW);
+    expect(s.find((p) => p.day === '2026-11-19')?.value).toBe(300);
+  });
+
+  it('gives each day’s change since the last count, carrying a gap’s change to the day after it', () => {
+    expect(netChanges(series([100, 104, null, 101, 101]))).toEqual([
+      { day: '2026-11-14', value: null },
+      { day: '2026-11-15', value: 4 },
+      { day: '2026-11-16', value: null },
+      { day: '2026-11-17', value: -3 },
+      { day: '2026-11-18', value: 0 },
+    ]);
+  });
+
+  it('marks each round count crossed upward, on the day it was reached, and the next one', () => {
+    expect(milestones(series([980, 1003, 995, 1010, 2600]))).toEqual([
+      { count: 1000, day: '2026-11-15' },
+      { count: 2500, day: '2026-11-18' },
+    ]);
+    expect(milestones(series([1200, null, 1300]))).toEqual([]);
+    expect(nextMilestone(988)).toEqual({ count: 1000, toGo: 12 });
+    expect(nextMilestone(2_000_000)).toBeNull();
+  });
+
+  it('sums what was gained and lost, finds the best and worst days, and the ratio', () => {
+    const days = [
+      day('2026-11-15', { followers: 100, following: 50 }),
+      day('2026-11-16', { followers: 108, following: 50 }),
+      day('2026-11-17', { followers: 103, following: 40 }),
+      day('2026-11-18', { followers: 110 }),
+    ];
+    const figures = audienceFigures(days, followersSeries(days, week, NOW));
+    expect(figures).toEqual({
+      followers: 110,
+      following: 40,
+      net: 10,
+      gained: 15,
+      lost: 5,
+      bestDay: { day: '2026-11-16', value: 8 },
+      worstDay: { day: '2026-11-17', value: -5 },
+      ratio: 110 / 40,
+    });
+  });
+
+  it('says nothing it can’t know: no change from one count, no ratio without following', () => {
+    const one = [day('2026-11-18', { followers: 50 })];
+    expect(audienceFigures(one, followersSeries(one, week, NOW))).toMatchObject({
+      net: null,
+      gained: 0,
+      lost: 0,
+      bestDay: null,
+      worstDay: null,
+      ratio: null,
+    });
+    const none = [day('2026-11-18', { following: 0 })];
+    expect(audienceFigures(none, followersSeries(none, week, NOW)).ratio).toBeNull();
   });
 });

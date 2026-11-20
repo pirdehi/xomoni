@@ -53,6 +53,7 @@ import {
 } from '../domain/insights';
 import type { DailyNumbers, DashboardSnapshot, Device, JobSummary } from '../domain/model';
 import { PERIODS, type Scope, accountsIn, jobsInScope, removedIn, scopeQuery } from '../domain/scope';
+import { Audience } from './audience';
 import { ColumnChart, LineChart, formatCount } from './charts';
 import { type Section, sectionHref, xomoniPageFor } from '../domain/sections';
 import { RISK_LEVEL, accountRisks, jobsNeedingYou, type AccountRisk } from '../domain/risk';
@@ -467,6 +468,16 @@ export function Dashboard({
         </h2>
         <JobList jobs={inPeriod} deviceName={deviceName} now={now} xomoni={xomoni} />
       </section>
+    );
+  } else if (section.id === 'audience') {
+    content = (
+      <Audience
+        days={days}
+        scope={scope}
+        now={now}
+        shown={numbersShown}
+        archives={<OpenInXomoni xomoni={xomoni} page="library" />}
+      />
     );
   } else if (section.id === 'browsers') {
     content =

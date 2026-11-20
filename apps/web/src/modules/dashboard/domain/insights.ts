@@ -170,3 +170,101 @@ export function publishedSeries(days: readonly DailyNumbers[], scope: Scope, now
   }
   return eachDay(...span).map((day) => ({ day, value: byDay.get(day) ?? null }));
 }
+
+/**
+ * Accounts followed each day of the period, summed over the accounts in scope; like `followersSeries`, a day counts
+ * only when every account in scope has a count (#253).
+ */
+export function followingSeries(days: readonly DailyNumbers[], scope: Scope, now: number): SeriesPoint[] {
+  return followersSeries(
+    days.map((d) => ({ ...d, followers: d.following })),
+    scope,
+    now,
+  );
+}
+
+/**
+ * Followers gained (positive) or lost (negative) each day: the change from the last day with a count before it. A day
+ * after a gap carries the whole change since the last count; the first count, and days without one, have none.
+ */
+export function netChanges(series: readonly SeriesPoint[]): SeriesPoint[] {
+  let last: number | null = null;
+  return series.map((p) => {
+    if (p.value === null) return { day: p.day, value: null };
+    const value = last === null ? null : p.value - last;
+    last = p.value;
+    return { day: p.day, value };
+  });
+}
+
+/** Round follower counts worth marking, ascending. */
+const MILESTONES = [100, 250, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000];
+
+/** Each round count crossed upward within the series, and the day it was first reached. */
+export function milestones(series: readonly SeriesPoint[]): { count: number; day: string }[] {
+  const reached: { count: number; day: string }[] = [];
+  let last: number | null = null;
+  for (const p of series) {
+    if (p.value === null) continue;
+    if (last !== null) {
+      for (const m of MILESTONES) {
+        // Only the first time: dipping under a count and back over it is not a new milestone.
+        if (last < m && p.value >= m && !reached.some((r) => r.count === m)) reached.push({ count: m, day: p.day });
+      }
+    }
+    last = p.value;
+  }
+  return reached;
+}
+
+/** Audience's figures for a period: where followers stand, how they moved, and the ratio to accounts followed. */
+export interface AudienceFigures {
+  /** The latest follower and following counts, summed over the accounts in scope; null when none was seen. */
+  followers: number | null;
+  following: number | null;
+  /** Followers gained minus lost over the days with a change; null without two counts. */
+  net: number | null;
+  /** Total gained and lost on the days that went up or down. */
+  gained: number;
+  lost: number;
+  /** The day with the largest gain, and with the largest loss, if any. */
+  bestDay: SeriesPoint | null;
+  worstDay: SeriesPoint | null;
+  /** Followers per account followed; null without both counts or with no one followed. */
+  ratio: number | null;
+}
+
+/** Audience's figures from the period's days and their followers series. */
+export function audienceFigures(days: readonly DailyNumbers[], followers: readonly SeriesPoint[]): AudienceFigures {
+  const latest = (pick: (d: DailyNumbers) => number | null) => {
+    const last = new Map<string, number>();
+    for (const d of days) {
+      const v = pick(d);
+      if (v !== null) last.set(d.xHandle, v);
+    }
+    return last.size === 0 ? null : [...last.values()].reduce((a, b) => a + b, 0);
+  };
+  const changes = netChanges(followers).filter((p): p is { day: string; value: number } => p.value !== null);
+  const gained = changes.reduce((sum, p) => sum + Math.max(0, p.value), 0);
+  const lost = changes.reduce((sum, p) => sum + Math.max(0, -p.value), 0);
+  const best = changes.reduce<SeriesPoint | null>((b, p) => (p.value > 0 && (b?.value ?? 0) < p.value ? p : b), null);
+  const worst = changes.reduce<SeriesPoint | null>((w, p) => (p.value < 0 && (w?.value ?? 0) > p.value ? p : w), null);
+  const followerCount = latest((d) => d.followers);
+  const followingCount = latest((d) => d.following);
+  return {
+    followers: followerCount,
+    following: followingCount,
+    net: changes.length === 0 ? null : gained - lost,
+    gained,
+    lost,
+    bestDay: best,
+    worstDay: worst,
+    ratio: followerCount === null || !followingCount ? null : followerCount / followingCount,
+  };
+}
+
+/** The next round count above `followers`, and how many more it takes; null past the last one. */
+export function nextMilestone(followers: number): { count: number; toGo: number } | null {
+  const next = MILESTONES.find((m) => m > followers);
+  return next === undefined ? null : { count: next, toGo: next - followers };
+}

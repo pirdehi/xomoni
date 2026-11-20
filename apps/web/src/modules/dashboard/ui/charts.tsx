@@ -30,6 +30,12 @@ const useStyles = makeStyles({
   crosshair: { stroke: tokens.colorNeutralStroke1, strokeWidth: 1 },
   column: { fill: tokens.colorBrandStroke1 },
   columnActive: { fill: tokens.colorBrandForeground2 },
+  // Gains and losses (#253): a diverging pair, never status colors. These two tokens pass the palette checks (lightness
+  // band, CVD and normal-vision separation, contrast) against the page in both themes; direction carries it too.
+  columnGain: { fill: tokens.colorBrandBackgroundHover },
+  columnLoss: { fill: tokens.colorPaletteDarkOrangeBackground3 },
+  columnSignedActive: { opacity: 0.75 },
+  zero: { stroke: tokens.colorNeutralStroke1, strokeWidth: 1 },
   tooltip: {
     position: 'absolute',
     top: 0,
@@ -90,7 +96,12 @@ export function formatDay(day: string, today: string): string {
 
 /** Round ticks covering `min` to `max`: three or four steps of 1, 2 or 5 times a power of ten. */
 export function niceTicks(min: number, max: number): number[] {
-  if (min === max) return [min === 0 ? 0 : Math.floor(min * 0.9), Math.ceil(max * 1.1) || 1];
+  if (min === max) {
+    if (min === 0) return [0, 1];
+    // One value: a round step either side of it, a tenth of its size (at least 1).
+    const pad = Math.max(1, 10 ** (Math.floor(Math.log10(Math.abs(min))) - 1));
+    return niceTicks(min - pad, max + pad);
+  }
   const raw = (max - min) / 3;
   const power = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= raw) ?? raw;
@@ -329,10 +340,13 @@ export function ColumnChart({
   points,
   label,
   today,
+  signed = false,
 }: {
   points: readonly SeriesPoint[];
   label: string;
   today: string;
+  /** Gains and losses (#253): columns go up from zero, or down in the loss color, and values carry their sign. */
+  signed?: boolean;
 }) {
   const s = useStyles();
   const [ref, width] = useWidth();
@@ -340,25 +354,31 @@ export function ColumnChart({
   const titleId = useId();
   const { points: cols, weekly } = columnsOf(points);
   const max = Math.max(0, ...cols.map((p) => p.value ?? 0));
-  const ticks = niceTicks(0, max || 1).filter((t) => t >= 0);
-  const hi = ticks.at(-1) ?? 1;
+  const min = Math.min(0, ...cols.map((p) => p.value ?? 0));
+  const ticks = niceTicks(min, max || (min < 0 ? 0 : 1));
+  const lo = Math.min(0, ticks[0] ?? 0);
+  const hi = Math.max(ticks.at(-1) ?? 1, 0) || 1;
   const innerW = width - PAD.left - PAD.right;
   const innerH = HEIGHT - PAD.top - PAD.bottom;
   const slot = innerW / Math.max(cols.length, 1);
   const barW = Math.max(2, Math.min(24, slot - 2));
   const cx = (i: number) => PAD.left + slot * i + slot / 2;
-  const h = (v: number) => (v / (hi || 1)) * innerH;
-  const base = PAD.top + innerH;
+  /** The y of a value; zero is the baseline columns grow from, up or down. */
+  const y = (v: number) => PAD.top + innerH - ((v - lo) / (hi - lo)) * innerH;
+  const base = y(0);
   const total = cols.reduce((sum, p) => sum + (p.value ?? 0), 0);
+  const signedCount = (v: number) =>
+    signed && v > 0 ? `+${formatCount(v)}` : v < 0 ? `−${formatCount(-v)}` : formatCount(v);
   const shown = active !== null ? cols[active] : undefined;
   const unit = weekly ? 'Week of ' : '';
 
-  /** A column with a 4px rounded top (less when it is short), square at the baseline. */
+  /** A column with a 4px rounded end (less when it is short), square at the baseline; a loss hangs below it. */
   const column = (i: number, v: number) => {
     const left = cx(i) - barW / 2;
-    const top = base - h(v);
-    const r = Math.min(4, barW / 2, h(v));
-    return `M${left},${base} L${left},${top + r} Q${left},${top} ${left + r},${top} L${left + barW - r},${top} Q${left + barW},${top} ${left + barW},${top + r} L${left + barW},${base} Z`;
+    const end = y(v);
+    const r = Math.min(4, barW / 2, Math.abs(base - end));
+    const dir = v >= 0 ? 1 : -1;
+    return `M${left},${base} L${left},${end + dir * r} Q${left},${end} ${left + r},${end} L${left + barW - r},${end} Q${left + barW},${end} ${left + barW},${end + dir * r} L${left + barW},${base} Z`;
   };
 
   const onMove = (e: PointerEvent<SVGSVGElement>) => {
@@ -389,12 +409,18 @@ export function ColumnChart({
           onKeyDown={onKey}
           onBlur={() => setActive(null)}
         >
-          <title id={titleId}>{`${label}: ${formatCount(total)} in all`}</title>
+          <title id={titleId}>{`${label}: ${signedCount(total)} in all`}</title>
           {ticks.map((t) => (
             <g key={t}>
-              <line className={s.grid} x1={PAD.left} x2={width - PAD.right} y1={base - h(t)} y2={base - h(t)} />
-              <text className={s.tick} x={PAD.left - 8} y={base - h(t) + 4} textAnchor="end">
-                {formatCount(t)}
+              <line
+                className={t === 0 && lo < 0 ? s.zero : s.grid}
+                x1={PAD.left}
+                x2={width - PAD.right}
+                y1={y(t)}
+                y2={y(t)}
+              />
+              <text className={s.tick} x={PAD.left - 8} y={y(t) + 4} textAnchor="end">
+                {t < 0 ? `−${formatCount(-t)}` : formatCount(t)}
               </text>
             </g>
           ))}
@@ -412,7 +438,10 @@ export function ColumnChart({
             p.value ? (
               <path
                 key={p.day}
-                className={mergeClasses(s.column, active === i && s.columnActive)}
+                className={mergeClasses(
+                  signed ? (p.value < 0 ? s.columnLoss : s.columnGain) : s.column,
+                  active === i && (signed ? s.columnSignedActive : s.columnActive),
+                )}
                 d={column(i, p.value)}
               />
             ) : null,
@@ -420,7 +449,7 @@ export function ColumnChart({
         </svg>
         {shown && active !== null && (
           <div className={s.tooltip} style={{ left: `${(cx(active) / width) * 100}%` }} role="status">
-            <span className={s.tipValue}>{formatCount(shown.value ?? 0)}</span>
+            <span className={s.tipValue}>{signedCount(shown.value ?? 0)}</span>
             <span className={s.tipLabel}>
               {unit}
               {formatDay(shown.day, today)}

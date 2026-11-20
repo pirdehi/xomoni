@@ -297,6 +297,20 @@ describe('Chrome Web Store upload (API v2)', () => {
     );
   });
 
+  it('leaves no timer behind once a store answers or fails, so a run ends at once', async () => {
+    const timers = () => process.getActiveResourcesInfo().filter((kind) => kind === 'Timeout').length;
+    const before = timers();
+    const { fetch } = fakeFetch(
+      { json: { access_token: ACCESS } },
+      Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNRESET' } }),
+    );
+    // Short enough that a forgotten timer fails this file within seconds instead of holding it open.
+    const d = deps(fetch, { requestMs: 2_000 });
+    await chromeToken(storeCredentials('chrome', CHROME_ENV), d);
+    await storeError(chromeToken(storeCredentials('chrome', CHROME_ENV), d));
+    assert.equal(timers(), before);
+  });
+
   it("keeps a store's answer on one short line, so it can't start a workflow command", async () => {
     const { fetch } = fakeFetch({ status: 500, text: `oops\n::error::injected\n${'x'.repeat(500)}` });
     const message = await storeError(chromeUpload({ ...chromeAuth, zip: ZIP, version: '0.5.0' }, deps(fetch)));

@@ -137,10 +137,18 @@ const authHint = (status) =>
     ? ' The store refused the credentials: check the secrets of the "stores" environment (docs/RELEASING.md#stores).'
     : '';
 
-/** Sends one request and reads its answer; a timeout or a network failure becomes a StoreError. */
+/**
+ * Sends one request and reads its answer; a timeout or a network failure becomes a StoreError. The time limit is a
+ * timer of its own, not `AbortSignal.timeout()`, whose timer doesn't keep Node running: while a request waits on
+ * nothing else, Node 22 would end the run instead of timing it out.
+ */
 async function call(d, what, url, init, ms = d.requestMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException(`no answer within ${ms / 1000} s`, 'TimeoutError'));
+  }, ms);
   try {
-    const response = await d.fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+    const response = await d.fetch(url, { ...init, signal: controller.signal });
     const text = await response.text();
     let json = null;
     try {
@@ -155,6 +163,8 @@ async function call(d, what, url, init, ms = d.requestMs) {
       throw new StoreError(`${what}: no answer within ${ms / 1000} s`);
     const code = error?.cause?.code ? ` (${String(error.cause.code)})` : '';
     throw new StoreError(`${what}: ${clip(error?.message ?? error)}${code}`);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

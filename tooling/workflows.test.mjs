@@ -129,7 +129,10 @@ describe('release signing for one-click updates (#305)', () => {
   it('never prints the key, and removes the file it writes', () => {
     const script = stepScript(release, SIGN_STEP);
     assert.match(script, /^set -euo pipefail$/m);
-    assert.doesNotMatch(script, /set -x|cat "\$key"|(echo|printf)[^\n]*\$\{?RELEASE_SIGNING_KEY[^>\n]*$/m);
+    assert.doesNotMatch(script, /set -x/);
+    assert.doesNotMatch(script, /cat "\$key"/);
+    // Printing the key's value, unless the line sends it into a file (`> "$key"`).
+    assert.doesNotMatch(script, /(?:echo|printf)[^\n]*\$\{?RELEASE_SIGNING_KEY[^>\n]*$/m);
     // The one use of the key's value writes it to a file only the job's user can read.
     assert.match(script, /printf '%s\\n' "\$RELEASE_SIGNING_KEY" > "\$key"/);
     assert.match(script, /umask 077/);
@@ -202,10 +205,7 @@ describe('release signing for one-click updates (#305)', () => {
       const run = runSigning({ secret: key.pem, trusted: [throwawayKey().raw] });
       try {
         assert.notEqual(run.status, 0);
-        assert.match(
-          run.output,
-          new RegExp(`doesn't trust this signing key\\. Add ${key.raw.replace(/[+/]/g, '\\$&')}`),
-        );
+        assert.ok(run.output.includes(`doesn't trust this signing key. Add ${key.raw}`), run.output);
         assert.deepEqual(
           readdirSync(join(run.dir, 'release')).filter((name) => name.endsWith('.sig')),
           [],

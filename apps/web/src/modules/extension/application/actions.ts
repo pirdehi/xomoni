@@ -2,9 +2,13 @@ import type { ActionAnswer, ReadAnswer, ReadMessage, SettingsAnswer, SettingsMes
 import type { XomoniRequest } from '../domain/presence';
 import type { ActionChannel, BrowserMemory, DistributiveOmit } from './ports';
 
-/** What `askXomoni` needs: the extension in this browser, and its id as the site remembered it. */
+/** What `askXomoni` needs: the extension in this browser, and its id. */
 export interface ActionDeps {
   channel: ActionChannel;
+  /**
+   * The id to talk to Xomoni at: where the page's last sync found it answering (a store's fixed id included, #302),
+   * else the one the site remembered.
+   */
   memory: Pick<BrowserMemory, 'extensionId'>;
 }
 

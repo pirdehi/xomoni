@@ -112,7 +112,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/web/src/modules/landing`](../apps/web/src/modules/landing/README.md) | The landing page at `/` and the install guide at `/install`, with its install questions: no data, so a pure `domain/` (the install guide's rules for each browser and computer, #299, and the questions' anchors, #306) and a `ui/` layer. |
 | [`apps/web/src/shared`](../apps/web/src/shared/README.md) | Site config, Supabase clients, layout components shared by every module. |
 | [`packages/db`](../packages/db/README.md) | The typed contract of the database, generated from the migrations. |
-| [`packages/bridge`](../packages/bridge/README.md) | The messages xomoni.com and the extension exchange in one browser, with strict parsers: one contract for both apps (ADR-0025). |
+| [`packages/bridge`](../packages/bridge/README.md) | The messages xomoni.com and the extension exchange in one browser, with strict parsers, and Xomoni's fixed ids in the stores (#302): one contract for both apps (ADR-0025). |
 | [`packages/consent`](../packages/consent/README.md) | The informed-consent text shown before an X account's first job: one source for the extension, `/risks` and the README. |
 | [`packages/fluent-theme`](../packages/fluent-theme/README.md) | Xomoni's Fluent UI themes (ADR-0019): the brand ramp and the light and dark themes, one source for the extension and xomoni.com. |
 | [`supabase`](../supabase/README.md) | Migrations, auth settings and email templates, as code ([ADR-0010](adr/0010-configuration-as-code.md)). |
@@ -210,9 +210,11 @@ The extension has a signed-out state of its own ([ADR-0023](adr/0023-sign-out-of
 - Signing in again takes the person's *Continue as @handle*, or *Sign in to xomoni.com*.
 
 One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)):
-- every page of the site asks the extension how it stands (`modules/extension`, `cloud/website.ts`);
+- every page of the site asks the extension how it stands (`modules/extension`, `cloud/website.ts`), at the id a page of Xomoni named (`#ext=`), else at a store's fixed id (`STORE_EXTENSION_IDS` in `@xomoni/bridge`, #302): the best that answers wins;
 - the newest action wins: a sign-in on the website signs the extension in with a one-time code, and a sign-out on either side signs out the other;
 - a browser without a connection is never signed out by the website, so an account stays optional.
+
+The fixed id (#302): the manifest's `key` is the Chrome Web Store item's public key, so a zip install and the store's copy share one id. It is set together with the Chrome id in `STORE_EXTENSION_IDS`, and `tests/manifest-key.test.ts` checks that they agree ([ADR-0024](adr/0024-connect-a-browser-with-one-click.md), [RELEASING](RELEASING.md#the-fixed-id-the-chrome-web-stores-key-302)).
 
 ## 6. Data
 

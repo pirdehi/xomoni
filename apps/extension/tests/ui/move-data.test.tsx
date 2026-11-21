@@ -4,8 +4,9 @@ import { act, cleanup, render, renderHook, screen, waitFor, within } from '@test
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, kvGet } from '../../src/shared/db';
-import { exportData } from '../../src/shared/move';
+import { exportData, importNotice } from '../../src/shared/move';
 import { MAX_MOVE_BYTES, MOVE_PROBLEMS, checkMoveText } from '../../src/shared/move-file';
+import { App } from '../../src/ui/App';
 import { useToasts } from '../../src/ui/hooks';
 import { MoveDataCard, MoveOffer, describeResult, exportFileName } from '../../src/ui/components/MoveData';
 import { stubChrome } from '../support/chrome';
@@ -27,6 +28,16 @@ const fileInput = () => screen.getByTestId('move-file');
 async function choose(file: File) {
   await userEvent.upload(fileInput(), file);
 }
+
+/** Picks `file`, then confirms it in *Import this data?*. */
+async function importFile(file: File) {
+  await choose(file);
+  const dialog = await screen.findByRole('dialog', { name: 'Import this data?' });
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Import' }));
+}
+
+/** The result of an import of `exportedFile()`'s file, as it reads on screen. */
+const IMPORTED = /^Your data is hereImported from Xomoni 0\.4\.1\. Added \d+ records and updated 0 with newer copies\./;
 
 beforeEach(async () => {
   stubChrome();
@@ -210,6 +221,55 @@ describe('Move your data in Settings (#300)', () => {
   });
 });
 
+describe('The import’s result in Settings (#357)', () => {
+  it('stays until the person dismisses it, even after leaving Settings and coming back', async () => {
+    const file = await exportedFile();
+    const { unmount } = render(<MoveDataCard />);
+    await importFile(file);
+    expect(await screen.findByRole('status')).toHaveTextContent(IMPORTED);
+
+    // Leaving Settings and coming back: the result is still there, long after the toast has gone.
+    unmount();
+    render(<MoveDataCard />);
+    expect(await screen.findByRole('status')).toHaveTextContent(IMPORTED);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+    expect(await importNotice()).toBeNull();
+    // Another file can still be imported.
+    expect(screen.getByRole('button', { name: 'Import from a file' })).toBeEnabled();
+  });
+
+  it('gives way to the next import: a refused file shows only why', async () => {
+    const file = await exportedFile();
+    render(<MoveDataCard />);
+    await importFile(file);
+    expect(await screen.findByRole('status')).toHaveTextContent('Your data is here');
+
+    await choose(new File(['{"hello":"world"}'], 'notes.json', { type: 'application/json' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(MOVE_PROBLEMS['not-xomoni']);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    // The result is still kept: only the refusal is on screen meanwhile.
+    expect(await importNotice()).not.toBeNull();
+  });
+
+  it('says so, and stays, when it can’t be dismissed', async () => {
+    const file = await exportedFile();
+    const toasts = renderHook(() => useToasts());
+    render(<MoveDataCard />);
+    await importFile(file);
+    await screen.findByRole('status');
+    vi.spyOn(db.kv, 'delete').mockRejectedValue(new Error('The disk is full.'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() => expect(toasts.result.current.map((t) => t.text)).toContain('The disk is full.'));
+    expect(screen.getByRole('status')).toHaveTextContent('Your data is here');
+  });
+});
+
 describe('The offer on a new install (#300)', () => {
   it('asks whether the person comes from another Xomoni, and goes away for good with Not now', async () => {
     const { unmount } = render(<MoveOffer />);
@@ -240,18 +300,70 @@ describe('The offer on a new install (#300)', () => {
     expect(screen.queryByRole('region', { name: 'Move your data' })).not.toBeInTheDocument();
   });
 
-  it('imports from the offer, and shows how it went', async () => {
+  it('imports from the offer, and its result takes the offer’s place until dismissed (#357)', async () => {
     const file = await exportedFile();
     render(<MoveOffer />);
     const offer = await screen.findByRole('region', { name: 'Move your data' });
 
     await userEvent.click(within(offer).getByRole('button', { name: 'Import your data' }));
-    await choose(file);
-    const dialog = await screen.findByRole('dialog', { name: 'Import this data?' });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Import' }));
+    await importFile(file);
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Your data is here');
+    expect(await screen.findByRole('status')).toHaveTextContent(IMPORTED);
     expect(await db.items.count()).toBe(4);
-    expect(screen.getByRole('region', { name: 'Move your data' })).toBeInTheDocument();
+    // The import ended the offer: once the offer's live query has seen it, only its result is left, with Dismiss.
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Coming from another Xomoni?' })).not.toBeInTheDocument(),
+    );
+    const result = screen.getByRole('region', { name: 'Move your data' });
+    expect(within(result).getByRole('status')).toHaveTextContent(IMPORTED);
+    expect(within(result).queryByRole('button', { name: 'Not now' })).not.toBeInTheDocument();
+
+    await userEvent.click(within(result).getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Move your data' })).not.toBeInTheDocument());
+    expect(await importNotice()).toBeNull();
   });
+
+  it('shows a result still waiting from an earlier import, though the offer is over', async () => {
+    const file = await exportedFile();
+    render(<MoveDataCard />);
+    await importFile(file);
+    await screen.findByRole('status');
+    cleanup();
+
+    render(<MoveOffer />);
+
+    const result = await screen.findByRole('region', { name: 'Move your data' });
+    expect(within(result).getByRole('status')).toHaveTextContent(IMPORTED);
+  });
+});
+
+describe('Importing from onboarding’s offer (#357)', () => {
+  it('keeps the result on Home, where the dashboard turns once the data is in, until the person dismisses it', async () => {
+    const file = await exportedFile();
+    render(<App />);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Xomoni' })).toBeInTheDocument();
+    const offer = await screen.findByRole('region', { name: 'Move your data' });
+
+    await userEvent.click(within(offer).getByRole('button', { name: 'Import your data' }));
+    await importFile(file);
+
+    // The file's account is known now, so the dashboard turns to Home at once: the result is waiting there.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Home' }, { timeout: 10_000 })).toBeInTheDocument();
+    const result = await screen.findByRole('region', { name: 'Move your data' });
+    expect(within(result).getByRole('status')).toHaveTextContent(IMPORTED);
+
+    // Settings and back: it stays until the person dismisses it.
+    window.location.hash = '#/settings';
+    expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    window.location.hash = '#/overview';
+    const back = await screen.findByRole('region', { name: 'Move your data' });
+    expect(within(back).getByRole('status')).toHaveTextContent(IMPORTED);
+
+    await userEvent.click(within(back).getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Move your data' })).not.toBeInTheDocument());
+    expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument();
+    expect(await importNotice()).toBeNull();
+  }, 30_000);
 });

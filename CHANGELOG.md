@@ -10,6 +10,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 - Links in the text of xomoni.com's privacy policy, terms and risks pages are underlined, so they stand out without relying on color (#342).
 - The account button at the bottom of Xomoni's sidebar is named by the words it shows, so voice control can press it by saying them, and screen readers say it opens a panel (#342). On xomoni.com, the account menu's name includes the initials its picture shows, for the same reason.
 - Screen readers didn't read out Xomoni's messages, such as *Couldn’t finish signing out*, while a dialog was open, nor one that came as it closed (#352). A dialog hides the rest of the page from them, and the messages were part of it. They now sit outside what a dialog hides, so they are read out at once.
+- After you imported your data from the offer on a new install (*Coming from another Xomoni?*), only a message that faded after a few seconds said it worked: Xomoni went straight to Home, and the import's *Your data is here* summary never showed (#357). Home now shows it until you dismiss it, and so does *Settings › Move your data*.
 
 ## [0.5.0] - 2026-11-21
 

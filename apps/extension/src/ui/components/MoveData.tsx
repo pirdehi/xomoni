@@ -9,7 +9,16 @@ import {
 } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useRef, useState } from 'react';
-import { type MoveResult, dismissMoveOffer, exportData, importData, moveOfferShown } from '../../shared/move';
+import {
+  type ImportNotice,
+  type MoveResult,
+  dismissImportNotice,
+  dismissMoveOffer,
+  exportData,
+  importData,
+  importNotice,
+  moveOfferShown,
+} from '../../shared/move';
 import { type MoveCheck, MOVE_TABLES, checkMoveFile } from '../../shared/move-file';
 import { downloadFile, errorMessage, fmtDate, fmtNumber, toDateInput } from '../format';
 import { toast, useRunner } from '../hooks';
@@ -53,6 +62,11 @@ const useStyles = makeStyles({
   offerText: { margin: `${tokens.spacingVerticalXXS} 0 0`, color: tokens.colorNeutralForeground2 },
   // Under the buttons, on a line of its own, in the Settings card and in the offer alike.
   result: { flexBasis: '100%', margin: 0 },
+  // The import's result with its Dismiss button beside it (#357).
+  summary: { display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalS },
+  summaryText: { flexGrow: 1, minWidth: 0 },
+  // On Home and onboarding, where the offer was.
+  imported: { marginBottom: tokens.spacingVerticalL },
 });
 
 /** The version of this Xomoni, written into the file so the other one can say where it came from. */
@@ -103,19 +117,44 @@ type Step =
   | { kind: 'idle' }
   | { kind: 'busy'; text: string }
   | { kind: 'confirm'; check: MoveCheck }
-  | { kind: 'done'; text: string }
   | { kind: 'error'; text: string };
+
+/**
+ * The last import's result, *Your data is here* (#357), with *Dismiss*: it stays, on any page that shows it, until the
+ * person dismisses it (`importNotice`), not only until the page changes.
+ */
+function ImportSummary({ notice }: { notice: ImportNotice }) {
+  const styles = useStyles();
+  return (
+    <div className={mergeClasses(styles.result, styles.summary)}>
+      <div role="status" className={styles.summaryText}>
+        <Callout tone="good" icon={<CheckmarkCircle16Regular />} title="Your data is here">
+          Imported from Xomoni {notice.app}. {describeResult(notice.result)}
+        </Callout>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => void dismissImportNotice().catch((err: unknown) => toast(errorMessage(err), 'critical'))}
+      >
+        Dismiss
+      </Button>
+    </div>
+  );
+}
 
 /**
  * *Import from a file* (#300, ADR-0032): picks a file, checks all of it (`checkMoveFile`), shows what it holds and asks
  * to confirm, then merges it (`importData`). A refused file says why and changes nothing. Disabled while a job runs in
- * this tab; a job in another tab makes the import refuse, having written nothing.
+ * this tab; a job in another tab makes the import refuse, having written nothing. Once an import is done, its result
+ * (*Your data is here*) shows until the person dismisses it (#357), here and wherever else the dashboard shows it.
  */
 export function MoveImport({ label = 'Import from a file', primary = false }: { label?: string; primary?: boolean }) {
   const styles = useStyles();
   const input = useRef<HTMLInputElement>(null);
   const run = useRunner();
   const [step, setStep] = useState<Step>({ kind: 'idle' });
+  const notice = useLiveQuery(importNotice, []);
   const running = run.status !== 'idle';
 
   const check = async (file: File | undefined) => {
@@ -138,9 +177,9 @@ export function MoveImport({ label = 'Import from a file', primary = false }: { 
         setStep({ kind: 'error', text: 'A job is running. Pause it, then import. Nothing was imported.' });
         return;
       }
-      const text = describeResult(result);
-      setStep({ kind: 'done', text });
-      toast(`Imported from Xomoni ${checked.summary.app}. ${text}`, 'good');
+      // `importData` keeps the result, which shows until the person dismisses it (#357).
+      setStep({ kind: 'idle' });
+      toast(`Imported from Xomoni ${checked.summary.app}. ${describeResult(result)}`, 'good');
     } catch (err) {
       setStep({ kind: 'error', text: `Couldn’t import: ${errorMessage(err)}. Nothing was imported.` });
     }
@@ -174,13 +213,7 @@ export function MoveImport({ label = 'Import from a file', primary = false }: { 
           Import waits until no job runs: pause it first.
         </Caption1>
       )}
-      {step.kind === 'done' && (
-        <div role="status" className={styles.result}>
-          <Callout tone="good" icon={<CheckmarkCircle16Regular />} title="Your data is here">
-            {step.text}
-          </Callout>
-        </div>
-      )}
+      {step.kind === 'idle' && notice && <ImportSummary notice={notice} />}
       {step.kind === 'error' && (
         <div role="alert" className={styles.result}>
           <Callout tone="critical" icon={<ErrorCircle16Regular />} title="Not imported">
@@ -276,22 +309,31 @@ export function MoveDataCard() {
   );
 }
 
+/** Whether onboarding and Home offer the import, and the last import's result while it waits to be dismissed. */
+const offerState = async () => ({ shown: await moveOfferShown(), notice: await importNotice() });
+
 /**
  * The offer on a new install (#300): *Coming from another Xomoni? Import your data*, shown while this Xomoni hasn't
- * done anything yet (`moveOfferShown`) until the person dismisses it with *Not now*. Renders nothing otherwise.
+ * done anything yet (`moveOfferShown`) until the person dismisses it with *Not now*. After an import, the last import's
+ * result (*Your data is here*) takes its place until the person dismisses it (#357), wherever the import was made:
+ * importing from onboarding turns the dashboard to Home at once, and the result is waiting there. Renders nothing
+ * otherwise.
  */
 export function MoveOffer() {
   const styles = useStyles();
-  const shown = useLiveQuery(moveOfferShown, []);
-  const [keep, setKeep] = useState(false);
-  // Stays on screen after an import, to show how it went, although the import's log line ends the offer.
-  if (!shown && !keep) return null;
-  const dismiss = () => {
-    setKeep(false);
-    void dismissMoveOffer().catch((err: unknown) => toast(errorMessage(err), 'critical'));
-  };
+  // One query: the import's log line ends the offer in the same transaction that keeps its result, so the result
+  // takes the offer's place without the section leaving the page in between.
+  const state = useLiveQuery(offerState, []);
+  if (state?.notice)
+    return (
+      <section aria-label="Move your data" className={styles.imported}>
+        <ImportSummary notice={state.notice} />
+      </section>
+    );
+  if (!state?.shown) return null;
+  const dismiss = () => void dismissMoveOffer().catch((err: unknown) => toast(errorMessage(err), 'critical'));
   return (
-    <section aria-label="Move your data" className={styles.offer} onClickCapture={() => setKeep(true)}>
+    <section aria-label="Move your data" className={styles.offer}>
       <span className={styles.offerIcon} aria-hidden>
         <ArrowSwap20Regular />
       </span>

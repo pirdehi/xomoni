@@ -476,8 +476,9 @@ async function logImport(file: MoveFile, now: number) {
  * (`mergeItem`, `mergeAccount`, `mergeDaily`); a job here is kept unless the file's copy is newer, and a job that
  * hadn't finished arrives cancelled (`arrivedJob`); log lines, page loads, risk events and sampled checks are added
  * unless already here; the person's typed overrides of the risk ladder are not taken (a file can't lift a stop);
- * settings and Watch fill in only what is missing; nothing is ever deleted. Returns `'busy'`, having written nothing,
- * when a job runs in any dashboard tab; while the import runs, it holds the runner's lock, so no job can start.
+ * settings and Watch fill in only what is missing; nothing is ever deleted. In the same transaction it keeps what it did
+ * for the dashboard to show until the person dismisses it (`importNotice`, #357). Returns `'busy'`, having written
+ * nothing, when a job runs in any dashboard tab; while the import runs, it holds the runner's lock, so no job can start.
  */
 export async function importData(file: MoveFile, now = Date.now()): Promise<MoveResult | 'busy'> {
   return navigator.locks.request(RUNNER_LOCK, { ifAvailable: true }, async (lock) => {
@@ -528,6 +529,7 @@ export async function importData(file: MoveFile, now = Date.now()): Promise<Move
       await mergeIncoming(data, result, now);
       await mergeValues(data, result);
       await logImport(file, now);
+      await kvSet(IMPORTED_KEY, { app: file.app, at: now, result } satisfies ImportNotice);
       return result;
     });
   });
@@ -549,4 +551,42 @@ export async function moveOfferShown(): Promise<boolean> {
 /** Stops offering the import on this install. */
 export function dismissMoveOffer() {
   return kvSet(OFFER_KEY, 'dismissed');
+}
+
+/** Where the last import's result waits for the person in `kv` (#357); left out of a move, and cleared by *Delete local data*. */
+const IMPORTED_KEY = 'moveImported';
+
+/** What the last import did (#357), kept until the person dismisses it. */
+export interface ImportNotice {
+  /** The version of the Xomoni the file came from. */
+  app: string;
+  /** When the import ran, in ms since the epoch. */
+  at: number;
+  /** What came in, as `importData` answered it. */
+  result: MoveResult;
+}
+
+/** Whether `counts` has a number for every table, as `MoveResult`'s counts do. */
+const isCounts = (counts: unknown): counts is MoveResult['added'] =>
+  typeof counts === 'object' &&
+  counts !== null &&
+  MOVE_TABLES.every((table) => typeof (counts as Record<string, unknown>)[table] === 'number');
+
+/**
+ * What the last import did, until the person dismisses it (#357), so the dashboard keeps saying so: an import from the
+ * first-run offer turns the dashboard to Home at once, and an import's log line ends the offer it was made from. Null
+ * when there is none, or when the value kept is out of shape. Read-only, so it can run in a live query.
+ */
+export async function importNotice(): Promise<ImportNotice | null> {
+  const value = await kvGet<unknown>(IMPORTED_KEY, null);
+  if (typeof value !== 'object' || value === null) return null;
+  const { app, at, result } = value as Partial<Record<keyof ImportNotice, unknown>>;
+  if (typeof app !== 'string' || typeof at !== 'number' || typeof result !== 'object' || result === null) return null;
+  const { added, updated } = result as Partial<Record<keyof MoveResult, unknown>>;
+  return isCounts(added) && isCounts(updated) ? { app, at, result: { added, updated } } : null;
+}
+
+/** Forgets the last import's result: the person has read it. */
+export function dismissImportNotice() {
+  return db.kv.delete(IMPORTED_KEY);
 }

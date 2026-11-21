@@ -1,14 +1,16 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { db, getViewCap, hasConsent, kvGet, kvSet } from '../src/shared/db';
+import { db, getViewCap, hasConsent, kvGet, kvSet, wipeLocalData } from '../src/shared/db';
 import { INCOMING_MAX } from '../src/shared/incoming';
 import {
   MOVED_JOB_REASON,
   type MoveResult,
   arrivedJob,
+  dismissImportNotice,
   dismissMoveOffer,
   exportData,
   importData,
+  importNotice,
   mergeAccount,
   mergeDaily,
   mergeItem,
@@ -256,9 +258,15 @@ describe('importing into a new Xomoni (#300, ADR-0032)', () => {
     expect(Object.values(again.added).every((n) => n === 0)).toBe(true);
     expect(Object.values(again.updated).every((n) => n === 0)).toBe(true);
     const twice = await snapshot();
-    // Only the import's own line in the log is new.
+    // Only the import's own line in the log is new, and its result for the dashboard replaces the first one's (#357).
     expect(twice.logs).toHaveLength(once.logs!.length + 1);
-    expect({ ...twice, logs: [] }).toEqual({ ...once, logs: [] });
+    const besides = (rows: Record<string, unknown[]>) => ({
+      ...rows,
+      logs: [],
+      kv: rows.kv!.filter((row) => (row as { key: string }).key !== 'moveImported'),
+    });
+    expect(besides(twice)).toEqual(besides(once));
+    expect(await importNotice()).toEqual({ app: '0.4.1', at: NOW, result: again });
   });
 
   it('keeps replies to the person within ADR-0030’s 90 days and 5,000', async () => {
@@ -556,5 +564,81 @@ describe('the offer on a new install (#300)', () => {
     await resetDb();
     await db.logs.add(moverLog());
     expect(await moveOfferShown()).toBe(false);
+  });
+});
+
+describe('the import’s result, until the person dismisses it (#357)', () => {
+  it('keeps what the import did, with the version it came from, until dismissed', async () => {
+    await seedEverything();
+    const file = await exported();
+    await resetDb();
+    expect(await importNotice()).toBeNull();
+
+    const result = await imported(file);
+
+    expect(await importNotice()).toEqual({ app: '0.4.1', at: NOW, result });
+    // Still there for the next page that asks, until the person dismisses it.
+    expect(await importNotice()).toEqual({ app: '0.4.1', at: NOW, result });
+    await dismissImportNotice();
+    expect(await importNotice()).toBeNull();
+  });
+
+  it('keeps it in the import’s own transaction: the log line that ends the offer never lands without it', async () => {
+    await seedEverything();
+    const file = await exported();
+    await resetDb();
+    const original = db.kv.put.bind(db.kv);
+    db.kv.put = (...args: Parameters<typeof original>) => {
+      if (args[0].key === 'moveImported') throw new Error('disk full');
+      return original(...args);
+    };
+    try {
+      await expect(importData(file, NOW)).rejects.toThrow('disk full');
+    } finally {
+      db.kv.put = original;
+    }
+
+    // All of it, or none: no log line ends the offer while the result is missing.
+    expect(await db.logs.count()).toBe(0);
+    expect(await db.items.count()).toBe(0);
+    expect(await moveOfferShown()).toBe(true);
+    expect(await importNotice()).toBeNull();
+  });
+
+  it('keeps nothing when the import is refused', async () => {
+    await seedEverything();
+    const file = await exported();
+    await resetDb();
+    const runner = await holdRunnerLock();
+
+    expect(await importData(file, NOW)).toBe('busy');
+
+    expect(await importNotice()).toBeNull();
+    await runner.release();
+  });
+
+  it('never goes into a move file, and Delete local data clears it', async () => {
+    await seedEverything();
+    const file = await exported();
+    await resetDb();
+    await imported(file);
+
+    const { text } = await exportData({ app: '0.5.0', now: NOW });
+    expect(text).not.toContain('moveImported');
+
+    await wipeLocalData();
+    expect(await importNotice()).toBeNull();
+  });
+
+  it('reads a value out of shape as none, so a damaged one never breaks the page', async () => {
+    for (const value of [
+      'imported',
+      { app: 4, at: NOW, result: { added: {}, updated: {} } },
+      { app: '0.4.1', at: NOW },
+      { app: '0.4.1', at: NOW, result: { added: { items: 1 }, updated: { items: 0 } } },
+    ]) {
+      await kvSet('moveImported', value);
+      expect(await importNotice()).toBeNull();
+    }
   });
 });

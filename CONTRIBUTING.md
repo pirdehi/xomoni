@@ -27,7 +27,7 @@ npm install            # also installs the git hooks (.githooks)
 | Architecture | `npm run arch` | An import breaks a rule in `.dependency-cruiser.cjs` |
 | Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
 | Test presence | `npm run tests:check` | A source file is imported by no test and is not listed as exempt with a reason ([docs/TESTING.md](docs/TESTING.md)) |
-| Tooling tests | `npm run test:tooling` | A test of the repository's own scripts fails (`node --test 'tooling/*.test.mjs'`), or [docs/STORE-LISTING.md](docs/STORE-LISTING.md) no longer matches the manifest or the stores' limits |
+| Tooling tests | `npm run test:tooling` | A test of the repository's own scripts fails (`node --test 'tooling/*.test.mjs'`), or [docs/STORE-LISTING.md](docs/STORE-LISTING.md) no longer matches the manifest or the stores' limits, or an icon no longer matches its drawing in `apps/extension/scripts/icon.mjs` ([ADR-0035](docs/adr/0035-xomoni-has-its-own-mark.md)) |
 | No remote code | `npm run remote-code:check` | The extension's build runs code from a string (`eval`, `new Function`) or loads it from another site, or its CSP would let it ([docs/STORE-LISTING.md](docs/STORE-LISTING.md#6-no-remote-code)) |
 | Unit tests and coverage | `npm test` | A test fails, or coverage drops below a workspace's threshold |
 

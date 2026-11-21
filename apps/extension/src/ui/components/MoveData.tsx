@@ -61,8 +61,12 @@ const appVersion = () => chrome.runtime.getManifest().version;
 /** Where *Export everything* saves the file, dated by the local day. */
 export const exportFileName = (now = Date.now()) => `xomoni-export-${toDateInput(now)}.json`;
 
-/** Saves every moved table as one file in Downloads (#300); says when damaged records had to be left out. */
-async function saveEverything() {
+/**
+ * *Export everything* (#300): saves every moved table as one file in Downloads, says so in a toast, and says when
+ * damaged records had to be left out. Answers the file's name, or null when the export failed, which a toast says too.
+ * Settings' *Move your data* and the card that brings a zip install to its store (#304) both run it.
+ */
+export async function saveEverything(): Promise<string | null> {
   try {
     const { text, skipped } = await exportData({ app: appVersion() });
     const name = exportFileName();
@@ -74,8 +78,10 @@ async function saveEverything() {
         'critical',
       );
     }
+    return name;
   } catch (err) {
     toast(`Couldn’t export: ${errorMessage(err)}`, 'critical');
+    return null;
   }
 }
 

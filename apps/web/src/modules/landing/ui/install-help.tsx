@@ -1,8 +1,9 @@
 'use client';
 // The install questions on /install (#306), on Fluent UI (ADR-0019): short answers to what goes wrong when installing
 // from the zip, each under its own heading and anchor, listed at the top; and `TroubleLinks`, the steps' way to them.
-// Rendered on the server with the page. The visitor's own browser is marked only once the page knows it
-// (`usePlatform`), so the server's page and the first render in the browser agree.
+// Once a store lists Xomoni (#304), how to move a zip install to it, too. Rendered on the server with the page. The
+// visitor's own browser is marked only once the page knows it (`usePlatform`), so the server's page and the first
+// render in the browser agree.
 import { Badge, makeStyles, mergeClasses, tokens, typographyStyles } from '@fluentui/react-components';
 import { QuestionCircle16Regular } from '@fluentui/react-icons';
 import { Fragment, type ReactNode } from 'react';
@@ -12,11 +13,13 @@ import { type Platform, extensionsAddress, unzipHow } from '../domain/install-gu
 import {
   DEVELOPER_MODE_PLACES,
   INSTALL_HELP_ID,
-  INSTALL_QUESTIONS,
   type InstallQuestionId,
+  MOVE_TO_STORE,
+  installQuestions,
   ownQuestion,
   questionHref,
 } from '../domain/install-help';
+import { type StoreListings, installOffer, isListed, listedStores, storeInSentence } from '../domain/store-install';
 
 const WIDE = '@media (min-width: 640px)';
 // Below the sticky site header (64 px), with some room.
@@ -106,18 +109,59 @@ const QUESTION_TITLES: Record<InstallQuestionId, string> = {
   'turned-off': 'Xomoni disappeared or is turned off',
   'developer-mode-warning': 'Why does the browser warn about developer mode?',
   update: 'How do I update Xomoni?',
+  'move-to-store': 'How do I move from the zip to the store?',
   'not-recognized': 'Why doesn’t xomoni.com see Xomoni yet?',
   browsers: 'Can I use Firefox, Safari or a phone?',
   'your-data': 'Where is my data, and what if I remove Xomoni?',
   ask: 'Where can I ask for help?',
 };
 
-/** What each question's answer says, for this browser (its own extensions page, and its line marked). */
-function useAnswers(platform: Platform): Record<InstallQuestionId, ReactNode> {
+/** The stores that list Xomoni, by name: `the Chrome Web Store`, `Edge Add-ons`, or both. */
+function listedNames(listings: StoreListings): string {
+  return listedStores(listings).map(storeInSentence).join(' or ');
+}
+
+/** A link to the move's answer, from another answer. */
+function MoveLink() {
+  return <TextLink href={questionHref(MOVE_TO_STORE)}>{QUESTION_TITLES[MOVE_TO_STORE]}</TextLink>;
+}
+
+/**
+ * Where to get Xomoni from a store, in the move's third step: this browser's store (`installOffer`), or before the page
+ * knows the browser, or in one no store serves, each store that lists Xomoni. Edge without its own listing is told
+ * to allow the Chrome Web Store.
+ */
+function StoreLinks({ platform, listings }: { platform: Platform; listings: StoreListings }) {
+  const offer = installOffer(platform, listings);
+  const stores = offer.kind === 'store' ? [offer.store] : listedStores(listings);
+  const links = stores.flatMap((store) => {
+    const url = listings[store];
+    return url ? [{ store, url }] : [];
+  });
+  return (
+    <>
+      {links.map(({ store, url }, i) => (
+        <Fragment key={store}>
+          {i > 0 && ' or '}
+          <TextLink href={url}>Xomoni in {storeInSentence(store)}</TextLink>
+        </Fragment>
+      ))}
+      {offer.kind === 'store' && offer.edgeFromChromeStore && ' (if Edge asks, allow extensions from other stores)'}
+    </>
+  );
+}
+
+/**
+ * What each question's answer says, for this browser (its own extensions page, and its line marked), and once a store
+ * lists Xomoni (`listings`), with the store instead of what is coming.
+ */
+function useAnswers(platform: Platform, listings: StoreListings): Record<InstallQuestionId, ReactNode> {
   const s = useStyles();
   const address = extensionsAddress(platform.browser);
   const text = s.text;
   const list = mergeClasses(s.text, s.list);
+  const stores = listedNames(listings);
+  const listed = stores !== '';
   return {
     'developer-mode': (
       <>
@@ -199,8 +243,14 @@ function useAnswers(platform: Platform): Record<InstallQuestionId, ReactNode> {
           back on in <code>{address}</code>.
         </p>
         <p className={text}>
-          Xomoni’s code is open, and each release is built by GitHub Actions from a tagged commit, with a checksum. Once
-          Xomoni is in the Chrome Web Store and Edge Add-ons, installing it from there needs no developer mode.
+          Xomoni’s code is open, and each release is built by GitHub Actions from a tagged commit, with a checksum.{' '}
+          {listed ? (
+            <>
+              Installed from {stores}, it needs no developer mode: <MoveLink />
+            </>
+          ) : (
+            'Once Xomoni is in the Chrome Web Store and Edge Add-ons, installing it from there needs no developer mode.'
+          )}
         </p>
       </>
     ),
@@ -217,9 +267,47 @@ function useAnswers(platform: Platform): Record<InstallQuestionId, ReactNode> {
           Your data stays: the browser keeps it, not the folder. Update while no job is running, and don’t remove Xomoni
           to update it, because removing it deletes its data.
         </p>
+        {listed ? (
+          <p className={text}>
+            Installed from {stores}, Xomoni updates itself. To move there from the zip: <MoveLink />
+          </p>
+        ) : (
+          <p className={text}>
+            Coming soon: updating with one click from Xomoni, and installing it from the Chrome Web Store and Edge
+            Add-ons, which update it for you.
+          </p>
+        )}
+      </>
+    ),
+    'move-to-store': (
+      <>
         <p className={text}>
-          Coming soon: updating with one click from Xomoni, and installing it from the Chrome Web Store and Edge
-          Add-ons, which update it for you.
+          Xomoni from {stores} updates itself and needs no developer mode. The browser keeps each copy’s data apart, so
+          yours comes along in a file you save. Nothing moves by itself.
+        </p>
+        <ol className={list}>
+          <li>
+            <strong>Export everything.</strong> In the Xomoni you have now, use the card on its Home page, or open{' '}
+            <strong>Settings › Move your data › Export everything</strong>. It saves one file in Downloads.
+          </li>
+          <li>
+            <strong>Remove the zip copy.</strong> While no job runs, open <code>{address}</code> and press{' '}
+            <strong>Remove</strong> on Xomoni. The browser deletes its data, and your file keeps it. Remove it first:
+            two copies in one browser would each count X’s limits on their own.
+          </li>
+          <li>
+            <strong>Install it from the store.</strong> Open <StoreLinks platform={platform} listings={listings} /> and
+            add it. It opens by itself once it is added.
+          </li>
+          <li>
+            <strong>Import the file.</strong> In the new Xomoni, choose <strong>Import your data</strong> on Home, or{' '}
+            <strong>Settings › Move your data › Import from a file</strong>, and pick the file. It is checked, then
+            added to what is there: nothing is replaced with less or deleted.
+          </li>
+        </ol>
+        <p className={text}>
+          Signed in to xomoni.com? Sign in again from the new Xomoni: the file never holds the connection. Then you can
+          delete the xomoni-extension folder.
         </p>
       </>
     ),
@@ -279,14 +367,17 @@ function useAnswers(platform: Platform): Record<InstallQuestionId, ReactNode> {
 
 /**
  * The install questions at the end of /install: a heading, every question linking to its answer, then each answer
- * under its own heading and anchor (`INSTALL_QUESTIONS`), so a link can lead to one (`/install#developer-mode`). Words
+ * under its own heading and anchor (`installQuestions`), so a link can lead to one (`/install#developer-mode`). Words
  * follow `platform`: its extensions page, its line in *Developer mode* marked, and on a phone or in a browser that
- * can't run Xomoni, the answer about that marked (`ownQuestion`).
+ * can't run Xomoni, the answer about that marked (`ownQuestion`). Once a store lists Xomoni (`listings`), how to move
+ * from the zip to it (`/install#move-to-store`, where Xomoni's card for a zip install leads), and the store in the
+ * answers that said it was coming.
  */
-export function InstallHelp({ platform }: { platform: Platform }) {
+export function InstallHelp({ platform, listings }: { platform: Platform; listings: StoreListings }) {
   const s = useStyles();
   const own = ownQuestion(platform);
-  const answers = useAnswers(platform);
+  const answers = useAnswers(platform, listings);
+  const questions = installQuestions(isListed(listings));
   const titleId = `${INSTALL_HELP_ID}-title`;
   return (
     <section id={INSTALL_HELP_ID} className={s.help} aria-labelledby={titleId}>
@@ -296,14 +387,14 @@ export function InstallHelp({ platform }: { platform: Platform }) {
       <p className={s.lead}>Short answers to what goes wrong most often.</p>
       <nav className={s.card} aria-label="Install questions">
         <ul className={s.questions}>
-          {INSTALL_QUESTIONS.map((question) => (
+          {questions.map((question) => (
             <li key={question}>
               <TextLink href={questionHref(question)}>{QUESTION_TITLES[question]}</TextLink>
             </li>
           ))}
         </ul>
       </nav>
-      {INSTALL_QUESTIONS.map((question) => (
+      {questions.map((question) => (
         <div key={question} id={question} className={mergeClasses(s.card, s.answer, question === own && s.own)}>
           <div className={s.answerHead}>
             <h3 className={s.question}>{QUESTION_TITLES[question]}</h3>

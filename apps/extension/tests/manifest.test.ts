@@ -139,6 +139,15 @@ describe('the manifest locks the extension down (#143)', () => {
     expect(using(/createWritable\(/)).toEqual(['update/own-folder.ts', 'update/write.ts']);
   });
 
+  it('reads only how Xomoni was installed from chrome.management, which needs no permission, and never removes it (#304)', () => {
+    expect(manifest.permissions).not.toContain('management');
+    expect((manifest.optional_permissions as string[] | undefined) ?? []).not.toContain('management');
+    const calls = Object.values(sources).flatMap((text) => text.match(/chrome\.management\.\w+/g) ?? []);
+    expect(calls.length).toBeGreaterThan(0);
+    expect([...new Set(calls)]).toEqual(['chrome.management.getSelf']);
+    expect(Object.values(sources).some((text) => /uninstallSelf|management\.uninstall/.test(text))).toBe(false);
+  });
+
   it('listens to no other extension or web page, but the service worker to xomoni.com’s one-time code (#228)', () => {
     expect(Object.keys(sources).length).toBeGreaterThan(50);
     const external = Object.entries(sources).filter(([, text]) => /onMessageExternal|onConnectExternal/.test(text));

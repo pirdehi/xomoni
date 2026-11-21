@@ -43,13 +43,15 @@ e2e/              Playwright tests for every auth flow (real Supabase Auth, emai
 
 Each module is split into `domain/`, `application/`, `infrastructure/`, `server/`, `client/` and `ui/` layers; the rules are in [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#4-website-appsweb) and are checked by `npm run arch`.
 
+The favicon (`src/app/icon.png`), the Apple touch icon (`src/app/apple-icon.png`) and the logo (`public/logo.png`, in the header and in Supabase's emails) are Xomoni's mark, drawn by the extension's [`scripts/icon.mjs`](../extension/scripts/icon.mjs) with `npm run icons -w @xomoni/extension` ([ADR-0035](../../docs/adr/0035-xomoni-has-its-own-mark.md)). Don't edit them by hand: `tooling/brand.test.mjs` fails when they no longer match the drawing. The home page's screenshots in `public/screens` are taken by `npm run store:images -w @xomoni/extension`.
+
 ## Environment
 
 All variables are listed with explanations in [`.env.example`](.env.example). In production they are set in the Vercel project (`xomoni`, personal scope). `npm run docs:check` fails if code reads a variable that isn't documented there.
 
 ## Deployment
 
-Vercel builds this app with Root Directory `apps/web` on every push; `main` deploys to https://xomoni.com. The Vercel Toolbar stays off in the project's settings: its loader breaks the site under Trusted Types ([ADR-0014](../../docs/adr/0014-security-headers-and-a-static-csp.md)). Database and auth settings are deployed separately from [`supabase/`](../../supabase/README.md).
+Vercel builds this app with Root Directory `apps/web` on every push that changes what it is built from (`vercel.json`'s `ignoreCommand`: this app, `packages/`, the root `package.json`, lockfile and `tsconfig.base.json`; `tooling/vercel.test.mjs` keeps the list complete), so pushes that touch only the extension, docs or tooling don't use up the plan's daily deployments; `main` deploys to https://xomoni.com. The Vercel Toolbar stays off in the project's settings: its loader breaks the site under Trusted Types ([ADR-0014](../../docs/adr/0014-security-headers-and-a-static-csp.md)). Database and auth settings are deployed separately from [`supabase/`](../../supabase/README.md).
 
 ## Depends on
 

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { UNKNOWN_PLATFORM } from './install-guide';
-import { DEVELOPER_MODE_PLACES, INSTALL_HELP_ID, INSTALL_QUESTIONS, ownQuestion, questionHref } from './install-help';
+import {
+  DEVELOPER_MODE_PLACES,
+  INSTALL_HELP_ID,
+  INSTALL_QUESTIONS,
+  MOVE_TO_STORE,
+  installQuestions,
+  ownQuestion,
+  questionHref,
+} from './install-help';
 
 describe('install questions (#306)', () => {
   it('each has its own anchor, safe in a link', () => {
@@ -12,6 +20,13 @@ describe('install questions (#306)', () => {
   it('starts with the ones that stop an install, and ends with where to ask', () => {
     expect(INSTALL_QUESTIONS.slice(0, 2)).toEqual(['developer-mode', 'wrong-folder']);
     expect(INSTALL_QUESTIONS.at(-1)).toBe('ask');
+  });
+
+  it('add moving from the zip to the store, after updating, only once a store lists Xomoni (#304)', () => {
+    expect(MOVE_TO_STORE).toBe('move-to-store');
+    expect(installQuestions(true)).toEqual(INSTALL_QUESTIONS);
+    expect(installQuestions(true).indexOf(MOVE_TO_STORE)).toBe(installQuestions(true).indexOf('update') + 1);
+    expect(installQuestions(false)).toEqual(INSTALL_QUESTIONS.filter((q) => q !== MOVE_TO_STORE));
   });
 
   it('links to an answer on the same page, so the guide stays where it is', () => {

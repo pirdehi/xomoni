@@ -5,7 +5,8 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ISSUES_URL, SECURITY_URL } from '@/shared/config/site';
 import { type Platform, UNKNOWN_PLATFORM } from '../domain/install-guide';
-import { INSTALL_HELP_ID, INSTALL_QUESTIONS, type InstallQuestionId } from '../domain/install-help';
+import { INSTALL_HELP_ID, type InstallQuestionId, installQuestions } from '../domain/install-help';
+import { NO_LISTINGS, type StoreListings } from '../domain/store-install';
 import { usePlatform } from './install-guide';
 import { InstallHelp, TroubleLinks } from './install-help';
 
@@ -29,26 +30,29 @@ const answer = (question: InstallQuestionId) => {
 
 describe('InstallHelp (#306)', () => {
   it('is a section with its own heading and anchor, at the level below the page’s title', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     expect(help()).toHaveAttribute('id', INSTALL_HELP_ID);
     expect(within(help()).getByRole('heading', { level: 2, name: 'Install help' })).toBeInTheDocument();
   });
 
   it('lists every question first, each linking to its answer under a heading of its own', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     const links = within(screen.getByRole('navigation', { name: 'Install questions' })).getAllByRole('link');
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(INSTALL_QUESTIONS.map((q) => `#${q}`));
-    for (const [i, question] of INSTALL_QUESTIONS.entries()) {
+    // Before a store lists Xomoni, nothing about moving to it.
+    const questions = installQuestions(false);
+    expect(questions).not.toContain('move-to-store');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(questions.map((q) => `#${q}`));
+    for (const [i, question] of questions.entries()) {
       const heading = within(answer(question)).getByRole('heading', { level: 3 });
       expect(heading).toHaveTextContent(links[i]!.textContent);
     }
-    expect(within(help()).getAllByRole('heading', { level: 3 })).toHaveLength(INSTALL_QUESTIONS.length);
+    expect(within(help()).getAllByRole('heading', { level: 3 })).toHaveLength(questions.length);
   });
 
   it('says where Developer mode is in Chrome, Edge and Brave, marking no browser before it knows which', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     const items = within(answer('developer-mode')).getAllByRole('listitem');
     expect(items.map((item) => item.textContent)).toEqual([
@@ -61,7 +65,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('marks the visitor’s own browser in Developer mode, and nothing else', () => {
-    render(<InstallHelp platform={EDGE_WINDOWS} />);
+    render(<InstallHelp platform={EDGE_WINDOWS} listings={NO_LISTINGS} />);
 
     const edge = within(answer('developer-mode')).getAllByRole('listitem')[1]!;
     expect(within(edge).getByText('Your browser')).toBeInTheDocument();
@@ -69,7 +73,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('in a browser that can’t run Xomoni, marks the answer about which browsers can', () => {
-    render(<InstallHelp platform={FIREFOX} />);
+    render(<InstallHelp platform={FIREFOX} listings={NO_LISTINGS} />);
 
     const browsers = answer('browsers');
     expect(within(browsers).getByText('Your browser')).toBeInTheDocument();
@@ -78,7 +82,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('on a phone, marks the answer that says phones and tablets can’t run Xomoni', () => {
-    render(<InstallHelp platform={PHONE} />);
+    render(<InstallHelp platform={PHONE} listings={NO_LISTINGS} />);
 
     const browsers = answer('browsers');
     expect(within(browsers).getByText('Your device')).toBeInTheDocument();
@@ -87,7 +91,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('marks nothing in Chrome but Chrome’s line', () => {
-    render(<InstallHelp platform={CHROME_MAC} />);
+    render(<InstallHelp platform={CHROME_MAC} listings={NO_LISTINGS} />);
 
     expect(within(answer('browsers')).queryByText(/^Your/)).not.toBeInTheDocument();
     expect(
@@ -96,7 +100,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('says which folder to add: the unzipped one that holds manifest.json, unzipped on a Mac and on Windows', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     const folder = answer('wrong-folder');
     expect(folder).toHaveTextContent('the one with manifest.json directly inside it');
@@ -110,7 +114,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('says a moved or deleted folder stops Xomoni, and how to bring it back on this browser’s extensions page', () => {
-    render(<InstallHelp platform={EDGE_WINDOWS} />);
+    render(<InstallHelp platform={EDGE_WINDOWS} listings={NO_LISTINGS} />);
 
     const off = answer('turned-off');
     expect(off).toHaveTextContent('If that folder was moved, renamed or deleted, Xomoni stops');
@@ -119,7 +123,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('says the developer-mode warning is about every extension from a folder, and how to keep Xomoni', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     const warning = answer('developer-mode-warning');
     expect(warning).toHaveTextContent('not about Xomoni in particular');
@@ -128,7 +132,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('says how to update today without losing data, and that one-click updates and the stores are coming', () => {
-    render(<InstallHelp platform={EDGE_WINDOWS} />);
+    render(<InstallHelp platform={EDGE_WINDOWS} listings={NO_LISTINGS} />);
 
     const update = answer('update');
     expect(
@@ -149,7 +153,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('says xomoni.com learns about Xomoni when Xomoni opens one of its pages, and how to make it', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     const seen = answer('not-recognized');
     expect(seen).toHaveTextContent(
@@ -161,7 +165,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('says the data stays in the browser, that removing Xomoni deletes it, and how to export it first', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     const data = answer('your-data');
     expect(data).toHaveTextContent('inside the browser, on your computer');
@@ -171,7 +175,7 @@ describe('InstallHelp (#306)', () => {
   });
 
   it('sends questions to GitHub issues, and security problems to the security policy', () => {
-    render(<InstallHelp platform={UNKNOWN_PLATFORM} />);
+    render(<InstallHelp platform={UNKNOWN_PLATFORM} listings={NO_LISTINGS} />);
 
     const ask = answer('ask');
     expect(within(ask).getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', ISSUES_URL);
@@ -182,7 +186,7 @@ describe('InstallHelp (#306)', () => {
 
   it('renders general words on the server, and marks the browser once hydrated, with no mismatch', async () => {
     function Help() {
-      return <InstallHelp platform={usePlatform()} />;
+      return <InstallHelp platform={usePlatform()} listings={NO_LISTINGS} />;
     }
     Object.defineProperty(window.navigator, 'userAgentData', {
       value: { brands: [{ brand: 'Microsoft Edge', version: '131' }], platform: 'Windows', mobile: false },
@@ -204,6 +208,96 @@ describe('InstallHelp (#306)', () => {
     expect(within(container).getByText('Your browser').closest('li')).toHaveTextContent(/^Edge/);
     expect(container).toHaveTextContent('Then open edge://extensions');
     container.remove();
+  });
+});
+
+const CHROME_STORE = 'https://chromewebstore.google.com/detail/xomoni/abcdefghijklmnopabcdefghijklmnop';
+const EDGE_STORE = 'https://microsoftedge.microsoft.com/addons/detail/xomoni/abcdefghijklmnopabcdefghijklmnop';
+const BOTH: StoreListings = { chrome: CHROME_STORE, edge: EDGE_STORE };
+const CHROME_ONLY: StoreListings = { chrome: CHROME_STORE, edge: null };
+
+describe('InstallHelp once a store lists Xomoni (#304)', () => {
+  it('lists how to move from the zip to the store, after updating', () => {
+    render(<InstallHelp platform={CHROME_MAC} listings={BOTH} />);
+
+    const links = within(screen.getByRole('navigation', { name: 'Install questions' })).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(installQuestions(true).map((q) => `#${q}`));
+    expect(within(answer('move-to-store')).getByRole('heading', { level: 3 })).toHaveTextContent(
+      'How do I move from the zip to the store?',
+    );
+  });
+
+  it('moves in four steps, export, remove, install, import, saying nothing moves by itself', () => {
+    render(<InstallHelp platform={CHROME_MAC} listings={BOTH} />);
+
+    const move = answer('move-to-store');
+    const steps = within(move).getAllByRole('listitem');
+    expect(steps.map((step) => step.querySelector('strong')?.textContent)).toEqual([
+      'Export everything.',
+      'Remove the zip copy.',
+      'Install it from the store.',
+      'Import the file.',
+    ]);
+    expect(steps[0]).toHaveTextContent('Settings › Move your data › Export everything');
+    expect(steps[1]).toHaveTextContent('While no job runs, open chrome://extensions and press Remove on Xomoni.');
+    expect(steps[1]).toHaveTextContent('The browser deletes its data, and your file keeps it.');
+    // In Chrome, its own store only.
+    expect(within(steps[2]!).getAllByRole('link')).toHaveLength(1);
+    expect(within(steps[2]!).getByRole('link', { name: 'Xomoni in the Chrome Web Store' })).toHaveAttribute(
+      'href',
+      CHROME_STORE,
+    );
+    expect(steps[3]).toHaveTextContent('nothing is replaced with less or deleted');
+    expect(move).toHaveTextContent('Nothing moves by itself.');
+    expect(move).toHaveTextContent('the file never holds the connection');
+  });
+
+  it('sends Edge to its own store, and a browser no store serves to each store', () => {
+    const { unmount } = render(<InstallHelp platform={EDGE_WINDOWS} listings={BOTH} />);
+    expect(within(answer('move-to-store')).getByRole('link', { name: 'Xomoni in Edge Add-ons' })).toHaveAttribute(
+      'href',
+      EDGE_STORE,
+    );
+    expect(answer('move-to-store')).toHaveTextContent('open edge://extensions and press Remove');
+    unmount();
+
+    render(<InstallHelp platform={FIREFOX} listings={BOTH} />);
+    const move = answer('move-to-store');
+    expect(within(move).getByRole('link', { name: 'Xomoni in the Chrome Web Store' })).toHaveAttribute(
+      'href',
+      CHROME_STORE,
+    );
+    expect(within(move).getByRole('link', { name: 'Xomoni in Edge Add-ons' })).toHaveAttribute('href', EDGE_STORE);
+    expect(move).toHaveTextContent('Xomoni from the Chrome Web Store or Edge Add-ons updates itself');
+  });
+
+  it('tells Edge to allow other stores when only the Chrome Web Store lists Xomoni', () => {
+    render(<InstallHelp platform={EDGE_WINDOWS} listings={CHROME_ONLY} />);
+
+    const move = answer('move-to-store');
+    expect(within(move).getByRole('link', { name: 'Xomoni in the Chrome Web Store' })).toBeInTheDocument();
+    expect(move).toHaveTextContent('(if Edge asks, allow extensions from other stores)');
+  });
+
+  it('names the store where updating and the developer-mode warning said it was coming, linking the move', () => {
+    render(<InstallHelp platform={CHROME_MAC} listings={CHROME_ONLY} />);
+
+    const update = answer('update');
+    expect(update).not.toHaveTextContent('Coming soon');
+    expect(update).toHaveTextContent('Installed from the Chrome Web Store, Xomoni updates itself.');
+    expect(within(update).getByRole('link', { name: 'How do I move from the zip to the store?' })).toHaveAttribute(
+      'href',
+      '#move-to-store',
+    );
+    const warning = answer('developer-mode-warning');
+    expect(warning).toHaveTextContent('Installed from the Chrome Web Store, it needs no developer mode');
+    expect(within(warning).getByRole('link', { name: 'How do I move from the zip to the store?' })).toBeInTheDocument();
+  });
+
+  it('marks the visitor’s phone as before', () => {
+    render(<InstallHelp platform={PHONE} listings={BOTH} />);
+
+    expect(within(answer('browsers')).getByText('Your device')).toBeInTheDocument();
   });
 });
 

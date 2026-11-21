@@ -49,6 +49,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 - **Independent tests.** Each test sets up its own data: `resetDb()` for the extension, `resetNavigation()` and `resetTurnstile()` for the website.
 - **Fakes live in one place.** Extension: `apps/extension/tests/support/` (`stubChrome()`, account and page fixtures). Website: `apps/web/test/fakes/` (`next/navigation`, `server-only`, the Turnstile widget), wired in `apps/web/vitest.config.mts`. End to end: `apps/web/e2e/support/` and, for a real extension, `apps/web/e2e/fixtures/fixed-id-extension` (its id goes to the site as `NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID`, taken only on localhost).
 - **Component test files** start with `// @vitest-environment happy-dom`; the extension's also import `fake-indexeddb/auto`.
+- **Store listings are empty in the code** until the stores list Xomoni (#304). Website component tests mock `@/shared/config/store-listings` (`STORE_LISTINGS` as a getter, set per test); end-to-end tests put theirs in `window.__xomoniE2EStoreListings`, which only a build with `NEXT_PUBLIC_E2E_STORE_LISTINGS=1` reads (`playwright.config.ts` sets it); the extension's `StoreMoveCard` takes `listings`.
 - **Web Locks are per file** in the extension's tests (`tests/setup.ts`, #271): Node's `navigator.locks` is shared by the whole process, so one file's runner would otherwise hold up another file's sign-out.
 - **Types are strict in tests too** ([ADR-0016](adr/0016-strict-typescript-and-type-aware-lint.md)); tests may use `!`.
 

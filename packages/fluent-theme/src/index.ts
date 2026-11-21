@@ -43,7 +43,8 @@ export const XOMONI_BRAND_AA = { button: '#2975d1', text: '#266bbf' } as const;
 /**
  * Xomoni in light mode: Fluent's light theme on warm neutrals. `fontFamily` replaces the font stack, for an app that
  * loads its own font (the website's Geist). Text meets WCAG AA on every surface (#342): the blue of buttons and brand
- * text is `XOMONI_BRAND_AA`, and the muted grey is dark enough on the darkest surface, `colorNeutralBackground2`.
+ * text is `XOMONI_BRAND_AA`, and so is the blue a quiet button's text turns while hovered or selected (#345), and the
+ * muted grey is dark enough on the darkest surface, `colorNeutralBackground2`.
  */
 export function xomoniLightTheme(fontFamily = XOMONI_FONT): Theme {
   return {
@@ -51,6 +52,10 @@ export function xomoniLightTheme(fontFamily = XOMONI_FONT): Theme {
     fontFamilyBase: fontFamily,
     colorBrandBackground: XOMONI_BRAND_AA.button,
     colorBrandForeground1: XOMONI_BRAND_AA.text,
+    colorNeutralForeground2BrandHover: XOMONI_BRAND_AA.text,
+    colorNeutralForeground2BrandSelected: XOMONI_BRAND_AA.text,
+    colorNeutralForeground3BrandHover: XOMONI_BRAND_AA.text,
+    colorNeutralForeground3BrandSelected: XOMONI_BRAND_AA.text,
     colorNeutralBackground1: '#fcfcfb',
     colorNeutralBackground2: '#f0efec',
     colorNeutralBackground3: PAGE_BACKGROUND.light,

@@ -1,0 +1,33 @@
+<!doctype html>
+<!--
+  x.com/home for an account X has limited, as Xomoni's browser tests serve it (#345, ADR-0040): the same page as
+  home.html, with a notice at the top of the primary column, where X puts it (PLAYBOOK C3, C4). Synthetic, and worded
+  after X's notices only where Xomoni recognizes them (apps/extension/src/shared/attention.ts); never a real account's.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Home / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link" aria-current="page">Home</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <div role="alert">
+            <h2>Your account is temporarily limited</h2>
+            <p>Some features are unavailable for now. You can still browse X.</p>
+          </div>
+          <h1>Home</h1>
+          <section aria-label="Timeline: Your Home Timeline"></section>
+        </div>
+      </main>
+    </div>
+    <div id="layers"></div>
+  </body>
+</html>

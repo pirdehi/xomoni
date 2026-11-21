@@ -8,7 +8,7 @@ import {
   expect,
 } from '@playwright/test';
 import { EXTENSION_DIR_ENV } from './build-extension';
-import { serveX } from './x-fixtures';
+import { type XHistory, serveX } from './x-fixtures';
 
 /**
  * The extension in a real browser (#342, ADR-0040): the built Xomoni, installed unpacked as a person installs the zip,
@@ -37,6 +37,8 @@ const installed = new WeakMap<BrowserContext, string>();
 interface ExtensionFixtures {
   /** Whether x.com shows the fixture's account signed in (X's `twid` cookie). Signed in unless a test says otherwise. */
   xSignedIn: boolean;
+  /** How much of the fixture account's past X shows (`x-fixtures.ts`): its two posts unless a test asks for `long`. */
+  xHistory: XHistory;
   /** The id the browser gave this copy of Xomoni. Installed unpacked without a `key`, it comes from the folder's path. */
   extensionId: string;
   /** Xomoni's service worker: its background, where what the content script sees is stored. */
@@ -48,8 +50,9 @@ interface ExtensionFixtures {
 /** Playwright's `test` for the extension's own pages and its content script on the fixtures' x.com. */
 export const test = base.extend<ExtensionFixtures>({
   xSignedIn: [true, { option: true }],
+  xHistory: ['short', { option: true }],
 
-  context: async ({ xSignedIn, colorScheme, channel }, provide) => {
+  context: async ({ xSignedIn, xHistory, colorScheme, channel }, provide) => {
     const dir = process.env[EXTENSION_DIR_ENV];
     if (!dir) throw new Error(`${EXTENSION_DIR_ENV} is not set: run these tests with playwright.extension.config.ts`);
     const context = await chromium.launchPersistentContext('', {
@@ -70,7 +73,7 @@ export const test = base.extend<ExtensionFixtures>({
         left.push(`${request.method()} ${request.url()}`);
       return route.abort('blockedbyclient');
     });
-    await serveX(context, { signedIn: xSignedIn });
+    await serveX(context, { signedIn: xSignedIn, history: xHistory });
 
     const browser = context.browser();
     if (!browser) throw new Error('The extension tests need a browser Playwright launched');

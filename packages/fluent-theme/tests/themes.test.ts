@@ -36,6 +36,11 @@ describe('Xomoni’s Fluent themes (ADR-0019)', () => {
       theme.colorNeutralForeground3,
       theme.colorBrandForeground1,
       theme.colorBrandForegroundLink,
+      // A quiet (subtle or transparent) button's text while hovered or selected (#345).
+      theme.colorNeutralForeground2BrandHover,
+      theme.colorNeutralForeground2BrandSelected,
+      theme.colorNeutralForeground3BrandHover,
+      theme.colorNeutralForeground3BrandSelected,
     ];
     for (const color of text)
       for (const surface of surfaces) expect(contrast(color, surface)).toBeGreaterThanOrEqual(4.5);

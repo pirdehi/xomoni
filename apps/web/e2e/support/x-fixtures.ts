@@ -3,17 +3,32 @@ import path from 'node:path';
 import type { BrowserContext, Request, Route } from '@playwright/test';
 
 // x.com as the extension's browser tests see it (#342, ADR-0040): pages and GraphQL answers from the files in
-// e2e/fixtures/x, never the real x.com. They are synthetic, shaped like X's where Xomoni reads them, and show one
-// made-up account. A test that needs X to answer otherwise (an error, a rate limit, another page) adds a route of its
-// own after the harness's: Playwright tries the newest route first.
+// e2e/fixtures/x, never the real x.com. They are synthetic, shaped like X's where Xomoni reads them, and show made-up
+// accounts. A test that needs X to answer otherwise (an error, a rate limit, another page) adds a route of its own
+// after the harness's: Playwright tries the newest route first.
 
 /** The folder of the X fixtures: pages, and `graphql/<Operation>.json` answers. */
 export const X_FIXTURES = path.join(__dirname, '..', 'fixtures', 'x');
+
+/**
+ * How much of the fixture account's past X shows: `short`, its two posts (`graphql/<Operation>.json`); `long`, years of
+ * posts, replies, a repost and likes, for an account X shows as Premium (`graphql/long-history/`, #345). An answer the
+ * long history doesn't have comes from the short one.
+ */
+export type XHistory = 'short' | 'long';
+
+/** The folder of each history's GraphQL answers, the first one looked in. */
+const HISTORY_ANSWERS: Record<XHistory, string> = {
+  short: path.join(X_FIXTURES, 'graphql'),
+  long: path.join(X_FIXTURES, 'graphql', 'long-history'),
+};
 
 /** x.com's pages the fixtures have, by path. Any other path answers 404, as X does for a page that doesn't exist. */
 const PAGES = new Map([
   ['/home', 'home.html'],
   ['/xomoni_fixture', 'profile.html'],
+  ['/xomoni_fixture/with_replies', 'profile.html'],
+  ['/xomoni_fixture/likes', 'profile.html'],
 ]);
 
 /** A GraphQL request of X's web app: `/i/api/graphql/<query id>/<Operation>`. */
@@ -41,26 +56,55 @@ export const FIXTURE_ACCOUNT = {
 } as const;
 
 /**
- * X's rate-limit headers on a GraphQL answer: one request of a 15-minute window used, well within one fifth (ADR-0012),
- * and X's clock, which Xomoni compares with this computer's (PLAYBOOK F7).
+ * The other made-up X account the fixtures know (#345): the one whose posts the fixture account reposts, likes and
+ * answers in the long history, and the one a test signs in as for "another account in the X window". No real person
+ * has this id or handle.
  */
-function rateHeaders(): Record<string, string> {
+export const FRIEND_ACCOUNT = { id: '9000000000000000002', handle: 'fixture_friend', name: 'Fixture Friend' } as const;
+
+/** What X's rate-limit headers say about an operation's 15-minute window. */
+export interface XRate {
+  /** `x-rate-limit-limit`: requests X allows in the window. 150 unless given. */
+  limit?: number;
+  /** `x-rate-limit-remaining`: requests left in it. All but one unless given. */
+  remaining?: number;
+  /** When the window resets, epoch ms; `x-rate-limit-reset` carries it in whole seconds. 15 minutes from now unless given. */
+  resetAt?: number;
+}
+
+/**
+ * X's rate-limit headers on a GraphQL answer, by default one request of a 15-minute window used, well within one fifth
+ * (ADR-0012), and X's clock, which Xomoni compares with this computer's (PLAYBOOK F7).
+ */
+function xRateHeaders({ limit = 150, remaining = limit - 1, resetAt }: XRate = {}): Record<string, string> {
   return {
-    'x-rate-limit-limit': '150',
-    'x-rate-limit-remaining': '149',
-    'x-rate-limit-reset': String(Math.floor(Date.now() / 1000) + 15 * 60),
+    'x-rate-limit-limit': String(limit),
+    'x-rate-limit-remaining': String(remaining),
+    'x-rate-limit-reset': String(Math.floor((resetAt ?? Date.now() + 15 * 60_000) / 1000)),
     date: new Date().toUTCString(),
   };
 }
 
+/** The fixture file of a GraphQL operation's answer in `history`, or null when the fixtures have none. */
+function answerFile(op: string, history: XHistory): string | null {
+  for (const folder of [HISTORY_ANSWERS[history], HISTORY_ANSWERS.short]) {
+    const file = path.join(folder, `${op}.json`);
+    if (existsSync(file)) return file;
+  }
+  return null;
+}
+
+/** The history each browser context's x.com was served with (`serveX`), for the routes tests add later. */
+const served = new WeakMap<BrowserContext, XHistory>();
+
 /** The fixture that answers `request`: a page, a GraphQL answer, or X's 404. */
-function answer(request: Request): Parameters<Route['fulfill']>[0] {
+function answer(request: Request, history: XHistory): Parameters<Route['fulfill']>[0] {
   const url = new URL(request.url());
   const op = GRAPHQL.exec(url.pathname)?.[1];
   if (op) {
-    const file = path.join(X_FIXTURES, 'graphql', `${op}.json`);
-    if (!existsSync(file)) return { status: 404, contentType: 'application/json', body: '{"errors":[]}' };
-    return { status: 200, contentType: 'application/json', headers: rateHeaders(), path: file };
+    const file = answerFile(op, history);
+    if (!file) return { status: 404, contentType: 'application/json', body: '{"errors":[]}' };
+    return { status: 200, contentType: 'application/json', headers: xRateHeaders(), path: file };
   }
   const page = PAGES.get(url.pathname);
   if (!page) return { status: 404, contentType: 'text/html', body: '<!doctype html><title>Page not found / X</title>' };
@@ -69,21 +113,71 @@ function answer(request: Request): Parameters<Route['fulfill']>[0] {
 
 /**
  * Serves x.com from the fixtures in `context`: every request to https://x.com, from any tab or window, the X window
- * Xomoni opens included. With `signedIn`, X's `twid` cookie names the fixture's account, as X sets it once someone
- * signs in; Xomoni only reads it (ADR-0003). Without it, x.com's pages show someone signed out.
+ * Xomoni opens included, with the GraphQL answers of `history` (`short` unless given). With `signedIn`, X's `twid`
+ * cookie names the fixture's account, as X sets it once someone signs in; Xomoni only reads it (ADR-0003). Without it,
+ * x.com's pages show someone signed out.
  */
-export async function serveX(context: BrowserContext, { signedIn }: { signedIn: boolean }): Promise<void> {
-  await context.route(/^https:\/\/x\.com\//, (route) => route.fulfill(answer(route.request())));
-  if (signedIn) {
-    await context.addCookies([
-      {
-        name: 'twid',
-        value: encodeURIComponent(`u=${FIXTURE_ACCOUNT.id}`),
-        domain: '.x.com',
-        path: '/',
-        secure: true,
-        sameSite: 'None',
-      },
-    ]);
-  }
+export async function serveX(
+  context: BrowserContext,
+  { signedIn, history = 'short' }: { signedIn: boolean; history?: XHistory },
+): Promise<void> {
+  served.set(context, history);
+  await context.route(/^https:\/\/x\.com\//, (route) => route.fulfill(answer(route.request(), history)));
+  if (signedIn) await setXSession(context, FIXTURE_ACCOUNT.id);
+}
+
+/**
+ * Signs `context` in to X as the made-up account `accountId`, or out of X with null (#345): X's `twid` cookie, which
+ * every x.com tab shares, as X sets it when someone signs in or out. Pages already open see it on their next look;
+ * Xomoni only reads it (ADR-0003).
+ */
+export async function setXSession(context: BrowserContext, accountId: string | null): Promise<void> {
+  await context.clearCookies({ name: 'twid' });
+  if (accountId == null) return;
+  await context.addCookies([
+    {
+      name: 'twid',
+      value: encodeURIComponent(`u=${accountId}`),
+      domain: '.x.com',
+      path: '/',
+      secure: true,
+      sameSite: 'None',
+    },
+  ]);
+}
+
+/** Answers x.com's page at `pathname` with the fixture page `file` from now on, such as X's /home with a notice (#345). */
+export async function servePage(context: BrowserContext, pathname: string, file: string): Promise<void> {
+  await context.route(
+    (url) => url.host === 'x.com' && url.pathname === pathname,
+    (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', path: path.join(X_FIXTURES, file) }),
+  );
+}
+
+/** X's answer to a request refused for its rate limit: HTTP 429, with X's error 88. */
+const RATE_LIMITED = '{"errors":[{"code":88,"message":"Rate limit exceeded."}]}';
+
+/**
+ * Makes X answer GraphQL operation `op` with `rate` in its headers from now on (#345): a 429, X's rate limit reached,
+ * with `status: 429`, else X's usual answer, from the history `context` is served with. The person's own browsing and
+ * Xomoni's page loads both see it, as on X.
+ */
+export async function answerWithRate(
+  context: BrowserContext,
+  op: string,
+  { status = 200, ...rate }: XRate & { status?: 200 | 429 },
+): Promise<void> {
+  const history = served.get(context) ?? 'short';
+  await context.route(
+    (url) => url.host === 'x.com' && GRAPHQL.exec(url.pathname)?.[1] === op,
+    (route) => {
+      const headers = xRateHeaders(status === 429 ? { remaining: 0, ...rate } : rate);
+      if (status === 429)
+        return route.fulfill({ status, contentType: 'application/json', headers, body: RATE_LIMITED });
+      const file = answerFile(op, history);
+      if (!file) throw new Error(`The fixtures have no answer for ${op}`);
+      return route.fulfill({ status, contentType: 'application/json', headers, path: file });
+    },
+  );
 }

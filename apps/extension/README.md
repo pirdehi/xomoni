@@ -22,8 +22,9 @@ npm run test:e2e:extension -w @xomoni/web # the built extension in a real browse
 Besides its unit and component tests in happy-dom, the built extension runs in a real browser (#342, [ADR-0040](../../docs/adr/0040-test-the-extension-against-recorded-x-fixtures.md)). The tests live with the website's in `apps/web/e2e/extension/`, so both share one Playwright and one accessibility check:
 
 - a fresh install in a new profile for each test, with the dashboard Xomoni opens by itself;
-- x.com served from synthetic fixtures (`apps/web/e2e/fixtures/x`), for a made-up account, with no network: no real account and no real X page is ever involved;
+- x.com served from synthetic fixtures (`apps/web/e2e/fixtures/x`), for a made-up account, with no network: no real account and no real X page is ever involved; an account with years of posts, replies, a repost and likes when a test asks for it, and X's answers made a rate limit, a notice over a limited account, another account signed in, or no one;
 - the content script on those pages, and what the dashboard takes from them;
+- a cleanup by date from the preview to the running job: the typed DELETE, the risks, its pace below one fifth of X's limits, and its stops and waits for X, the connection, the X window and the person (`cleanup-by-date.spec.ts`, #345);
 - the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
 - Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.
 

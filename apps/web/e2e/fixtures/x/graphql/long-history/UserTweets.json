@@ -1,0 +1,264 @@
+{
+  "data": {
+    "user": {
+      "result": {
+        "__typename": "User",
+        "timeline": {
+          "timeline": {
+            "instructions": [
+              {
+                "type": "TimelineAddEntries",
+                "entries": [
+                  {
+                    "entryId": "tweet-9000000000000000106",
+                    "sortIndex": "9000000000000000106",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000106",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000106",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Thu Feb 08 12:00:00 +0000 2024",
+                              "full_text": "Our launch went well: thank you, everyone.",
+                              "favorite_count": 3,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": false,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-9000000000000000105",
+                    "sortIndex": "9000000000000000105",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000105",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000105",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Sat May 20 12:00:00 +0000 2023",
+                              "full_text": "A made-up post that many people liked.",
+                              "favorite_count": 120,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": false,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-9000000000000000104",
+                    "sortIndex": "9000000000000000104",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000104",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000104",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Mon Jan 10 12:00:00 +0000 2022",
+                              "full_text": "RT @fixture_friend: A made-up post by another made-up account.",
+                              "favorite_count": 0,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": false,
+                              "retweeted": true,
+                              "retweeted_status_result": {
+                                "result": {
+                                  "__typename": "Tweet",
+                                  "rest_id": "9000000000000000201",
+                                  "core": {
+                                    "user_results": {
+                                      "result": {
+                                        "rest_id": "9000000000000000002",
+                                        "core": {
+                                          "screen_name": "fixture_friend",
+                                          "name": "Fixture Friend"
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "legacy": {
+                                    "id_str": "9000000000000000201",
+                                    "user_id_str": "9000000000000000002",
+                                    "created_at": "Fri Dec 24 12:00:00 +0000 2021",
+                                    "full_text": "A made-up post by another made-up account.",
+                                    "favorite_count": 4,
+                                    "retweet_count": 1,
+                                    "reply_count": 0,
+                                    "favorited": false,
+                                    "retweeted": true
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-9000000000000000102",
+                    "sortIndex": "9000000000000000102",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000102",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000102",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Tue Jun 01 12:00:00 +0000 2021",
+                              "full_text": "Another made-up post, with no one's words in it.",
+                              "favorite_count": 0,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": false,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-9000000000000000101",
+                    "sortIndex": "9000000000000000101",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000101",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000101",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Sat Mar 14 09:26:53 +0000 2020",
+                              "full_text": "A made-up post for Xomoni's browser tests.",
+                              "favorite_count": 2,
+                              "retweet_count": 0,
+                              "reply_count": 1,
+                              "favorited": false,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-9000000000000000103",
+                    "sortIndex": "9000000000000000103",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000103",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000103",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Thu Aug 15 12:00:00 +0000 2019",
+                              "full_text": "An old made-up post, from before the others.",
+                              "favorite_count": 1,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": false,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

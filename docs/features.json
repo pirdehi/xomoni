@@ -7,7 +7,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [199],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/199-cleanup-by-date.md",
       "en": {
         "title": "Bulk cleanup by date",
         "summary": "delete posts, replies, reposts or likes older than a given date, or between two dates."

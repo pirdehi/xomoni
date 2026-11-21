@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SIGNED_OUT, fakeAuthGateway, redirectOf } from '@test/server-helpers';
-import type { AuthGateway } from '../application/ports';
+import {
+  ADA_PHONE,
+  AT_AAL2,
+  SIGNED_OUT,
+  fakeAuthGateway,
+  fakeTwoFactorGateway,
+  redirectOf,
+} from '@test/server-helpers';
+import type { AuthGateway, FactorList } from '../application/ports';
 import { AUTH_ERROR_MESSAGES, authFailure } from '../domain/auth-error';
 import { deleteAccount } from './actions';
 import { authDeps } from './deps';
@@ -9,10 +16,16 @@ vi.mock('./deps', () => ({ authDeps: vi.fn() }));
 
 let gateway: AuthGateway;
 
-function session(overrides: Partial<AuthGateway> = {}) {
+function session(overrides: Partial<AuthGateway> = {}, factors?: FactorList) {
   gateway = fakeAuthGateway(overrides);
-  vi.mocked(authDeps).mockResolvedValue({ auth: gateway, siteUrl: 'http://localhost:3000' });
+  vi.mocked(authDeps).mockResolvedValue({
+    auth: gateway,
+    twoFactor: fakeTwoFactorGateway(factors),
+    siteUrl: 'http://localhost:3000',
+  });
 }
+
+const WITH_APP: FactorList = { verified: [ADA_PHONE], unverified: [] };
 
 describe('deleteAccount (Server Action)', () => {
   beforeEach(() => {
@@ -36,6 +49,28 @@ describe('deleteAccount (Server Action)', () => {
 
     expect(await redirectOf(deleteAccount())).toBe('/login');
     expect(gateway.deleteAccount).not.toHaveBeenCalled();
+    expect(gateway.signOut).not.toHaveBeenCalled();
+  });
+
+  it('sends a session that owes a code from the account’s authenticator app to the code page, deleting nothing (#173)', async () => {
+    session({}, WITH_APP);
+
+    expect(await redirectOf(deleteAccount())).toBe('/login/two-factor?next=%2Faccount');
+    expect(gateway.deleteAccount).not.toHaveBeenCalled();
+    expect(gateway.signOut).not.toHaveBeenCalled();
+  });
+
+  it('deletes the account of a session that verified a code', async () => {
+    session(AT_AAL2, WITH_APP);
+
+    expect(await redirectOf(deleteAccount())).toBe('/?account=deleted');
+    expect(gateway.deleteAccount).toHaveBeenCalledOnce();
+  });
+
+  it('sends the person to the code page when the database asks for one too', async () => {
+    session({ deleteAccount: vi.fn(() => Promise.resolve(authFailure('second_factor_required', 'aal1'))) });
+
+    expect(await redirectOf(deleteAccount())).toBe('/login/two-factor?next=%2Faccount');
     expect(gateway.signOut).not.toHaveBeenCalled();
   });
 

@@ -26,6 +26,10 @@ describe('proxy', () => {
     for (const path of guarded) expect(runsOn(path), path).toBe(true);
   });
 
+  it('runs on the two-step code page, so its session is fresh when it asks for the code (#173)', () => {
+    expect(runsOn(ROUTES.twoFactor)).toBe(true);
+  });
+
   it.each(['/dashboard/devices', '/dashboard/jobs/j1', '/account/security'])(
     'runs on the protected sub-page %s',
     (path) => {

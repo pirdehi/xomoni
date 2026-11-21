@@ -1,12 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeAuthGateway } from '@test/server-helpers';
+import { fakeAuthGateway, fakeTwoFactorGateway } from '@test/server-helpers';
 import { createBrowserSupabase, type BrowserSupabase } from '@/shared/supabase/browser';
+import * as twoFactorUseCases from '../application/two-factor';
 import * as useCases from '../application/use-cases';
 import { createSupabaseAuthGateway } from '../infrastructure/supabase-auth-gateway';
+import { createSupabaseTwoFactorGateway } from '../infrastructure/supabase-two-factor-gateway';
 import { browserAuth } from './auth';
 
 vi.mock('@/shared/supabase/browser', () => ({ createBrowserSupabase: vi.fn() }));
 vi.mock('../infrastructure/supabase-auth-gateway', () => ({ createSupabaseAuthGateway: vi.fn() }));
+vi.mock('../infrastructure/supabase-two-factor-gateway', () => ({ createSupabaseTwoFactorGateway: vi.fn() }));
+vi.mock('../application/two-factor', () => ({
+  verifySecondFactor: vi.fn(),
+  listSecondFactors: vi.fn(),
+  startEnrollment: vi.fn(),
+  confirmEnrollment: vi.fn(),
+  cancelEnrollment: vi.fn(),
+  removeSecondFactor: vi.fn(),
+}));
 vi.mock('../application/use-cases', () => ({
   signUp: vi.fn(),
   signInWithPassword: vi.fn(),
@@ -21,7 +32,8 @@ vi.mock('../application/use-cases', () => ({
 
 const browserClient: object = { auth: {} };
 const gateway = fakeAuthGateway();
-const deps = { auth: gateway, siteUrl: 'http://localhost:3000' };
+const twoFactor = fakeTwoFactorGateway();
+const deps = { auth: gateway, twoFactor, siteUrl: 'http://localhost:3000' };
 const form = { email: 'ada@example.com', password: 'correct horse 42', captchaToken: 'turnstile-token' };
 
 beforeEach(() => {
@@ -29,6 +41,7 @@ beforeEach(() => {
     .mockReset()
     .mockReturnValue(browserClient as BrowserSupabase);
   vi.mocked(createSupabaseAuthGateway).mockReset().mockReturnValue(gateway);
+  vi.mocked(createSupabaseTwoFactorGateway).mockReset().mockReturnValue(twoFactor);
 });
 
 describe('browserAuth (browser composition root)', () => {
@@ -58,6 +71,28 @@ describe('browserAuth (browser composition root)', () => {
       useCases.startOAuthSignIn,
       ['google', '/account'],
     ],
+    // Two-step verification (#173).
+    [
+      'verifySecondFactor',
+      () => browserAuth.verifySecondFactor({ code: '123456', next: '/account' }),
+      twoFactorUseCases.verifySecondFactor,
+      [{ code: '123456', next: '/account' }],
+    ],
+    ['listSecondFactors', () => browserAuth.listSecondFactors(), twoFactorUseCases.listSecondFactors, []],
+    [
+      'startEnrollment',
+      () => browserAuth.startEnrollment({ name: 'Phone' }),
+      twoFactorUseCases.startEnrollment,
+      [{ name: 'Phone' }],
+    ],
+    [
+      'confirmEnrollment',
+      () => browserAuth.confirmEnrollment({ factorId: 'f1', code: '123456' }),
+      twoFactorUseCases.confirmEnrollment,
+      [{ factorId: 'f1', code: '123456' }],
+    ],
+    ['cancelEnrollment', () => browserAuth.cancelEnrollment('f1'), twoFactorUseCases.cancelEnrollment, ['f1']],
+    ['removeSecondFactor', () => browserAuth.removeSecondFactor('f1'), twoFactorUseCases.removeSecondFactor, ['f1']],
   ];
 
   it('covers every method', () => {
@@ -71,6 +106,7 @@ describe('browserAuth (browser composition root)', () => {
     expect(await call()).toBe(result);
     expect(useCase).toHaveBeenCalledWith(deps, ...args);
     expect(createSupabaseAuthGateway).toHaveBeenCalledWith(browserClient);
+    expect(createSupabaseTwoFactorGateway).toHaveBeenCalledWith(browserClient);
   });
 
   it.each(cases)('%s passes a failure from its use case through unchanged', async (_name, call, useCase) => {

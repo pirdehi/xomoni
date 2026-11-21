@@ -340,6 +340,7 @@ export type Database = {
         Returns: boolean;
       };
       mask_email: { Args: { email: string }; Returns: string };
+      mfa_satisfied: { Args: never; Returns: boolean };
       normalize_pairing_code: { Args: { code: string }; Returns: string };
       pair_device: {
         Args: { code: string; name: string; version: string };
@@ -350,6 +351,7 @@ export type Database = {
         }[];
       };
       release_rank: { Args: { version: string }; Returns: number[] };
+      require_second_factor: { Args: never; Returns: undefined };
       send_weekly_emails: { Args: { at_time?: string }; Returns: number };
       set_daily_stats: { Args: { enabled: boolean }; Returns: boolean };
       set_weekly_email: { Args: { enabled: boolean }; Returns: boolean };

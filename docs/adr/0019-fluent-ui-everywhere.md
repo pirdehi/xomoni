@@ -28,6 +28,7 @@ Constraints:
 - Styles are generated at runtime by Griffel. The website needs server rendering of those styles to avoid a flash of unstyled content.
 - While the migration runs, Tailwind and Fluent coexist: the provider's element takes no part in the layout (`display: contents`) and has no background, so pages not yet migrated keep their look.
 - Reviews reject new Tailwind classes and literal colors in components.
+- A modal `Dialog` hides the rest of the page from assistive technology (`aria-hidden`) through Fluent's focus manager, tabster, which shows it again shortly after the dialog closes. Fluent discards tabster when the last component using it unmounts, forgetting what it hid, so each app's root holds it for the page's life: the dashboard shell (`useModalHost`) and the site's provider. Without that, a dialog that closed as the last user, as the sign-out dialog does, left the page hidden until a reload (#315).
 
 ## Alternatives considered
 

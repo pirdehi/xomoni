@@ -18,6 +18,7 @@ import {
   makeStyles,
   mergeClasses,
   tokens,
+  useModalAttributes,
 } from '@fluentui/react-components';
 import { ChevronDown16Regular, ChevronUp16Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
@@ -482,6 +483,20 @@ export function Segmented<T extends string>({
       ))}
     </div>
   );
+}
+
+/**
+ * Keeps Fluent's focus manager, tabster, for as long as the calling component is mounted; the app shell calls it, so
+ * it outlives every modal (#315). An open modal (`Modal`, a Fluent `Dialog`, a `Popover` with `trapFocus`) hides the
+ * rest of the page from assistive technology with `aria-hidden` once it has been open a quarter second, and tabster
+ * shows the page again a quarter second after the modal closes. Fluent shares one tabster among the components that
+ * use it and discards it when the last one unmounts, forgetting what it hid. On the signed-out page nothing else used
+ * it, so the closing sign-out dialog took tabster with it and left the whole dashboard hidden from screen readers
+ * until a reload.
+ */
+export function useModalHost(): void {
+  // Only its hold on tabster is wanted: the attributes it returns belong on a modal's own element.
+  useModalAttributes();
 }
 
 /**

@@ -1,8 +1,9 @@
-# The pull request policy (#339): two checks beside CI that the "Protect main" ruleset will require (#346).
+# The pull request policy (#339): two checks beside CI.
 # - `pr-policy` (tooling/check-pr.mjs): the task link; for a change to what people see, a changelog line and scenarios;
 #   and a written reason for each exemption label. It reads the description from the event file GitHub writes, never
 #   from an expression, and runs with Node's built-ins only, so no `npm ci` and no dependency's code.
 # - `dependency-review`: no new dependency with a high or critical vulnerability.
+# Both are required by the "Protect main" ruleset.
 # Editing the description or the labels runs both again, so fixing them clears the check. Actions are pinned by commit
 # SHA (#142); Dependabot keeps them current.
 name: Pull request policy
@@ -14,9 +15,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: pr-policy-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+# No concurrency group: opening a pull request with a label fires `opened` and `labeled` together, and a group
+# cancels one of the two runs. A cancelled run of a required check blocks the merge even when the other passed (#363).
+# Each run takes seconds and installs nothing, so letting every one finish costs little.
 
 jobs:
   pr-policy:

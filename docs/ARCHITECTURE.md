@@ -112,7 +112,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/web/src/modules/auth`](../apps/web/src/modules/auth/README.md) | Identity: sign-up with email confirmation, sign-in (password or Google), password reset, email and password changes, sessions, account deletion. |
 | [`apps/web/src/modules/dashboard`](../apps/web/src/modules/dashboard/README.md) | Devices and live job status. |
 | [`apps/web/src/modules/extension`](../apps/web/src/modules/extension/README.md) | The Xomoni extension in this browser: finding it, and one sign-in for the site and the extension (ADR-0025). |
-| [`apps/web/src/modules/landing`](../apps/web/src/modules/landing/README.md) | The landing page at `/`, which tells Xomoni as a digital footprint manager (#313), and the install guide at `/install`, with its install questions: no data, so a pure `domain/` (the five pillars and the places, X today and the rest planned with no feature or date, #313; the install guide's rules for each browser and computer, #299, and the questions' anchors, #306) and a `ui/` layer. |
+| [`apps/web/src/modules/landing`](../apps/web/src/modules/landing/README.md) | The landing page at `/`, which tells Xomoni as a digital footprint manager (#313), and the install guide at `/install`, with its install questions: no data, so a pure `domain/` (the five pillars and the places, X today and the rest planned with no feature or date, #313; the install guide's rules for each browser and computer, #299, the questions' anchors, #306, and which store's button each browser gets, #304) and a `ui/` layer. |
 | [`apps/web/src/shared`](../apps/web/src/shared/README.md) | Site config, Supabase clients, layout components shared by every module. |
 | [`packages/db`](../packages/db/README.md) | The typed contract of the database, generated from the migrations. |
 | [`packages/bridge`](../packages/bridge/README.md) | The messages xomoni.com and the extension exchange in one browser, with strict parsers, and Xomoni's fixed ids in the stores (#302): one contract for both apps (ADR-0025). |
@@ -227,6 +227,11 @@ One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](
 - a browser without a connection is never signed out by the website, so an account stays optional.
 
 The fixed id (#302): the manifest's `key` is the Chrome Web Store item's public key, so a zip install and the store's copy share one id. It is set together with the Chrome id in `STORE_EXTENSION_IDS`, and `tests/manifest-key.test.ts` checks that they agree ([ADR-0024](adr/0024-connect-a-browser-with-one-click.md), [RELEASING](RELEASING.md#the-fixed-id-the-chrome-web-stores-key-302)).
+
+Xomoni is installed from the browsers' stores once they list it, and from the zip otherwise ([ADR-0034](adr/0034-distribution-through-the-browsers-stores.md), #304):
+- the listings' addresses are code in each app (`apps/web/src/shared/config/store-listings.ts`, `apps/extension/src/shared/store-listings.ts`), empty until published, each checked as an https page on its store's own host, and kept equal by a test;
+- `/install` shows the store's button for the visitor's browser (the Chrome Web Store for Chrome, Brave and other Chromium browsers; Edge Add-ons for Edge), with the zip's guide under *Advanced: install from a zip*;
+- a zip install (`chrome.management.getSelf` says `development`, with no permission) gets a card on Home with the steps to the store's Xomoni: *Export everything*, remove this copy, install from the store, import. Xomoni never removes itself, and the data moves only in the file (ADR-0032).
 
 ## 6. Data
 

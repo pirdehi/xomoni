@@ -46,6 +46,8 @@ const answers =
     update: answers(undefined),
   },
   notifications: { create: answers(''), clear: answers(true) },
+  // Loaded unpacked, like a zip install: Home shows the store card once a store lists Xomoni (#304).
+  management: { getSelf: answers({ id: 'preview', installType: 'development' }) },
   storage: {
     session: { get: answers({ workerTab: 1 }), set: answers(undefined), remove: answers(undefined) },
     // The xomoni.com card reads its connection here: not connected in the preview.

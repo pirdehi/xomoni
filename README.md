@@ -111,11 +111,24 @@ If you go ahead, you do so for this X account, knowing these risks and accepting
 
 ## Install
 
-Xomoni isn't on the Chrome Web Store yet. The [install guide on xomoni.com](https://xomoni.com/install) walks through it:
+Xomoni is being prepared for the Chrome Web Store and Edge Add-ons, and isn't listed yet. Once it is, [xomoni.com/install](https://xomoni.com/install) shows one button for your browser, *Add to Chrome* or *Get it for Edge*: no developer mode, and it updates itself ([ADR-0034](docs/adr/0034-distribution-through-the-browsers-stores.md)).
+
+Until then, or if you prefer it, install from the zip. The [install guide on xomoni.com](https://xomoni.com/install) walks through it (under *Advanced: install from a zip* once the stores list Xomoni):
 
 1. Download [`xomoni-extension.zip`](https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip) from the [latest release](https://github.com/pirdehi/xomoni/releases/latest) (each release lists its SHA-256 checksums) and unzip it into a folder you keep.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and select that folder.
 3. Click the Xomoni icon in the toolbar to open the dashboard.
+
+### Moving from the zip to the store
+
+The store's Xomoni is another extension to your browser, with its own, empty data. Once it is listed, a zip install shows these steps on its Home page, and [xomoni.com/install#move-to-store](https://xomoni.com/install#move-to-store) has them too:
+
+1. In Xomoni, choose **Export everything** (also in *Settings › Move your data*). It saves one file in Downloads.
+2. While no job runs, remove the zip copy on `chrome://extensions`. The browser deletes its data, and your file keeps it.
+3. Install Xomoni from the store.
+4. In the new Xomoni, choose **Import your data** and pick the file.
+
+Nothing moves by itself: your data travels only in that file, which never leaves your computer ([ADR-0032](docs/adr/0032-move-data-between-xomoni-versions.md)).
 
 ### Or build it from source
 

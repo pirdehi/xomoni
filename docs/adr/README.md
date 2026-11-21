@@ -37,3 +37,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0031](0031-weekly-email-of-the-daily-numbers.md) | A weekly email of the daily numbers, only for those who ask, sent by the database | Accepted |
 | [0032](0032-move-data-between-xomoni-versions.md) | Moving data between Xomoni versions: one checked file, on the computer, merged without deleting | Accepted |
 | [0033](0033-one-click-updates-for-the-zip-install.md) | One-click updates for the zip install: signed releases, written into Xomoni's own folder | Accepted |
+| [0034](0034-distribution-through-the-browsers-stores.md) | Distribution through the browsers' stores: one button on xomoni.com, the zip kept as Advanced | Accepted |

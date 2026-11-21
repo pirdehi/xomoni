@@ -40,7 +40,7 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
    insert into public.extension_releases (version, published_at, security) values ('X.Y.Z', 'YYYY-MM-DD', false);
    ```
 
-   A zip install never updates by itself, so this notice, together with the release notes, is how people hear about a fix until the Chrome Web Store ships updates (#43).
+   A zip install never updates by itself, so this notice, together with the release notes, is how people hear about a fix. Installed from a store, Xomoni updates itself ([ADR-0034](adr/0034-distribution-through-the-browsers-stores.md)).
 
 ## Signing key
 
@@ -149,9 +149,9 @@ The id written there is all the website needs: it then asks that id on every pag
 
 **Open question, for the first upload (phase 5):** some developers report that the store refuses a new item's zip whose manifest has a `key` (*key field is not allowed in manifest*). If it does, upload a copy of the zip without the key; the item keeps its id either way, and the GitHub zip keeps the key.
 
-## Chrome Web Store
+## Chrome Web Store and Edge Add-ons
 
-Not submitted yet ([#43](https://github.com/pirdehi/xomoni/issues/43), [#301](https://github.com/pirdehi/xomoni/issues/301)). A store updates Xomoni itself, so what gets uploaded, to the Chrome Web Store and to Microsoft Edge Add-ons, is the store build, without the one-click updater (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)), not the zip on GitHub Releases:
+The stores are to be the main way to install ([ADR-0034](adr/0034-distribution-through-the-browsers-stores.md)): the Chrome Web Store (Unlisted at first) and Edge Add-ons (Hidden at first), and GitHub Releases keep the zip for anyone who installs it by hand. Not submitted yet ([#43](https://github.com/pirdehi/xomoni/issues/43), [#301](https://github.com/pirdehi/xomoni/issues/301)). A store updates Xomoni itself, so what gets uploaded, to the Chrome Web Store and to Microsoft Edge Add-ons, is the store build, without the one-click updater (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)), not the zip on GitHub Releases:
 
 ```bash
 npm run build:store -w @xomoni/extension   # → apps/extension/dist, without src/update/, its GitHub access and CSP sources
@@ -161,3 +161,19 @@ npm run build:store -w @xomoni/extension   # → apps/extension/dist, without sr
 - the permission justifications and the privacy answers;
 - the listing text and the notes for reviewers;
 - the images, made by `npm run store:images -w @xomoni/extension`.
+
+### Turning on the install button
+
+Nothing on xomoni.com or in Xomoni mentions a store until its listing is published. Then:
+
+1. Copy the listing's public address:
+   - Chrome Web Store: the developer dashboard's link to the item, `https://chromewebstore.google.com/detail/<name>/<id>`;
+   - Edge Add-ons: Partner Center's link to the listing, `https://microsoftedge.microsoft.com/addons/detail/<name>/<id>`.
+2. Set it in both apps, in one pull request: `CHROME_WEB_STORE_URL` or `EDGE_ADDONS_URL` in `apps/web/src/shared/config/store-listings.ts` and in `apps/extension/src/shared/store-listings.ts`.
+3. `npm run verify` checks it: each value must be an https page on its store's own host (`apps/web/src/shared/config/store-listings.test.ts`), and `apps/extension/tests/store-listings.test.ts` fails when the two apps differ.
+
+Once merged, xomoni.com/install shows the store's button for the browsers that store serves, with the zip guide under *Advanced: install from a zip*, and explains the move at `/install#move-to-store`. The extension's card that invites a zip install to move (export, remove, install from the store, import) ships with the next release. Set the address only once the listing opens for people with the link, since the button leads straight to it.
+
+### Counting installs
+
+Only the stores' own install counts (install project, task 8.4). xomoni.com and Xomoni add no analytics, no campaign parameters on the store links and no install ping.

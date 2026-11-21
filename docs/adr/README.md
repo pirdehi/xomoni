@@ -40,3 +40,6 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0034](0034-distribution-through-the-browsers-stores.md) | Distribution through the browsers' stores: one button on xomoni.com, the zip kept as Advanced | Accepted |
 | [0035](0035-xomoni-has-its-own-mark.md) | Xomoni has its own mark, and never shows a platform's to stand for itself or for the platform | Accepted |
 | [0036](0036-two-step-verification-with-an-authenticator-app.md) | Two-step verification with an authenticator app, required by the server and the database | Accepted |
+| [0037](0037-one-written-gate-for-every-merge-and-release.md) | One written gate for every merge and every release | Accepted |
+| [0038](0038-user-scenarios-for-every-user-facing-task.md) | At least 20 user scenarios for every user-facing task, each proven in a browser | Accepted |
+| [0039](0039-the-readme-comes-from-the-feature-registry.md) | The README's feature list and status come from one registry | Accepted |

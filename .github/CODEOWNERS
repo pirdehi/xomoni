@@ -1,0 +1,18 @@
+# The gate's own files (ADR-0037). Changing one changes what every other change must pass, so the maintainer reviews it.
+# GitHub already asks for that review. The "Protect main" ruleset will require it once AI agents open their pull
+# requests from an account of their own (#346): GitHub doesn't let an author approve their own pull request.
+
+/.github/                        @pirdehi
+/.githooks/                      @pirdehi
+/tooling/                        @pirdehi
+/AGENTS.md                       @pirdehi
+/docs/QUALITY-GATES.md           @pirdehi
+/docs/adr/                       @pirdehi
+/eslint.config.mjs               @pirdehi
+/.dependency-cruiser.cjs         @pirdehi
+/.prettierrc.json                @pirdehi
+/tsconfig.base.json              @pirdehi
+/tsconfig.arch.json              @pirdehi
+/apps/web/vitest.config.ts       @pirdehi
+/apps/web/playwright.config.ts   @pirdehi
+/apps/extension/vite.config.ts   @pirdehi

@@ -61,6 +61,7 @@ const REQUIRED_DOCS = [
   'docs/PLAYBOOK.md',
   'docs/ROADMAP.md',
   'docs/TESTING.md',
+  'docs/QUALITY-GATES.md',
   'docs/RELEASING.md',
   'CHANGELOG.md',
   'docs/adr/README.md',

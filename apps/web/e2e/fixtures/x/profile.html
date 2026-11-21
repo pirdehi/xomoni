@@ -6,8 +6,9 @@
   article[data-testid="tweet"] with their author line, time link, text, "…" button and like and repost buttons. The
   sidebar names the account X's twid cookie says is signed in, as on home.html. As X's
   web app does, the page asks X's GraphQL API for the profile, then for the tab's timeline, and shows what X answered:
-  its posts, X's empty state, or X's error panel when X refused (a rate limit, X down). The interceptor reads the same
-  answers (graphql/UserByScreenName.json, UserTweets.json, or another set a test serves).
+  its posts, X's empty state, or X's error panel when X refused either (a rate limit, X down), without asking for the
+  timeline once the profile was refused. The interceptor reads the same answers (graphql/UserByScreenName.json,
+  UserTweets.json, or another set a test serves).
 -->
 <html lang="en" dir="ltr">
   <head>
@@ -133,7 +134,7 @@
         };
 
         ask('UserByScreenName', { screen_name: 'xomoni_fixture' })
-          .then(() => ask(op, { userId: USER_ID, count: 20 }))
+          .then((profile) => (profile.ok ? ask(op, { userId: USER_ID, count: 20 }) : profile))
           .then(async (response) => show(response, response.ok ? await response.json() : null))
           .catch(() => show({ ok: false }, null));
       })();

@@ -80,7 +80,7 @@
 ### A1. Per-endpoint 15-minute quota · 📘 · ✅
 - **X mechanism:** Each GraphQL operation has its own 15-minute window, for example `DeleteTweet`, `UnfavoriteTweet`, `SearchTimeline` and `TweetDetail`. X reports the quota in the `x-rate-limit-limit / remaining / reset` headers.
 - **Detection:** `interceptor.ts` reads these headers from the responses of **X's own web app**, in all x.com tabs. The result is stored in the `limits` table.
-- **Scenario:** Before each action, `Limiter.before()` checks the quota of that operation. Once one fifth of X's window is used (`limit − remaining ≥ limit / 5`), it waits until `reset` plus a random 5 to 20 seconds. A page load checks the quota of that page's own operation (search, timeline, likes or post page).
+- **Scenario:** Before each action, `Limiter.before()` checks the quota of that operation. Once one fifth of X's window is used (`limit − remaining ≥ limit / 5`), it waits until `reset` plus a random 5 to 20 seconds. A page load checks the quota of that page's own operation (search, timeline, likes or post page), and on a profile page, its Likes tab included, the quota of the profile lookup (`UserByScreenName`) X's web app sends before the timeline (#345).
 
 ### A2. Error 429 / code 88 · 📘 · ✅
 - **Scenario:**

@@ -1,0 +1,57 @@
+<!doctype html>
+<!--
+  x.com/home with a post that quotes X's wording for a limited account (#345, ADR-0040): the same page as home.html, with
+  one post in the Home timeline, by the made-up @fixture_friend, whose text is X's notice. Anyone can write that, so
+  Xomoni never reads posts, names or bios for X's notices (#146, PLAYBOOK C3): only alerts, pop-ups and the top of the
+  primary column. Synthetic: the accounts, the post and its id are made up, never anyone's.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Home / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link" aria-current="page">Home</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1>Home</h1>
+          <section aria-label="Timeline: Your Home Timeline">
+            <article data-testid="tweet" tabindex="0">
+              <div data-testid="User-Name">
+                <a href="/fixture_friend">Fixture Friend</a>
+                <a href="/fixture_friend">@fixture_friend</a>
+                <a href="/fixture_friend/status/9000000000000000301"
+                  ><time datetime="2026-11-20T09:00:00.000Z">Nov 20, 2026</time></a
+                >
+              </div>
+              <button type="button" data-testid="caret" aria-label="More"></button>
+              <div data-testid="tweetText" lang="en">
+                Your account is temporarily limited. Some features are unavailable for now. (A made-up post quoting X.)
+              </div>
+              <div role="group">
+                <button type="button" data-testid="reply" aria-label="0 Replies. Reply"></button>
+                <button type="button" data-testid="retweet" aria-label="0 reposts. Repost"></button>
+                <button type="button" data-testid="like" aria-label="0 Likes. Like"></button>
+              </div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="layers"></div>
+    <script>
+      // As on home.html: the sidebar names the account X's twid cookie says is signed in, or no one.
+      const HANDLES = { '9000000000000000001': 'xomoni_fixture', '9000000000000000002': 'fixture_friend' };
+      const id = /(?:^|; )twid=u%3D(\d+)/.exec(document.cookie)?.[1];
+      const link = document.querySelector('[data-testid="AppTabBar_Profile_Link"]');
+      if (id && HANDLES[id]) link.setAttribute('href', `/${HANDLES[id]}`);
+      else link.remove();
+    </script>
+  </body>
+</html>

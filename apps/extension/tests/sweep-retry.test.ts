@@ -156,6 +156,14 @@ describe('JobContext.pageRateLimit', () => {
     expect(await context().pageRateLimit(NOW - 1000)).toMatchObject({ outcome: 'rate_limited' });
   });
 
+  it('counts X refusing the profile a profile page asks for first (#345)', async () => {
+    await observe('UserByScreenName', NOW, { status: 429 });
+    expect(await context().pageRateLimit(NOW - 1000)).toMatchObject({
+      outcome: 'rate_limited',
+      resetAt: NOW + 10 * 60_000,
+    });
+  });
+
   it('ignores a 429 X sent before the page load, and other operations', async () => {
     await observe('UserTweets', NOW - DAY, { status: 429 });
     await observe('SearchTimeline', NOW, { status: 429 });

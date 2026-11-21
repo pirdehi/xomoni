@@ -58,6 +58,14 @@ describe('the one-fifth rule', () => {
     }
   });
 
+  it('makes a profile page spend the live limit of its profile lookup as well as its timeline’s (#345)', () => {
+    expect(BUDGETS.userTimeline.ops).toEqual(['UserByScreenName', 'UserTweets', 'UserTweetsAndReplies']);
+    expect(BUDGETS.likedPosts.ops).toEqual(['UserByScreenName', 'Likes']);
+    // Search results and a post's own page don't ask X for the profile.
+    expect(BUDGETS.search.ops).toEqual(['SearchTimeline']);
+    expect(BUDGETS.postLookup.ops).toEqual(['TweetDetail']);
+  });
+
   it('makes the ghost-like cleanup spend both the like and the shared unlike budget', () => {
     expect(ACTION_BUDGETS.relike).toEqual(['like', 'unlike']);
     expect(ACTION_BUDGETS.unlike).toEqual(['unlike']);

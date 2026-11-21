@@ -22,7 +22,6 @@ export const README_FILES = { en: 'README.md', fa: 'README.fa.md' };
 export const LEGACY_FEATURES = Object.freeze([
   'preview-before-acting',
   'beyond-profile-limit',
-  'x-pacing',
   'verified-actions',
   'login-handoff',
   'resumable-jobs',

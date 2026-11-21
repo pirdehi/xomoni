@@ -101,13 +101,20 @@ export interface Budget {
   label: string;
   /** X's published limits for this kind of request. */
   published: readonly PublishedLimit[];
-  /** X web app operations that report this budget's live limit in their headers. */
+  /**
+   * The operations of X's web app that one request of this budget sends: Xomoni keeps to one fifth of the live limit
+   * each reports in its headers, and a page X refused on any of them failed for X's quota.
+   */
   ops: readonly string[];
 }
 
 const L = X_PUBLISHED_LIMITS;
 
-/** Every budget Xomoni spends, keyed by id. */
+/**
+ * Every budget Xomoni spends, keyed by id. A profile page, its Likes tab included, asks X for the profile
+ * (`UserByScreenName`) before its timeline, so loading one spends that live limit too: it is one fifth of X's window
+ * like any other.
+ */
 export const BUDGETS: Record<BudgetId, Budget> = {
   deletePost: { label: 'Delete post', published: [L.deletePost], ops: ['DeleteTweet'] },
   undoRepost: { label: 'Undo repost', published: [L.undoRepost], ops: ['DeleteRetweet'] },
@@ -117,9 +124,9 @@ export const BUDGETS: Record<BudgetId, Budget> = {
   userTimeline: {
     label: 'Profile timeline',
     published: [L.userTimeline15],
-    ops: ['UserTweets', 'UserTweetsAndReplies'],
+    ops: ['UserByScreenName', 'UserTweets', 'UserTweetsAndReplies'],
   },
-  likedPosts: { label: 'Likes timeline', published: [L.likedPosts15], ops: ['Likes'] },
+  likedPosts: { label: 'Likes timeline', published: [L.likedPosts15], ops: ['UserByScreenName', 'Likes'] },
   postLookup: { label: 'Post page', published: [L.postLookup15], ops: ['TweetDetail'] },
 };
 

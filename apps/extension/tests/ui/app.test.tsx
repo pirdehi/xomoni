@@ -199,6 +199,14 @@ describe('App navigation', () => {
     expect(await pageHeading('Settings')).toBeInTheDocument();
   });
 
+  it('names Xomoni in the sidebar as the digital footprint manager (#312)', async () => {
+    render(<App />);
+    const side = sidebar();
+    expect(await within(side).findByText('Digital footprint manager')).toBeInTheDocument();
+    expect(within(side).getByText('Xomoni')).toBeInTheDocument();
+    expect(within(side).queryByText(/X account manager/i)).toBeNull();
+  });
+
   it('shows the account in the sidebar, with its initial when it has no picture', async () => {
     render(<App />);
     const side = sidebar();

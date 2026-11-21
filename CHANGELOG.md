@@ -56,6 +56,16 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - *Replies to you:* how many replies you got each day, who replies most, and each reply with *Open on X*, where you can hide it.
   - Xomoni keeps the replies to your posts that X shows it, on your computer only, for 90 days and at most 5,000 per account. It never hides, blocks or reports anyone ([ADR-0030](docs/adr/0030-replies-to-you-kept-on-the-computer.md)).
 
+### Changed
+
+- **xomoni.com tells Xomoni as a digital footprint manager** (#313). The site is now titled *Xomoni — Digital footprint manager*, with a matching description for search and link previews.
+  - The home page opens with *Manage your digital footprint, starting with X.* and one line about risk near the top: X's rules forbid automating its website, and Xomoni keeps that risk low but can't remove it, with *Read the risks* one click away.
+  - *What it does*: the five things Xomoni does in every place it covers (discover, understand, clean up, protect, shape), each with what it is on X today.
+  - *Where it works*: X today, your email next, then the other places you are present. Email isn't available yet, and nothing beyond X has a date.
+  - *How it works on X* now holds the extension and xomoni.com too: the extension does the work, and the website shows your account and plans a cleanup but can't start or approve a deletion.
+  - *Principles and safety*: six principles that hold everywhere, what Xomoni always and never does on X, and the default pace as one row of figures.
+  - The questions add what a digital footprint manager is, which places Xomoni works in, and why not X's API or a script; the risk answer now matches the Risks page.
+
 ### Fixed
 
 - Cleanup on xomoni.com says that X began in 2006 when a date is earlier, instead of asking Xomoni for a plan it refuses.

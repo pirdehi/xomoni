@@ -11,7 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
-- Phase 18: install with one click from the Chrome Web Store and Edge Add-ons, with a data move and one-click updates for the zip ([project](INSTALL-PROJECT-2026-11-21.fa.md), #295). Approved on 2026-11-21: phases 1, 2 and 3 are under way, and phase 0 waits on the maintainer's accounts ([guide](STORE-ACCOUNTS-GUIDE.fa.md)).
+- Phase 18: install with one click from the Chrome Web Store and Edge Add-ons, with a data move and one-click updates for the zip ([project](INSTALL-PROJECT-2026-11-21.fa.md), #295). Approved on 2026-11-21: moving data between versions is done (#310), and so is the simpler /install but its videos (#308); phases 3, 5, 7 and 8 are under way, and phase 0 waits on the maintainer's accounts ([guide](STORE-ACCOUNTS-GUIDE.fa.md)).
 - Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), Settings (#234), Cleanup (#235) and Comments (#256) are done too. Release 0.4.0 (#282) brought the first of them to Xomoni; Comments needs the next release. Reports (#257) are in, as CSV and PDF, with a weekly email for those who ask for it. Phase 17 is done, and so are the phone menu and footer (#242) and getting started (#244): all of the next 20 tasks are done. Next: release 0.5.0, which brings Comments and /welcome to Xomoni, once the maintainer says so. The next 20 tasks, in order: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md).
 - Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
 - Phase 14: one Xomoni. The website and the extension sign in and out together (#232), and the website shows the Library, Watch and account health, read in the same browser only (#233), changes Xomoni's settings there within its safety rules (#234), and plans cleanups that start only in Xomoni (#235). Phase 14 is done.
@@ -21,7 +21,7 @@ Both roadmaps are updated together: a pull request that finishes a task ticks it
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.4.0 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-20 · One-click install, the project: [فارسی](INSTALL-PROJECT-2026-11-21.fa.md) · Making installs easier, options: [فارسی](INSTALL-UX-2026-11-21.fa.md) · Next 20 tasks: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md) · Moving the backend to Rust, an analysis: [فارسی](RUST-BACKEND-ANALYSIS-2026-11-20.fa.md) · Dashboard plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
+**Last updated:** 2026-11-21 · One-click install, the project: [فارسی](INSTALL-PROJECT-2026-11-21.fa.md) · Making installs easier, options: [فارسی](INSTALL-UX-2026-11-21.fa.md) · Next 20 tasks: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md) · Moving the backend to Rust, an analysis: [فارسی](RUST-BACKEND-ANALYSIS-2026-11-20.fa.md) · Dashboard plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -264,14 +264,14 @@ The Chrome Web Store (unlisted first) and Edge Add-ons as the way to install, wi
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | 🔄 | 0 · Store accounts (Chrome Web Store, Edge Partner Center) and decisions: the maintainer's | [#298](https://github.com/pirdehi/xomoni/issues/298) | |
-| 🔄 | 1 · A simpler /install now: the checklist on top, browser- and OS-specific steps, drag the folder, step by step, a pin hint, short videos | [#299](https://github.com/pirdehi/xomoni/issues/299) | |
-| 🔄 | 2 · Moving data between versions: a full export and a checked import (ADR-0032) | [#300](https://github.com/pirdehi/xomoni/issues/300) | |
-| 🔄 | 3 · Ready for the stores: permissions, no remote code, single purpose, name, privacy form, images, notes for reviewers | [#301](https://github.com/pirdehi/xomoni/issues/301) | |
+| 🔄 | 1 · A simpler /install now: the checklist on top, browser- and OS-specific steps, drag the folder, step by step, a pin hint, short videos (all but the videos are in) | [#299](https://github.com/pirdehi/xomoni/issues/299) | [#308](https://github.com/pirdehi/xomoni/pull/308) |
+| ✅ | 2 · Moving data between versions: a full export and a checked import (ADR-0032) | [#300](https://github.com/pirdehi/xomoni/issues/300) | [#310](https://github.com/pirdehi/xomoni/pull/310) |
+| 🔄 | 3 · Ready for the stores: permissions, no remote code, single purpose, name, privacy form, images, notes for reviewers. The name is set: Xomoni — Digital footprint manager, in Tools (#312) | [#301](https://github.com/pirdehi/xomoni/issues/301) | [#309](https://github.com/pirdehi/xomoni/pull/309) |
 | ⬜ | 4 · A fixed extension id from the store's key, and release 0.5.0 | [#302](https://github.com/pirdehi/xomoni/issues/302) | |
 | ⬜ | 5 · Submitting: store uploads from GitHub Actions, the Chrome Web Store unlisted, Edge Add-ons | [#303](https://github.com/pirdehi/xomoni/issues/303) | |
 | ⬜ | 6 · /install with one button per browser, and bringing zip users to the store | [#304](https://github.com/pirdehi/xomoni/issues/304) | |
 | ⬜ | 7 · Signed one-click updates for the zip (ADR-0033) | [#305](https://github.com/pirdehi/xomoni/issues/305) | |
-| ⬜ | 8 · Public listing, docs (ADR-0034), install FAQ | [#306](https://github.com/pirdehi/xomoni/issues/306) | |
+| 🔄 | 8 · Public listing, docs (ADR-0034), install FAQ (the FAQ is in) | [#306](https://github.com/pirdehi/xomoni/issues/306) | [#311](https://github.com/pirdehi/xomoni/pull/311) |
 
 ## Dropped
 

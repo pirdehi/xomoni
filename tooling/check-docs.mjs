@@ -12,12 +12,16 @@
 //   5. Relative links in Markdown files resolve.
 //   6. Every environment variable the website reads is documented in apps/web/.env.example.
 //   7. Every database migration starts with a comment explaining it.
+//   8. docs/ is sorted by kind (#344): only the living documents on a list sit at its root, dated reports go in
+//      docs/reports/<yyyy-mm>/, and docs/README.md, the map, links every living document and every folder
+//      (tooling/docs-layout-lib.mjs).
 //
 // Prints every problem, then exits 1 if there were any.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkDocsLayout, markdownLinks } from './docs-layout-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const problems = [];
@@ -128,10 +132,7 @@ if (exists('docs/adr')) {
 
 // 5. Relative links in Markdown ───────────────────────────────────────────────────────────
 for (const file of walk('', (name) => name.endsWith('.md'))) {
-  const text = read(file)
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/`[^`\n]*`/g, '');
-  for (const [, target] of text.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+  for (const target of markdownLinks(read(file))) {
     if (/^(https?:|mailto:|#)/.test(target)) continue;
     const path = decodeURIComponent(target.split('#')[0]);
     if (!path) continue;
@@ -159,6 +160,9 @@ for (const file of exists('supabase/migrations') ? walk('supabase/migrations', (
   if (!read(file).trimStart().startsWith('--'))
     fail(file, 'must start with a -- comment saying what it changes and why');
 }
+
+// 8. docs/ sorted by kind, with one map ───────────────────────────────────────────────────
+problems.push(...checkDocsLayout(ROOT));
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 if (problems.length) {

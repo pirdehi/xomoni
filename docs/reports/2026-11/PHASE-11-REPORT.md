@@ -2,7 +2,7 @@
 
 # Phase 11 report: the X archive without the chores
 
-> How getting X's archive into Xomoni went from more than ten steps by hand to one press, plus the password X asks for, typed on X. Covers what changed, how the archive job behaves, what keeps it safe, what was found along the way and what is left. None of it uses X's API. The tasks are in [ROADMAP.md](ROADMAP.md#phase-11--the-x-archive-without-the-chores), and the decision in [ADR-0022](adr/0022-get-the-x-archive-without-leaving-xomoni.md).
+> How getting X's archive into Xomoni went from more than ten steps by hand to one press, plus the password X asks for, typed on X. Covers what changed, how the archive job behaves, what keeps it safe, what was found along the way and what is left. None of it uses X's API. The tasks are in [ROADMAP.md](../../ROADMAP.md#phase-11--the-x-archive-without-the-chores), and the decision in [ADR-0022](../../adr/0022-get-the-x-archive-without-leaving-xomoni.md).
 >
 > Date: 9 November 2026 · Code: `main` after [#191](https://github.com/pirdehi/xomoni/pull/191)
 
@@ -56,10 +56,10 @@ The dashboard's own looks start only when no other job runs, within the person's
 
 ## What keeps it safe
 
-- **The password stays with the person** ([ADR-0003](adr/0003-no-credentials-no-evasion.md)). X's form is recognized so the job waits for it; it is never filled, read or closed as a pop-up.
+- **The password stays with the person** ([ADR-0003](../../adr/0003-no-credentials-no-evasion.md)). X's form is recognized so the job waits for it; it is never filled, read or closed as a pop-up.
 - **Only buttons Xomoni is sure of.** The button's whole label must be one Xomoni knows (*Request archive* / *Request data*, *Download archive* / *Download data*). Exactly one such button must show, turned on, in the state that needs it. Nothing is pressed while signed out, locked or restricted.
-- **X's own page, X's own download** ([ADR-0002](adr/0002-drive-x-ui-not-the-api.md)). Xomoni never fetches the archive itself and asks for no permission to do so.
-- **The archive stays on this computer** ([ADR-0004](adr/0004-x-data-stays-local.md)). Archive jobs are not reported to xomoni.com, and the ZIP is read in the dashboard.
+- **X's own page, X's own download** ([ADR-0002](../../adr/0002-drive-x-ui-not-the-api.md)). Xomoni never fetches the archive itself and asks for no permission to do so.
+- **The archive stays on this computer** ([ADR-0004](../../adr/0004-x-data-stays-local.md)). Archive jobs are not reported to xomoni.com, and the ZIP is read in the dashboard.
 - **A hostile ZIP is refused**: encrypted entries, unknown compression, sizes that lie, a bad checksum, or records that point outside the file.
 
 ## Found along the way

@@ -3,7 +3,7 @@
 # پروژه‌ی «نصب با یک کلیک»: فازها و تسک‌ها
 
 > - **تاریخ:** ۲۱ نوامبر ۲۰۲۶.
-> - **وضعیت:** 🔄 تأیید شد (۲۱ نوامبر). **هر چه به حساب فروشگاه نیاز ندارد ساخته شد:** انتقال داده ([#310](https://github.com/pirdehi/xomoni/pull/310))، صفحه‌ی نصب ساده‌تر با تصویرهای کوتاه ([#308](https://github.com/pirdehi/xomoni/pull/308)، [#330](https://github.com/pirdehi/xomoni/pull/330))، پرسش‌های رایج ([#311](https://github.com/pirdehi/xomoni/pull/311))، آمادگی فروشگاه ([#309](https://github.com/pirdehi/xomoni/pull/309)، [#320](https://github.com/pirdehi/xomoni/pull/320)، [#321](https://github.com/pirdehi/xomoni/pull/321)، [#326](https://github.com/pirdehi/xomoni/pull/326))، شناسه‌ی ثابت ([#324](https://github.com/pirdehi/xomoni/pull/324))، بارگذاری خودکار در فروشگاه ([#314](https://github.com/pirdehi/xomoni/pull/314))، یک دکمه برای هر مرورگر ([#325](https://github.com/pirdehi/xomoni/pull/325)) و به‌روزرسانی امضاشده با یک کلیک ([#316](https://github.com/pirdehi/xomoni/pull/316)). نام محصول: «Xomoni — Digital footprint manager» در دسته‌ی Tools. **باقی‌مانده با شماست:** حساب‌های فروشگاه ([راهنما](STORE-ACCOUNTS-GUIDE.fa.md))، کلید امضا، انتشار ۰.۵.۰، ارسال به فروشگاه‌ها و عمومی کردن فهرست.
+> - **وضعیت:** 🔄 تأیید شد (۲۱ نوامبر). **هر چه به حساب فروشگاه نیاز ندارد ساخته شد:** انتقال داده ([#310](https://github.com/pirdehi/xomoni/pull/310))، صفحه‌ی نصب ساده‌تر با تصویرهای کوتاه ([#308](https://github.com/pirdehi/xomoni/pull/308)، [#330](https://github.com/pirdehi/xomoni/pull/330))، پرسش‌های رایج ([#311](https://github.com/pirdehi/xomoni/pull/311))، آمادگی فروشگاه ([#309](https://github.com/pirdehi/xomoni/pull/309)، [#320](https://github.com/pirdehi/xomoni/pull/320)، [#321](https://github.com/pirdehi/xomoni/pull/321)، [#326](https://github.com/pirdehi/xomoni/pull/326))، شناسه‌ی ثابت ([#324](https://github.com/pirdehi/xomoni/pull/324))، بارگذاری خودکار در فروشگاه ([#314](https://github.com/pirdehi/xomoni/pull/314))، یک دکمه برای هر مرورگر ([#325](https://github.com/pirdehi/xomoni/pull/325)) و به‌روزرسانی امضاشده با یک کلیک ([#316](https://github.com/pirdehi/xomoni/pull/316)). نام محصول: «Xomoni — Digital footprint manager» در دسته‌ی Tools. **باقی‌مانده با شماست:** حساب‌های فروشگاه ([راهنما](../../guides/STORE-ACCOUNTS-GUIDE.fa.md))، کلید امضا، انتشار ۰.۵.۰، ارسال به فروشگاه‌ها و عمومی کردن فهرست.
 > - **Issueها:** فاز ۰ [#298](https://github.com/pirdehi/xomoni/issues/298)، ۱ [#299](https://github.com/pirdehi/xomoni/issues/299)، ۲ [#300](https://github.com/pirdehi/xomoni/issues/300)، ۳ [#301](https://github.com/pirdehi/xomoni/issues/301)، ۴ [#302](https://github.com/pirdehi/xomoni/issues/302)، ۵ [#303](https://github.com/pirdehi/xomoni/issues/303)، ۶ [#304](https://github.com/pirdehi/xomoni/issues/304)، ۷ [#305](https://github.com/pirdehi/xomoni/issues/305)، ۸ [#306](https://github.com/pirdehi/xomoni/issues/306).
 > - **پایه:** [تحلیل راه‌حل‌های نصب](INSTALL-UX-2026-11-21.fa.md) و issue [#295](https://github.com/pirdehi/xomoni/issues/295).
 > - **تصمیم شما:**
@@ -35,7 +35,7 @@
 قاعده‌های همیشگی سر جایشان هستند:
 - هر تسک یک issue، یک شاخه و تست در هر دو طرف (پشت و جلو) دارد؛
 - `npm run verify` و CI باید سبز باشند؛
-- همین صفحه و [نقشه‌ی راه](ROADMAP.md) در همان PR تیک می‌خورند؛
+- همین صفحه و [نقشه‌ی راه](../../ROADMAP.md) در همان PR تیک می‌خورند؛
 - هیچ داده‌ای از X به سرور نمی‌رود؛
 - هیچ کاری روی X بدون تأیید داخل Xomoni شروع نمی‌شود.
 
@@ -123,7 +123,7 @@
 | ✅ ۷.۳ | **دکمه‌ی «به‌روزرسانی»:** دانلود از GitHub، بررسی امضا و checksum، نوشتن فایل‌ها و `chrome.runtime.reload()`. اگر نوشتن نیمه‌کاره بماند، نسخه‌ی قبلی برمی‌گردد. هیچ کاری وسط یک job انجام نمی‌شود. | تست‌های امنیتی: امضای غلط، فایل دستکاری‌شده و قطع شبکه، که هیچ‌کدام چیزی را عوض نمی‌کنند. |
 | ✅ ۷.۴ | **ADR-0033:** به‌روزرسانی خودکار نسخه‌ی zip و مرزهای امنیتی‌اش. | ADR نوشته شده است. |
 
-فاز ۷ در [#316](https://github.com/pirdehi/xomoni/pull/316) ساخته شد. امضا از وقتی شروع می‌شود که کلید را بسازید ([راهنما](RELEASING.md#signing-key))؛ تا آن وقت انتشارها بدون امضا و با هشدار بیرون می‌روند و به‌روزرسانی یک‌کلیکی خاموش می‌ماند. نسخه‌ی فروشگاه (`npm run build:store`) این بخش را ندارد.
+فاز ۷ در [#316](https://github.com/pirdehi/xomoni/pull/316) ساخته شد. امضا از وقتی شروع می‌شود که کلید را بسازید ([راهنما](../../RELEASING.md#signing-key))؛ تا آن وقت انتشارها بدون امضا و با هشدار بیرون می‌روند و به‌روزرسانی یک‌کلیکی خاموش می‌ماند. نسخه‌ی فروشگاه (`npm run build:store`) این بخش را ندارد.
 
 ## فاز ۸: انتشار عمومی، مستندات و نگهداری
 

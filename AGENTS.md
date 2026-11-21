@@ -4,6 +4,7 @@ These rules apply to any AI assistant working in this repository. They restate t
 
 ## Before you change code
 
+- Find any document through [`docs/README.md`](docs/README.md), the map of `docs/` by kind. Its dated reports are snapshots, not current truth.
 - Read [`docs/QUALITY-GATES.md`](docs/QUALITY-GATES.md): the definition of done, and the rules every merge and every release must pass.
 - Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the README of the unit you are changing.
 - For the website, also read [`apps/web/AGENTS.md`](apps/web/AGENTS.md): this Next.js version differs from what you may know; check `node_modules/next/dist/docs/` before using an API.

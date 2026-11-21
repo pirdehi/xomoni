@@ -12,17 +12,17 @@ Both roadmaps are updated together: a pull request that finishes a task ticks it
 
 **Current focus:**
 - Phase 19: one written gate for every merge and every release ([quality gates](QUALITY-GATES.md), ADR-0037 to ADR-0039). The rules, the release checklist and the protected `release` and `stores` environments are in, and so is the release gate (#340): the full CI on the tag, `npm audit`, and the release issue read by the workflow and closed with the release. So are the nightly run of the whole suite on `main` and the check of each published release (#343). The checks that enforce the rest come next: the README from a feature registry (#337), at least 20 user scenarios per user-facing task (#338), the pull request policy and dependency review (#339) and clean code scanning (#341).
-- Phase 18: install with one click from the Chrome Web Store and Edge Add-ons, with a data move and one-click updates for the zip ([project](INSTALL-PROJECT-2026-11-21.fa.md), #295). Everything that needs no store account is built: the data move (#310), the simpler /install with illustrations (#308, #330), the install FAQ (#311), readiness for the stores (#309, #320, #321, #326), the fixed id (#324), store uploads (#314), one button per browser (#325) and signed one-click updates (#316). What's left is the maintainer's: the store accounts ([guide](STORE-ACCOUNTS-GUIDE.fa.md)), the signing key, release 0.5.0, submitting, and making the listings public.
-- Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), Settings (#234), Cleanup (#235) and Comments (#256) are done too. Release 0.4.0 (#282) brought the first of them to Xomoni; Comments needs the next release. Reports (#257) are in, as CSV and PDF, with a weekly email for those who ask for it. Phase 17 is done, and so are the phone menu and footer (#242) and getting started (#244): all of the next 20 tasks are done. Next: release 0.5.0, which brings Comments and /welcome to Xomoni, once the maintainer says so. The next 20 tasks, in order: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md).
+- Phase 18: install with one click from the Chrome Web Store and Edge Add-ons, with a data move and one-click updates for the zip ([project](reports/2026-11/INSTALL-PROJECT-2026-11-21.fa.md), #295). Everything that needs no store account is built: the data move (#310), the simpler /install with illustrations (#308, #330), the install FAQ (#311), readiness for the stores (#309, #320, #321, #326), the fixed id (#324), store uploads (#314), one button per browser (#325) and signed one-click updates (#316). What's left is the maintainer's: the store accounts ([guide](guides/STORE-ACCOUNTS-GUIDE.fa.md)), the signing key, release 0.5.0, submitting, and making the listings public.
+- Phase 17: the full dashboard on xomoni.com ([plan](reports/2026-11/DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), Settings (#234), Cleanup (#235) and Comments (#256) are done too. Release 0.4.0 (#282) brought the first of them to Xomoni; Comments needs the next release. Reports (#257) are in, as CSV and PDF, with a weekly email for those who ask for it. Phase 17 is done, and so are the phone menu and footer (#242) and getting started (#244): all of the next 20 tasks are done. Next: release 0.5.0, which brings Comments and /welcome to Xomoni, once the maintainer says so. The next 20 tasks, in order: [فارسی](reports/2026-11/NEXT-20-TASKS-2026-11-20.fa.md).
 - Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
 - Phase 14: one Xomoni. The website and the extension sign in and out together (#232), and the website shows the Library, Watch and account health, read in the same browser only (#233), changes Xomoni's settings there within its safety rules (#234), and plans cleanups that start only in Xomoni (#235). Phase 14 is done.
 - Phase 13: signing out of Xomoni and one-click connecting are done; one-click install waits for the Chrome Web Store (#43).
-- Phase 12, a simpler dashboard, is done ([UX review](UX-REVIEW-2026-11-14.md)).
-- Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](PHASE-11-REPORT.md)).
+- Phase 12, a simpler dashboard, is done ([UX review](reports/2026-11/UX-REVIEW-2026-11-14.md)).
+- Phase 11, where asking X for the archive works on the real page and the download waits for X ([report](reports/2026-11/PHASE-11-REPORT.md)).
 - Phase 4, the pilot on the maintainer's account.
 - Phase 6: 0.4.0 is out on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with an install guide at [xomoni.com/install](https://xomoni.com/install); the Chrome Web Store waits for the maintainer.
 
-**Last updated:** 2026-11-21 · One-click install, the project: [فارسی](INSTALL-PROJECT-2026-11-21.fa.md) · Making installs easier, options: [فارسی](INSTALL-UX-2026-11-21.fa.md) · Next 20 tasks: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md) · Moving the backend to Rust, an analysis: [فارسی](RUST-BACKEND-ANALYSIS-2026-11-20.fa.md) · Dashboard plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · Website UX review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](STATUS-2026-11-14.md) · [فارسی](STATUS-2026-11-14.fa.md) · Product report: [فارسی](PRODUCT-REPORT-2026-11-14.fa.md)
+**Last updated:** 2026-11-21 · One-click install, the project: [فارسی](reports/2026-11/INSTALL-PROJECT-2026-11-21.fa.md) · Making installs easier, options: [فارسی](reports/2026-11/INSTALL-UX-2026-11-21.fa.md) · Next 20 tasks: [فارسی](reports/2026-11/NEXT-20-TASKS-2026-11-20.fa.md) · Moving the backend to Rust, an analysis: [فارسی](reports/2026-11/RUST-BACKEND-ANALYSIS-2026-11-20.fa.md) · Dashboard plan: [English](reports/2026-11/DASHBOARD-PLAN-2026-11-19.md) · [فارسی](reports/2026-11/DASHBOARD-PLAN-2026-11-19.fa.md) · Website UX review: [English](reports/2026-11/UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](reports/2026-11/UX-REVIEW-WEBSITE-2026-11-17.fa.md) · Status report: [English](reports/2026-11/STATUS-2026-11-14.md) · [فارسی](reports/2026-11/STATUS-2026-11-14.fa.md) · Product report: [فارسی](reports/2026-11/PRODUCT-REPORT-2026-11-14.fa.md)
 
 Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintainer · ✖ dropped
 
@@ -172,7 +172,7 @@ Following phrases and #hashtags in X's search, read-only ([ADR-0021](adr/0021-wa
 
 ## Phase 11 · The X archive without the chores
 
-Getting X's archive into Xomoni took more than ten steps by hand. This phase brings them down to one press and the password X asks for, typed on X. The Archive and Inventory pages become one place. Report: [English](PHASE-11-REPORT.md) · [فارسی](PHASE-11-REPORT.fa.md).
+Getting X's archive into Xomoni took more than ten steps by hand. This phase brings them down to one press and the password X asks for, typed on X. The Archive and Inventory pages become one place. Report: [English](reports/2026-11/PHASE-11-REPORT.md) · [فارسی](reports/2026-11/PHASE-11-REPORT.fa.md).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
@@ -183,7 +183,7 @@ Getting X's archive into Xomoni took more than ten steps by hand. This phase bri
 
 ## Phase 12 · A simpler dashboard ✅
 
-A UX review of the whole dashboard found more places than tasks, numbers without a next step, expert settings up front and engine words in the interface. This phase brings each page down to one primary action, in plain words, with a modern look; every number and setting stays reachable. Review: [English](UX-REVIEW-2026-11-14.md) · [فارسی](UX-REVIEW-2026-11-14.fa.md).
+A UX review of the whole dashboard found more places than tasks, numbers without a next step, expert settings up front and engine words in the interface. This phase brings each page down to one primary action, in plain words, with a modern look; every number and setting stays reachable. Review: [English](reports/2026-11/UX-REVIEW-2026-11-14.md) · [فارسی](reports/2026-11/UX-REVIEW-2026-11-14.fa.md).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
@@ -230,7 +230,7 @@ Every page of xomoni.com and of the extension's dashboard, reviewed on screen (d
 
 ## Phase 16 · xomoni.com, one product
 
-A UX review of the website's structure: it is two products today, dead-ends on a phone, and getting started has no thread. This phase gives the website one guided start and a phone that works; the app shell (#245) moved to Phase 17, the full dashboard. Review: [English](UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](UX-REVIEW-WEBSITE-2026-11-17.fa.md).
+A UX review of the website's structure: it is two products today, dead-ends on a phone, and getting started has no thread. This phase gives the website one guided start and a phone that works; the app shell (#245) moved to Phase 17, the full dashboard. Review: [English](reports/2026-11/UX-REVIEW-WEBSITE-2026-11-17.md) · [فارسی](reports/2026-11/UX-REVIEW-WEBSITE-2026-11-17.fa.md).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
@@ -241,7 +241,7 @@ A UX review of the website's structure: it is two products today, dead-ends on a
 
 ## Phase 17 · The full dashboard on xomoni.com
 
-xomoni.com becomes the place to see and manage the X account: every place of the extension, and audience, content and engagement insights, comments and reports. Daily numbers reach the cloud only by the person's choice and with no extra request to X (ADR-0026). The extension's actions work from the website in the same browser, approved in Xomoni (ADR-0027). Plan: [English](DASHBOARD-PLAN-2026-11-19.md) · [فارسی](DASHBOARD-PLAN-2026-11-19.fa.md) · [#248](https://github.com/pirdehi/xomoni/issues/248).
+xomoni.com becomes the place to see and manage the X account: every place of the extension, and audience, content and engagement insights, comments and reports. Daily numbers reach the cloud only by the person's choice and with no extra request to X (ADR-0026). The extension's actions work from the website in the same browser, approved in Xomoni (ADR-0027). Plan: [English](reports/2026-11/DASHBOARD-PLAN-2026-11-19.md) · [فارسی](reports/2026-11/DASHBOARD-PLAN-2026-11-19.fa.md) · [#248](https://github.com/pirdehi/xomoni/issues/248).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
@@ -260,7 +260,7 @@ xomoni.com becomes the place to see and manage the X account: every place of the
 
 ## Phase 18 · Install with one click 🔄
 
-The Chrome Web Store (unlisted first) and Edge Add-ons as the way to install, with what makes the zip easier meanwhile. Each phase gets its issues once the maintainer approves the [project](INSTALL-PROJECT-2026-11-21.fa.md) ([options](INSTALL-UX-2026-11-21.fa.md), [#295](https://github.com/pirdehi/xomoni/issues/295)).
+The Chrome Web Store (unlisted first) and Edge Add-ons as the way to install, with what makes the zip easier meanwhile. Each phase gets its issues once the maintainer approves the [project](reports/2026-11/INSTALL-PROJECT-2026-11-21.fa.md) ([options](reports/2026-11/INSTALL-UX-2026-11-21.fa.md), [#295](https://github.com/pirdehi/xomoni/issues/295)).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |

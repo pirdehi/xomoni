@@ -7,7 +7,7 @@ import { RUNNER_LOCK, runnerLockHeld } from '../shared/runner-lock';
 import type { CleanupFilter, CleanupOptions, DateRange, Job, JobState, ScanTarget } from '../shared/types';
 import type { ArchiveMode } from '../shared/x-archive';
 import { runArchive } from './archive';
-import { runCleanup } from './cleanup';
+import { refreshMatched, runCleanup } from './cleanup';
 import { Interrupted, JobContext, NeedsYou, Stop } from './context';
 import { runScan } from './scan';
 import { runWatch } from './watch';
@@ -258,6 +258,8 @@ export class Runner {
  * everything already handled is skipped.
  */
 async function runSteps(ctx: JobContext) {
+  // Before X's Home is loaded and read (#377), which can wait for the pace or the connection: the card says what remains.
+  if (ctx.job.kind === 'cleanup') await refreshMatched(ctx);
   for (;;) {
     try {
       await ctx.connect();

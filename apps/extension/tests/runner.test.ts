@@ -27,8 +27,9 @@ import type { CleanupFilter, CleanupOptions, Job, JobState } from '../src/shared
 import { ACCOUNT, page, stubLocks, untilAborted } from './support/engine';
 import { resetDb } from './support/fixtures';
 
-const { runCleanup, runScan, worker, notify, clearNotification } = vi.hoisted(() => ({
+const { runCleanup, refreshMatched, runScan, worker, notify, clearNotification } = vi.hoisted(() => ({
   runCleanup: vi.fn<(ctx: JobContext) => Promise<void>>(),
+  refreshMatched: vi.fn<(ctx: JobContext) => Promise<void>>(),
   runScan: vi.fn<(ctx: JobContext) => Promise<void>>(),
   worker: {
     current: vi.fn<() => Promise<number | null>>(),
@@ -45,7 +46,7 @@ const { runCleanup, runScan, worker, notify, clearNotification } = vi.hoisted(()
 }));
 
 // The job's steps and the worker tab are mocked, so no X page is needed: these tests are about the runner.
-vi.mock('../src/engine/cleanup', () => ({ runCleanup }));
+vi.mock('../src/engine/cleanup', () => ({ runCleanup, refreshMatched }));
 vi.mock('../src/engine/scan', () => ({ runScan }));
 vi.mock('../src/engine/worker-tab', async (importOriginal) => ({
   ...(await importOriginal<typeof WorkerTabModule>()),
@@ -111,7 +112,8 @@ beforeEach(async () => {
   await recordConsent(ACCOUNT);
   await upsertAccount({ id: ACCOUNT, handle: 'me' });
 
-  worker.current.mockResolvedValue(7);
+  // The run opens the X window, on a fresh Home, so it loads no other page first (#377).
+  worker.current.mockResolvedValueOnce(null).mockResolvedValue(7);
   worker.open.mockResolvedValue(7);
   worker.keepLoaded.mockResolvedValue();
   worker.waitReady.mockResolvedValue(page());
@@ -899,7 +901,8 @@ describe('runner: an archive job (#186)', () => {
 
     expect(done.state).toBe('completed');
     expect(done.stateReason).toBe(ARCHIVE_PREPARING);
-    expect(worker.navigate).not.toHaveBeenCalled();
+    // X's Home first, once in the run (#377), and never the archive page again after X asked for the password.
+    expect(worker.navigate.mock.calls.map(([url]) => url)).toEqual(['https://x.com/home']);
     expect(states).toContainEqual(expect.objectContaining({ status: 'attention', need: 'identity' }));
     expect(notify).toHaveBeenCalledWith(
       ATTENTION_ID,

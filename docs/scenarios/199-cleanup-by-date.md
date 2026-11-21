@@ -118,7 +118,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Given the confirmation of a cleanup open
 - When the person types delete it, DELET, DELETE! or remove
 - Then its Start cleanup stays off
-- And typed as "  delete ", in any case with spaces around it, DELETE turns it on
+- And typed as " delete ", in any case with spaces around it, DELETE turns it on
 - And the dialog says removed posts and likes cannot be restored by Xomoni or X
 - Test: apps/web/e2e/extension/cleanup-by-date.spec.ts
 
@@ -301,4 +301,14 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Then the job stops there at once, before it waits for its first delete: Stopped for safety, X shows a restriction
   on this account (#375)
 - And nothing is removed, and X's page was never checked for a delete
+- Test: apps/web/e2e/extension/cleanup-by-date.spec.ts
+
+## S199-34 · error
+
+- Given the person browsed their profile in the X window and left it there, with active hours off, while X's Home
+  shows "Your account is temporarily limited"
+- When they start a cleanup of their posts
+- Then the job first loads X's Home in the X window, at Xomoni's pace, and stops there: Stopped for safety, X shows a
+  restriction on this account (#377)
+- And nothing is removed, and Home is the only page the job asked X for
 - Test: apps/web/e2e/extension/cleanup-by-date.spec.ts

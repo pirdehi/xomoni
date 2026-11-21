@@ -83,8 +83,11 @@ async function noteUnseen(ctx: JobContext) {
   }
 }
 
-/** matched = everything settled so far + what the inventory still says matches. */
-async function refreshMatched(ctx: JobContext) {
+/**
+ * matched = everything settled so far + what the inventory still says matches. Read from the copy alone, so the runner
+ * counts it before the job touches X too, and the job's card shows what remains while it waits for X's Home (#377).
+ */
+export async function refreshMatched(ctx: JobContext) {
   const remaining = (await findCandidates(ctx.job.accountId, rules(ctx).filter)).length;
   const { done, skipped, failed } = ctx.job.stats;
   ctx.job.stats.matched = done + skipped + failed + remaining;

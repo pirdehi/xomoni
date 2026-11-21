@@ -30,6 +30,8 @@ const SETTLED_MS = 5000;
 const RENDER_TIMEOUT_MS = 30_000;
 /** How often to look again while X renders the page. */
 const RENDER_CHECK_MS = 500;
+/** X's Home, where X shows notices such as a limited account's; a run reads it first (#377). */
+const HOME_URL = 'https://x.com/home';
 /** The same check this many times with no progress in between means waiting won't help. */
 const MAX_REPEAT_NEEDS = 3;
 /** Connection or X trouble this long with no progress pauses the job. */
@@ -152,6 +154,8 @@ export class JobContext {
   private repeatNeeds = 0;
   private progressAtLastNeed = -1;
   private outages = 0;
+  /** This run has read a fresh load of X's Home, once X drew it (#377); `connect` loads it before anything else. */
+  private homeRead = false;
   private outageSince = 0;
   private progressAtOutage = -1;
 
@@ -265,15 +269,27 @@ export class JobContext {
 
   /**
    * Opens the worker if needed and verifies it is signed in to the right account. Reads the page only once X has
-   * rendered it, so a notice X shows there (C3, C4) stops the job before anything else reaches X (#375).
+   * rendered it, so a notice X shows there (C3, C4) stops the job before anything else reaches X (#375). The first
+   * time in a run, it then reads a fresh load of X's Home the same way, since X shows some notices there only (#377):
+   * the X window it opened is on one; otherwise it loads Home at the reading pace (`openPage`). Opening the window is a
+   * page load too, counted against the read caps and budget like any other.
    */
   async connect(): Promise<PageInfo> {
     this.status('Connecting to the X window…');
-    if ((await this.xTab.current()) == null) await this.xTab.open();
+    const opened = (await this.xTab.current()) == null;
+    if (opened) {
+      await this.xTab.open();
+      this.limiter.after('read', 'done', readBudgetFor(HOME_URL));
+    }
     await this.xTab.keepLoaded();
     const account = await db.accounts.get(this.job.accountId);
     this.handle ||= account?.handle ?? '';
-    const info = await this.clearAndAssert(await this.rendered(await this.xTab.waitReady(this.signal)));
+    // A page that needs the person or shows a notice is judged where it is, before anything is loaded.
+    let info = await this.clearAndAssert(await this.rendered(await this.xTab.waitReady(this.signal)));
+    if (!this.homeRead) {
+      if (!opened || info.path !== new URL(HOME_URL).pathname) info = await this.openPage(HOME_URL);
+      this.homeRead = true;
+    }
     this.handle = info.handle || this.handle;
     // The handle goes into post URLs and decides which posts are the person's own (#144).
     if (!isHandle(this.handle))
@@ -490,8 +506,9 @@ export class JobContext {
   }
 
   /**
-   * Paced load of an X page that shows no posts, such as X's archive page (#186): counted like `navigate`, then
-   * checked for login, X's checks (including X asking for the password) and pop-ups, without waiting for posts.
+   * Paced load of an X page that shows no posts, such as X's archive page (#186) or Home (#377): counted like
+   * `navigate`, then, once X has drawn it, checked for X's notices, login, X's checks (including X asking for the
+   * password) and pop-ups, without waiting for posts.
    */
   async openPage(url: string): Promise<PageInfo> {
     this.checkpoint();
@@ -501,7 +518,7 @@ export class JobContext {
     this.status(`Opening ${url.replace('https://x.com', '')}`);
     const info = await this.xTab.navigate(url, this.signal);
     this.limiter.after('read', 'done', this.readBudget);
-    return this.clearAndAssert(info);
+    return this.clearAndAssert(await this.rendered(info));
   }
 
   /**

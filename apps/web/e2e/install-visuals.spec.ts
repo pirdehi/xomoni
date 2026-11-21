@@ -27,65 +27,75 @@ test.describe('the install guide’s illustrations (#299)', () => {
   test.describe('in Chrome on a Mac', () => {
     test.use({ userAgent: AGENTS.chrome });
 
-    test('show Developer mode at the top right and the folder dropped on the page, moving, and pause', async ({
-      page,
-    }) => {
-      await asBrowser(page, 'chrome');
-      await listIn(page, { chrome: CHROME_STORE, edge: EDGE_STORE });
-      await toAddStep(page, 'Add it to Chrome');
+    test(
+      'S299-26 show Developer mode at the top right and the folder dropped on the page, moving, and pause',
+      { tag: ['@task-299'] },
+      async ({ page }) => {
+        await asBrowser(page, 'chrome');
+        await listIn(page, { chrome: CHROME_STORE, edge: EDGE_STORE });
+        await toAddStep(page, 'Add it to Chrome');
 
-      const developerMode = steps(page).getByRole('figure', { name: /Developer mode switch at the top right/ });
-      await expect(developerMode).toHaveAccessibleName(
-        'Illustration On chrome://extensions, the Developer mode switch at the top right is turned on, and Load unpacked appears.',
-      );
-      await expect(developerMode).toHaveAttribute('data-layout', 'top-bar');
-      await expect(developerMode).toHaveAttribute('data-frame', 'mac');
-      await expect(developerMode.getByText('Illustration', { exact: true })).toBeVisible();
-      await expect(steps(page).getByRole('figure', { name: /dragged onto chrome:\/\/extensions/ })).toBeVisible();
+        const developerMode = steps(page).getByRole('figure', { name: /Developer mode switch at the top right/ });
+        await expect(developerMode).toHaveAccessibleName(
+          'Illustration On chrome://extensions, the Developer mode switch at the top right is turned on, and Load unpacked appears.',
+        );
+        await expect(developerMode).toHaveAttribute('data-layout', 'top-bar');
+        await expect(developerMode).toHaveAttribute('data-frame', 'mac');
+        await expect(developerMode.getByText('Illustration', { exact: true })).toBeVisible();
+        await expect(steps(page).getByRole('figure', { name: /dragged onto chrome:\/\/extensions/ })).toBeVisible();
 
-      // It moves, Pause holds it where it is, and Play goes on.
-      await expect(developerMode).toHaveAttribute('data-motion', 'playing');
-      const moving = await animations(developerMode);
-      expect(moving.count).toBeGreaterThan(3);
-      expect(moving.paused).toBe(0);
-      await developerMode.getByRole('button', { name: 'Pause the illustration of turning on Developer mode' }).click();
-      await expect(developerMode).toHaveAttribute('data-motion', 'paused');
-      expect(await animations(developerMode)).toEqual({ count: moving.count, paused: moving.count });
-      await developerMode.getByRole('button', { name: 'Play the illustration of turning on Developer mode' }).click();
-      expect((await animations(developerMode)).paused).toBe(0);
+        // It moves, Pause holds it where it is, and Play goes on.
+        await expect(developerMode).toHaveAttribute('data-motion', 'playing');
+        const moving = await animations(developerMode);
+        expect(moving.count).toBeGreaterThan(3);
+        expect(moving.paused).toBe(0);
+        await developerMode
+          .getByRole('button', { name: 'Pause the illustration of turning on Developer mode' })
+          .click();
+        await expect(developerMode).toHaveAttribute('data-motion', 'paused');
+        expect(await animations(developerMode)).toEqual({ count: moving.count, paused: moving.count });
+        await developerMode.getByRole('button', { name: 'Play the illustration of turning on Developer mode' }).click();
+        expect((await animations(developerMode)).paused).toBe(0);
 
-      // Following it here: pinning, with the pin.
-      await steps(page).getByRole('button', { name: 'Next' }).click();
-      await expect(steps(page)).toContainText('then the pin next to Xomoni.');
-      const pin = steps(page).getByRole('figure', { name: /the pin next to Xomoni puts it in the toolbar/ });
-      await expect(pin).toHaveAttribute('data-control', 'pin');
-    });
+        // Following it here: pinning, with the pin.
+        await steps(page).getByRole('button', { name: 'Next' }).click();
+        await expect(steps(page)).toContainText('then the pin next to Xomoni.');
+        const pin = steps(page).getByRole('figure', { name: /the pin next to Xomoni puts it in the toolbar/ });
+        await expect(pin).toHaveAttribute('data-control', 'pin');
+      },
+    );
   });
 
   test.describe('in Edge on Windows', () => {
     test.use({ userAgent: AGENTS.edge });
 
-    test('show Developer mode in the panel on the left, a Windows window, and the eye to pin', async ({ page }) => {
-      await asBrowser(page, 'edge');
-      await listIn(page, { chrome: CHROME_STORE, edge: EDGE_STORE });
-      await toAddStep(page, 'Add it to Edge');
+    test(
+      'S299-33 show Developer mode in the panel on the left, a Windows window, and the eye to pin',
+      { tag: ['@task-299'] },
+      async ({ page }) => {
+        await asBrowser(page, 'edge');
+        await listIn(page, { chrome: CHROME_STORE, edge: EDGE_STORE });
+        await toAddStep(page, 'Add it to Edge');
 
-      const developerMode = steps(page).getByRole('figure', { name: /Developer mode switch in the panel on the left/ });
-      await expect(developerMode).toHaveAccessibleName(/^Illustration On edge:\/\/extensions,/);
-      await expect(developerMode).toHaveAttribute('data-layout', 'side-panel');
-      await expect(developerMode).toHaveAttribute('data-frame', 'windows');
-      await expect(steps(page).getByRole('figure', { name: /dragged onto edge:\/\/extensions/ })).toBeVisible();
+        const developerMode = steps(page).getByRole('figure', {
+          name: /Developer mode switch in the panel on the left/,
+        });
+        await expect(developerMode).toHaveAccessibleName(/^Illustration On edge:\/\/extensions,/);
+        await expect(developerMode).toHaveAttribute('data-layout', 'side-panel');
+        await expect(developerMode).toHaveAttribute('data-frame', 'windows');
+        await expect(steps(page).getByRole('figure', { name: /dragged onto edge:\/\/extensions/ })).toBeVisible();
 
-      await steps(page).getByRole('button', { name: 'Next' }).click();
-      const pin = steps(page).getByRole('figure', { name: /the eye next to Xomoni \(Show in toolbar\)/ });
-      await expect(pin).toHaveAttribute('data-control', 'eye');
-    });
+        await steps(page).getByRole('button', { name: 'Next' }).click();
+        const pin = steps(page).getByRole('figure', { name: /the eye next to Xomoni \(Show in toolbar\)/ });
+        await expect(pin).toHaveAttribute('data-control', 'eye');
+      },
+    );
   });
 
   test.describe('in Brave on a Mac', () => {
     test.use({ userAgent: AGENTS.chrome });
 
-    test('show brave://extensions, laid out like Chrome’s', async ({ page }) => {
+    test('S299-34 show brave://extensions, laid out like Chrome’s', { tag: ['@task-299'] }, async ({ page }) => {
       await asBrowser(page, 'brave');
       await listIn(page, { chrome: CHROME_STORE });
       await toAddStep(page, 'Add it to Brave');
@@ -100,7 +110,7 @@ test.describe('the install guide’s illustrations (#299)', () => {
   test.describe('with reduced motion', () => {
     test.use({ userAgent: AGENTS.chrome, reducedMotion: 'reduce' });
 
-    test('stand still on their last frame, with nothing to pause', async ({ page }) => {
+    test('S299-25 stand still on their last frame, with nothing to pause', { tag: ['@task-299'] }, async ({ page }) => {
       await asBrowser(page, 'chrome');
       await listIn(page, { chrome: CHROME_STORE });
       await toAddStep(page, 'Add it to Chrome');

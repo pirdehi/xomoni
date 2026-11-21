@@ -38,7 +38,8 @@ src/
 e2e/              Playwright tests for every auth flow (real Supabase Auth, emails from Mailpit), the dashboard
                   (devices and jobs seeded as the extension reports them) and the security headers; every test
                   fails on a Content-Security-Policy violation. fixed-id.spec.ts loads a real unpacked test
-                  extension with a fixed `key` (e2e/fixtures/fixed-id-extension, #302)
+                  extension with a fixed `key` (e2e/fixtures/fixed-id-extension, #302). A test titled S<issue>-NN
+                  and tagged @task-<issue> proves that user scenario in docs/scenarios/ (#338)
 ```
 
 Each module is split into `domain/`, `application/`, `infrastructure/`, `server/`, `client/` and `ui/` layers; the rules are in [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#4-website-appsweb) and are checked by `npm run arch`.

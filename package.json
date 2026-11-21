@@ -33,6 +33,7 @@
     "readme": "node tooling/readme.mjs",
     "readme:check": "node tooling/readme.mjs --check",
     "tests:check": "node tooling/check-tests.mjs",
+    "scenarios:check": "node tooling/check-scenarios.mjs",
     "test:tooling": "node --test 'tooling/*.test.mjs'",
     "remote-code:check": "npm run --silent build -w @xomoni/extension && node tooling/check-remote-code.mjs",
     "verify": "node tooling/verify.mjs",

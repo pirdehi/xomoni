@@ -28,17 +28,19 @@ npm install            # also installs the git hooks (.githooks)
 | Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
 | README from the feature registry | `npm run readme:check` | `README.md` or `README.fa.md` differs from what [`docs/features.json`](docs/features.json) would write (`npm run readme` fixes it), the registry is invalid, or an issue under *Added* in `CHANGELOG.md` belongs to no feature and to no exemption with a reason ([below](#the-feature-registry)) |
 | Test presence | `npm run tests:check` | A source file is imported by no test and is not listed as exempt with a reason ([docs/TESTING.md](docs/TESTING.md)) |
+| User scenarios | `npm run scenarios:check` | A file in `docs/scenarios/` has fewer than 20 scenarios, a category under its minimum or more than 3 manual ones, or a scenario's Playwright test is missing, skipped or without its `@task-<issue>` tag ([docs/scenarios/README.md](docs/scenarios/README.md)) |
 | Tooling tests | `npm run test:tooling` | A test of the repository's own scripts fails (`node --test 'tooling/*.test.mjs'`), or [docs/STORE-LISTING.md](docs/STORE-LISTING.md) no longer matches the manifest or the stores' limits, or an icon no longer matches its drawing in `apps/extension/scripts/icon.mjs` ([ADR-0035](docs/adr/0035-xomoni-has-its-own-mark.md)) |
 | No remote code | `npm run remote-code:check` | The extension's build runs code from a string (`eval`, `new Function`) or loads it from another site, or its CSP would let it ([docs/STORE-LISTING.md](docs/STORE-LISTING.md#6-no-remote-code)) |
 | Unit tests and coverage | `npm test` | A test fails, or coverage drops below a workspace's threshold |
 
 It runs automatically before every `git push` (`.githooks/pre-push`). CI runs it again, plus both production builds, the database checks (Row Level Security tests, types drift) and the end-to-end auth tests, and `main` only accepts pull requests with green CI.
 
-The end-to-end tests need Docker, so they are not part of `verify`. Run them before pushing auth or database changes:
+The end-to-end tests need Docker, so they are not part of `verify`. Run them before pushing auth or database changes, and a task's user scenarios when you change what it does:
 
 ```bash
 supabase start
 npm run test:e2e -w @xomoni/web
+npm run test:e2e -w @xomoni/web -- --grep @task-299   # one task's scenarios
 ```
 
 ## Making a change
@@ -55,7 +57,7 @@ npm run test:e2e -w @xomoni/web
 5. Add or update tests on both sides, as [docs/TESTING.md](docs/TESTING.md) describes: a backend test (rule, use case, engine step or database policy) and a frontend test (the component the person uses), with the failure and security cases. Security rules (Row Level Security, redirects, auth errors) get tests that prove the negative case too.
 6. When the change is user-facing (below), in the same pull request:
    - add a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) that says what changes for people;
-   - add the task's scenarios in `docs/scenarios/<issue>-<slug>.md`, or update the file of the feature you fix (ADR-0038). This applies to pull requests opened from 2026-11-22 on.
+   - add the task's user scenarios in `docs/scenarios/<issue>-<slug>.md`: at least 20, across the nine categories, each proven by a Playwright test whose title starts with the scenario's id and that carries `@task-<issue>` ([docs/scenarios/README.md](docs/scenarios/README.md)). A fix to an existing feature adds its scenario to that feature's file (ADR-0038). This applies to pull requests opened from 2026-11-22 on.
 7. Run `npm run verify`, push, and open a pull request. Link its task in the description: `Closes #N` (or `Fixes #N`, `Resolves #N`) when it finishes the issue, `Part of #N` when it is one step of it. Fill in the template's safety checklist.
 8. When the pull request finishes a roadmap task, tick it in [docs/ROADMAP.md](docs/ROADMAP.md) with the pull request number, in the same pull request.
 

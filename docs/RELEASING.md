@@ -9,7 +9,9 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
 0. Open the release issue from the **Release** template (*Issues › New issue › Release*), titled `Release vX.Y.Z`. Tick each box only once you have checked it, with its proof. The release waits for it: the `release` environment's approval now, and the workflow's check of the issue with #340.
 1. On a branch, set the same version in `apps/extension/public/manifest.json` and `apps/extension/package.json` ([Semantic Versioning](https://semver.org/)).
 2. In [`CHANGELOG.md`](../CHANGELOG.md), rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and start a new empty `## [Unreleased]` above it.
-3. Run `node tooling/release.mjs check vX.Y.Z`, then open a pull request and merge it when CI is green.
+
+   Then, in [`docs/features.json`](features.json), set `"since"` to `"X.Y.Z"` on every feature still `"unreleased"` that this version ships, and run `npm run readme`. Both READMEs' status then names X.Y.Z, and their *next release* tags go (#337). `npm run readme:check` names each feature left to stamp.
+3. Run `node tooling/release.mjs check vX.Y.Z`, then open a pull request and merge it when CI is green. Besides the versions and the changelog, it fails while a feature this version ships is still `"unreleased"`, or while a README's status names another version.
 4. Tag the merge commit on `main` and push the tag:
 
    ```bash

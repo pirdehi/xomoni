@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   changelogSection,
+  featureReleaseProblems,
   filesUnder,
   isStoreManifest,
   releaseKeyWarning,
@@ -65,6 +66,101 @@ describe('release checks', () => {
     assert.match(
       releaseProblems({ manifestVersion: '1.0.0', packageVersion: '1.0.0', changelog: '', tag: 'latest' })[0],
       /not v<major>/,
+    );
+  });
+});
+
+describe('the features a release ships (#337, ADR-0039)', () => {
+  // The changelog once [Unreleased] became [0.3.0]: #232 ships in it, #151 shipped before.
+  const RELEASED = `# Changelog
+
+## [Unreleased]
+
+## [0.3.0] - 2026-11-20
+
+### Added
+
+- One sign-in (#232, with #151's notice).
+
+### Fixed
+
+- A crash (#240).
+
+## [0.2.0] - 2026-11-14
+
+### Added
+
+- The update notice (#151).
+`;
+  const status = (version) =>
+    `# Xomoni\n\n<!-- BEGIN GENERATED: status (npm run readme) -->\n\n**Latest release: [${version}](https://github.com/pirdehi/xomoni/releases/tag/v${version}), 2026-11-20.**\n\n<!-- END GENERATED: status -->\n`;
+  const readmes = (version = '0.3.0') => ({ 'README.md': status(version), 'README.fa.md': status(version) });
+  const registry = (since = '0.3.0') => ({
+    features: [
+      { id: 'update-notice', since: '0.2.0', issues: [151] },
+      { id: 'one-sign-in', since, issues: [228, 232] },
+      { id: 'next-thing', since: 'unreleased', issues: [240] },
+    ],
+  });
+  const check = (overrides = {}) =>
+    releaseProblems({
+      manifestVersion: '0.3.0',
+      packageVersion: '0.3.0',
+      changelog: RELEASED,
+      tag: 'v0.3.0',
+      registry: registry(),
+      readmes: readmes(),
+      ...overrides,
+    });
+
+  it('passes when the features it ships are stamped and both READMEs name it', () => {
+    assert.deepEqual(check(), []);
+  });
+
+  it('fails while a feature it ships is still unreleased', () => {
+    const problems = check({ registry: registry('unreleased') });
+    assert.equal(problems.length, 1);
+    assert.match(
+      problems[0],
+      /docs\/features.json: "one-sign-in" ships in 0\.3\.0 \(#232 is under its ### Added\), but its "since" is still "unreleased": set it to "0\.3\.0", then run npm run readme/,
+    );
+  });
+
+  it('leaves alone an unreleased feature whose issues are only under Fixed or Changed', () => {
+    assert.ok(check().every((problem) => !problem.includes('next-thing')));
+  });
+
+  it("fails when a README's status names another version, or has none", () => {
+    const problems = check({ readmes: { 'README.md': status('0.2.0'), 'README.fa.md': '# Xomoni, no status' } });
+    assert.deepEqual(problems, [
+      "README.md's status names 0.2.0, not 0.3.0: run npm run readme",
+      'README.fa.md has no generated status naming 0.3.0: run npm run readme',
+    ]);
+  });
+
+  it('fails without a features list', () => {
+    assert.deepEqual(
+      featureReleaseProblems({ version: '0.3.0', registry: {}, changelog: RELEASED, readmes: readmes() }),
+      ['docs/features.json has no "features" list'],
+    );
+  });
+
+  it('checks the features only for a tag', () => {
+    assert.deepEqual(check({ tag: undefined, registry: registry('unreleased'), readmes: readmes('0.1.0') }), []);
+  });
+
+  it("passes the repository's own registry and READMEs for the newest release", () => {
+    const read = (path) => readFileSync(join(import.meta.dirname, '..', path), 'utf8');
+    const changelog = read('CHANGELOG.md');
+    const version = /^## \[(\d+\.\d+\.\d+)\]/m.exec(changelog)[1];
+    assert.deepEqual(
+      featureReleaseProblems({
+        version,
+        registry: JSON.parse(read('docs/features.json')),
+        changelog,
+        readmes: { 'README.md': read('README.md'), 'README.fa.md': read('README.fa.md') },
+      }),
+      [],
     );
   });
 });

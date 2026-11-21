@@ -104,6 +104,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - It is still drawn in code, and a test checks that every copy matches the drawing.
 - **The connection map names X in words.** The X account shows as a person icon labeled *X account*, instead of the 𝕏 glyph on a dark disc.
 - The README's logo shows again: its image path was wrong.
+- **The README lists everything Xomoni does** (#337). Its feature list, in English and Persian, now covers what shipped up to now, xomoni.com's dashboard included, and *Project status* names the latest release instead of "early release (v0.1)". Both are written from one list of features, checked on every pull request, so they can't fall behind again.
 
 ### Fixed
 

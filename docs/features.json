@@ -1,0 +1,603 @@
+{
+  "$comment": "Every feature Xomoni ships: the one source of the READMEs' feature list and status (ADR-0039, #337). Most important first, within each area. After a change, run `npm run readme`; `npm run readme:check` (in `npm run verify`) checks this file against CHANGELOG.md and both READMEs. See CONTRIBUTING.md.",
+  "features": [
+    {
+      "id": "cleanup-by-date",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [199],
+      "scenarios": null,
+      "en": {
+        "title": "Bulk cleanup by date",
+        "summary": "delete posts, replies, reposts or likes older than a given date, or between two dates."
+      },
+      "fa": {
+        "title": "پاک‌سازی گروهی بر اساس تاریخ",
+        "summary": "حذف پست، ریپلای، ریپوست یا لایک‌های قدیمی‌تر از یک تاریخ، یا بین دو تاریخ."
+      }
+    },
+    {
+      "id": "keep-rules",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [],
+      "scenarios": null,
+      "en": {
+        "title": "Keep rules",
+        "summary": "spare posts with at least N likes, posts containing given keywords, specific links you paste, and replies in your own threads."
+      },
+      "fa": {
+        "title": "قوانین نگه‌داری",
+        "summary": "پست‌هایی با حداقل N لایک، پست‌هایی با کلمات کلیدی مشخص، لینک‌هایی که خودتان وارد می‌کنید، و ریپلای‌های داخل رشته‌های خودتان حذف نمی‌شوند."
+      }
+    },
+    {
+      "id": "preview-before-acting",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [24],
+      "scenarios": null,
+      "en": {
+        "title": "Preview before acting",
+        "summary": "see exactly what matches, an estimated duration at your pacing, a JSON backup download, and a typed `DELETE` confirmation. Before an X account's first job, Xomoni shows the risks and asks you to type `I UNDERSTAND`."
+      },
+      "fa": {
+        "title": "پیش‌نمایش پیش از اجرا",
+        "summary": "فهرست دقیق موارد، زمان تخمینی با سرعت انتخابی شما، دانلود پشتیبان JSON، و تأیید با تایپ `DELETE`. پیش از اولین کار هر حساب X، Xomoni ریسک‌ها را نشان می‌دهد و از شما می‌خواهد `I UNDERSTAND` را تایپ کنید."
+      }
+    },
+    {
+      "id": "beyond-profile-limit",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [15],
+      "scenarios": null,
+      "en": {
+        "title": "Reaches past the ~3,200 profile limit",
+        "summary": "sweeps X search (`from:you until:date`) in pages and imports your official X archive."
+      },
+      "fa": {
+        "title": "عبور از سقف حدود ۳,۲۰۰ پست پروفایل",
+        "summary": "با جستجوی X (`from:you until:date`) و وارد کردن آرشیو رسمی X."
+      }
+    },
+    {
+      "id": "x-pacing",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [17, 18, 19, 26, 28, 30, 31, 33],
+      "scenarios": null,
+      "en": {
+        "title": "Within one fifth of X's limits",
+        "summary": "Xomoni never uses more than one fifth of any limit X announces, starts slower on a new account, rests between work sessions, keeps to active hours, and stops at X's first warning. Custom pacing can be slower, never faster."
+      },
+      "fa": {
+        "title": "حداکثر یک‌پنجم محدودیت‌های X",
+        "summary": "Xomoni هرگز بیش از یک‌پنجم هیچ سقفی را که X اعلام کرده مصرف نمی‌کند، با حساب تازه کندتر شروع می‌کند، بین نوبت‌های کار استراحت می‌کند، فقط در ساعات فعال کار می‌کند و با اولین هشدار X دست نگه می‌دارد. تنظیم دستی می‌تواند کندتر باشد، هرگز سریع‌تر."
+      }
+    },
+    {
+      "id": "verified-actions",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [21, 22, 144],
+      "scenarios": null,
+      "en": {
+        "title": "Acts only on what it can verify",
+        "summary": "before deleting, Xomoni checks that the post is yours and still matches the rule, and counts it as removed only when X's response confirms it. A check after a job's first delete, and spot checks later, catch X quietly ignoring deletes."
+      },
+      "fa": {
+        "title": "فقط روی چیزی که تأیید شود",
+        "summary": "Xomoni پیش از حذف بررسی می‌کند که پست مال خود شماست و هنوز با قانون جور است، و فقط وقتی آن را حذف‌شده می‌شمارد که پاسخ X تأییدش کند. یک بررسی بعد از اولین حذف هر کار و بررسی‌های نمونه‌ای بعدی نشان می‌دهند اگر X بی‌صدا حذف‌ها را نادیده بگیرد."
+      }
+    },
+    {
+      "id": "login-handoff",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [20, 200],
+      "scenarios": null,
+      "en": {
+        "title": "Login and 2FA hand-off",
+        "summary": "when X needs you (login, 2FA, captcha, email code, account unlock, wrong account), the job pauses, sends you a desktop notification, waits while you complete it in the X window, then continues by itself. Xomoni never asks for or stores your password."
+      },
+      "fa": {
+        "title": "کمک برای ورود و تأیید دومرحله‌ای (2FA)",
+        "summary": "هر وقت X به شما نیاز داشته باشد (ورود، کد 2FA، کپچا، کد ایمیل، باز کردن قفل حساب یا حساب اشتباه)، کار متوقف می‌شود و اعلان دسکتاپ می‌گیرید. شما مرحله را در پنجره‌ی X کامل می‌کنید و کار خودکار ادامه پیدا می‌کند. Xomoni هرگز رمز عبور شما را نمی‌خواهد و ذخیره نمی‌کند."
+      }
+    },
+    {
+      "id": "resumable-jobs",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [23],
+      "scenarios": null,
+      "en": {
+        "title": "Resumable jobs",
+        "summary": "pause, close the browser, and resume later without losing progress."
+      },
+      "fa": {
+        "title": "کارهای قابل ادامه",
+        "summary": "می‌توانید کار را متوقف کنید، مرورگر را ببندید و بعداً بدون از دست رفتن پیشرفت ادامه دهید."
+      }
+    },
+    {
+      "id": "keeps-going",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.2.0",
+      "issues": [134, 140],
+      "scenarios": null,
+      "en": {
+        "title": "Keeps going while you do other things",
+        "summary": "*Keep going while away* keeps the display on and brings a covered X window forward, and *Run hidden* shares the X tab with the dashboard so a job continues with the X window minimized. Nothing of the shared tab is recorded or sent."
+      },
+      "fa": {
+        "title": "ادامه‌ی کار وقتی سرتان جای دیگری گرم است",
+        "summary": "*Keep going while away* صفحه‌نمایش را روشن نگه می‌دارد و پنجره‌ی X را اگر پوشیده شده باشد جلو می‌آورد، و *Run hidden* تب X را با داشبورد به اشتراک می‌گذارد تا کار با پنجره‌ی X کوچک‌شده هم ادامه پیدا کند. از تب اشتراکی هیچ چیز ضبط یا فرستاده نمی‌شود."
+      }
+    },
+    {
+      "id": "x-archive",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [184, 186, 187, 196],
+      "scenarios": null,
+      "en": {
+        "title": "Your X archive, requested and imported",
+        "summary": "*Get my archive* asks X for your archive on X's own page and downloads it once X has made it. The ZIP is imported as it is, from Downloads › Xomoni or dropped on the Library, and only `account.js`, `tweets.js` and `like.js` are read."
+      },
+      "fa": {
+        "title": "آرشیو X، درخواست و وارد کردنش",
+        "summary": "*Get my archive* آرشیو شما را روی صفحه‌ی خود X درخواست می‌کند و وقتی X آماده‌اش کرد دانلودش می‌کند. فایل ZIP همان‌طور که هست وارد می‌شود، از پوشه‌ی Downloads › Xomoni یا با رها کردنش روی Library، و فقط `account.js`، `tweets.js` و `like.js` خوانده می‌شوند."
+      }
+    },
+    {
+      "id": "library",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.2.0",
+      "issues": [185, 203],
+      "scenarios": null,
+      "en": {
+        "title": "Your copy, in the Library",
+        "summary": "shows how much of your account Xomoni has and where it came from, with a search. *Complete my copy* reads your posts, replies, likes and full history from X in one job."
+      },
+      "fa": {
+        "title": "نسخه‌ی شما در Library",
+        "summary": "نشان می‌دهد Xomoni چه مقدار از حساب شما را دارد و از کجا آمده، و می‌شود در آن جستجو کرد. *Complete my copy* پست‌ها، ریپلای‌ها، لایک‌ها و کل تاریخچه را در یک job از X می‌خواند."
+      }
+    },
+    {
+      "id": "archive-date-range",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.2.0",
+      "issues": [97],
+      "scenarios": null,
+      "en": {
+        "title": "Archive a date range",
+        "summary": "pick the dates, let Xomoni read them from X (read-only, at the same careful pace), and download your posts, replies and reposts from that range as a page you can open in any browser, or as JSON. It is saved on your computer only. Your official X archive stays the complete copy, with media."
+      },
+      "fa": {
+        "title": "آرشیو یک بازه‌ی زمانی",
+        "summary": "تاریخ‌ها را انتخاب کنید، Xomoni آن بازه را از X می‌خواند (فقط خواندن، با همان سرعت محتاطانه) و پست‌ها، ریپلای‌ها و ریپوست‌های آن بازه را به‌صورت یک صفحه‌ی قابل باز شدن در هر مرورگر یا JSON به شما می‌دهد. فایل فقط روی کامپیوتر خودتان ذخیره می‌شود. آرشیو رسمی X همچنان نسخه‌ی کامل، همراه با عکس و ویدیو، است."
+      }
+    },
+    {
+      "id": "watch",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.2.0",
+      "issues": [158],
+      "scenarios": null,
+      "en": {
+        "title": "Watch X search",
+        "summary": "follow up to five phrases or #hashtags in X's search. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads: nothing is liked, replied to or posted."
+      },
+      "fa": {
+        "title": "دنبال کردن جستجوی X (Watch)",
+        "summary": "تا پنج عبارت یا #هشتگ را در جستجوی X دنبال کنید. Xomoni هر کدام را تقریباً دقیقه‌ای یک بار، در چارچوب سقف خواندن، بررسی می‌کند و ۱۰ پست تازه را با لینک به X نشان می‌دهد. فقط می‌خواند: هیچ چیزی لایک، ریپلای یا پست نمی‌شود."
+      }
+    },
+    {
+      "id": "dashboard",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [34, 201, 202, 204],
+      "scenarios": null,
+      "en": {
+        "title": "Dashboard",
+        "summary": "*Home* says what runs and what X needs, with the one button that helps; *Activity* shows each job's progress, time remaining and a log you can read, and export as CSV or JSON; plus removal counts and a year-by-year chart. Light and dark themes."
+      },
+      "fa": {
+        "title": "داشبورد",
+        "summary": "صفحه‌ی *Home* می‌گوید چه کاری در جریان است و X چه می‌خواهد، همراه با همان یک دکمه‌ای که کار را جلو می‌برد؛ صفحه‌ی *Activity* پیشرفت هر کار، زمان باقی‌مانده و لاگی خوانا را نشان می‌دهد که می‌شود از آن خروجی CSV یا JSON گرفت؛ به‌علاوه‌ی آمار حذف و نمودار سالانه. حالت روشن و تاریک دارد."
+      }
+    },
+    {
+      "id": "daily-numbers",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.3.0",
+      "issues": [249],
+      "scenarios": null,
+      "en": {
+        "title": "Daily numbers",
+        "summary": "one row per X account per day, kept in this browser: followers, following, posts and likes, what you published and removed, and an estimate of what your posts received. Only pages X already showed count; nothing new is asked of X."
+      },
+      "fa": {
+        "title": "آمار روزانه",
+        "summary": "برای هر حساب X در هر روز یک ردیف، فقط در همین مرورگر: دنبال‌کننده‌ها، دنبال‌شده‌ها، پست‌ها و لایک‌ها، آنچه منتشر یا حذف کرده‌اید، و تخمینی از واکنش‌ها به پست‌هایتان. فقط صفحه‌هایی حساب می‌شوند که X خودش نشان داده؛ هیچ درخواست تازه‌ای به X فرستاده نمی‌شود."
+      }
+    },
+    {
+      "id": "sign-out",
+      "area": "extension",
+      "status": "shipped",
+      "since": "0.3.0",
+      "issues": [226],
+      "scenarios": null,
+      "en": {
+        "title": "Sign out of Xomoni",
+        "summary": "one dialog names the account and says what happens: the running job pauses, the X window closes and nothing more is recorded. You can also remove the account's data from this browser, with a copy to download first, and sign out of X on X's own page."
+      },
+      "fa": {
+        "title": "خروج از Xomoni",
+        "summary": "یک پنجره نام حساب را می‌آورد و می‌گوید چه می‌شود: کار در حال اجرا متوقف می‌شود، پنجره‌ی X بسته می‌شود و دیگر چیزی ثبت نمی‌شود. می‌توانید داده‌های آن حساب را هم، با دانلود یک نسخه پیش از آن، از این مرورگر پاک کنید و روی صفحه‌ی خود X از X هم خارج شوید."
+      }
+    },
+    {
+      "id": "move-your-data",
+      "area": "extension",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [300],
+      "scenarios": null,
+      "en": {
+        "title": "Move your data to a new Xomoni",
+        "summary": "*Export everything* saves one file in Downloads with your accounts, your copy, jobs, the log and settings; *Import from a file* in the new Xomoni checks the whole file first, then adds it to what is there. The file never leaves your computer."
+      },
+      "fa": {
+        "title": "انتقال داده‌ها به یک Xomoni تازه",
+        "summary": "*Export everything* یک فایل در Downloads ذخیره می‌کند که حساب‌ها، نسخه‌ی شما، کارها، لاگ و تنظیمات را دارد؛ *Import from a file* در Xomoni تازه اول کل فایل را بررسی می‌کند و بعد آن را به داده‌های موجود اضافه می‌کند. فایل هرگز از کامپیوتر شما بیرون نمی‌رود."
+      }
+    },
+    {
+      "id": "one-click-updates",
+      "area": "extension",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [305],
+      "scenarios": null,
+      "en": {
+        "title": "Update in one click",
+        "summary": "a Xomoni installed from the zip downloads the new version from GitHub, checks its signature and every file, and writes it into its own folder, never while a job runs. Your data stays. It starts once the maintainer has set up the signing key; until then, update by hand."
+      },
+      "fa": {
+        "title": "به‌روزرسانی با یک کلیک",
+        "summary": "اگر Xomoni را از zip نصب کرده باشید، نسخه‌ی تازه را از GitHub دانلود می‌کند، امضا و تک‌تک فایل‌هایش را بررسی می‌کند و آن را در پوشه‌ی خودش می‌نویسد، هیچ‌وقت وسط یک کار. داده‌هایتان سر جایش می‌ماند. وقتی نگه‌دارنده‌ی پروژه کلید امضا را راه بیندازد فعال می‌شود؛ تا آن وقت، به‌روزرسانی دستی است."
+      }
+    },
+    {
+      "id": "private-by-design",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.1.0",
+      "issues": [],
+      "scenarios": null,
+      "en": {
+        "title": "Private by design",
+        "summary": "no telemetry, and your posts, likes and copy stay in IndexedDB in your browser profile. If you sign in to xomoni.com, only job status goes there (titles, states and counts), and daily counts only if you turn them on. Post text, likes and post ids never reach a server."
+      },
+      "fa": {
+        "title": "حریم خصوصی",
+        "summary": "بدون ردیابی؛ پست‌ها، لایک‌ها و نسخه‌ی شما فقط در IndexedDB مرورگرتان می‌ماند. اگر وارد xomoni.com شوید، فقط وضعیت کارها (عنوان، وضعیت و شمارنده‌ها) آنجا فرستاده می‌شود، و شمارنده‌های روزانه هم فقط اگر خودتان روشنشان کنید. متن پست، لایک یا شناسه‌ی پست هرگز به سروری نمی‌رسد."
+      }
+    },
+    {
+      "id": "one-sign-in",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.3.0",
+      "issues": [228, 232],
+      "scenarios": null,
+      "en": {
+        "title": "One sign-in",
+        "summary": "sign in on xomoni.com and Xomoni in the same browser signs in by itself, with no code to type; sign out on either side and the other follows. An account stays optional."
+      },
+      "fa": {
+        "title": "یک ورود برای هر دو",
+        "summary": "در xomoni.com وارد شوید تا Xomoni در همان مرورگر خودش وارد شود، بدون تایپ هیچ کدی؛ از هر طرف خارج شوید، طرف دیگر هم خارج می‌شود. داشتن حساب همچنان اختیاری است."
+      }
+    },
+    {
+      "id": "two-step-verification",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [173, 148],
+      "scenarios": null,
+      "en": {
+        "title": "Two-step verification",
+        "summary": "turn it on in Account with an authenticator app, and every sign-in on xomoni.com asks for its 6-digit code before any private page opens. The website's server and the database both check it, so a password or a copied session alone reads and changes nothing. Changing your email or password, or resetting it by email, asks for a code too, and every app added or removed is emailed to you."
+      },
+      "fa": {
+        "title": "تأیید دومرحله‌ای",
+        "summary": "در بخش حساب با یک اپ احراز هویت روشنش کنید؛ از آن به بعد هر ورود به xomoni.com پیش از باز شدن هر صفحه‌ی خصوصی، کد ۶ رقمی اپ را می‌خواهد. سرور وب‌سایت و پایگاه داده هر دو آن را بررسی می‌کنند، پس رمز عبور یا نشستِ کپی‌شده به‌تنهایی چیزی را نمی‌خواند و تغییر نمی‌دهد. تغییر ایمیل یا رمز، یا بازنشانی رمز با ایمیل هم کد می‌خواهد، و هر اپی که اضافه یا حذف شود به ایمیل شما خبر داده می‌شود."
+      }
+    },
+    {
+      "id": "live-job-status",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.2.0",
+      "issues": [39, 40],
+      "scenarios": null,
+      "en": {
+        "title": "Your jobs, live on xomoni.com",
+        "summary": "follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent."
+      },
+      "fa": {
+        "title": "کارهای شما، زنده در xomoni.com",
+        "summary": "پیشرفت هر کار را از هر دستگاهی روی داشبورد xomoni.com دنبال کنید. فقط وضعیت کار فرستاده می‌شود."
+      }
+    },
+    {
+      "id": "website-actions",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.3.0",
+      "issues": [251],
+      "scenarios": null,
+      "en": {
+        "title": "Pause and cancel from xomoni.com",
+        "summary": "job cards on xomoni.com pause or cancel a job of the same browser at once, and open Xomoni's pages. *Resume* asks you in Xomoni first: the website never starts or resumes work on X."
+      },
+      "fa": {
+        "title": "توقف و لغو از xomoni.com",
+        "summary": "کارت هر کار در xomoni.com می‌تواند کار همان مرورگر را فوراً متوقف یا لغو کند و صفحه‌های Xomoni را باز کند. *Resume* اول در خود Xomoni از شما می‌پرسد: سایت هیچ‌وقت کاری را روی X شروع یا از سر نمی‌گیرد."
+      }
+    },
+    {
+      "id": "website-cleanup-plan",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.4.0",
+      "issues": [235],
+      "scenarios": null,
+      "en": {
+        "title": "Plan a cleanup on xomoni.com",
+        "summary": "the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there."
+      },
+      "fa": {
+        "title": "برنامه‌ریزی پاک‌سازی در xomoni.com",
+        "summary": "همان سه سؤال Xomoni، همراه با تعداد مواردی که برنامه شامل می‌شود و تعداد روزهایی که طول می‌کشد. *Review and start in Xomoni* صفحه‌ی Cleanup را در Xomoni با همین برنامه باز می‌کند، و تا آنجا تأیید نکنید هیچ چیز شروع نمی‌شود."
+      }
+    },
+    {
+      "id": "website-library",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.4.0",
+      "issues": [233],
+      "scenarios": null,
+      "en": {
+        "title": "Library, Watch and account health on xomoni.com",
+        "summary": "your posts, replies, reposts and likes with a search, each Watch search, and each X account's health and pace, read from Xomoni in the same browser and kept only while the page is open."
+      },
+      "fa": {
+        "title": "Library، Watch و سلامت حساب در xomoni.com",
+        "summary": "پست‌ها، ریپلای‌ها، ریپوست‌ها و لایک‌هایتان همراه با جستجو، هر جستجوی Watch، و سلامت و سرعت هر حساب X؛ همه از Xomoni در همان مرورگر خوانده می‌شوند و فقط تا وقتی صفحه باز است نگه داشته می‌شوند."
+      }
+    },
+    {
+      "id": "website-settings",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.4.0",
+      "issues": [234],
+      "scenarios": null,
+      "en": {
+        "title": "Settings from xomoni.com",
+        "summary": "change Xomoni's active hours, the failures in a row before a pause, notifications and Watch searches, or set pacing back to Careful. Xomoni applies its own rules, so nothing goes faster than Careful."
+      },
+      "fa": {
+        "title": "تنظیمات از xomoni.com",
+        "summary": "ساعات فعال Xomoni، تعداد شکست پشت‌سرهم پیش از توقف، اعلان‌ها و جستجوهای Watch را عوض کنید، یا سرعت را به Careful برگردانید. Xomoni قوانین خودش را اعمال می‌کند، پس هیچ چیز سریع‌تر از Careful نمی‌شود."
+      }
+    },
+    {
+      "id": "comments",
+      "area": "both",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [256],
+      "scenarios": null,
+      "en": {
+        "title": "Comments on xomoni.com",
+        "summary": "find your replies by date, likes, who you replied to and words, see who you reply to most, and send the ones you pick to Xomoni's Cleanup to review. *Replies to you* counts the replies you get each day; Xomoni keeps them on your computer only, for 90 days."
+      },
+      "fa": {
+        "title": "کامنت‌ها در xomoni.com",
+        "summary": "ریپلای‌هایتان را بر اساس تاریخ، لایک، کسی که به او جواب داده‌اید و کلمات پیدا کنید، ببینید بیشتر به چه کسی جواب می‌دهید، و موارد انتخابی را برای بررسی به صفحه‌ی Cleanup در Xomoni بفرستید. بخش *Replies to you* تعداد ریپلای‌هایی را که هر روز گرفته‌اید نشان می‌دهد؛ Xomoni آن‌ها را فقط روی کامپیوتر شما و تا ۹۰ روز نگه می‌دارد."
+      }
+    },
+    {
+      "id": "numbers-on-website",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.3.0",
+      "issues": [250],
+      "scenarios": null,
+      "en": {
+        "title": "Show my numbers on xomoni.com",
+        "summary": "a switch, off until you turn it on, that sends each day's counts (whole numbers only, no text or ids) for the last 400 days. Turning it off deletes every day already sent."
+      },
+      "fa": {
+        "title": "نمایش آمار در xomoni.com",
+        "summary": "کلیدی که تا خودتان روشنش نکنید خاموش است و شمارنده‌های هر روز را (فقط عدد، بدون متن یا شناسه) برای ۴۰۰ روز اخیر می‌فرستد. با خاموش کردنش همه‌ی روزهایی که فرستاده شده پاک می‌شوند."
+      }
+    },
+    {
+      "id": "update-notice",
+      "area": "both",
+      "status": "shipped",
+      "since": "0.2.0",
+      "issues": [151],
+      "scenarios": null,
+      "en": {
+        "title": "Hear about new versions",
+        "summary": "a browser connected to xomoni.com says when a newer Xomoni is out, and whether it fixes a security problem."
+      },
+      "fa": {
+        "title": "خبر نسخه‌های تازه",
+        "summary": "مرورگری که به xomoni.com وصل است خبر می‌دهد که نسخه‌ی تازه‌ای از Xomoni آمده و آیا مشکل امنیتی‌ای را رفع می‌کند."
+      }
+    },
+    {
+      "id": "store-install",
+      "area": "both",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [302, 304],
+      "scenarios": null,
+      "en": {
+        "title": "Install from the Chrome Web Store and Edge Add-ons",
+        "summary": "once a store lists Xomoni, xomoni.com/install shows one button for your browser, a zip install shows the steps to move to the store's Xomoni, and xomoni.com finds Xomoni by the stores' fixed ids."
+      },
+      "fa": {
+        "title": "نصب از Chrome Web Store و Edge Add-ons",
+        "summary": "وقتی Xomoni در فروشگاه‌ها منتشر شود، صفحه‌ی xomoni.com/install برای مرورگر شما یک دکمه نشان می‌دهد، نسخه‌ی zip قدم‌های رفتن به نسخه‌ی فروشگاه را نشان می‌دهد، و xomoni.com افزونه را با شناسه‌ی ثابت فروشگاه‌ها پیدا می‌کند."
+      }
+    },
+    {
+      "id": "welcome",
+      "area": "both",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [244],
+      "scenarios": null,
+      "en": {
+        "title": "A checklist that ticks itself",
+        "summary": "Xomoni opens xomoni.com/welcome when it is installed, and three steps tick from what the page sees: Xomoni installed, signed in to xomoni.com, and Xomoni signed in with you. Signing up from a page that asked you to brings you back to it."
+      },
+      "fa": {
+        "title": "فهرستی که خودش تیک می‌خورد",
+        "summary": "Xomoni بعد از نصب صفحه‌ی xomoni.com/welcome را باز می‌کند و سه قدم از روی آنچه صفحه می‌بیند تیک می‌خورند: نصب Xomoni، ورود به xomoni.com، و ورود Xomoni با حساب شما. اگر از صفحه‌ای ثبت‌نام کنید که از شما خواسته بود، به همان صفحه برمی‌گردید."
+      }
+    },
+    {
+      "id": "website-dashboard",
+      "area": "website",
+      "status": "shipped",
+      "since": "0.3.0",
+      "issues": [245, 248],
+      "scenarios": null,
+      "en": {
+        "title": "The dashboard on xomoni.com",
+        "summary": "Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings, each at its own address, with an account and period picker. A sidebar on a computer, a bottom bar on a phone."
+      },
+      "fa": {
+        "title": "داشبورد در xomoni.com",
+        "summary": "بخش‌های Overview، Audience، Content، Engagement، Reports، Library، Comments، Cleanup، Watch، Activity، Account health، Browsers و Settings، هر کدام با نشانی خودش و با انتخاب حساب و بازه‌ی زمانی. روی کامپیوتر نوار کناری دارد و روی گوشی نوار پایین."
+      }
+    },
+    {
+      "id": "website-analytics",
+      "area": "website",
+      "status": "shipped",
+      "since": "0.4.0",
+      "issues": [252, 253, 254, 255],
+      "scenarios": null,
+      "en": {
+        "title": "Overview, Audience, Content and Engagement",
+        "summary": "your followers, what you published and what it received, each against the period before, in charts that answer on hover and by keyboard, with a table view. What was received is marked as an estimate."
+      },
+      "fa": {
+        "title": "Overview، Audience، Content و Engagement",
+        "summary": "دنبال‌کننده‌ها، آنچه منتشر کرده‌اید و واکنش‌هایی که گرفته، هر کدام در مقایسه با دوره‌ی قبل، در نمودارهایی که با ماوس و صفحه‌کلید جواب می‌دهند و نمای جدولی دارند. واکنش‌ها به‌عنوان تخمین علامت خورده‌اند."
+      }
+    },
+    {
+      "id": "reports",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [257],
+      "scenarios": null,
+      "en": {
+        "title": "Reports and a weekly email",
+        "summary": "weekly, monthly and the year in review, what Xomoni removed, and a report of your own, as CSV or PDF. If you ask for it, an email every Monday compares last week's numbers with the week before; one link stops it."
+      },
+      "fa": {
+        "title": "گزارش‌ها و ایمیل هفتگی",
+        "summary": "گزارش هفتگی، ماهانه و مرور سال، آنچه Xomoni حذف کرده، و گزارش دلخواه خودتان، به‌صورت CSV یا PDF. اگر بخواهید، هر دوشنبه ایمیلی آمار هفته‌ی گذشته را با هفته‌ی قبلش مقایسه می‌کند؛ با یک لینک هم قطع می‌شود."
+      }
+    },
+    {
+      "id": "install-guide",
+      "area": "website",
+      "status": "shipped",
+      "since": "0.2.1",
+      "issues": [44, 299, 306],
+      "scenarios": null,
+      "en": {
+        "title": "An install guide that follows you",
+        "summary": "xomoni.com/install gives the steps for your browser and computer, one at a time, with short illustrations, ticks as soon as Xomoni is installed, and answers what goes wrong."
+      },
+      "fa": {
+        "title": "راهنمای نصبی که همراهتان می‌آید",
+        "summary": "صفحه‌ی xomoni.com/install قدم‌ها را برای مرورگر و سیستم‌عامل شما، یکی‌یکی و با تصویرهای کوتاه، نشان می‌دهد، به محض نصب Xomoni تیک می‌خورد و به مشکلات رایج نصب جواب می‌دهد."
+      }
+    },
+    {
+      "id": "send-to-computer",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [243],
+      "scenarios": null,
+      "en": {
+        "title": "Send to my computer",
+        "summary": "Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers."
+      },
+      "fa": {
+        "title": "فرستادن به کامپیوتر",
+        "summary": "Xomoni روی کامپیوتر کار می‌کند، پس xomoni.com روی گوشی پیشنهاد می‌کند لینک نصب را به اشتراک بگذارید، کپی کنید یا برای خودتان ایمیل کنید. چیزی به لینک اضافه یا به سرورهای Xomoni فرستاده نمی‌شود."
+      }
+    },
+    {
+      "id": "phone-menu",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [242],
+      "scenarios": null,
+      "en": {
+        "title": "xomoni.com on a phone",
+        "summary": "a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page."
+      },
+      "fa": {
+        "title": "xomoni.com روی گوشی",
+        "summary": "منویی با *How it works*، *Safety*، *Privacy*، *Install* و *GitHub* که با صفحه‌کلید هم کار می‌کند، و یک پانویس کامل در همه‌ی صفحه‌ها."
+      }
+    }
+  ],
+  "notFeatures": [
+    {
+      "issue": 150,
+      "reason": "security.txt, SECURITY.md and CodeQL scanning: how the project receives and finds vulnerabilities, not something people use in Xomoni or on xomoni.com."
+    }
+  ]
+}

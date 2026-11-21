@@ -33,6 +33,7 @@ const PAGE: PageInfo = {
   locked: false,
   challenge: false,
   restriction: null,
+  rendered: true,
   obstructed: false,
   asksIdentity: false,
   lang: 'en',

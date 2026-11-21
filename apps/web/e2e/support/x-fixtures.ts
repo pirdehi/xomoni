@@ -170,6 +170,52 @@ export async function servePage(context: BrowserContext, pathname: string, file:
   );
 }
 
+/**
+ * Answers x.com's page at `pathname` with the fixture page `file` from now on, on which X draws `notice` at the top of
+ * the primary column together with the page's posts, as a notice that comes with X's answer would be (#375). The rest of
+ * the page is the fixture's own.
+ */
+export async function servePageWithNotice(
+  context: BrowserContext,
+  pathname: string,
+  file: string,
+  notice: string,
+): Promise<void> {
+  const drawNotice = `<script>
+      new MutationObserver((_, observer) => {
+        if (!document.querySelector('article[data-testid="tweet"]')) return;
+        observer.disconnect();
+        const alert = document.createElement('div');
+        alert.setAttribute('role', 'alert');
+        alert.textContent = ${JSON.stringify(notice)};
+        document.querySelector('[data-testid="primaryColumn"]').prepend(alert);
+      }).observe(document.body, { childList: true, subtree: true });
+    </script>
+  </body>`;
+  const body = readFileSync(path.join(X_FIXTURES, file), 'utf8').replace('</body>', drawNotice);
+  await context.route(
+    (url) => url.host === 'x.com' && url.pathname === pathname,
+    (route) => route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body }),
+  );
+}
+
+/**
+ * Makes X answer GraphQL operation `op` `ms` milliseconds late from now on (#375), with its usual answer from the history
+ * `context` is served with, as X does on a slow day: its page then shows the posts, and whatever comes with them, a
+ * moment after the page itself has loaded.
+ */
+export async function answerLate(context: BrowserContext, op: string, ms: number): Promise<void> {
+  const file = answerFile(op, served.get(context) ?? 'short');
+  if (!file) throw new Error(`The fixtures have no answer for ${op}`);
+  await context.route(
+    (url) => url.host === 'x.com' && GRAPHQL.exec(url.pathname)?.[1] === op,
+    async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      await route.fulfill({ status: 200, contentType: 'application/json', headers: xRateHeaders(), path: file });
+    },
+  );
+}
+
 /** X's answers to a request it refuses: its rate limit reached (429, X's error 88), or X over capacity (503, error 130). */
 const REFUSED = {
   429: '{"errors":[{"code":88,"message":"Rate limit exceeded."}]}',

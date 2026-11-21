@@ -1,8 +1,10 @@
 <!doctype html>
 <!--
   x.com/home for an account X has suspended, as Xomoni's browser tests serve it (#345, ADR-0040): the same page as
-  home.html, with a notice at the top of the primary column, where X puts it (PLAYBOOK C4). Synthetic, and worded after
-  X's notices only where Xomoni recognizes them (apps/extension/src/shared/attention.ts); never a real account's.
+  home.html, with a notice at the top of the primary column, where X puts it (PLAYBOOK C4). As X's web app does, the page
+  arrives as a shell, and its script draws the primary column, notice included, a moment later (#375). Synthetic, and
+  worded after X's notices only where Xomoni recognizes them (apps/extension/src/shared/attention.ts); never a real
+  account's.
 -->
 <html lang="en" dir="ltr">
   <head>
@@ -17,17 +19,24 @@
           <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
         </nav>
       </header>
-      <main role="main">
-        <div data-testid="primaryColumn">
-          <div role="alert">
-            <h2>Your account is suspended</h2>
-            <p>After careful review, we determined your account broke the X Rules.</p>
-          </div>
-          <h1>Home</h1>
-          <section aria-label="Timeline: Your Home Timeline"></section>
-        </div>
-      </main>
+      <main role="main"></main>
     </div>
     <div id="layers"></div>
+    <template id="primary-column">
+      <div data-testid="primaryColumn">
+        <div role="alert">
+          <h2>Your account is suspended</h2>
+          <p>After careful review, we determined your account broke the X Rules.</p>
+        </div>
+        <h1>Home</h1>
+        <section aria-label="Timeline: Your Home Timeline"></section>
+      </div>
+    </template>
+    <script>
+      // X's web app draws the page once its scripts have loaded, well after the page itself (#375).
+      setTimeout(() => {
+        document.querySelector('main').append(document.getElementById('primary-column').content.cloneNode(true));
+      }, 1500);
+    </script>
   </body>
 </html>

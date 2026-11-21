@@ -26,6 +26,10 @@ const AWAY_SECONDS = 120;
 const RAISE_EVERY_MS = 5 * 60_000;
 /** The page must look right this long before continuing (X redirects mid-login). */
 const SETTLED_MS = 5000;
+/** How long X may take to render the X window's page before a job reads its notices; then it waits it out (#375). */
+const RENDER_TIMEOUT_MS = 30_000;
+/** How often to look again while X renders the page. */
+const RENDER_CHECK_MS = 500;
 /** The same check this many times with no progress in between means waiting won't help. */
 const MAX_REPEAT_NEEDS = 3;
 /** Connection or X trouble this long with no progress pauses the job. */
@@ -259,18 +263,39 @@ export class JobContext {
     return addLog({ accountId: this.job.accountId, jobId: this.job.id, level, action, targetId, outcome, message });
   }
 
-  /** Opens the worker if needed and verifies it is signed in to the right account. */
+  /**
+   * Opens the worker if needed and verifies it is signed in to the right account. Reads the page only once X has
+   * rendered it, so a notice X shows there (C3, C4) stops the job before anything else reaches X (#375).
+   */
   async connect(): Promise<PageInfo> {
     this.status('Connecting to the X window…');
     if ((await this.xTab.current()) == null) await this.xTab.open();
     await this.xTab.keepLoaded();
     const account = await db.accounts.get(this.job.accountId);
     this.handle ||= account?.handle ?? '';
-    const info = await this.clearAndAssert(await this.xTab.waitReady(this.signal));
+    const info = await this.clearAndAssert(await this.rendered(await this.xTab.waitReady(this.signal)));
     this.handle = info.handle || this.handle;
     // The handle goes into post URLs and decides which posts are the person's own (#144).
     if (!isHandle(this.handle))
       throw new Stop('blocked', 'Could not determine your @handle from X. Open your profile once in the X window.');
+    return info;
+  }
+
+  /**
+   * The X window's page once X has rendered it far enough to read (`PageInfo.rendered`), starting from `info`. The
+   * content script answers from the start of a page load, while X still shows its empty shell, where no notice can be
+   * read yet: judged then, a page with X's notice of a limited account would pass (#375). A page that needs the person,
+   * or already shows a notice, is returned at once: neither lets the job act. Throws `NotReady` when X hasn't rendered
+   * the page in `RENDER_TIMEOUT_MS`, so the runner waits it out without acting.
+   */
+  private async rendered(info: PageInfo): Promise<PageInfo> {
+    const deadline = Date.now() + RENDER_TIMEOUT_MS;
+    while (!info.rendered && !info.restriction && !pageNeed(info, this.job.accountId)) {
+      if (Date.now() >= deadline) throw new NotReady('X’s page did not finish loading in the X window');
+      await sleep(RENDER_CHECK_MS, this.signal);
+      // A page that is reloading doesn't answer; look again.
+      info = (await this.xTab.ping()) ?? info;
+    }
     return info;
   }
 
@@ -446,9 +471,10 @@ export class JobContext {
     try {
       const content = await this.xTab.send({ cmd: 'waitContent', timeoutMs: 20_000 });
       this.limiter.seen(content.count);
+      // Read again now that X has rendered the page: a notice X shows with its content stops the job before it scrolls
+      // or acts here (#375), and no posts can mean X moved the page to its login or a check…
+      await this.verifyPage();
       if (content.kind !== 'tweets') {
-        // No posts can mean X moved the page to its login or a check…
-        await this.verifyPage();
         // …or that X or the connection failed, which says nothing about the posts.
         const kind = interruptionOf(content.http, online());
         if (kind === 'outage') throw new Interrupted(kind, `X answered HTTP ${content.http} for this page`);

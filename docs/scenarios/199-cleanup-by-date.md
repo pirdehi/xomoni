@@ -132,7 +132,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 ## S199-13 · error
 
-- Given X shows the notice "Your account is temporarily limited" at the top of its Home page
+- Given X shows the notice "Your account is temporarily limited" at the top of its Home page, drawn a moment after the
+  page loads, as X's web app draws its pages (#375)
 - When the person starts a cleanup of their posts
 - Then the job stops in the X window before loading anything: Stopped for safety, X shows a restriction on this account, Xomoni stopped at the first refusal and won’t retry
 - And nothing is removed, and Resume waits about 12 hours, with only Resume anyway… to go past it
@@ -291,3 +292,13 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When Xomoni checks X's page before acting, opens the post's … menu, chooses Delete and confirms X's Delete post? sheet
 - Then the post is counted removed only once X's answer to DeleteTweet confirms it, and the job ends Completed with every matching post removed
 - Manual: the first delete comes 320 to 480 seconds after the job's first page load on a new account (Careful's 80–120 s, at a quarter on its first day, ADR-0012), and each later one at least 80 seconds after the one before. The job's timers run in a dedicated worker that Playwright's clock doesn't reach, so a browser test would take that long per delete: too long for the merge gate. S199-07 proves the wait, the content script's tests prove the clicks on X's menu and sheet, on the person's own posts only (apps/extension/tests/canary.test.ts), and the engine's that a delete names the account and trusts the post's id (own-posts.test.ts), and the pilot checks it on the real X.
+
+## S199-33 · error
+
+- Given a cleanup of posts started, with active hours off, while X's Home shows no notice
+- When the job loads the person's profile, and X shows "Your account is temporarily limited" at the top of the page
+  with its posts
+- Then the job stops there at once, before it waits for its first delete: Stopped for safety, X shows a restriction
+  on this account (#375)
+- And nothing is removed, and X's page was never checked for a delete
+- Test: apps/web/e2e/extension/cleanup-by-date.spec.ts

@@ -163,6 +163,7 @@ describe('the check after each release: its rules (#343)', () => {
       checks: [
         { what: 'The release has its files', ok: true, detail: 'Downloaded.' },
         { what: 'a | b', ok: false, detail: 'line one\nline two | @pirdehi `code` <b>x</b>' },
+        { what: 'a \\| b', ok: false, detail: 'C:\\path\\| end' },
       ],
     };
     const body = reportBody({ tag: TAG, result: 'failure', report, problem: null, run: RUN });
@@ -170,6 +171,10 @@ describe('the check after each release: its rules (#343)', () => {
     assert.ok(body.includes('[the release](https://github.com/pirdehi/xomoni/releases/tag/v0.5.0)'));
     assert.ok(body.includes('| ✓ | The release has its files | `Downloaded.` |'), body);
     assert.ok(body.includes("| ✗ | a \\| b | `line one line two \\| @pirdehi 'code' <b>x</b>` |"), body);
+    // A backslash in the text can't escape the pipe that follows it: both are escaped.
+    assert.ok(body.includes('| ✗ | a \\\\\\| b | `C:\\\\path\\\\\\| end` |'), body);
+    for (const row of body.split('\n').filter((line) => line.startsWith('| ✗')))
+      assert.equal(row.split(/(?<!\\)(?:\\\\)*\|/).length, 5, `four cells: ${row}`);
     assert.ok(body.includes(`Run: ${RUN.url}`));
     assert.ok(body.includes('docs/RELEASING.md#when-the-check-after-the-release-fails'));
     const ok = reportBody({ tag: TAG, result: 'success', report: { tag: TAG, checks: [report.checks[0]] }, run: RUN });

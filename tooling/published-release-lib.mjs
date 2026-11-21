@@ -122,10 +122,16 @@ function oneLine(text, max) {
 }
 
 /**
+ * `text` for a table cell: backslashes escaped first, then pipes, so that no `\` in the text can turn the pipe after it
+ * back into a column break.
+ */
+const cell = (text) => text.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+
+/**
  * `text` as a code span in a table cell. What a tool printed, such as an error from GitHub, could otherwise mention
  * someone or format the comment: inside a code span it is only text.
  */
-const code = (text) => `\`${oneLine(text, 300).replace(/`/g, "'").replace(/\|/g, '\\|')}\``;
+const code = (text) => `\`${cell(oneLine(text, 300).replace(/`/g, "'"))}\``;
 
 /** Whether the check passed: its job succeeded, its report is valid, and every check in it is ok. */
 export const passed = (result, report) => result === 'success' && report != null && report.checks.every((c) => c.ok);
@@ -147,9 +153,7 @@ export function reportBody({ tag, result, report, problem, run }) {
   if (report) {
     lines.push('| | Check | Detail |', '| --- | --- | --- |');
     for (const check of report.checks)
-      lines.push(
-        `| ${check.ok ? '✓' : '✗'} | ${oneLine(check.what, MAX_WHAT).replace(/\|/g, '\\|')} | ${code(check.detail)} |`,
-      );
+      lines.push(`| ${check.ok ? '✓' : '✗'} | ${cell(oneLine(check.what, MAX_WHAT))} | ${code(check.detail)} |`);
   } else {
     lines.push(`The check didn't finish (its job ended as \`${result || 'unknown'}\`): ${problem ?? 'no report'}`);
   }

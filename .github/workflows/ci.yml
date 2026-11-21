@@ -40,6 +40,11 @@ jobs:
         run: npm run build -w @xomoni/extension
       - name: Release dry run (versions agree, the zip packages)
         run: node tooling/release.mjs check && node tooling/release.mjs package
+      - name: Store build dry run (no remote code, it packages beside the zips)
+        run: |
+          npm run build:store -w @xomoni/extension
+          node tooling/check-remote-code.mjs
+          node tooling/release.mjs package-store
       - name: Build the website
         run: npm run build -w @xomoni/web
 

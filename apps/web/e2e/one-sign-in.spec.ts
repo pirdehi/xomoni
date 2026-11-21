@@ -124,7 +124,8 @@ test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', (
     expect(actions(fake.received)).toEqual(['xomoni-sign-in', 'xomoni-sign-out']);
     expect(fake.state.connection).toBeNull();
     expect(fake.state.signedOutAt).not.toBeNull();
-    await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+    // The header's own link: the home page may link to signing in elsewhere too (#327).
+    await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
   });
 
   test('signing out in Xomoni signs xomoni.com out once its page is back in view', async ({ page }) => {

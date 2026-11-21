@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GITHUB_URL, INSTALL_URL } from '@/shared/config/site';
+import { GITHUB_URL, INSTALL_PAGE_URL, INSTALL_URL } from '@/shared/config/site';
 import type * as StoreListingsConfig from '@/shared/config/store-listings';
 import type { StoreListings } from '@/shared/config/store-listings';
 import { PILLARS, PILLAR_TEXT, PLACES, STATUS_LABEL, isAvailable } from '../domain/footprint';
@@ -42,12 +42,14 @@ const CHROME_STORE = 'https://chromewebstore.google.com/detail/xomoni/abcdefghij
 const EDGE_STORE = 'https://microsoftedge.microsoft.com/addons/detail/xomoni/abcdefghijklmnopabcdefghijklmnop';
 const EDGE_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0';
+const IPHONE =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
 beforeEach(() => {
   configured.listings = { chrome: null, edge: null };
 });
 afterEach(() => {
-  Reflect.deleteProperty(window.navigator, 'userAgent');
+  for (const name of ['userAgent', 'share']) Reflect.deleteProperty(window.navigator, name);
 });
 
 // A visitor: the header's account corner reads no session.
@@ -101,9 +103,27 @@ describe('HomePage', () => {
     expect(image).toHaveAttribute('height', '1000');
     // Eager, so the hero image isn't held back; the <picture> means only the matching file is fetched.
     expect(image).toHaveAttribute('loading', 'eager');
-    const dark = container.querySelector('picture > source');
+    const dark = container.querySelector('picture > source:not([media*="max-width"])');
     expect(dark).toHaveAttribute('media', '(prefers-color-scheme: dark)');
     expect(dark?.getAttribute('srcset')).toContain('overview-dark.png');
+  });
+
+  it('shows a narrower part of the dashboard on a phone, where the whole one can’t be read, in both schemes (#243)', () => {
+    const { container } = render(<HomePage />);
+
+    const sources = [...container.querySelectorAll('picture > source')];
+    // The first source that matches wins, so the phone's come before the computer's dark one.
+    expect(sources.map((source) => source.getAttribute('media'))).toEqual([
+      '(max-width: 639px) and (prefers-color-scheme: dark)',
+      '(max-width: 639px)',
+      '(prefers-color-scheme: dark)',
+    ]);
+    expect(sources[0]?.getAttribute('srcset')).toContain('overview-narrow-dark.png');
+    expect(sources[1]?.getAttribute('srcset')).toContain('overview-narrow.png');
+    for (const narrow of sources.slice(0, 2)) {
+      expect(narrow).toHaveAttribute('width', '920');
+      expect(narrow).toHaveAttribute('height', '1160');
+    }
   });
 
   it('shows no platform’s logo: the dashboard is the page’s only picture, and no X glyph stands in for one', () => {
@@ -352,6 +372,53 @@ describe('HomePage', () => {
     });
     expect(errors).toEqual([]);
     expect(within(container).getAllByRole('link', { name: 'Get it for Edge' })).toHaveLength(2);
+    container.remove();
+  });
+
+  it('offers nothing to send on a computer', () => {
+    render(<HomePage />);
+    expect(screen.queryByRole('button', { name: 'Send to my computer' })).not.toBeInTheDocument();
+  });
+
+  it('on a phone, offers to send the install guide to the computer instead of installing, in the hero and at the end', async () => {
+    Object.defineProperty(window.navigator, 'userAgent', { value: IPHONE, configurable: true });
+    const share = vi.fn(() => Promise.resolve());
+    Object.defineProperty(window.navigator, 'share', { value: share, configurable: true });
+    render(<HomePage />);
+
+    const main = screen.getByRole('main');
+    expect(within(main).queryByRole('link', { name: 'Get the extension' })).not.toBeInTheDocument();
+    const [hero, closing] = within(main).getAllByRole('button', { name: 'Send to my computer' });
+    expect(within(main).getByRole('link', { name: 'Sign in to your dashboard' })).toHaveAttribute('href', '/login');
+    expect(within(region('Start with your archive.')).getByRole('button', { name: 'Send to my computer' })).toBe(
+      closing,
+    );
+
+    await userEvent.click(hero!);
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({ url: INSTALL_PAGE_URL }));
+  });
+
+  it('on a phone, sends the install guide even once a store lists Xomoni: the server’s store button gives way, with no mismatch', async () => {
+    configured.listings = { chrome: CHROME_STORE, edge: EDGE_STORE };
+    Object.defineProperty(window.navigator, 'userAgent', { value: IPHONE, configurable: true });
+    const html = renderToString(<HomePage />);
+    // The server can't tell a phone: it renders the computer's button, the Chrome Web Store's while the browser is
+    // unknown.
+    expect(html).toContain(CHROME_STORE);
+    expect(html).not.toContain('Send to my computer');
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.append(container);
+    const errors: unknown[] = [];
+    await act(async () => {
+      hydrateRoot(container, <HomePage />, { onRecoverableError: (error) => errors.push(error) });
+    });
+    expect(errors).toEqual([]);
+    const main = within(container).getByRole('main');
+    expect(within(main).getAllByRole('button', { name: 'Send to my computer' })).toHaveLength(2);
+    const install = within(main).queryByRole('link', { name: /^(Add to Chrome|Get it for Edge|Get the extension)$/ });
+    expect(install).not.toBeInTheDocument();
     container.remove();
   });
 

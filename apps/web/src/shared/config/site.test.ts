@@ -53,6 +53,18 @@ describe('SITE_URL', () => {
   });
 });
 
+describe('INSTALL_PAGE_URL (#243)', () => {
+  it('is the install guide on this deployment, with nothing added: no query, no fragment, no tracking', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://xomoni.com/');
+    const { INSTALL_PAGE_URL } = await load();
+
+    expect(INSTALL_PAGE_URL).toBe('https://xomoni.com/install');
+    const url = new URL(INSTALL_PAGE_URL);
+    expect(url.search).toBe('');
+    expect(url.hash).toBe('');
+  });
+});
+
 describe('TURNSTILE_SITE_KEY', () => {
   it('uses the configured site key', async () => {
     vi.stubEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY', '0x4AAAAAAA-live');

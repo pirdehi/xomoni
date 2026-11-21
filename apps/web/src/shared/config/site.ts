@@ -27,6 +27,12 @@ export const CONTACT_EMAIL = 'privacy@xomoni.com';
  */
 export const SITE_URL = resolveSiteUrl();
 
+/**
+ * The install guide's full address on this deployment (`https://xomoni.com/install` on xomoni.com), which a phone sends
+ * to a computer (*Send to my computer*, #243): nothing is added to it, so nothing tracks who opens it.
+ */
+export const INSTALL_PAGE_URL = `${SITE_URL}${INSTALL_URL}`;
+
 function resolveSiteUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL;
   if (explicit) return explicit.replace(/\/+$/, '');

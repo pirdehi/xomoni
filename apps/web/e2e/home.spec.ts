@@ -86,6 +86,15 @@ test.describe('the home page: a digital footprint manager (#313)', () => {
     });
   });
 
+  test('shows the whole dashboard on a computer', async ({ page }) => {
+    await page.goto('/');
+    const shot = page.getByRole('img', { name: /^Xomoni’s Home for an X account/ });
+    await expect(shot).toBeVisible();
+    await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.currentSrc)).toContain('overview.png');
+    const box = (await shot.boundingBox())!;
+    expect(box.height / box.width).toBeCloseTo(1000 / 1440, 1);
+  });
+
   test.describe('on a phone, in dark mode', () => {
     test.use({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
 
@@ -97,9 +106,14 @@ test.describe('the home page: a digital footprint manager (#313)', () => {
       await expect(page.getByRole('list', { name: 'Places' }).getByRole('listitem')).toHaveCount(3);
       // Nothing is wider than the phone.
       expect(await overflow(page)).toBeLessThanOrEqual(0);
+      // The narrow part of the dashboard (#243), which reads at a phone's width, in its own proportions.
       const shot = page.getByRole('img', { name: /^Xomoni’s Home for an X account/ });
       await expect(shot).toBeVisible();
-      await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.currentSrc)).toContain('overview-dark');
+      await expect
+        .poll(() => shot.evaluate((img: HTMLImageElement) => img.currentSrc))
+        .toContain('overview-narrow-dark');
+      const box = (await shot.boundingBox())!;
+      expect(box.height / box.width).toBeCloseTo(1160 / 920, 1);
 
       await install.click();
       await expect(page).toHaveURL(/\/install$/);

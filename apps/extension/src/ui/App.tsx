@@ -45,7 +45,7 @@ import { workerTab } from '../engine/worker-tab';
 import { type Need, NEED_TITLE, needMessage, pageNeed } from '../shared/attention';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Button, type Tone } from './components/ui';
+import { Button, type Tone, useModalHost } from './components/ui';
 import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
@@ -276,10 +276,12 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
  * by itself once the person asked for it (#186).
  * Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, and while signed out of Xomoni (#226),
  * only the onboarding view or the signed-out page is shown, whatever the hash says. The sign-out dialog lives here, so
- * it outlives the account menu it was opened from.
+ * it outlives the account menu it was opened from. The shell holds Fluent's focus manager (`useModalHost`), so a page
+ * behind a closing dialog never stays hidden from assistive technology (#315).
  */
 export function App() {
   const styles = useStyles();
+  useModalHost();
   const [page, navigate] = useHashRoute();
   const account = useActiveAccount();
   const worker = useWorkerStatus();

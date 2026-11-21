@@ -18,10 +18,13 @@ import {
   makeStyles,
   mergeClasses,
   tokens,
+  useFluent,
   useModalAttributes,
+  useThemeClassName,
 } from '@fluentui/react-components';
 import { ChevronDown16Regular, ChevronUp16Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const useStyles = makeStyles({
   // A light edge and a soft shadow on the page's grey, with room inside (#207).
@@ -497,6 +500,28 @@ export function Segmented<T extends string>({
 export function useModalHost(): void {
   // Only its hold on tabster is wanted: the attributes it returns belong on a modal's own element.
   useModalAttributes();
+}
+
+/**
+ * Renders `children` in an element of its own at the end of `<body>`, outside the part of the page an open modal hides
+ * from assistive technology (#352). A modal (`Modal`, a Fluent `Dialog`) hides every other child of `<body>` with
+ * `aria-hidden` a quarter second after it opens, the dashboard's root included, so a live region there isn't read out
+ * until the modal has closed. This element carries `data-tabster-never-hide`, the mark Fluent's focus manager leaves
+ * alone: Fluent's `useDangerousNeverHidden_unstable` gives it, and Fluent's own screen-reader announcer uses it the same
+ * way, but `@fluentui/react-components` doesn't export the hook. The mark works only on a child of `<body>`, hence the
+ * portal. The content takes the app's Fluent theme and direction, as a Fluent portal's does. Use it only for what must
+ * reach the person over a modal, such as toasts: the rest of the page belongs behind the modal.
+ */
+export function OutsideModals({ children }: { children: ReactNode }) {
+  const { targetDocument, dir } = useFluent();
+  const themeClassName = useThemeClassName();
+  if (!targetDocument) return null;
+  return createPortal(
+    <div data-tabster-never-hide="" className={themeClassName} dir={dir}>
+      {children}
+    </div>,
+    targetDocument.body,
+  );
 }
 
 /**

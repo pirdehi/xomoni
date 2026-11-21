@@ -28,7 +28,6 @@ import {
   Play16Regular,
   PlugConnected20Regular,
   Prohibited16Regular,
-  Send20Regular,
 } from '@fluentui/react-icons';
 import type {
   CleanupPlan,
@@ -46,6 +45,7 @@ import { ButtonLink } from '@/shared/ui/links';
 import { type XomoniActionServices, createXomoniActionServices } from '../client/xomoni-actions';
 import { type XomoniPresence, answerMessage, isPhoneBrowser, jobActionsFor, xomoniPresence } from '../domain/presence';
 import { useExtensionLink } from './extension-session-sync';
+import { SendToComputerButton, SendToComputerStatus, useSendToComputer } from './send-to-computer';
 
 export type { XomoniPresence };
 
@@ -288,11 +288,12 @@ export function XomoniDialog({
   const s = useStyles();
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
-  const [sent, setSent] = useState<'copied' | 'shared' | 'failed' | null>(null);
+  // On a phone, this page goes to the computer as it is, so a cleanup plan in its address goes too (#235).
+  const sender = useSendToComputer(typeof window === 'undefined' ? '' : window.location.href);
 
   function close() {
     setChecked(false);
-    setSent(null);
+    sender.reset();
     onClose();
   }
 
@@ -301,26 +302,6 @@ export function XomoniDialog({
     await recheck();
     setChecking(false);
     setChecked(true);
-  }
-
-  async function sendToComputer() {
-    const url = window.location.href;
-    const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
-    if (typeof nav.share === 'function') {
-      try {
-        await nav.share({ title: 'Xomoni', text: 'Open Xomoni on my computer', url });
-        setSent('shared');
-      } catch {
-        // The person closed the share sheet: nothing to say.
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setSent('copied');
-    } catch {
-      setSent('failed');
-    }
   }
 
   let title: string;
@@ -386,22 +367,10 @@ export function XomoniDialog({
               Xomoni works in Chrome on a computer, where it acts on X for you. On this phone you can follow everything
               it does.
             </p>
-            {sent && (
-              <p className={s.note} role="status">
-                {sent === 'copied'
-                  ? 'Link copied. Open it on your computer.'
-                  : sent === 'shared'
-                    ? 'Sent. Open the link on your computer.'
-                    : 'Couldn’t copy the link. Open xomoni.com on your computer.'}
-              </p>
-            )}
+            {sender.result && <SendToComputerStatus sender={sender} className={s.note} />}
           </div>
         );
-        actions = (
-          <Button appearance="primary" icon={<Send20Regular />} onClick={() => void sendToComputer()}>
-            Send to my computer
-          </Button>
-        );
+        actions = <SendToComputerButton sender={sender} />;
         break;
       case 'signed-out':
       case 'other-account':

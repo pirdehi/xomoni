@@ -374,17 +374,29 @@ describe('CopyText (#299)', () => {
   });
 });
 
-describe('PhoneNotice (#299)', () => {
-  it('says Xomoni runs on a computer and gives the link to open there, with nothing to download', async () => {
+describe('PhoneNotice (#299, #243)', () => {
+  it('says Xomoni runs on a computer, shows the address and sends it there, with nothing to download', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(window.navigator, 'clipboard', { value: { writeText }, configurable: true });
     render(<PhoneNotice />);
 
     const notice = screen.getByRole('region', { name: 'Xomoni runs on a computer' });
     expect(notice).toHaveTextContent('Phones and tablets can’t run it.');
+    expect(notice).toHaveTextContent('Send this page to your computer, or open localhost:3000/install there.');
     expect(within(notice).queryByRole('link')).not.toBeInTheDocument();
-    fireEvent.click(within(notice).getByRole('button', { name: 'Copy http://localhost:3000/install' }));
-    expect(await within(notice).findByRole('status')).toHaveTextContent('Copied');
+    fireEvent.click(within(notice).getByRole('button', { name: 'Send to my computer' }));
+    expect(await within(notice).findByRole('status')).toHaveTextContent('Link copied.');
     expect(writeText).toHaveBeenCalledWith('http://localhost:3000/install');
+  });
+
+  it('opens the share sheet with the address where the phone has one', async () => {
+    const share = vi.fn(() => Promise.resolve());
+    Object.defineProperty(window.navigator, 'share', { value: share, configurable: true });
+    render(<PhoneNotice />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send to my computer' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Sent.');
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({ url: 'http://localhost:3000/install' }));
+    Reflect.deleteProperty(window.navigator, 'share');
   });
 });

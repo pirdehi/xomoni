@@ -6,6 +6,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Send to my computer, on a phone** (#243). Xomoni installs only on a computer, so on a phone the home page's *Get the extension* (or the store's button, once a store lists Xomoni) becomes *Send to my computer*, and /install offers it beside the note that Xomoni runs on a computer.
+  - It opens the phone's share sheet with xomoni.com/install; without one it copies the link; where neither works, it offers an email to yourself with the link in it.
+  - The link goes as it is: nothing is added to it, nothing is sent to Xomoni's servers, and nothing is counted or stored.
+  - Xomoni's dialog on a phone (#251) does the same with the page you are on, and now offers the email too.
+  - On a phone, the home page shows the top of Xomoni's Home, large enough to read, instead of the whole dashboard shrunk to the phone's width.
+  - On a computer, nothing changes: the buttons lead to /install, or to the store once a store lists Xomoni (#304).
 - **xomoni.com finds Xomoni by its fixed id** (#302). Once Xomoni is in the Chrome Web Store and Edge Add-ons, xomoni.com looks for it at the stores' ids. The install checklist, the one sign-in and every page that reads from Xomoni then work as soon as it is installed, without Xomoni opening xomoni.com first.
   - A Xomoni that opened xomoni.com itself is still asked first, so a zip install keeps working, even beside a store copy.
   - Nothing changes until the stores' ids are written; that is a one-line change ([ADR-0025](docs/adr/0025-one-sign-in-for-the-website-and-the-extension.md)).
@@ -21,7 +27,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 - **Ready for the stores: one button on xomoni.com/install** (#304, [ADR-0034](docs/adr/0034-distribution-through-the-browsers-stores.md)). Nothing changes until the Chrome Web Store or Edge Add-ons lists Xomoni; then:
   - /install shows one button for your browser: *Add to Chrome* in Chrome, Brave and other Chromium browsers, *Get it for Edge* in Edge (or the Chrome Web Store, saying Edge can install from it). No developer mode, and it updates itself. Firefox, Safari and phones are told they can't run Xomoni, as before.
   - The zip's download and the step-by-step guide stay, complete, under *Advanced: install from a zip* (xomoni.com/install#install-from-a-zip).
-  - The home page's *Get the extension* buttons become the same store button, and the line under the first names the store instead of saying it is coming.
+  - The home page's *Get the extension* buttons become the same store button on a computer (a phone gets *Send to my computer*, #243), and the line under the first names the store instead of saying it is coming.
   - *How do I move from the zip to the store?* joins the install questions (xomoni.com/install#move-to-store).
   - In Xomoni installed from the zip, Home shows the four steps to the store's Xomoni: *Export everything*, remove this copy, install from the store, import the file. Xomoni never removes anything itself, and your data moves only in the file you save. *Not now* hides it for good.
   - The store addresses are set in one place in each app, checked to be the store's own pages and kept equal by a test. Installs are counted only by the stores; nothing is tracked.

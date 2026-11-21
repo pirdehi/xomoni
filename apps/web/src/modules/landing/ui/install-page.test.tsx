@@ -89,6 +89,7 @@ describe('InstallPage (#44)', () => {
     expect(download).toHaveAttribute('data-appearance', 'primary');
     expect(screen.getByRole('link', { name: 'All versions and checksums' })).toHaveAttribute('href', RELEASES_URL);
     expect(screen.getByText(/with a SHA-256 checksum/)).toBeInTheDocument();
+    expect(screen.queryByText('Send to my computer')).not.toBeInTheDocument();
   });
 
   it('ends with the install questions, how to update among them, on the browser’s own extensions page (#306)', () => {
@@ -173,6 +174,7 @@ describe('InstallPage on a phone (#299)', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Install Xomoni' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Xomoni runs on a computer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send to my computer' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Download the latest version' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'All versions and checksums' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Install steps' })).not.toBeInTheDocument();

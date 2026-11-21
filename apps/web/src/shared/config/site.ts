@@ -38,6 +38,20 @@ function resolveSiteUrl(): string {
 }
 
 /**
+ * End-to-end tests only (#302): the id of the test extension Playwright loads with a fixed `key`
+ * (`e2e/fixtures/fixed-id-extension`), which the site then asks for Xomoni after the stores' ids. Taken only while the
+ * site runs on localhost, so no deployment of xomoni.com can be set to ask another extension; null otherwise.
+ */
+export const TEST_EXTENSION_ID = testExtensionId(process.env.NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID, SITE_URL);
+
+/** `TEST_EXTENSION_ID`'s rule: `raw` when it is set and `siteUrl` is on `localhost` or `127.0.0.1`, null otherwise. */
+export function testExtensionId(raw: string | undefined, siteUrl: string): string | null {
+  if (!raw) return null;
+  const { hostname } = new URL(siteUrl);
+  return hostname === 'localhost' || hostname === '127.0.0.1' ? raw : null;
+}
+
+/**
  * Cloudflare Turnstile site key for the sign-in, sign-up and password forms. Public by design.
  * Locally and in CI it is Cloudflare's always-pass test key, matching the test secret in supabase/config.toml.
  */

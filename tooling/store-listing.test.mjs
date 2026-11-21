@@ -20,13 +20,6 @@ function block(name) {
   return match[1].replace(/^```\w*\n/, '').replace(/\n```$/, '');
 }
 
-/** The items of a `- ` list block. */
-const items = (name) =>
-  block(name)
-    .split('\n')
-    .filter((line) => line.startsWith('- '))
-    .map((line) => line.slice(2).trim());
-
 /** The first cell of every row of the permissions table (§5). */
 function permissionRows() {
   const section = DOC.slice(DOC.indexOf('## 5. Permissions'), DOC.indexOf('## 6. '));
@@ -79,19 +72,25 @@ describe('the permissions table (#301)', () => {
 });
 
 describe('the listing text (#301)', () => {
-  it('proposes names within Chrome’s 75 characters, each starting with Xomoni', () => {
-    const names = items('name-drafts');
-    assert.ok(names.length >= 2);
-    for (const name of names) {
-      assert.ok(name.length <= 75, name);
-      assert.match(name, /^Xomoni\b/);
-    }
+  it('names the product as the manifest does, within Chrome’s 75 characters, naming no platform (#312)', () => {
+    const name = block('name');
+    assert.equal(name, MANIFEST.name);
+    assert.ok(name.length <= 75, name);
+    assert.match(name, /^Xomoni — /);
+    assert.doesNotMatch(name, /\bX\b|twitter/i);
   });
 
-  it('proposes short descriptions within the 132 characters of the manifest’s description', () => {
-    const drafts = items('summary-drafts');
-    assert.ok(drafts.length >= 1);
-    for (const draft of drafts) assert.ok(draft.length <= 132, `${draft.length}: ${draft}`);
+  it('gives the manifest’s short description, within its 132 characters (#312)', () => {
+    const summary = block('summary');
+    assert.equal(summary, MANIFEST.description);
+    assert.ok(summary.length <= 132, `${summary.length}: ${summary}`);
+  });
+
+  it('files Xomoni under Tools, never as a social network (#312)', () => {
+    const row = DOC.split('\n').find((line) => line.startsWith('| Category |'));
+    assert.ok(row, 'the fields table has a Category row');
+    assert.match(row, /\*\*Tools\*\*/);
+    assert.doesNotMatch(row, /Social Media/);
   });
 
   it('writes a detailed description Edge accepts, which says Xomoni is not X’s', () => {

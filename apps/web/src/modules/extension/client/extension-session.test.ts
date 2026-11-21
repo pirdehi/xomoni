@@ -25,22 +25,25 @@ describe('linkStateOf (#232)', () => {
   it('says who the extension reports as after each kind of sync', () => {
     expect(linkStateOf({ kind: 'no-extension' })).toEqual({ status: 'none' });
     expect(linkStateOf({ kind: 'unreachable' })).toEqual({ status: 'unreachable' });
-    expect(linkStateOf({ kind: 'in-step', state: STATE })).toEqual({ status: 'signed-out' });
+    expect(linkStateOf({ kind: 'in-step', extensionId: EXT, state: STATE })).toEqual({ status: 'signed-out' });
     expect(
       linkStateOf({
         kind: 'in-step',
+        extensionId: EXT,
         state: { ...STATE, connection: { deviceId: DEVICE, account: 'o•••@example.com', connectedAt: 1 } },
       }),
     ).toEqual({ status: 'signed-in', deviceId: DEVICE, account: 'o•••@example.com' });
-    expect(linkStateOf({ kind: 'extension-signed-in', deviceId: DEVICE, account: 'a' })).toEqual({
+    expect(linkStateOf({ kind: 'extension-signed-in', extensionId: EXT, deviceId: DEVICE, account: 'a' })).toEqual({
       status: 'signed-in',
       deviceId: DEVICE,
       account: 'a',
     });
     for (const kind of ['website-signed-out', 'extension-signed-out'] as const) {
-      expect(linkStateOf({ kind })).toEqual({ status: 'signed-out' });
+      expect(linkStateOf({ kind, extensionId: EXT })).toEqual({ status: 'signed-out' });
     }
-    expect(linkStateOf({ kind: 'extension-not-signed-in', reason: 'code' })).toEqual({ status: 'signed-out' });
+    expect(linkStateOf({ kind: 'extension-not-signed-in', extensionId: EXT, reason: 'code' })).toEqual({
+      status: 'signed-out',
+    });
   });
 });
 
@@ -74,14 +77,18 @@ describe('the browser composition root (#232)', () => {
   it('remembers the sign-out and tells the extension; listens for sign-ins and stops listening', async () => {
     const services = createExtensionSessionServices();
     services.rememberExtension(EXT);
-    const sendMessage = vi.fn((_id: string, _message: unknown, callback: (answer: unknown) => void) =>
-      callback({ ok: true, signedOut: true }),
+    const sendMessage = vi.fn((_id: string, message: { type: string }, callback: (answer: unknown) => void) =>
+      callback(message.type === 'xomoni-hello' ? { ok: true, state: STATE } : { ok: true, signedOut: true }),
     );
     vi.stubGlobal('chrome', { runtime: { sendMessage } });
 
     await services.signOutBoth();
 
-    expect(sendMessage).toHaveBeenCalledWith(EXT, { type: 'xomoni-sign-out' }, expect.any(Function));
+    // The page hadn't synced yet: it looks for the extension first, then signs it out (#302).
+    expect(sendMessage.mock.calls.map(([id, message]) => [id, message])).toEqual([
+      [EXT, { type: 'xomoni-hello' }],
+      [EXT, { type: 'xomoni-sign-out' }],
+    ]);
     expect(Number(window.localStorage.getItem('xomoni.signedOutAt'))).toBeGreaterThan(0);
     const stop = services.onSessionChange(vi.fn());
     expect(stop).toBeTypeOf('function');

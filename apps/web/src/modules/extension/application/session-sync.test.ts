@@ -24,6 +24,9 @@ function deps(
     devices?: string[];
     code?: string | null;
     signedOutAt?: number;
+    fixedIds?: string[];
+    /** Answers per id, for a hello to several (#302); `state` answers every other id. */
+    states?: Record<string, ExtensionState | null>;
   } = {},
 ) {
   const seen = new Map<string, number>([['s1', options.seenAt ?? 5_000]]);
@@ -38,7 +41,15 @@ function deps(
     }),
   };
   const channel: ExtensionChannel = {
-    hello: vi.fn(() => Promise.resolve(options.state === undefined ? fresh : options.state)),
+    hello: vi.fn((id: string) =>
+      Promise.resolve(
+        options.states && id in options.states
+          ? (options.states[id] ?? null)
+          : options.state === undefined
+            ? fresh
+            : options.state,
+      ),
+    ),
     signIn: vi.fn(() => Promise.resolve({ ok: true as const, account: 'o•••@example.com', deviceId: MINE })),
     signOut: vi.fn(() => Promise.resolve({ ok: true as const, signedOut: true })),
   };
@@ -49,7 +60,7 @@ function deps(
     signOut: vi.fn(() => Promise.resolve()),
   };
   const lock: SyncLock = { run: vi.fn((task: () => Promise<unknown>) => task()) as SyncLock['run'] };
-  return { channel, memory, account, lock } satisfies SyncDeps;
+  return { channel, memory, account, lock, fixedIds: options.fixedIds ?? [] } satisfies SyncDeps;
 }
 
 describe('syncSession (#232)', () => {
@@ -58,6 +69,7 @@ describe('syncSession (#232)', () => {
 
     expect(await syncSession(d, NOW)).toEqual({
       kind: 'extension-signed-in',
+      extensionId: EXT,
       account: 'o•••@example.com',
       deviceId: MINE,
     });
@@ -79,7 +91,7 @@ describe('syncSession (#232)', () => {
     const state = connected(MINE, 1_000);
     const d = deps({ state });
 
-    expect(await syncSession(d, NOW)).toEqual({ kind: 'in-step', state });
+    expect(await syncSession(d, NOW)).toEqual({ kind: 'in-step', extensionId: EXT, state });
     expect(d.account.createCode).not.toHaveBeenCalled();
     expect(d.channel.signIn).not.toHaveBeenCalled();
   });
@@ -87,7 +99,7 @@ describe('syncSession (#232)', () => {
   it('signs the website out when the person left xomoni.com in the extension after this session started', async () => {
     const d = deps({ state: { ...fresh, leftAt: 6_000 }, seenAt: 5_000 });
 
-    expect(await syncSession(d, NOW)).toEqual({ kind: 'website-signed-out' });
+    expect(await syncSession(d, NOW)).toEqual({ kind: 'website-signed-out', extensionId: EXT });
     expect(d.account.signOut).toHaveBeenCalled();
     expect(d.channel.signIn).not.toHaveBeenCalled();
   });
@@ -102,7 +114,7 @@ describe('syncSession (#232)', () => {
   it('signs the extension out when the website signed out after it signed in', async () => {
     const d = deps({ sessionId: null, state: connected(MINE, 1_000), signedOutAt: 2_000 });
 
-    expect(await syncSession(d, NOW)).toEqual({ kind: 'extension-signed-out' });
+    expect(await syncSession(d, NOW)).toEqual({ kind: 'extension-signed-out', extensionId: EXT });
     expect(d.channel.signOut).toHaveBeenCalledWith(EXT);
     expect(d.account.deviceIds).not.toHaveBeenCalled();
   });
@@ -123,11 +135,82 @@ describe('syncSession (#232)', () => {
   });
 
   it('says why the extension didn’t sign in: no code, or its refusal', async () => {
-    expect(await syncSession(deps({ code: null }), NOW)).toEqual({ kind: 'extension-not-signed-in', reason: 'code' });
+    expect(await syncSession(deps({ code: null }), NOW)).toEqual({
+      kind: 'extension-not-signed-in',
+      extensionId: EXT,
+      reason: 'code',
+    });
 
     const d = deps();
     vi.mocked(d.channel.signIn).mockResolvedValueOnce({ ok: false, reason: 'device_limit' });
-    expect(await syncSession(d, NOW)).toEqual({ kind: 'extension-not-signed-in', reason: 'device_limit' });
+    expect(await syncSession(d, NOW)).toEqual({
+      kind: 'extension-not-signed-in',
+      extensionId: EXT,
+      reason: 'device_limit',
+    });
+  });
+});
+
+describe('syncSession with a fixed id (#302)', () => {
+  const CHROME = 'ponmlkjihgfedcbaponmlkjihgfedcba';
+  const EDGE = 'aaaabbbbccccddddeeeeffffgggghhhh';
+
+  it('finds Xomoni at a store’s id without #ext=, and signs it in there', async () => {
+    const d = deps({ extensionId: null, fixedIds: [CHROME, EDGE], states: { [CHROME]: fresh, [EDGE]: null } });
+
+    expect(await syncSession(d, NOW)).toEqual({
+      kind: 'extension-signed-in',
+      extensionId: CHROME,
+      account: 'o•••@example.com',
+      deviceId: MINE,
+    });
+    expect(d.channel.hello).toHaveBeenCalledWith(CHROME);
+    expect(d.channel.hello).toHaveBeenCalledWith(EDGE);
+    expect(d.channel.signIn).toHaveBeenCalledWith(CHROME, { code: 'ABCDE-FGHJK' });
+  });
+
+  it('signs out the copy it found, at its id', async () => {
+    const d = deps({
+      extensionId: null,
+      sessionId: null,
+      signedOutAt: 2_000,
+      fixedIds: [CHROME, EDGE],
+      states: { [CHROME]: null, [EDGE]: connected(MINE, 1_000) },
+    });
+
+    expect(await syncSession(d, NOW)).toEqual({ kind: 'extension-signed-out', extensionId: EDGE });
+    expect(d.channel.signOut).toHaveBeenCalledWith(EDGE);
+  });
+
+  it('prefers the id a page of Xomoni named, when both answer', async () => {
+    const d = deps({ fixedIds: [CHROME], states: { [EXT]: fresh, [CHROME]: fresh } });
+
+    expect(await syncSession(d, NOW)).toMatchObject({ kind: 'extension-signed-in', extensionId: EXT });
+    expect(d.channel.signIn).toHaveBeenCalledWith(EXT, { code: 'ABCDE-FGHJK' });
+  });
+
+  it('falls back to a store’s id when the named one doesn’t answer (a zip install removed)', async () => {
+    const state = connected(MINE, 1_000);
+    const d = deps({ fixedIds: [CHROME], states: { [EXT]: null, [CHROME]: state } });
+
+    expect(await syncSession(d, NOW)).toEqual({ kind: 'in-step', extensionId: CHROME, state });
+  });
+
+  it('says no extension when only fixed ids were asked and none answered, unreachable when a named one was', async () => {
+    const none = deps({ extensionId: null, fixedIds: [CHROME, EDGE], state: null });
+    expect(await syncSession(none, NOW)).toEqual({ kind: 'no-extension' });
+    expect(none.lock.run).toHaveBeenCalledTimes(1);
+    expect(none.account.createCode).not.toHaveBeenCalled();
+
+    expect(await syncSession(deps({ fixedIds: [CHROME], state: null }), NOW)).toEqual({ kind: 'unreachable' });
+  });
+
+  it('asks nothing, and takes no lock, while it knows no id at all', async () => {
+    const d = deps({ extensionId: null, fixedIds: [] });
+
+    expect(await syncSession(d, NOW)).toEqual({ kind: 'no-extension' });
+    expect(d.lock.run).not.toHaveBeenCalled();
+    expect(d.channel.hello).not.toHaveBeenCalled();
   });
 });
 
@@ -135,7 +218,7 @@ describe('signOutBoth (#232)', () => {
   it('remembers the sign-out and signs the extension out too', async () => {
     const d = deps();
 
-    await signOutBoth(d, NOW);
+    await signOutBoth({ ...d, answeredAt: null }, NOW);
 
     expect(d.memory.rememberSignOut).toHaveBeenCalledWith(NOW);
     expect(d.channel.signOut).toHaveBeenCalledWith(EXT);
@@ -144,9 +227,32 @@ describe('signOutBoth (#232)', () => {
   it('only remembers it when the site doesn’t know the extension; a later sync catches up', async () => {
     const d = deps({ extensionId: null });
 
-    await signOutBoth(d, NOW);
+    await signOutBoth({ ...d, answeredAt: null }, NOW);
 
     expect(d.memory.rememberSignOut).toHaveBeenCalledWith(NOW);
+    expect(d.channel.hello).not.toHaveBeenCalled();
     expect(d.channel.signOut).not.toHaveBeenCalled();
+  });
+
+  it('signs out the copy the page’s last sync found, without asking again (#302)', async () => {
+    const CHROME = 'ponmlkjihgfedcbaponmlkjihgfedcba';
+    const d = deps({ fixedIds: [CHROME] });
+
+    await signOutBoth({ ...d, answeredAt: CHROME }, NOW);
+
+    expect(d.channel.hello).not.toHaveBeenCalled();
+    expect(d.channel.signOut).toHaveBeenCalledWith(CHROME);
+  });
+
+  it('before the page’s first sync ended, finds the copy at a fixed id and signs that out (#302)', async () => {
+    const CHROME = 'ponmlkjihgfedcbaponmlkjihgfedcba';
+    const found = deps({ extensionId: null, fixedIds: [CHROME], states: { [CHROME]: connected(MINE, 1_000) } });
+    await signOutBoth({ ...found, answeredAt: null }, NOW);
+    expect(found.channel.signOut).toHaveBeenCalledWith(CHROME);
+
+    const none = deps({ extensionId: null, fixedIds: [CHROME], state: null });
+    await signOutBoth({ ...none, answeredAt: null }, NOW);
+    expect(none.memory.rememberSignOut).toHaveBeenCalledWith(NOW);
+    expect(none.channel.signOut).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,11 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **xomoni.com finds Xomoni by its fixed id** (#302). Once Xomoni is in the Chrome Web Store and Edge Add-ons, xomoni.com looks for it at the stores' ids. The install checklist, the one sign-in and every page that reads from Xomoni then work as soon as it is installed, without Xomoni opening xomoni.com first.
+  - A Xomoni that opened xomoni.com itself is still asked first, so a zip install keeps working, even beside a store copy.
+  - Nothing changes until the stores' ids are written; that is a one-line change ([ADR-0025](docs/adr/0025-one-sign-in-for-the-website-and-the-extension.md)).
+  - A later release carries the store's key in the extension, so a zip install shares the Chrome Web Store's id. That changes the id once: export your data from 0.5.0 first, then import it ([ADR-0024](docs/adr/0024-connect-a-browser-with-one-click.md), [ADR-0032](docs/adr/0032-move-data-between-xomoni-versions.md)). How to take the key: [docs/RELEASING.md](docs/RELEASING.md#the-fixed-id-the-chrome-web-stores-key-302).
+
 - **An easier install page** (#299).
   - *Where you are* is now a card at the top of xomoni.com/install. It looks for Xomoni every few seconds and ticks as soon as Xomoni opens xomoni.com in this browser.
   - The steps follow your browser and computer: Chrome, Edge or Brave, on a Mac or Windows. The extensions page's address comes with a *Copy* button, since web pages can't link to it, and unzipping is explained for your system.
@@ -50,6 +55,20 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - Xomoni now keeps who each reply answers, from X and from your archive.
   - *Replies to you:* how many replies you got each day, who replies most, and each reply with *Open on X*, where you can hide it.
   - Xomoni keeps the replies to your posts that X shows it, on your computer only, for 90 days and at most 5,000 per account. It never hides, blocks or reports anyone ([ADR-0030](docs/adr/0030-replies-to-you-kept-on-the-computer.md)).
+
+### Changed
+
+- **xomoni.com tells Xomoni as a digital footprint manager** (#313). The site is now titled *Xomoni — Digital footprint manager*, with a matching description for search and link previews.
+  - The home page opens with *Manage your digital footprint, starting with X.* and one line about risk near the top: X's rules forbid automating its website, and Xomoni keeps that risk low but can't remove it, with *Read the risks* one click away.
+  - *What it does*: the five things Xomoni does in every place it covers (discover, understand, clean up, protect, shape), each with what it is on X today.
+  - *Where it works*: X today, your email next, then the other places you are present. Email isn't available yet, and nothing beyond X has a date.
+  - *How it works on X* now holds the extension and xomoni.com too: the extension does the work, and the website shows your account and plans a cleanup but can't start or approve a deletion.
+  - *Principles and safety*: six principles that hold everywhere, what Xomoni always and never does on X, and the default pace as one row of figures.
+  - The questions add what a digital footprint manager is, which places Xomoni works in, and why not X's API or a script; the risk answer now matches the Risks page.
+- **The privacy policy** (xomoni.com/privacy) now describes Xomoni as it works today:
+  - connecting a browser in one click, not only with a typed code;
+  - what xomoni.com shows from the extension in the same browser, which never passes through Xomoni's servers;
+  - the replies to you kept on your computer (90 days, 5,000 per X account), and that the file *Export everything* saves is never uploaded.
 
 ### Fixed
 

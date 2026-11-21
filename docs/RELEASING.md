@@ -148,11 +148,11 @@ Set on GitHub, not in code (#142):
 - **Tags:** a ruleset on `v*` lets only maintainers create tags, and nobody move or delete one.
 - **Releases** are immutable once published.
 - **The `release` environment** (#305): the maintainer as required reviewer, and only `v*` tags may deploy to it. Its secret `RELEASE_SIGNING_KEY` signs releases for one-click updates (*Signing key* above).
-- **`main`:** branches up to date before merging, and the `verify`, `database` and `e2e` checks. GitHub signs the squash merges it makes. No one can bypass the ruleset, admins included. More checks join as they land ([quality gates](QUALITY-GATES.md), #346).
+- **`main`:** branches up to date before merging, and the `verify`, `database`, `e2e`, `pr-policy` and `dependency-review` checks, plus CodeQL's code scanning results with no alert at high or above, or any error (since 2026-11-21, #346). GitHub signs the squash merges it makes. No one can bypass the ruleset, admins included ([quality gates](QUALITY-GATES.md)).
 - **Not yet: signed commits.** GitHub refuses to merge a pull request whose own commits are unsigned, even as a squash. So the rule waits until the maintainer signs commits (an SSH signing key added to GitHub, and `git config commit.gpgsign true` with `gpg.format ssh`). It was turned on with #142 and taken back off the same day.
 - **Workflows from forks:** need approval for every outside contributor.
 - **Environment `stores`** (#303): holds the store keys, which only runs from `main` can read, after the maintainer approves ([below](#the-stores-environment)).
-- **Two more required checks, once on `main`** (#339, #346): `pr-policy` and `dependency-review`, the jobs of [`pr-policy.yml`](../.github/workflows/pr-policy.yml), run on every pull request ([pull request checks](../CONTRIBUTING.md#pull-request-checks)). Once that workflow is on `main`, the maintainer adds both to the "Protect main" ruleset as required status checks, beside `verify`, `database` and `e2e`. Until then a red one doesn't block a merge. Dependency review reads the dependency graph (*Settings › Code security*), which must stay on.
+- **`pr-policy` and `dependency-review`** (#339, #346): the jobs of [`pr-policy.yml`](../.github/workflows/pr-policy.yml) run on every pull request ([pull request checks](../CONTRIBUTING.md#pull-request-checks)) and are required by the "Protect main" ruleset since 2026-11-21. Dependency review reads the dependency graph (*Settings › Code security*), which must stay on.
 
 ## Checked on every pull request
 

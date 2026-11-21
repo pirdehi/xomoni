@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { AGENTS, CHROME_STORE, EDGE_STORE, asBrowser, listIn } from './support/browsers';
 import { expect, test } from './support/test';
 
 /** The page's width beyond the window's, if anything on it is wider than the window. */
@@ -57,6 +58,32 @@ test.describe('the home page: a digital footprint manager (#313)', () => {
     await risk.getByRole('link', { name: 'Read the risks' }).click();
     await expect(page).toHaveURL(/\/risks$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Before you start: the risks' })).toBeVisible();
+  });
+
+  test.describe('its install buttons (#304)', () => {
+    test.use({ userAgent: AGENTS.edge });
+
+    test('lead to /install with today’s words while no store lists Xomoni', async ({ page }) => {
+      await asBrowser(page, 'edge');
+      await page.goto('/');
+      const installs = page.getByRole('main').getByRole('link', { name: 'Get the extension' });
+      await expect(installs).toHaveCount(2);
+      for (const install of await installs.all()) await expect(install).toHaveAttribute('href', '/install');
+      await expect(page.getByRole('main')).toContainText('Chrome Web Store listing coming soon.');
+      await installs.last().click();
+      await expect(page).toHaveURL(/\/install$/);
+    });
+
+    test('are the store’s own button for the visitor’s browser once a store lists Xomoni', async ({ page }) => {
+      await asBrowser(page, 'edge');
+      await listIn(page, { chrome: CHROME_STORE, edge: EDGE_STORE });
+      await page.goto('/');
+      const adds = page.getByRole('main').getByRole('link', { name: 'Get it for Edge' });
+      await expect(adds).toHaveCount(2);
+      for (const add of await adds.all()) await expect(add).toHaveAttribute('href', EDGE_STORE);
+      await expect(page.getByRole('main').getByRole('link', { name: 'Get the extension' })).toHaveCount(0);
+      await expect(page.getByRole('main')).toContainText('from the Chrome Web Store or Edge Add-ons.');
+    });
   });
 
   test.describe('on a phone, in dark mode', () => {

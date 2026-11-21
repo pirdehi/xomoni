@@ -220,9 +220,10 @@ describe('InstallGuide for each browser and computer (#299)', () => {
 
     expect(screen.getByText(/Right-click xomoni-extension\.zip.*Extract All…/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Add it to Edge' })).toBeInTheDocument();
-    expect(screen.getByText('edge://extensions')).toBeInTheDocument();
+    expect(screen.getByText('edge://extensions', { selector: 'code' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy edge://extensions' })).toBeInTheDocument();
-    expect(screen.getByText(/in the panel on the left/)).toBeInTheDocument();
+    expect(guide()).toHaveTextContent('Turn on Developer mode, in the panel on the left.');
+    expect(guide()).toHaveTextContent('then the eye next to Xomoni (Show in toolbar).');
   });
 
   it('in Brave on a Mac: brave://extensions, Developer mode at the top right, double-click to unzip', async () => {
@@ -233,8 +234,9 @@ describe('InstallGuide for each browser and computer (#299)', () => {
 
     expect(screen.getByText(/^Double-click xomoni-extension\.zip/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Add it to Brave' })).toBeInTheDocument();
-    expect(screen.getByText('brave://extensions')).toBeInTheDocument();
-    expect(screen.getByText(/at the top right/)).toBeInTheDocument();
+    expect(screen.getByText('brave://extensions', { selector: 'code' })).toBeInTheDocument();
+    expect(guide()).toHaveTextContent('Turn on Developer mode, at the top right.');
+    expect(guide()).toHaveTextContent('then the pin next to Xomoni.');
   });
 
   it('in Chrome: chrome://extensions; dragging the folder first, Load unpacked second', async () => {
@@ -242,13 +244,53 @@ describe('InstallGuide for each browser and computer (#299)', () => {
     const step = await addStep();
 
     expect(within(step).getByRole('heading', { name: 'Add it to Chrome' })).toHaveFocus();
-    expect(within(step).getByText('chrome://extensions')).toBeInTheDocument();
+    expect(within(step).getByText('chrome://extensions', { selector: 'code' })).toBeInTheDocument();
     expect(step).toHaveTextContent('Turn on Developer mode, at the top right.');
     const ways = within(step).getAllByRole('listitem');
     expect(ways.map((way) => way.textContent)).toEqual([
       'Drag the folder onto the extensions page and drop it there.',
       'Or choose Load unpacked and select the folder.',
     ]);
+  });
+
+  it('illustrates adding Xomoni in this browser, under the step’s own words, and following it here with pinning', async () => {
+    browser({ userAgent: UA.edgeWindows, brands: ['Chromium', 'Microsoft Edge'], platform: 'Windows' });
+    const user = userEvent.setup();
+    render(<Guide />);
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    const [developerMode, folder] = within(guide()).getAllByRole('figure') as [HTMLElement, HTMLElement];
+    expect(developerMode).toHaveAccessibleName(
+      'Illustration On edge://extensions, the Developer mode switch in the panel on the left is turned on, and Load unpacked appears.',
+    );
+    expect(developerMode).toHaveAttribute('data-layout', 'side-panel');
+    expect(developerMode).toHaveAttribute('data-frame', 'windows');
+    expect(folder).toHaveAccessibleName(/folder is dragged onto edge:\/\/extensions and dropped there/);
+    // The step's words come first and stay the instruction; the drawings follow them.
+    const ways = within(guide())
+      .getByText(/Or choose/)
+      .closest('ol')!;
+    expect(ways.compareDocumentPosition(developerMode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Each drawing has its own Pause button, named after what it shows.
+    expect(within(guide()).getAllByRole('button', { name: /^Pause the illustration/ })).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(guide()).toHaveTextContent(
+      'Pin Xomoni to the toolbar to keep it one click away: click the puzzle icon next to the address bar, then the eye next to Xomoni (Show in toolbar).',
+    );
+    const [pin] = within(guide()).getAllByRole('figure');
+    expect(pin).toHaveAttribute('data-control', 'eye');
+    expect(pin).toHaveAccessibleName(/the eye next to Xomoni \(Show in toolbar\) puts it in the toolbar/);
+  });
+
+  it('shows no illustration before adding Xomoni', async () => {
+    const user = userEvent.setup();
+    render(<Guide />);
+    for (let i = 0; i < 3; i++) {
+      expect(within(guide()).queryByRole('figure')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Next' }));
+    }
+    expect(within(guide()).getAllByRole('figure')).toHaveLength(2);
   });
 
   it('says first when the browser can’t run Xomoni', () => {

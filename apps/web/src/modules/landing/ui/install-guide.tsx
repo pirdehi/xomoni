@@ -38,6 +38,7 @@ import {
   developerModeWhere,
   doneOnceInstalled,
   extensionsAddress,
+  pinHow,
   platformOf,
   stepAfter,
   stepBefore,
@@ -45,6 +46,7 @@ import {
   unzipHow,
 } from '../domain/install-guide';
 import { TroubleLinks } from './install-help';
+import { InstallVisuals } from './install-visuals';
 
 const WIDE = '@media (min-width: 640px)';
 
@@ -336,6 +338,7 @@ function useStepViews(platform: Platform, steps: InstallSteps): Record<InstallSt
               Or choose <strong>Load unpacked</strong> and select the folder.
             </li>
           </ol>
+          <InstallVisuals step="add" platform={platform} />
           <p className={s.text}>Xomoni opens by itself once it is added.</p>
           <TroubleLinks questions={['developer-mode', 'wrong-folder', 'developer-mode-warning']} />
         </>
@@ -350,6 +353,8 @@ function useStepViews(platform: Platform, steps: InstallSteps): Record<InstallSt
               <CheckmarkCircle20Filled aria-hidden /> Xomoni is installed in this browser.
             </p>
           )}
+          <p className={s.text}>{pinHow(platform.browser)}</p>
+          <InstallVisuals step="connect" platform={platform} />
           <p className={s.text}>
             In Xomoni’s account menu, press <strong>Sign in to xomoni.com</strong> and sign in here: Xomoni signs in
             with you, and signing out on either side signs out both. Only job status is sent; your posts and likes stay

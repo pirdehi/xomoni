@@ -1,8 +1,12 @@
 // @vitest-environment happy-dom
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GITHUB_URL, INSTALL_URL } from '@/shared/config/site';
+import type * as StoreListingsConfig from '@/shared/config/store-listings';
+import type { StoreListings } from '@/shared/config/store-listings';
 import { PILLARS, PILLAR_TEXT, PLACES, STATUS_LABEL, isAvailable } from '../domain/footprint';
 import {
   ALWAYS,
@@ -18,6 +22,33 @@ import {
   placeIcon,
 } from './content';
 import { HomePage } from './home-page';
+
+// The site's configured listings, as each test sets them: none, as in the code until the stores list Xomoni (#304).
+const configured = vi.hoisted(() => {
+  const state: { listings: StoreListings } = { listings: { chrome: null, edge: null } };
+  return state;
+});
+vi.mock('@/shared/config/store-listings', async (importOriginal) => {
+  const actual = await importOriginal<typeof StoreListingsConfig>();
+  return {
+    ...actual,
+    get STORE_LISTINGS() {
+      return configured.listings;
+    },
+  };
+});
+
+const CHROME_STORE = 'https://chromewebstore.google.com/detail/xomoni/abcdefghijklmnopabcdefghijklmnop';
+const EDGE_STORE = 'https://microsoftedge.microsoft.com/addons/detail/xomoni/abcdefghijklmnopabcdefghijklmnop';
+const EDGE_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0';
+
+beforeEach(() => {
+  configured.listings = { chrome: null, edge: null };
+});
+afterEach(() => {
+  Reflect.deleteProperty(window.navigator, 'userAgent');
+});
 
 // A visitor: the header's account corner reads no session.
 vi.mock('@/shared/supabase/browser-session', () => ({
@@ -273,6 +304,55 @@ describe('HomePage', () => {
     expect(closing).toHaveTextContent('Download an archive of your data');
     expect(within(closing).getByRole('link', { name: 'Get the extension' })).toHaveAttribute('href', INSTALL_URL);
     expect(within(closing).getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', GITHUB_URL);
+  });
+
+  it('leads both install buttons to /install, with today’s words, while no store lists Xomoni', () => {
+    render(<HomePage />);
+
+    const main = screen.getByRole('main');
+    const installs = within(main).getAllByRole('link', { name: 'Get the extension' });
+    expect(installs).toHaveLength(2);
+    for (const install of installs) {
+      expect(install).toHaveAttribute('href', INSTALL_URL);
+      expect(install).toHaveAttribute('data-appearance', 'primary');
+      expect(install).toHaveAttribute('data-size', 'large');
+    }
+    expect(main).toHaveTextContent('For Chrome, Edge and Brave on desktop. Chrome Web Store listing coming soon.');
+    expect(within(main).queryByRole('link', { name: /^(Add to Chrome|Get it for Edge)$/ })).not.toBeInTheDocument();
+  });
+
+  it('offers the store’s own button for the visitor’s browser once a store lists Xomoni, and says where from', () => {
+    configured.listings = { chrome: CHROME_STORE, edge: EDGE_STORE };
+    Object.defineProperty(window.navigator, 'userAgent', { value: EDGE_UA, configurable: true });
+    render(<HomePage />);
+
+    const main = screen.getByRole('main');
+    const adds = within(main).getAllByRole('link', { name: 'Get it for Edge' });
+    expect(adds).toHaveLength(2);
+    for (const add of adds) expect(add).toHaveAttribute('href', EDGE_STORE);
+    expect(within(region('Start with your archive.')).getByRole('link', { name: 'Get it for Edge' })).toBeVisible();
+    expect(within(main).queryByRole('link', { name: 'Get the extension' })).not.toBeInTheDocument();
+    expect(main).toHaveTextContent('For Chrome, Edge and Brave on desktop, from the Chrome Web Store or Edge Add-ons.');
+    expect(main).not.toHaveTextContent('coming soon');
+  });
+
+  it('renders the Chrome Web Store’s button on the server, and Edge’s once hydrated in Edge, with no mismatch', async () => {
+    configured.listings = { chrome: CHROME_STORE, edge: EDGE_STORE };
+    Object.defineProperty(window.navigator, 'userAgent', { value: EDGE_UA, configurable: true });
+    const html = renderToString(<HomePage />);
+    expect(html).toContain(CHROME_STORE);
+    expect(html).not.toContain(EDGE_STORE);
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.append(container);
+    const errors: unknown[] = [];
+    await act(async () => {
+      hydrateRoot(container, <HomePage />, { onRecoverableError: (error) => errors.push(error) });
+    });
+    expect(errors).toEqual([]);
+    expect(within(container).getAllByRole('link', { name: 'Get it for Edge' })).toHaveLength(2);
+    container.remove();
   });
 
   it('sits between the site header and footer', async () => {

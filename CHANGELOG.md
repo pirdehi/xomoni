@@ -21,9 +21,13 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 - **Ready for the stores: one button on xomoni.com/install** (#304, [ADR-0034](docs/adr/0034-distribution-through-the-browsers-stores.md)). Nothing changes until the Chrome Web Store or Edge Add-ons lists Xomoni; then:
   - /install shows one button for your browser: *Add to Chrome* in Chrome, Brave and other Chromium browsers, *Get it for Edge* in Edge (or the Chrome Web Store, saying Edge can install from it). No developer mode, and it updates itself. Firefox, Safari and phones are told they can't run Xomoni, as before.
   - The zip's download and the step-by-step guide stay, complete, under *Advanced: install from a zip* (xomoni.com/install#install-from-a-zip).
+  - The home page's *Get the extension* buttons become the same store button, and the line under the first names the store instead of saying it is coming.
   - *How do I move from the zip to the store?* joins the install questions (xomoni.com/install#move-to-store).
   - In Xomoni installed from the zip, Home shows the four steps to the store's Xomoni: *Export everything*, remove this copy, install from the store, import the file. Xomoni never removes anything itself, and your data moves only in the file you save. *Not now* hides it for good.
   - The store addresses are set in one place in each app, checked to be the store's own pages and kept equal by a test. Installs are counted only by the stores; nothing is tracked.
+- **Short illustrations for the install steps** (#299). Adding Xomoni from the zip now shows, under the step's own words, how it looks in your browser: the extensions page with *Developer mode* turned on where your browser keeps it (at the top right in Chrome and Brave, in the panel on the left in Edge) and *Load unpacked* appearing, and the xomoni-extension folder dragged onto the page. *Follow it here* shows pinning Xomoni from the puzzle icon (the pin, or the eye in Edge), and says how in words.
+  - They are drawings, labelled *Illustration*, not screenshots: drawn in the page's own colors, light or dark, in a window like your computer's, with no browser's logo. Each loops every few seconds, with *Pause* and *Play*.
+  - Each says in words what it shows. With *Reduce motion* turned on in your system, each is one still picture.
 - **An easier install page** (#299).
   - *Where you are* is now a card at the top of xomoni.com/install. It looks for Xomoni every few seconds and ticks as soon as Xomoni opens xomoni.com in this browser.
   - The steps follow your browser and computer: Chrome, Edge or Brave, on a Mac or Windows. The extensions page's address comes with a *Copy* button, since web pages can't link to it, and unzipping is explained for your system.

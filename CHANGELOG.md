@@ -65,6 +65,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - *How it works on X* now holds the extension and xomoni.com too: the extension does the work, and the website shows your account and plans a cleanup but can't start or approve a deletion.
   - *Principles and safety*: six principles that hold everywhere, what Xomoni always and never does on X, and the default pace as one row of figures.
   - The questions add what a digital footprint manager is, which places Xomoni works in, and why not X's API or a script; the risk answer now matches the Risks page.
+- **The privacy policy** (xomoni.com/privacy) now describes Xomoni as it works today:
+  - connecting a browser in one click, not only with a typed code;
+  - what xomoni.com shows from the extension in the same browser, which never passes through Xomoni's servers;
+  - the replies to you kept on your computer (90 days, 5,000 per X account), and that the file *Export everything* saves is never uploaded.
 
 ### Fixed
 

@@ -38,6 +38,7 @@ import { ActivityChart } from '../components/ActivityChart';
 import { connectOnWebsite } from '../components/CloudCard';
 import { LogList } from '../components/LogList';
 import { MoveOffer } from '../components/MoveData';
+import { StoreMoveCard } from '../components/StoreMove';
 import { Button, Card, EmptyState, PageHeader, StatTile, type Tone, useNow } from '../components/ui';
 import { errorMessage, fmtCompact, fmtNumber } from '../format';
 import { type HomeStatus, type StartStep, gettingStarted, homeStatus } from '../home-status';
@@ -210,7 +211,8 @@ const useStyles = makeStyles({
  * window and sign in to X there. Otherwise it answers "what now?" first (#201): one status (all well, what runs, or
  * what X needs) with its one action, the steps of getting started until they are done, then the counts in one row,
  * the yearly chart and recent activity. Xomoni's limits are in Settings. On a new install, onboarding and Home offer
- * to import data from another Xomoni (`MoveOffer`, #300) until it is dismissed or Xomoni has done something.
+ * to import data from another Xomoni (`MoveOffer`, #300) until it is dismissed or Xomoni has done something. A zip
+ * install whose store lists Xomoni gets the steps to move there on Home (`StoreMoveCard`, #304).
  */
 export function OverviewPage({
   account,
@@ -268,6 +270,7 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
         }
       />
 
+      <StoreMoveCard />
       <MoveOffer />
       {status && <StatusCard status={status} navigate={navigate} />}
       {steps && <GettingStarted steps={steps} navigate={navigate} />}

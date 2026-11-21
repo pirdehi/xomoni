@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="public/icons/icon128.png" width="72" alt="لوگوی Xomoni" />
+<img src="apps/extension/public/icons/icon128.png" width="72" alt="لوگوی Xomoni" />
 
 # Xomoni
 
@@ -71,7 +71,31 @@ Xomoni راه دیگری می‌رود. یک افزونه‌ی Chrome است ک�
 
 ## نصب
 
-Xomoni هنوز در Chrome Web Store نیست. آن را از سورس بسازید.
+Xomoni برای Chrome Web Store و Edge Add-ons آماده می‌شود و هنوز در آن‌ها نیست. وقتی منتشر شود، [xomoni.com/install](https://xomoni.com/install) برای مرورگر شما یک دکمه نشان می‌دهد: *Add to Chrome* یا *Get it for Edge*. نه Developer mode لازم است و نه به‌روزرسانی دستی ([ADR-0034](docs/adr/0034-distribution-through-the-browsers-stores.md)).
+
+تا آن وقت، یا اگر این راه را ترجیح می‌دهید، از zip نصب کنید. [راهنمای نصب در xomoni.com](https://xomoni.com/install) قدم‌به‌قدم همراهتان است (وقتی Xomoni در فروشگاه‌ها باشد، زیر *Advanced: install from a zip*):
+
+۱. فایل [`xomoni-extension.zip`](https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip) را از [آخرین نسخه](https://github.com/pirdehi/xomoni/releases/latest) دانلود کنید (checksumهای SHA-256 هر نسخه کنارش هست) و در پوشه‌ای که نگه می‌دارید unzip کنید.
+
+۲. `chrome://extensions` را باز کنید، **Developer mode** را روشن کنید، **Load unpacked** را بزنید و همان پوشه را انتخاب کنید.
+
+۳. روی آیکون Xomoni در نوار ابزار کلیک کنید تا داشبورد باز شود.
+
+### رفتن از نسخه‌ی zip به نسخه‌ی فروشگاه
+
+Xomoni فروشگاه برای مرورگر افزونه‌ی دیگری است و داده‌هایش خالی شروع می‌شود. وقتی منتشر شود، نسخه‌ی zip همین قدم‌ها را در صفحه‌ی Home نشان می‌دهد، و [xomoni.com/install#move-to-store](https://xomoni.com/install#move-to-store) هم آن‌ها را دارد:
+
+۱. در Xomoni دکمه‌ی **Export everything** را بزنید (در *Settings › Move your data* هم هست). یک فایل در Downloads ذخیره می‌شود.
+
+۲. وقتی هیچ کاری در حال اجرا نیست، نسخه‌ی zip را در `chrome://extensions` حذف کنید. مرورگر داده‌هایش را پاک می‌کند، ولی فایل شما آن‌ها را نگه می‌دارد.
+
+۳. Xomoni را از فروشگاه نصب کنید.
+
+۴. در Xomoni تازه، **Import your data** را بزنید و همان فایل را انتخاب کنید.
+
+هیچ چیز خودبه‌خود منتقل نمی‌شود: داده‌های شما فقط در همان فایل جابه‌جا می‌شوند و آن فایل هرگز از کامپیوتر شما بیرون نمی‌رود ([ADR-0032](docs/adr/0032-move-data-between-xomoni-versions.md)).
+
+### یا از سورس بسازید
 
 **پیش‌نیاز:** Node.js نسخه‌ی 20.19 یا بالاتر، و Chrome، Edge یا Brave نسخه‌ی ۱۱۶ یا بالاتر.
 

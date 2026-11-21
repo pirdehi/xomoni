@@ -8,11 +8,14 @@ import { describe, it } from 'node:test';
 import {
   changelogSection,
   filesUnder,
+  isStoreManifest,
   releaseKeyWarning,
   releaseProblems,
+  releaseZips,
   reproducibleZip,
   trustedReleaseKeys,
   versionOfTag,
+  zipChecksums,
 } from './release-lib.mjs';
 
 const CHANGELOG = `# Changelog
@@ -131,6 +134,73 @@ describe('reproducible zip (#142)', () => {
       assert.notEqual(sha(join(roots[0], 'y.zip')), sha(join(roots[0], 'x.zip')), 'the epoch is in the zip');
     } finally {
       roots.forEach((root) => rmSync(root, { recursive: true, force: true }));
+    }
+  });
+});
+
+describe('the store build in a release (#303)', () => {
+  const source = JSON.parse(readFileSync(join(import.meta.dirname, '../apps/extension/public/manifest.json'), 'utf8'));
+  /** What `vite build --mode store` makes of the manifest: no GitHub host access, no GitHub CSP sources. */
+  const storeCopy = (manifest) => {
+    const { optional_host_permissions: _hosts, ...rest } = manifest;
+    const pages = manifest.content_security_policy.extension_pages
+      .split(';')
+      .map((directive) =>
+        directive
+          .split(' ')
+          .filter((part) => !/githubusercontent|releases\/download/.test(part))
+          .join(' '),
+      )
+      .join(';');
+    return { ...rest, content_security_policy: { ...manifest.content_security_policy, extension_pages: pages } };
+  };
+
+  it('names the store build apart from the GitHub zips, with the version in its name', () => {
+    assert.deepEqual(releaseZips('0.5.0'), {
+      latest: 'xomoni-extension.zip',
+      versioned: 'xomoni-extension-0.5.0.zip',
+      store: 'xomoni-extension-store-0.5.0.zip',
+    });
+  });
+
+  it('tells the store build from the default one by its manifest', () => {
+    assert.equal(isStoreManifest(source), false, 'the default build may download releases from GitHub');
+    assert.equal(isStoreManifest(storeCopy(source)), true);
+    // Half a store build is still the default one: either kind of GitHub access is enough.
+    const { optional_host_permissions: _hosts, ...withoutHosts } = source;
+    assert.equal(isStoreManifest(withoutHosts), false);
+    assert.equal(
+      isStoreManifest({ ...storeCopy(source), optional_host_permissions: source.optional_host_permissions }),
+      false,
+    );
+  });
+
+  it('lists every zip in SHA256SUMS, sorted, and nothing else', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'xomoni-sums-'));
+    try {
+      assert.equal(zipChecksums(dir), '');
+      const zips = releaseZips('0.5.0');
+      const files = {
+        [zips.latest]: 'default build',
+        [zips.versioned]: 'default build',
+        [zips.store]: 'store build',
+        [`${zips.latest}.sig`]: 'signature',
+        'release-keys': '',
+        'release-notes.md': 'notes',
+      };
+      for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text);
+      const hash = (text) => createHash('sha256').update(text).digest('hex');
+      assert.equal(
+        zipChecksums(dir),
+        [
+          `${hash('default build')}  xomoni-extension-0.5.0.zip`,
+          `${hash('store build')}  xomoni-extension-store-0.5.0.zip`,
+          `${hash('default build')}  xomoni-extension.zip`,
+          '',
+        ].join('\n'),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

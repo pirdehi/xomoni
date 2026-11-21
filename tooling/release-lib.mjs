@@ -1,8 +1,42 @@
 // Helpers for releasing the extension (docs/RELEASING.md). Kept apart from the command line in
 // tooling/release.mjs so tooling/release.test.mjs can test them.
 import { execFileSync } from 'node:child_process';
-import { chmodSync, readdirSync, utimesSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { chmodSync, readFileSync, readdirSync, utimesSync } from 'node:fs';
 import { join, relative } from 'node:path';
+
+/**
+ * The zips a release attaches for `version`. `latest` and `versioned` are the same file, the default build with the
+ * one-click updater (#305), signed; the website's install page links `latest`. `store` is the store build, without
+ * the updater, which the store workflow sends to the Chrome Web Store and Edge Add-ons (#303). It isn't signed:
+ * nothing it holds checks a signature, since a store updates Xomoni itself.
+ */
+export const releaseZips = (version) => ({
+  latest: 'xomoni-extension.zip',
+  versioned: `xomoni-extension-${version}.zip`,
+  store: `xomoni-extension-store-${version}.zip`,
+});
+
+/**
+ * Whether `manifest`, as built, is the store build's (`npm run build:store`): nothing in it names where GitHub
+ * releases are downloaded from, which the default build's host access and CSP name for the updater
+ * (tooling/store-build.test.mjs checks the same).
+ */
+export const isStoreManifest = (manifest) => !/githubusercontent|releases\/download/.test(JSON.stringify(manifest));
+
+/** SHA256SUMS for every zip in `dir`, sorted by name, as `sha256sum --check` reads it. */
+export function zipChecksums(dir) {
+  const lines = readdirSync(dir)
+    .filter((name) => name.endsWith('.zip'))
+    .sort()
+    .map(
+      (name) =>
+        `${createHash('sha256')
+          .update(readFileSync(join(dir, name)))
+          .digest('hex')}  ${name}`,
+    );
+  return lines.length ? `${lines.join('\n')}\n` : '';
+}
 
 /** The version in a tag such as `v0.2.0`, or null when the tag isn't `v` plus a semantic version. */
 export function versionOfTag(tag) {

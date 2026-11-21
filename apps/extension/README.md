@@ -9,8 +9,8 @@ npm run build -w @xomoni/extension       # → apps/extension/dist
 npm run build:store -w @xomoni/extension # the same for a store, without the one-click updater (ADR-0033)
 npm run watch -w @xomoni/extension       # rebuild on change
 npm run preview:ui -w @xomoni/extension  # dashboard with demo data, no X connection
-npm run store:images -w @xomoni/extension # store icon, logo, screenshots and promo tile → docs/store
-npm run icons -w @xomoni/extension       # redraw public/icons from scripts/icon.mjs
+npm run store:images -w @xomoni/extension # store icon, logo, screenshots, promo tile → docs/store; Home → apps/web/public/screens
+npm run icons -w @xomoni/extension       # redraw public/icons and the website's icons from scripts/icon.mjs
 npm test -w @xomoni/extension            # engine, kernel and dashboard tests with coverage (tests/, see docs/TESTING.md)
 ```
 
@@ -60,9 +60,20 @@ Chrome never updates an extension loaded unpacked. When a newer version is out, 
 
 Your data stays: Chrome keeps the same extension. It needs Chrome 137 or later (Ed25519 in Web Crypto), and releases signed with the key the release workflow holds ([docs/RELEASING.md](../../docs/RELEASING.md#signing-key)). A new version that asks for more access, or a newer browser, is installed by hand instead, where Chrome shows what it asks for. The store build (`npm run build:store`) has no updater: a store updates Xomoni itself.
 
+## The icon
+
+Xomoni's mark is two shoe prints walking up a tile of Xomoni's blue: the newer step white, the older one fading. It is a footprint being tidied, and it is no platform's mark ([ADR-0035](../../docs/adr/0035-xomoni-has-its-own-mark.md), #322).
+
+- **Drawn in code.** [`scripts/icon.mjs`](scripts/icon.mjs) draws it with signed distances, 8 × 8 samples a pixel, and writes PNGs with no image library, so every run gives the same pixels.
+- **Every copy comes from there.** `npm run icons` writes `public/icons/icon{16,32,48,128}.png` and the website's `src/app/icon.png`, `src/app/apple-icon.png` (filled to its corners, since Apple rounds it) and `public/logo.png`. `npm run store:images` writes the stores' icons, and screenshots that show the sidebar's logo.
+- **Checked.** `tooling/brand.test.mjs` fails when a committed icon no longer matches the drawing, has the wrong size, or loses the two steps at 16 pixels. It also fails when an interface writes X as a glyph instead of its name.
+- **Changing it.** Edit `scripts/icon.mjs`, run both commands, and commit the PNGs with it.
+
 ## Moving to a new Xomoni
 
 Chrome keeps each extension's data apart, so a Xomoni with another id (a fixed id, or the Chrome Web Store version) starts empty. In the Xomoni you're leaving, **Settings › Move your data › Export everything** saves one checked file in Downloads; in the new one, **Import from a file** (also offered on a new install) checks it and adds it to what is there, deleting nothing. The file never leaves the computer ([ADR-0032](../../docs/adr/0032-move-data-between-xomoni-versions.md)).
+
+Once a store lists Xomoni (`src/shared/store-listings.ts`, the same addresses as xomoni.com's), a zip install shows a card on Home with the four steps to the store's Xomoni: *Export everything*, remove this copy, install from the store, import the file. It tells whether Xomoni was loaded unpacked with `chrome.management.getSelf`, which needs no permission, and it never removes anything itself ([ADR-0034](../../docs/adr/0034-distribution-through-the-browsers-stores.md)).
 
 ## Safety
 

@@ -1,5 +1,5 @@
 import { Caption1, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
-import { Globe20Regular } from '@fluentui/react-icons';
+import { Globe20Regular, Person20Regular } from '@fluentui/react-icons';
 import type { WorkerStatus } from '../hooks';
 
 /** Whether this browser is signed in to X, as the worker last saw; `unknown` while no X page is open. */
@@ -58,13 +58,8 @@ const useStyles = makeStyles({
     transitionDuration: tokens.durationNormal,
   },
   large: { width: '52px', height: '52px' },
-  xDisc: {
-    backgroundColor: tokens.colorNeutralForeground1,
-    color: tokens.colorNeutralBackground1,
-    fontSize: '20px',
-    fontWeight: tokens.fontWeightBold,
-    lineHeight: 1,
-  },
+  // The X account is a person's account, drawn as one: never X's own mark (ADR-0035).
+  account: { color: tokens.colorNeutralForeground2 },
   logo: { width: '26px', height: '26px', borderRadius: tokens.borderRadiusMedium },
   cloud: { color: tokens.colorBrandForeground1 },
   dim: {
@@ -164,10 +159,11 @@ export function describeConnections(x: XLink, cloud: CloudLink): string {
 }
 
 /**
- * How this browser links X and xomoni.com, drawn as three nodes: X, Xomoni in this browser, and xomoni.com. Dots
- * flow along a live link, dashes march along one being made, and a missing link is a still dashed line to a faded
- * node. Each line says what crosses it: X's posts stay in the browser; only job status goes to xomoni.com
- * (ADR-0004). Motion stops for people who ask their system for less of it.
+ * How this browser links X and xomoni.com, drawn as three nodes: the X account, Xomoni in this browser, and
+ * xomoni.com. Dots flow along a live link, dashes march along one being made, and a missing link is a still dashed
+ * line to a faded node. Each line says what crosses it: X's posts stay in the browser; only job status goes to
+ * xomoni.com (ADR-0004). X is named in words under a generic person icon, never drawn with its logo or its letter
+ * (ADR-0035). Motion stops for people who ask their system for less of it.
  */
 export function ConnectionMap({
   x,
@@ -192,11 +188,11 @@ export function ConnectionMap({
       data-cloud={cloud}
     >
       <div className={s.node}>
-        <span className={disc(s.xDisc, x === 'signed-out' && s.dim)} aria-hidden>
-          𝕏
+        <span className={disc(s.account, x === 'signed-out' && s.dim)} aria-hidden data-node="x">
+          <Person20Regular />
           {x !== 'unknown' && <span className={mergeClasses(s.state, x === 'signed-in' ? s.good : s.warn)} />}
         </span>
-        <Caption1 className={s.label}>X</Caption1>
+        <Caption1 className={s.label}>X account</Caption1>
       </div>
       <Link flow={x === 'signed-in' ? 'live' : 'off'} caption="Posts stay here" large={large} />
       <div className={s.node}>

@@ -18,7 +18,7 @@ Contents:
 
 ## 1. What each store needs
 
-The package is the store build (`npm run build:store -w @xomoni/extension`, zipped): the same code as the `xomoni-extension-X.Y.Z.zip` the release workflow attaches to GitHub Releases, without the one-click updater, since a store updates Xomoni itself ([releasing](RELEASING.md#chrome-web-store), [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). Both stores take the name and the short description from the manifest. To change either one, upload a new zip.
+The package is the store build: `xomoni-extension-store-X.Y.Z.zip`, which the release workflow builds with `npm run build:store -w @xomoni/extension` and attaches to each GitHub release, and which the store workflow sends after checking its checksum and build provenance ([releasing](RELEASING.md#chrome-web-store-and-edge-add-ons)). It is the same code as the `xomoni-extension-X.Y.Z.zip` beside it, without the one-click updater, since a store updates Xomoni itself ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). Both stores take the name and the short description from the manifest. To change either one, upload a new zip.
 
 | Field | Chrome Web Store | Microsoft Edge Add-ons | Xomoni |
 | --- | --- | --- | --- |
@@ -141,7 +141,7 @@ Each item in [`manifest.json`](../apps/extension/public/manifest.json), where th
 | `incognito`: `not_allowed` | — | Xomoni never runs in incognito windows. |
 | `minimum_chrome_version`: `116` | `background/sw.ts`: `chrome.runtime.getContexts` finds an open dashboard. | Chrome 116 is the first version with that API. |
 
-Only in the zip on GitHub Releases, never in the store build: `optional_host_permissions` for GitHub's release downloads, and the same two hosts in the CSP's `connect-src`, which the zip's one-click update uses (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). `npm run build:store` removes them with the updater's code, and `tooling/store-build.test.mjs` checks the built manifest. So the store's manifest is this table, with no other host access.
+Only in `xomoni-extension-X.Y.Z.zip` on GitHub Releases, never in the store build: `optional_host_permissions` for GitHub's release downloads, and the same two hosts in the CSP's `connect-src`, which the zip's one-click update uses (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). `npm run build:store` removes them with the updater's code, and `tooling/store-build.test.mjs` checks the built manifest. So the store's manifest is this table, with no other host access.
 
 The **host permission** field (Chrome asks about the `https://x.com/*` matches of the content scripts): *Xomoni works only on x.com, in the person's own signed-in tab: it removes the posts, replies, reposts and likes they chose, by clicking X's own buttons, and reads X's responses to confirm each one and to stay within X's rate limits. It has no other host access.*
 
@@ -149,6 +149,7 @@ Install warnings this gives: *Read and change your data on x.com*, *Display noti
 
 Used without a permission, and worth knowing for review:
 - `chrome.tabs` and `chrome.windows` open Xomoni's dashboard and its small X window, and focus or close that window. On install they open xomoni.com/welcome. Xomoni reads no tab's address.
+- `chrome.management.getSelf` tells whether Xomoni was loaded unpacked (a zip install). Only then does Home offer the steps to the store's Xomoni, and a button that opens Xomoni's own card on the extensions page; the person removes the old copy there, never Xomoni ([ADR-0034](adr/0034-distribution-through-the-browsers-stores.md)). It needs no permission.
 - **Run hidden** ([ADR-0020](adr/0020-run-hidden-by-sharing-the-x-tab.md)) uses the page API `getDisplayMedia`. Chrome's own picker asks the person to share the X tab, so Chrome keeps drawing it while its window is minimized. Its frames are never read, shown, stored or sent.
 
 ## 6. No remote code
@@ -156,9 +157,9 @@ Used without a permission, and worth knowing for review:
 Answer in both stores: **No, I am not using remote code.**
 
 - Every script ships in the zip. The dashboard and the service worker are bundled by Vite, and the content scripts by esbuild ([`apps/extension/README.md`](../apps/extension/README.md)).
-- The store build has no updater. The zip on GitHub Releases can update itself: it downloads a signed release and writes it into its own folder, which Chrome loads on the next reload. None of that code is in the store build (`npm run build:store`, checked by `tooling/store-build.test.mjs`).
+- The store build has no updater. The zip on GitHub Releases can update itself: it downloads a signed release and writes it into its own folder, which Chrome loads on the next reload. None of that code is in the store build (`npm run build:store`, checked by `tooling/store-build.test.mjs`), which each release attaches as `xomoni-extension-store-X.Y.Z.zip` for the stores.
 - The extension's CSP allows scripts and workers only from the extension itself (`script-src 'self'`, `worker-src 'self'`, no `'unsafe-eval'`).
-- `npm run remote-code:check`, a step of `npm run verify`, builds the extension and reads every script and page in `apps/extension/dist`, libraries included. The release workflow runs the same check on the build it zips. The check fails on any of these ([`tooling/remote-code-lib.mjs`](../tooling/remote-code-lib.mjs), tested by `tooling/remote-code.test.mjs`):
+- `npm run remote-code:check`, a step of `npm run verify`, builds the extension and reads every script and page in `apps/extension/dist`, libraries included. The release workflow runs the same check on both builds it zips, the store build included. The check fails on any of these ([`tooling/remote-code-lib.mjs`](../tooling/remote-code-lib.mjs), tested by `tooling/remote-code.test.mjs`):
   - code built from a string: `eval`, `new Function`, `Function` or `setTimeout` with a string;
   - code from elsewhere: `importScripts`, an `import` or a `Worker` from a URL, a `<script>` from another site;
   - an inline `<script>` or event handler, `executeScript` with code, WebAssembly compiled at run time;
@@ -213,13 +214,15 @@ Installs from a store aren't possible yet, so the privacy page doesn't change no
 ## 8. Images
 
 Made by `npm run store:images -w @xomoni/extension` ([`apps/extension/scripts/store-images.mjs`](../apps/extension/scripts/store-images.mjs)), into [`docs/store`](store):
-- the icons come from the same drawing as the extension's own icons (`scripts/icon.mjs`);
+- the icons come from the same drawing as the extension's own icons (`scripts/icon.mjs`): Xomoni's mark, two shoe prints walking up a tile of Xomoni's blue, the newer one white and the older one fading ([ADR-0035](adr/0035-xomoni-has-its-own-mark.md), #322);
+- the promo tile shows the mark, the name and *Digital footprint manager* on the light theme's page color, where the blue tile stands out;
+- the same run writes the two pictures of Home on xomoni.com's home page (`apps/web/public/screens`), since they show the sidebar's logo too;
 - the screenshots come from the dashboard's UI preview with its made-up demo account, `@demo_user`, never real data;
 - the script starts Vite on 127.0.0.1 port 4791 (`--port` to change it) and uses Playwright's Chromium, headless;
 - run `npx playwright install chromium` once first;
 - nothing reaches X or xomoni.com.
 
-`tooling/store-listing.test.mjs` checks each file's size, and that the screenshots and the tile have no transparency: the dashboard has long asked for JPEG or 24-bit PNG without alpha there.
+`tooling/store-listing.test.mjs` checks each file's size, and that the screenshots and the tile have no transparency: the dashboard has long asked for JPEG or 24-bit PNG without alpha there. `tooling/brand.test.mjs` checks that both icons still match `icon.mjs`.
 
 | File | Size | For |
 | --- | --- | --- |
@@ -230,7 +233,7 @@ Made by `npm run store:images -w @xomoni/extension` ([`apps/extension/scripts/st
 | [`screenshot-3-library.png`](store/screenshot-3-library.png) | 1280 × 800 | Library: the copy on the computer and X's archive |
 | [`screenshot-4-activity.png`](store/screenshot-4-activity.png) | 1280 × 800 | Activity: a job, its progress and account health |
 | [`screenshot-5-settings-dark.png`](store/screenshot-5-settings-dark.png) | 1280 × 800 | Settings in dark mode: the one-fifth pacing and the schedule |
-| [`promo-small-440x280.png`](store/promo-small-440x280.png) | 440 × 280 | Small promo tile, both stores |
+| [`promo-small-440x280.png`](store/promo-small-440x280.png) | 440 × 280 | Small promo tile, both stores: the mark, *Xomoni* and *Digital footprint manager* |
 
 <img src="store/screenshot-2-cleanup.png" alt="The Cleanup page with demo data" width="640" />
 
@@ -271,7 +274,9 @@ Contact: privacy@xomoni.com
 ## 10. Open questions for the maintainer
 
 1. ~~**Name** (§3)~~: decided on 2026-11-21, *Xomoni — Digital footprint manager* (#312).
-2. **The icon looks like X's logo.** It is a white X on a dark rounded square, which is close to X's own mark, and the likeliest cause of a trademark refusal. Redraw it before submitting. The dashboard's subtitle is now "Digital footprint manager" (#312); the 𝕏 badge on the connection map still shows in screenshot 5.
+2. ~~**The icon looks like X's logo.**~~ Answered on 2026-11-21 ([#322](https://github.com/pirdehi/xomoni/issues/322), [ADR-0035](adr/0035-xomoni-has-its-own-mark.md)). The white X on a dark rounded square was close to X's own mark, the likeliest cause of a trademark refusal. The icon is now Xomoni's own mark: two shoe prints walking up a tile of Xomoni's blue, the newer one white and the older one fading, a footprint being tidied. It holds no letter, and no platform's shape or color. The 𝕏 badge on the connection map is now a person icon named *X account* in words (screenshot 5). The dashboard's subtitle is now "Digital footprint manager" (#312).
+
+   <img src="store/icon-128.png" alt="Xomoni's icon: two shoe prints on a blue tile, the older one fading" width="96" />
 3. **Short and detailed description** (§4): approve, or change. Should the description quote X's automation rule, as the consent text does? It is honest, and it matches what the person agrees to in Xomoni, but it may draw a reviewer's attention.
 4. **"Authentication information"** (§7): tick it for the device token, as drafted, or leave it unticked because the token is Xomoni's own credential, not something the person gives? Ticking it is the safer reading of the policy, but the listing would then show "Authentication information" to everyone.
 5. **Watch** ([ADR-0021](adr/0021-watch-x-search-read-only.md)) reads X's search for phrases the person picks. It is read-only, but a reviewer may see it as a second purpose. The single-purpose text doesn't mention it. If a reviewer asks, describe it as part of keeping an eye on the account, or leave it out of the store build.

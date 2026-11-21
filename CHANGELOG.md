@@ -18,6 +18,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - It needs Chrome 137 or later. Older browsers keep the download link.
   - Releases are signed with a key only the release workflow holds, beside the zips as `.sig` files, once the maintainer has set the key up; until then they go out unsigned and Xomoni updates by hand ([ADR-0033](docs/adr/0033-one-click-updates-for-the-zip-install.md), [releasing](docs/RELEASING.md#signing-key)).
   - The store build (`npm run build:store`) has no updater: a store updates Xomoni itself.
+- **Ready for the stores: one button on xomoni.com/install** (#304, [ADR-0034](docs/adr/0034-distribution-through-the-browsers-stores.md)). Nothing changes until the Chrome Web Store or Edge Add-ons lists Xomoni; then:
+  - /install shows one button for your browser: *Add to Chrome* in Chrome, Brave and other Chromium browsers, *Get it for Edge* in Edge (or the Chrome Web Store, saying Edge can install from it). No developer mode, and it updates itself. Firefox, Safari and phones are told they can't run Xomoni, as before.
+  - The zip's download and the step-by-step guide stay, complete, under *Advanced: install from a zip* (xomoni.com/install#install-from-a-zip).
+  - *How do I move from the zip to the store?* joins the install questions (xomoni.com/install#move-to-store).
+  - In Xomoni installed from the zip, Home shows the four steps to the store's Xomoni: *Export everything*, remove this copy, install from the store, import the file. Xomoni never removes anything itself, and your data moves only in the file you save. *Not now* hides it for good.
+  - The store addresses are set in one place in each app, checked to be the store's own pages and kept equal by a test. Installs are counted only by the stores; nothing is tracked.
 - **An easier install page** (#299).
   - *Where you are* is now a card at the top of xomoni.com/install. It looks for Xomoni every few seconds and ticks as soon as Xomoni opens xomoni.com in this browser.
   - The steps follow your browser and computer: Chrome, Edge or Brave, on a Mac or Windows. The extensions page's address comes with a *Copy* button, since web pages can't link to it, and unzipping is explained for your system.
@@ -76,6 +82,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - connecting a browser in one click, not only with a typed code;
   - what xomoni.com shows from the extension in the same browser, which never passes through Xomoni's servers;
   - the replies to you kept on your computer (90 days, 5,000 per X account), and that the file *Export everything* saves is never uploaded.
+- **A new icon: Xomoni's own mark** (#322, [ADR-0035](docs/adr/0035-xomoni-has-its-own-mark.md)). The old one, a white X on a dark square, looked like X's logo.
+  - The new mark is two shoe prints walking up a tile of Xomoni's blue: the newer one white, the older one fading. It shows a footprint being tidied.
+  - It is in the toolbar, the dashboard and the store images, and on xomoni.com: the favicon, the Apple touch icon, the header, the emails and the home page's screenshots.
+  - It is still drawn in code, and a test checks that every copy matches the drawing.
+- **The connection map names X in words.** The X account shows as a person icon labeled *X account*, instead of the 𝕏 glyph on a dark disc.
+- The README's logo shows again: its image path was wrong.
 
 ### Fixed
 

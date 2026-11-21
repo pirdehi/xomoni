@@ -234,7 +234,7 @@ A UX review of the website's structure: it is two products today, dead-ends on a
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ✅ | A phone menu, *Install* in the header, a full footer | [#242](https://github.com/pirdehi/xomoni/issues/242) | [#292](https://github.com/pirdehi/xomoni/pull/292) |
-| ⬜ | The landing page for one Xomoni: one story about risk, *How it works* first, *Send to my computer* on a phone | [#243](https://github.com/pirdehi/xomoni/issues/243) | |
+| ✅ | The landing page for one Xomoni: one story about risk, *How it works* first, *Send to my computer* on a phone | [#243](https://github.com/pirdehi/xomoni/issues/243) | [#323](https://github.com/pirdehi/xomoni/pull/323), [#333](https://github.com/pirdehi/xomoni/pull/333) |
 | ✅ | Getting started: `/welcome` after install, a checklist that ticks itself, sign-up keeps `next` | [#244](https://github.com/pirdehi/xomoni/issues/244) | [#293](https://github.com/pirdehi/xomoni/pull/293), [#294](https://github.com/pirdehi/xomoni/pull/294) |
 | ⏸ | Language: Persian (right-to-left) or English only | [#246](https://github.com/pirdehi/xomoni/issues/246) | Waits for the maintainer |
 

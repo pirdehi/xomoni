@@ -149,6 +149,7 @@ Install warnings this gives: *Read and change your data on x.com*, *Display noti
 
 Used without a permission, and worth knowing for review:
 - `chrome.tabs` and `chrome.windows` open Xomoni's dashboard and its small X window, and focus or close that window. On install they open xomoni.com/welcome. Xomoni reads no tab's address.
+- `chrome.management.getSelf` tells whether Xomoni was loaded unpacked (a zip install). Only then does Home offer the steps to the store's Xomoni, and a button that opens Xomoni's own card on the extensions page; the person removes the old copy there, never Xomoni ([ADR-0034](adr/0034-distribution-through-the-browsers-stores.md)). It needs no permission.
 - **Run hidden** ([ADR-0020](adr/0020-run-hidden-by-sharing-the-x-tab.md)) uses the page API `getDisplayMedia`. Chrome's own picker asks the person to share the X tab, so Chrome keeps drawing it while its window is minimized. Its frames are never read, shown, stored or sent.
 
 ## 6. No remote code

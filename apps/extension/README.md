@@ -64,6 +64,8 @@ Your data stays: Chrome keeps the same extension. It needs Chrome 137 or later (
 
 Chrome keeps each extension's data apart, so a Xomoni with another id (a fixed id, or the Chrome Web Store version) starts empty. In the Xomoni you're leaving, **Settings › Move your data › Export everything** saves one checked file in Downloads; in the new one, **Import from a file** (also offered on a new install) checks it and adds it to what is there, deleting nothing. The file never leaves the computer ([ADR-0032](../../docs/adr/0032-move-data-between-xomoni-versions.md)).
 
+Once a store lists Xomoni (`src/shared/store-listings.ts`, the same addresses as xomoni.com's), a zip install shows a card on Home with the four steps to the store's Xomoni: *Export everything*, remove this copy, install from the store, import the file. It tells whether Xomoni was loaded unpacked with `chrome.management.getSelf`, which needs no permission, and it never removes anything itself ([ADR-0034](../../docs/adr/0034-distribution-through-the-browsers-stores.md)).
+
 ## Safety
 
 Every behavior toward X follows the [safety playbook](../../docs/PLAYBOOK.md). Never forge headers, solve captchas, touch passwords or cookies, or hide automation ([ADR-0003](../../docs/adr/0003-no-credentials-no-evasion.md)).

@@ -146,15 +146,17 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 ## S21-11 · error
 
-- Given a cleanup of posts started after X changed its page: the sidebar's Profile link names the account by its id,
+- Given the X window open on X's Home after X changed its page: its sidebar's Profile link names the account by its id,
   /i/user/9000000000000000001, not by a handle
-- When the job opens the X window on that Home
-- Then it stops for safety before it loads anything: Could not determine your @handle from X. Open your profile once in
-  the X window., with 0 removed
+- When the person starts a cleanup of posts
+- Then the job stops for safety before it loads anything: Could not determine your @handle from X. Open your profile
+  once in the X window., with 0 removed
 - And the dashboard keeps the handle X's profile answer gave, Fixture Person @xomoni_fixture: a link that isn't a
   handle never replaces it (fixed with these scenarios, #345)
-- And without a handle X allows, Xomoni can't tell the person's posts from anyone else's on X's page, as
-  apps/extension/tests/own-posts.test.ts proves (stops before acting when X shows a handle X wouldn’t allow)
+- And a page that names no handle yet, as X's while it is still drawing its sidebar, leaves the job the handle Xomoni
+  knows: it never uses one X wouldn't allow, in a URL, a search or the check of a post's author, as
+  apps/extension/tests/own-posts.test.ts proves (stops before acting when X shows a handle X wouldn’t allow; uses the
+  handle Xomoni knows while X’s page names none yet)
 - Test: apps/web/e2e/extension/verified-actions.spec.ts
 
 ## S21-12 · error
@@ -222,7 +224,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 ## S21-19 · browser
 
-- Given the system in dark mode, and a job stopped for safety because X's page no longer names the person's handle
+- Given the system in dark mode, and a job stopped for safety because X's page in the X window no longer names the
+  person's handle
 - When the person opens the job's log
 - Then the card, its reason and the log have no serious or critical accessibility violation
 - And CI's e2e-edge job runs every scenario again in Microsoft Edge

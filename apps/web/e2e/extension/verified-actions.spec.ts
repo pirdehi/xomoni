@@ -137,6 +137,19 @@ async function showLog(dashboard: Page, card: Locator): Promise<Locator> {
   return log;
 }
 
+/**
+ * Opens the X window from the dashboard's sidebar on X's Home after X changed its page: its sidebar's Profile link
+ * names the account by its id, `/i/user/<id>`, not by its handle (`home-profile-by-id.html`). Waits until the page
+ * shows that link, as it does once X has drawn its sidebar, and returns the X window.
+ */
+async function xWindowNamingTheAccountById(dashboard: Page, page: Page, context: BrowserContext): Promise<Page> {
+  await servePage(context, '/home', 'home-profile-by-id.html');
+  await dashboard.getByRole('complementary').getByRole('button', { name: 'Open the X window' }).click();
+  const xWindow = await xWindowOf(context, page);
+  await expect(xWindow.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', `/i/user/${FIXTURE_ACCOUNT.id}`);
+  return xWindow;
+}
+
 /** Library › Browse: its kinds, On X or Removed, and its search over text and authors. */
 async function openLibrary(dashboard: Page) {
   await openPage(dashboard, 'Home');
@@ -506,7 +519,7 @@ test.describe('acts only on what it can verify', { tag: '@task-21' }, () => {
     context,
   }) => {
     await postsBefore(dashboard, page, '2021-01-01', 2);
-    await servePage(context, '/home', 'home-profile-by-id.html');
+    const xWindow = await xWindowNamingTheAccountById(dashboard, page, context);
     const loads = xRequests(dashboard, graphql);
     await startCleanup(dashboard);
 
@@ -516,7 +529,7 @@ test.describe('acts only on what it can verify', { tag: '@task-21' }, () => {
       'Could not determine your @handle from X. Open your profile once in the X window.',
     );
     await expect(card).toContainText(/0\s*removed/);
-    await expect(await xWindowOf(context, page)).toHaveURL('https://x.com/home');
+    await expect(xWindow).toHaveURL('https://x.com/home');
     expect(loads, 'pages of X loaded by the job').toEqual([]);
     // The dashboard keeps the handle X's own profile answer gave: a link that isn't a handle never replaces it.
     await expect(
@@ -677,7 +690,7 @@ test.describe('acts only on what it can verify', { tag: '@task-21' }, () => {
     }) => {
       expect(await dashboard.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true);
       await postsBefore(dashboard, page, '2021-01-01', 2);
-      await servePage(context, '/home', 'home-profile-by-id.html');
+      await xWindowNamingTheAccountById(dashboard, page, context);
       await startCleanup(dashboard);
       const card = jobCard(dashboard, JOB.before2021);
       await expect(card).toContainText('Stopped for safety');

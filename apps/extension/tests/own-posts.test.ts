@@ -284,4 +284,23 @@ describe('the account’s handle (#144)', () => {
     await ctx.connect();
     expect(ctx.handle).toBe('me');
   });
+
+  it('uses the handle Xomoni knows while X’s page names none yet, as before X draws its sidebar (#345)', async () => {
+    await db.accounts.put({
+      id: ACCOUNT,
+      handle: 'known_me',
+      name: '',
+      avatar: '',
+      postsCount: null,
+      likesCount: null,
+      followers: null,
+      following: null,
+      createdAt: null,
+      updatedAt: NOW,
+    });
+    const { ctx } = context({ waitReady: async () => page({ handle: null }) });
+    await ctx.connect();
+    expect(ctx.handle).toBe('known_me');
+    await db.accounts.clear();
+  });
 });

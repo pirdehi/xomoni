@@ -1,8 +1,7 @@
 {
-  "//": "Only for dependency-cruiser: resolves the website's @/* alias across the monorepo. Each app type-checks with its own tsconfig.",
+  "//": "Only for dependency-cruiser: resolves the website's @/* alias across the monorepo. Each app type-checks with its own tsconfig. Paths are relative to this file; there is no baseUrl, which TypeScript 6 deprecates.",
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": { "@/*": ["apps/web/src/*"] },
+    "paths": { "@/*": ["./apps/web/src/*"] },
     "jsx": "react-jsx",
     "allowJs": true,
     "module": "ESNext",

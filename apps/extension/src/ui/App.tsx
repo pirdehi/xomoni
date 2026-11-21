@@ -348,7 +348,7 @@ function Sidebar({
         <img src="icons/icon48.png" alt="" className={styles.logo} />
         <div className={styles.brandText}>
           <Subtitle2>Xomoni</Subtitle2>
-          <Caption1 className={styles.muted}>X account manager</Caption1>
+          <Caption1 className={styles.muted}>Digital footprint manager</Caption1>
         </div>
       </div>
       <nav className={styles.nav}>

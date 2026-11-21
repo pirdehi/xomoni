@@ -24,6 +24,19 @@ const pageHeading = (name: string) => screen.findByRole('heading', { level: 1, n
 const sidebar = () => screen.getByRole('complementary');
 const workerButton = (title: string) => within(sidebar()).getByTitle(title);
 
+/**
+ * Where a sign-out stands, for a failed wait: whether the dialog is still open, what the runner does, every page heading
+ * with whether something hides it from assistive technology (`aria-hidden`, `inert`), and whether the toast came.
+ */
+function signOutState(): string {
+  const dialog = screen.queryByRole('dialog', { name: 'Sign out of Xomoni?' }) !== null;
+  const headings = screen
+    .queryAllByRole('heading', { level: 1, hidden: true })
+    .map((h) => `${h.textContent}${h.closest('[aria-hidden="true"], [inert]') ? ' (hidden)' : ''}`);
+  const toastShown = screen.queryByText(/^Signed out of Xomoni\./) !== null;
+  return `Dialog open ${String(dialog)}, runner busy ${String(runner.busy)} (${runner.getState().status}), headings ${JSON.stringify(headings)}, toast ${String(toastShown)}.`;
+}
+
 beforeEach(async () => {
   chrome = stubChrome();
   await resetDb();
@@ -81,9 +94,11 @@ describe('App sign-out (#226)', () => {
     render(<App />);
     await pageHeading('Home');
 
+    // A busy machine (CI, or the push hook while other builds run) can take seconds to open the menu and the dialog.
+    const slow = { timeout: 10_000 };
     await userEvent.click(within(sidebar()).getByRole('button', { name: /^Connections: / }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out of Xomoni' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out of Xomoni' }, slow));
+    const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' }, slow);
     // No job runs, so signing out has none to wait for: a running one would hold it up to 30 seconds (#271).
     expect(runner.busy, 'a job runs in this tab').toBe(false);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }));
@@ -98,12 +113,7 @@ describe('App sign-out (#226)', () => {
         { level: 1, name: 'You’re signed out' },
         {
           timeout: 30_000,
-          onTimeout: (error) =>
-            new Error(
-              `${error.message.split('\n')[0]}\nStill signing out: dialog open ${String(
-                screen.queryByRole('dialog', { name: 'Sign out of Xomoni?' }) !== null,
-              )}, runner busy ${String(runner.busy)}, runner status ${runner.getState().status}.`,
-            ),
+          onTimeout: (error) => new Error(`${error.message.split('\n')[0]}\n${signOutState()}`),
         },
       ),
     ).toBeInTheDocument();
@@ -197,6 +207,14 @@ describe('App navigation', () => {
       window.location.hash = '#/settings';
     });
     expect(await pageHeading('Settings')).toBeInTheDocument();
+  });
+
+  it('names Xomoni in the sidebar as the digital footprint manager (#312)', async () => {
+    render(<App />);
+    const side = sidebar();
+    expect(await within(side).findByText('Digital footprint manager')).toBeInTheDocument();
+    expect(within(side).getByText('Xomoni')).toBeInTheDocument();
+    expect(within(side).queryByText(/X account manager/i)).toBeNull();
   });
 
   it('shows the account in the sidebar, with its initial when it has no picture', async () => {

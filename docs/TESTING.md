@@ -22,7 +22,7 @@ Bug fixes start with a test that fails without the fix.
 | Website adapters | `apps/web/src/modules/*/infrastructure/*.test.ts` | Vitest, fake Supabase client | Rows map to domain types; Supabase errors map to our error codes. |
 | Website server (Server Actions, session, proxy) | `apps/web/src/modules/*/server/*.test.ts`, `apps/web/src/shared/**/*.test.ts` | Vitest, mocked `next/headers` | Every action re-checks the session; redirects are safe; protected routes stay protected. |
 | Website UI | `apps/web/src/modules/*/ui/*.test.tsx`, `apps/web/src/shared/ui/*.test.tsx` | Vitest + Testing Library in happy-dom | Forms, messages, disabled states, the captcha's states; the dashboard stays view-only. |
-| Website end to end | `apps/web/e2e/*.spec.ts` | Playwright against local Supabase and Mailpit | Real flows in a real browser, with emails; no Content-Security-Policy violations. |
+| Website end to end | `apps/web/e2e/*.spec.ts` | Playwright against local Supabase and Mailpit | Real flows in a real browser, with emails; no Content-Security-Policy violations. The extension is played at the page (`chrome.runtime` stubbed), or loaded for real: `fixed-id.spec.ts` runs a test extension with a fixed `key` in Chromium (#302). |
 | Extension kernel and engine | `apps/extension/tests/*.test.ts` | Vitest + `fake-indexeddb` | Pacing never above one fifth of X's limits, the risk ladder, stop rules, parsers on real response shapes, job states. |
 | Extension in the X page (content script, interceptor) | `apps/extension/tests/*.test.ts` | Vitest in happy-dom | X's buttons are found, nothing else is clicked, responses are matched only on the private channel. |
 | Extension dashboard | `apps/extension/tests/ui/*.test.tsx` | Vitest + Testing Library + a `chrome` stub | Pages and components: what is shown, what each control does, confirmations before anything acts on X. |
@@ -46,7 +46,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 - **No real waiting.** Use `findBy…`, `vi.waitFor` or fake timers. No `setTimeout` sleeps.
 - **Find what follows a dialog.** Right after a Fluent dialog opens or closes, the rest of the page is `aria-hidden` for a moment. Look up the dialog and the page's controls with `findBy…`, not `getBy…`, in that moment.
 - **Independent tests.** Each test sets up its own data: `resetDb()` for the extension, `resetNavigation()` and `resetTurnstile()` for the website.
-- **Fakes live in one place.** Extension: `apps/extension/tests/support/` (`stubChrome()`, account and page fixtures). Website: `apps/web/test/fakes/` (`next/navigation`, `server-only`, the Turnstile widget), wired in `vitest.config.ts`.
+- **Fakes live in one place.** Extension: `apps/extension/tests/support/` (`stubChrome()`, account and page fixtures). Website: `apps/web/test/fakes/` (`next/navigation`, `server-only`, the Turnstile widget), wired in `vitest.config.ts`. End to end: `apps/web/e2e/support/` and, for a real extension, `apps/web/e2e/fixtures/fixed-id-extension` (its id goes to the site as `NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID`, taken only on localhost).
 - **Component test files** start with `// @vitest-environment happy-dom`; the extension's also import `fake-indexeddb/auto`.
 - **Web Locks are per file** in the extension's tests (`tests/setup.ts`, #271): Node's `navigator.locks` is shared by the whole process, so one file's runner would otherwise hold up another file's sign-out.
 - **Types are strict in tests too** ([ADR-0016](adr/0016-strict-typescript-and-type-aware-lint.md)); tests may use `!`.

@@ -6,6 +6,11 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **xomoni.com finds Xomoni by its fixed id** (#302). Once Xomoni is in the Chrome Web Store and Edge Add-ons, xomoni.com looks for it at the stores' ids. The install checklist, the one sign-in and every page that reads from Xomoni then work as soon as it is installed, without Xomoni opening xomoni.com first.
+  - A Xomoni that opened xomoni.com itself is still asked first, so a zip install keeps working, even beside a store copy.
+  - Nothing changes until the stores' ids are written; that is a one-line change ([ADR-0025](docs/adr/0025-one-sign-in-for-the-website-and-the-extension.md)).
+  - A later release carries the store's key in the extension, so a zip install shares the Chrome Web Store's id. That changes the id once: export your data from 0.5.0 first, then import it ([ADR-0024](docs/adr/0024-connect-a-browser-with-one-click.md), [ADR-0032](docs/adr/0032-move-data-between-xomoni-versions.md)). How to take the key: [docs/RELEASING.md](docs/RELEASING.md#the-fixed-id-the-chrome-web-stores-key-302).
+
 - **An easier install page** (#299).
   - *Where you are* is now a card at the top of xomoni.com/install. It looks for Xomoni every few seconds and ticks as soon as Xomoni opens xomoni.com in this browser.
   - The steps follow your browser and computer: Chrome, Edge or Brave, on a Mac or Windows. The extensions page's address comes with a *Copy* button, since web pages can't link to it, and unzipping is explained for your system.

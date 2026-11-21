@@ -3,7 +3,7 @@
 # پروژه‌ی «نصب با یک کلیک»: فازها و تسک‌ها
 
 > - **تاریخ:** ۲۱ نوامبر ۲۰۲۶.
-> - **وضعیت:** 🔄 تأیید شد (۲۱ نوامبر). فازهای ۱، ۲ و ۳ در حال انجام‌اند. فاز ۰ منتظر حساب‌های شماست: [راهنما](STORE-ACCOUNTS-GUIDE.fa.md).
+> - **وضعیت:** 🔄 تأیید شد (۲۱ نوامبر). فاز ۲ تمام شد ([#310](https://github.com/pirdehi/xomoni/pull/310)). فاز ۱ هم به‌جز ویدیوها تمام شد ([#308](https://github.com/pirdehi/xomoni/pull/308)). فازهای ۳، ۵، ۷ و ۸ در حال انجام‌اند. نام محصول تعیین شد: «Xomoni — Digital footprint manager» در دسته‌ی Tools. فاز ۰ منتظر حساب‌های شماست: [راهنما](STORE-ACCOUNTS-GUIDE.fa.md).
 > - **Issueها:** فاز ۰ [#298](https://github.com/pirdehi/xomoni/issues/298)، ۱ [#299](https://github.com/pirdehi/xomoni/issues/299)، ۲ [#300](https://github.com/pirdehi/xomoni/issues/300)، ۳ [#301](https://github.com/pirdehi/xomoni/issues/301)، ۴ [#302](https://github.com/pirdehi/xomoni/issues/302)، ۵ [#303](https://github.com/pirdehi/xomoni/issues/303)، ۶ [#304](https://github.com/pirdehi/xomoni/issues/304)، ۷ [#305](https://github.com/pirdehi/xomoni/issues/305)، ۸ [#306](https://github.com/pirdehi/xomoni/issues/306).
 > - **پایه:** [تحلیل راه‌حل‌های نصب](INSTALL-UX-2026-11-21.fa.md) و issue [#295](https://github.com/pirdehi/xomoni/issues/295).
 > - **تصمیم شما:**
@@ -84,7 +84,7 @@
 | ۳.۱ | **بازبینی دسترسی‌ها:** هر مورد در `manifest.json` (`storage`، `unlimitedStorage`، `notifications`، `idle`، `power`، `downloads` و اسکریپت‌های x.com) یک دلیل روشن دارد. هر چه لازم نیست حذف می‌شود. | جدول «دسترسی و دلیل» نوشته شده و تست manifest به‌روز است. |
 | ۳.۲ | **کد از راه دور ممنوع است:** بررسی که هیچ کدی از اینترنت اجرا نمی‌شود (قانون Manifest V3)، و CSP درست است. | یک تست خودکار که bundle را برای `eval` و اسکریپت راه دور می‌گردد. |
 | ۳.۳ | **هدف واحد (Single purpose) و متن فهرست:** «پاک‌سازی حساب X خود شما، روی کامپیوتر خودتان، آرام و امن». | متن را شما تأیید کرده‌اید. |
-| ۳.۴ | **نام و علامت تجاری:** نام فعلی «Xomoni — X Account Manager» ممکن است به‌خاطر کلمه‌ی X در بررسی گیر کند. نام پیشنهادی: «Xomoni: clean up your X account»، به‌همراه جمله‌ی «Not affiliated with X Corp.» | نام نهایی را شما تأیید کرده‌اید. |
+| ۳.۴ | ✅ **نام و علامت تجاری:** نام قبلی «Xomoni — X Account Manager» ممکن بود به‌خاطر کلمه‌ی X در بررسی گیر کند. **تصمیم (۲۰۲۶-۱۱-۲۱):** نام **«Xomoni — Digital footprint manager»** و دسته‌ی **Tools**، به‌همراه جمله‌ی «Not affiliated with X Corp.» ([#312](https://github.com/pirdehi/xomoni/issues/312)) | نام نهایی را شما تأیید کرده‌اید. |
 | ۳.۵ | **فرم حریم خصوصی فروشگاه:** چه داده‌ای جمع می‌شود (فقط چیزهایی که خود کاربر انتخاب کند)، و به‌روز کردن صفحه‌ی Privacy برای اشاره به نصب از فروشگاه. | فرم پر شده و صفحه‌ی Privacy به‌روز است. |
 | ۳.۶ | **تصویرها:** آیکن ۱۲۸، ۳ تا ۵ تصویر ۱۲۸۰×۸۰۰ از داشبورد با داده‌ی نمونه (نه داده‌ی واقعی شما)، و کاشی تبلیغاتی ۴۴۰×۲۸۰. | فایل‌ها در مخزن هستند و با اسکریپت از نسخه‌ی پیش‌نمایش ساخته می‌شوند. |
 | ۳.۷ | **پاسخ آماده برای بررسی‌کننده:** چرا Xomoni روی x.com کار می‌کند، و قاعده‌های امنیتی‌اش (یک‌پنجم سقف X، دست نزدن به رمز و کوکی، تأیید هر کار). | متن آماده است و برای اعتراض احتمالی هم استفاده می‌شود. |

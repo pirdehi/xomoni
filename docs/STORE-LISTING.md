@@ -2,7 +2,7 @@
 
 Everything the two stores ask for, ready to paste: the permission justifications, the privacy answers, the listing text, the images and the notes for reviewers. It is phase 3 of the one-click install project ([#301](https://github.com/pirdehi/xomoni/issues/301)). The plan is to publish on the Chrome Web Store as **Unlisted** first, and on Microsoft Edge Add-ons as **Hidden**.
 
-> **Status: drafts.** Nothing has been submitted, and no store account exists yet (the maintainer makes them in phase 0: [guide, in Persian](STORE-ACCOUNTS-GUIDE.fa.md)). The name (§3), the listing text (§4) and the privacy answers (§7) need the maintainer's approval. Until then the manifest keeps its current `name` and `description`.
+> **Status: drafts.** Nothing has been submitted, and no store account exists yet (the maintainer makes them in phase 0: [guide, in Persian](STORE-ACCOUNTS-GUIDE.fa.md)). The name (§3) and the category were decided on 2026-11-21, and the manifest carries the name and the short description (#312). The detailed description (§4) and the privacy answers (§7) still need the maintainer's approval.
 
 Contents:
 1. [What each store needs](#1-what-each-store-needs)
@@ -27,7 +27,7 @@ The package is the same `xomoni-extension-X.Y.Z.zip` that the release workflow a
 | Name | Manifest `name`, at most 75 characters | Manifest `name` (Extension name) | §3 |
 | Short description | Manifest `description`, at most 132 characters (the summary) | Manifest `description` (Short description) | §4 |
 | Detailed description | Store listing → Description | Required, 250 to 10,000 characters | §4 |
-| Category | Required, one category | Required | Chrome: *Social Media & Networking* (or *Tools*). Edge: the closest, for example *Social*. Pick in each dashboard |
+| Category | Required, one category | Required | **Tools**, decided on 2026-11-21: Xomoni is a tool that manages a person's digital footprint, not a social network. Chrome: *Productivity › Tools*. Edge has no *Tools*: *Productivity* |
 | Language | Required | One listing per language in the package | English. A Persian listing as well would need `_locales` in the package, which it doesn't have yet |
 | Store icon | 128 × 128 PNG in the zip and on the listing: 96 × 96 artwork, 16 px transparent on each side | Extension logo: 1:1, 300 × 300 recommended, at least 128 × 128 | [`store/icon-128.png`](store/icon-128.png), [`store/edge-logo-300.png`](store/edge-logo-300.png) |
 | Screenshots | 1 to 5, 1280 × 800 or 640 × 400, square corners, no padding | Optional, up to 6, 1280 × 800 or 640 × 480 | Five at 1280 × 800 (§8) |
@@ -43,7 +43,7 @@ The package is the same `xomoni-extension-X.Y.Z.zip` that the release workflow a
 | Permission justifications | One field per permission, plus host permissions | Permission justification | §5 |
 | Remote code | "No, I am not using remote code" | "No, I am not using remote code" | §6 |
 | Data usage and certifications | Privacy practices | Privacy → Data usage | §7 |
-| Search terms | — | Optional: at most 7 terms, each at most 30 characters, 21 words in all | `delete old posts`, `delete tweets`, `remove likes`, `undo reposts`, `delete replies`, `account cleanup`, `privacy` |
+| Search terms | — | Optional: at most 7 terms, each at most 30 characters, 21 words in all | `digital footprint`, `delete old posts`, `delete tweets`, `remove likes`, `undo reposts`, `delete replies`, `account cleanup` |
 | Notes for reviewers | No general field is documented: the text feeds the justifications, and an appeal | Notes for certification, optional | §9 |
 
 Sources: Chrome's [listing](https://developer.chrome.com/docs/webstore/cws-dashboard-listing), [images](https://developer.chrome.com/docs/webstore/images) and [privacy](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy) pages, and Microsoft's [Publish a Microsoft Edge extension](https://learn.microsoft.com/microsoft-edge/extensions/publish/publish-extension), read on 2026-11-21. Check them again before submitting.
@@ -53,7 +53,7 @@ Sources: Chrome's [listing](https://developer.chrome.com/docs/webstore/cws-dashb
 The same text for both stores:
 
 <!-- single-purpose:start -->
-Xomoni helps a person clean up their own X account. It finds their old posts, replies, reposts and likes, lets them choose what to remove and confirm it, and then removes it in their own signed-in X tab, through X's own website, slowly and within X's limits. Everything else in Xomoni serves that one purpose:
+Xomoni manages a person's own digital footprint, which today means helping them clean up their own X account. It finds their old posts, replies, reposts and likes, lets them choose what to remove and confirm it, and then removes it in their own signed-in X tab, through X's own website, slowly and within X's limits. Everything else in Xomoni serves that one purpose:
 - a copy of the account on the computer to choose from;
 - X's own archive, to reach old posts X no longer shows;
 - the activity log and account health, to follow the work safely;
@@ -64,31 +64,25 @@ What Xomoni learns about the account stays on the person's computer.
 
 ## 3. Name
 
-*Needs the maintainer's approval.* Today the name is "Xomoni — X Account Manager". Next to an icon that looks like a letter X, that name may read as X's own product, and stores refuse listings that suggest an affiliation. Proposals, each at most 75 characters (a test checks it):
+*Decided on 2026-11-21* ([#312](https://github.com/pirdehi/xomoni/issues/312)). The name was "Xomoni — X Account Manager", which next to an icon that looks like a letter X may read as X's own product; stores refuse listings that suggest an affiliation. The maintainer named the product and its title:
 
-<!-- name-drafts:start -->
-- Xomoni: clean up your X account
-- Xomoni: delete your old posts and likes
-- Xomoni – account cleanup for X
-<!-- name-drafts:end -->
+<!-- name:start -->
+Xomoni — Digital footprint manager
+<!-- name:end -->
 
-Recommended: **Xomoni: clean up your X account**. It says what it does and whose account it works on. If a reviewer objects to "X" in the name, the second one uses no X at all. The short name stays `Xomoni`. Every description says **"Not affiliated with X Corp."**
+It is the manifest's `name` (a test checks they agree, and Chrome's limit of 75 characters). It names no platform: Xomoni works on X today, and on the person's email and other places later. The short name stays `Xomoni`. Every description says **"Not affiliated with X Corp."**
 
 ## 4. Listing text
 
-*Needs the maintainer's approval.*
+The short description follows the name (#312). The detailed description needs the maintainer's approval.
 
 ### Short description (the manifest's `description`)
 
-At most 132 characters. Today's text is "Clean up your own X account — delete old posts, replies, reposts and likes from a local dashboard. No API keys, rate-limit aware." (129). Drafts:
+At most 132 characters; the manifest carries it, and a test checks they agree:
 
-<!-- summary-drafts:start -->
-- Clean up your own X account: delete old posts, replies, reposts and likes, slowly and safely, on your computer.
-- Delete your old X posts, replies, reposts and likes at a careful pace. It runs on your computer and your posts stay there.
-- Review and remove your own old posts, replies, reposts and likes on X, within X's limits. What Xomoni learns stays on your computer.
-<!-- summary-drafts:end -->
-
-Recommended: the first.
+<!-- summary:start -->
+Manage your digital footprint, starting with X: review and remove your old posts, replies, reposts and likes, on your computer.
+<!-- summary:end -->
 
 ### Detailed description
 
@@ -96,7 +90,7 @@ Plain text, for both stores:
 
 <!-- detailed-description:start -->
 ```text
-Xomoni cleans up your own X (formerly Twitter) account. It finds your old posts, replies, reposts and likes, shows you exactly what matches, and removes what you choose, slowly and within X's limits, in your own signed-in X tab. What it learns stays on your computer.
+Xomoni is a digital footprint manager. Today it works on your own X (formerly Twitter) account: it finds your old posts, replies, reposts and likes, shows you exactly what matches, and removes what you choose, slowly and within X's limits, in your own signed-in X tab. What it learns stays on your computer.
 
 Not affiliated with X Corp. Xomoni is an independent, free and open-source project (MIT license).
 
@@ -273,15 +267,14 @@ Contact: privacy@xomoni.com
 
 ## 10. Open questions for the maintainer
 
-1. **Name** (§3): which one? Recommended: *Xomoni: clean up your X account*.
-2. **The icon looks like X's logo.** It is a white X on a dark rounded square, which is close to X's own mark. With "X" in the name, this is the likeliest cause of a trademark refusal. Redraw it before submitting, for example the eraser stroke on the brand blue? The same applies to the dashboard's subtitle "X account manager" and to the 𝕏 badge on the connection map, which shows in screenshot 5.
+1. ~~**Name** (§3)~~: decided on 2026-11-21, *Xomoni — Digital footprint manager* (#312).
+2. **The icon looks like X's logo.** It is a white X on a dark rounded square, which is close to X's own mark, and the likeliest cause of a trademark refusal. Redraw it before submitting. The dashboard's subtitle is now "Digital footprint manager" (#312); the 𝕏 badge on the connection map still shows in screenshot 5.
 3. **Short and detailed description** (§4): approve, or change. Should the description quote X's automation rule, as the consent text does? It is honest, and it matches what the person agrees to in Xomoni, but it may draw a reviewer's attention.
 4. **"Authentication information"** (§7): tick it for the device token, as drafted, or leave it unticked because the token is Xomoni's own credential, not something the person gives? Ticking it is the safer reading of the policy, but the listing would then show "Authentication information" to everyone.
 5. **Watch** ([ADR-0021](adr/0021-watch-x-search-read-only.md)) reads X's search for phrases the person picks. It is read-only, but a reviewer may see it as a second purpose. The single-purpose text doesn't mention it. If a reviewer asks, describe it as part of keeping an eye on the account, or leave it out of the store build.
-6. **`homepage_url`** in the manifest points to GitHub. Change it to https://xomoni.com together with the name?
-7. **Category:** *Social Media & Networking*, or *Tools*?
+6. ~~**`homepage_url`**~~: now https://xomoni.com, with the name (#312).
+7. ~~**Category**~~: decided on 2026-11-21, *Tools* (§1).
 8. **Privacy page:**
    - The store-install sentence waits for the listings (§7).
-   - The page still says a browser connects by typing a one-time code. It doesn't yet mention the one-click connection, or that xomoni.com pages in the same browser can show Xomoni's data from the extension (ADR-0028).
-   - Worth a line before submitting?
+   - One-click connection, what xomoni.com shows from the extension in the same browser (ADR-0028) and the replies kept (ADR-0030) are in the policy (#320).
 9. **Official URL:** verifying xomoni.com in Google Search Console (part of phase 0) shows it on the Chrome listing as the publisher's site.

@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Xomoni — X Account Manager",
+  "name": "Xomoni — Digital footprint manager",
   "short_name": "Xomoni",
   "version": "0.4.0",
-  "description": "Clean up your own X account — delete old posts, replies, reposts and likes from a local dashboard. No API keys, rate-limit aware.",
-  "homepage_url": "https://github.com/pirdehi/xomoni",
+  "description": "Manage your digital footprint, starting with X: review and remove your old posts, replies, reposts and likes, on your computer.",
+  "homepage_url": "https://xomoni.com",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "unlimitedStorage", "notifications", "idle", "power", "downloads"],
   "incognito": "not_allowed",

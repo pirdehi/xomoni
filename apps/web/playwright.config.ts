@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { TEST_EXTENSION_ID } from './e2e/support/fixed-id';
 
 /**
  * End-to-end tests against the local Supabase stack (`supabase start`): real Supabase Auth, real emails
@@ -34,6 +35,8 @@ const env = {
   NEXT_PUBLIC_SITE_URL: 'http://localhost:3000',
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
   MAILPIT_URL: required(status.MAILPIT_URL ?? status.INBUCKET_URL, 'MAILPIT_URL'),
+  // The test extension with a fixed key (e2e/fixed-id.spec.ts, #302): the site looks for Xomoni there too.
+  NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID: TEST_EXTENSION_ID,
 };
 process.env.MAILPIT_URL = env.MAILPIT_URL;
 // For seeding devices and jobs (e2e/support/admin.ts): the local stack's fixed development keys.

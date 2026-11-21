@@ -5,9 +5,9 @@
 
 ## Context
 
-Xomoni is installed from a zip today: download it, unzip it into a folder that must stay where it is, turn on *Developer mode* and press *Load unpacked*. Each step loses people (the [install analysis](../INSTALL-UX-2026-11-21.fa.md)). The browser warns about developer-mode extensions, a moved folder turns Xomoni off, and Chrome never updates such an extension.
+Xomoni is installed from a zip today: download it, unzip it into a folder that must stay where it is, turn on *Developer mode* and press *Load unpacked*. Each step loses people (the [install analysis](../reports/2026-11/INSTALL-UX-2026-11-21.fa.md)). The browser warns about developer-mode extensions, a moved folder turns Xomoni off, and Chrome never updates such an extension.
 
-The maintainer chose the stores as the way to install (the [install project](../INSTALL-PROJECT-2026-11-21.fa.md), phases 6 and 8):
+The maintainer chose the stores as the way to install (the [install project](../reports/2026-11/INSTALL-PROJECT-2026-11-21.fa.md), phases 6 and 8):
 
 - the Chrome Web Store, Unlisted at first;
 - Edge Add-ons, Hidden at first;

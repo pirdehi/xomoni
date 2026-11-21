@@ -12,6 +12,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 - Screen readers didn't read out Xomoni's messages, such as *Couldn’t finish signing out*, while a dialog was open, nor one that came as it closed (#352). A dialog hides the rest of the page from them, and the messages were part of it. They now sit outside what a dialog hides, so they are read out at once.
 - After you imported your data from the offer on a new install (*Coming from another Xomoni?*), only a message that faded after a few seconds said it worked: Xomoni went straight to Home, and the import's *Your data is here* summary never showed (#357). Home now shows it until you dismiss it, and so does *Settings › Move your data*.
 - In light mode, the text of a quiet button while the pointer is over it, or while it is selected, is the same deeper blue as other blue text, so it meets WCAG AA contrast too, in Xomoni's dashboard and on xomoni.com (#345). It was 4.3:1, as on *Choose what to keep* in Cleanup.
+- In Cleanup, a post pasted twice under *Always keep these posts*, such as once as its link and once as its id, counted as two: the exceptions said *Keeps 2 chosen posts.* for one post (#367). Each post now counts once. The same posts were kept either way.
 
 ## [0.5.0] - 2026-11-21
 

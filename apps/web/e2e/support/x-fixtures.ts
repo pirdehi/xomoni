@@ -181,3 +181,38 @@ export async function answerWithRate(
     },
   );
 }
+
+/** Sets `favorite_count` on every post in `node`, an answer of X's, whose `legacy.id_str` `likes` names. */
+function setLikes(node: unknown, likes: Readonly<Record<string, number>>): void {
+  if (Array.isArray(node)) {
+    for (const child of node) setLikes(child, likes);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const { legacy } = node as { legacy?: { id_str?: unknown; favorite_count?: number } };
+  const id = legacy?.id_str;
+  if (legacy && typeof id === 'string' && Object.hasOwn(likes, id)) legacy.favorite_count = likes[id];
+  for (const child of Object.values(node)) setLikes(child, likes);
+}
+
+/**
+ * Makes X answer GraphQL operation `op` with other like counts from now on (#367): `likes` maps a post's id to the
+ * count X shows for it, as X does once people have liked it since, or taken their like back. The rest of the answer is
+ * X's usual one, from the history `context` is served with. The person's own browsing and Xomoni's page loads both see
+ * it, as on X.
+ */
+export async function answerWithLikes(
+  context: BrowserContext,
+  op: string,
+  likes: Readonly<Record<string, number>>,
+): Promise<void> {
+  const file = answerFile(op, served.get(context) ?? 'short');
+  if (!file) throw new Error(`The fixtures have no answer for ${op}`);
+  const answer = JSON.parse(readFileSync(file, 'utf8')) as unknown;
+  setLikes(answer, likes);
+  const body = JSON.stringify(answer);
+  await context.route(
+    (url) => url.host === 'x.com' && GRAPHQL.exec(url.pathname)?.[1] === op,
+    (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: xRateHeaders(), body }),
+  );
+}

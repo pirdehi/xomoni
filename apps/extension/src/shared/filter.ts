@@ -15,15 +15,17 @@ export function normalizeKeywords(raw: string): string[] {
 }
 
 /**
- * Post ids from pasted post URLs (`…/status/<id>`) or bare ids, separated by spaces, commas or new lines.
- * Digits inside anything else, such as a handle like `@user12345678`, are not taken for an id (#61).
+ * Post ids from pasted post URLs (`…/status/<id>`) or bare ids, separated by spaces, commas or new lines, each once:
+ * the same post pasted as a link and as its id is one post to keep (#367). Digits inside anything else, such as a
+ * handle like `@user12345678`, are not taken for an id (#61).
  */
 export function parseIdList(raw: string): string[] {
-  return raw.split(/[\s,]+/).flatMap((token) => {
+  const ids = raw.split(/[\s,]+/).flatMap((token) => {
     const fromUrl = /\/status(?:es)?\/(\d{6,20})(?:\D|$)/.exec(token)?.[1];
     if (fromUrl) return [fromUrl];
     return /^\d{6,20}$/.test(token) ? [token] : [];
   });
+  return [...new Set(ids)];
 }
 
 /** Whether an item should be removed under the filter (false = keep it). */

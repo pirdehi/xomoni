@@ -22,8 +22,8 @@
       "area": "extension",
       "status": "shipped",
       "since": "0.1.0",
-      "issues": [],
-      "scenarios": null,
+      "issues": [367],
+      "scenarios": "docs/scenarios/367-keep-rules.md",
       "en": {
         "title": "Keep rules",
         "summary": "spare posts with at least N likes, posts containing given keywords, specific links you paste, and replies in your own threads."

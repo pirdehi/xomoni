@@ -12,13 +12,13 @@
 
 | # | Question | Decision |
 | --- | --- | --- |
-| 1 | Where do the numbers live? | **Daily numbers in the cloud, by the person's choice** ([ADR-0026](adr/0026-daily-numbers-in-the-cloud.md)). Counts per day only; never text, ids or other people. Off until turned on. Turning it off deletes them. |
+| 1 | Where do the numbers live? | **Daily numbers in the cloud, by the person's choice** ([ADR-0026](../../adr/0026-daily-numbers-in-the-cloud.md)). Counts per day only; never text, ids or other people. Off until turned on. Turning it off deletes them. |
 | 2 | How actively does Xomoni collect? | **Without risk: no extra request to X.** Only what X already sends to the person's browser: pages they or a job open, scans they start, the archive. |
 | 3 | How far back? | *Published* from the archive, back to the account's first day. *Received* and follower changes from the first day the numbers are on. |
 | 4 | Who unfollowed? | Only by comparing two imported archives. Xomoni never scrolls follower lists. The lists stay in the browser. |
 | 5 | Other people's replies? | Shown, with *Open on X* to hide one. X lets nobody delete them, and Xomoni won't automate hiding. |
 | 6 | Several X accounts? | Yes: an account picker on every page. The extension already keeps accounts apart. |
-| 7 | The extension's actions on the website? | **Every action is there, in the same browser only, and approved in Xomoni** ([ADR-0027](adr/0027-extension-actions-from-the-website.md)). Without Xomoni, one dialog says why. |
+| 7 | The extension's actions on the website? | **Every action is there, in the same browser only, and approved in Xomoni** ([ADR-0027](../../adr/0027-extension-actions-from-the-website.md)). Without Xomoni, one dialog says why. |
 
 ## Principles
 

@@ -47,7 +47,7 @@ flowchart TD
 | R1 | Formatting, lint with no warnings, a doc comment on every export | `npm run verify` | Enforced |
 | R2 | Strict TypeScript, no `any`, no inline lint exceptions ([ADR-0016](adr/0016-strict-typescript-and-type-aware-lint.md)) | `npm run verify` | Enforced |
 | R3 | Code in the right layer ([ADR-0015](adr/0015-architecture-styles-principles-and-patterns.md)) | `npm run arch` | Enforced |
-| R4 | A README for every unit, an up-to-date architecture, valid ADRs, working links, documented environment variables ([ADR-0009](adr/0009-documentation-is-a-merge-gate.md)) | `npm run docs:check` | Enforced |
+| R4 | A README for every unit, an up-to-date architecture, valid ADRs, working links, documented environment variables ([ADR-0009](adr/0009-documentation-is-a-merge-gate.md)); docs sorted by kind: only listed living documents at the root of `docs/`, dated reports in `docs/reports/<yyyy-mm>/`, all on [the map](README.md) ([ADR-0041](adr/0041-docs-sorted-by-kind-with-one-map.md)) | `npm run docs:check` | Enforced; the docs by kind since #344 |
 | R5 | Every source file has a test; coverage thresholds only go up ([ADR-0017](adr/0017-test-standard.md)) | `npm run tests:check`, Vitest thresholds | Enforced |
 | R6 | A backend test and a frontend test for every feature, with failure and security cases | Review, the pull request template | Review |
 | R7 | Row Level Security tests; generated types match the migrations | CI `database` | Enforced |

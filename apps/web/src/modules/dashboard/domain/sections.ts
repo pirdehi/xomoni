@@ -1,5 +1,5 @@
-// The dashboard's places (#245, docs/DASHBOARD-PLAN-2026-11-19.md): one list, in the order the menu shows them, with
-// the words each place uses for itself. Pure.
+// The dashboard's places (#245, docs/reports/2026-11/DASHBOARD-PLAN-2026-11-19.md): one list, in the order the menu
+// shows them, with the words each place uses for itself. Pure.
 import type { XomoniPage } from '@xomoni/bridge';
 
 /** A place of the dashboard; also its address under `/dashboard`. */

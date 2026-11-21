@@ -1,6 +1,7 @@
 'use client';
-// The dashboard's frame (#245, docs/DASHBOARD-PLAN-2026-11-19.md): every place in a sidebar on a computer, a bottom
-// bar on a phone, and the account and period pickers on every page, kept in the address. On Fluent UI (ADR-0019).
+// The dashboard's frame (#245, docs/reports/2026-11/DASHBOARD-PLAN-2026-11-19.md): every place in a sidebar on a
+// computer, a bottom bar on a phone, and the account and period pickers on every page, kept in the address. On Fluent
+// UI (ADR-0019).
 import {
   Badge,
   Button,

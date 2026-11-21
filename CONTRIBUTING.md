@@ -2,6 +2,8 @@
 
 Thanks for helping. Xomoni acts on people's X accounts, so the bar is: safe first, then correct, then fast. Read the [architecture](docs/ARCHITECTURE.md) and the [safety playbook](docs/PLAYBOOK.md) before larger changes.
 
+Every other document is on [the map of `docs/`](docs/README.md), with what it is for and when to read it.
+
 ## Set up
 
 Requirements: Node.js 20.19+ (CI uses 22), npm, and Docker (or Colima) for the local Supabase stack. The [Supabase CLI](https://supabase.com/docs/guides/cli) is needed for website and database work; CI pins the version in `.github/workflows/ci.yml`, so use the same one when you regenerate `packages/db`.
@@ -25,7 +27,7 @@ npm install            # also installs the git hooks (.githooks)
 | Lint and code documentation | `npm run lint` | Lint errors, or an exported symbol without a doc comment |
 | Types | `npm run typecheck` | TypeScript errors in any workspace |
 | Architecture | `npm run arch` | An import breaks a rule in `.dependency-cruiser.cjs` |
-| Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
+| Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented, a file at the root of `docs/` isn't a listed living document (reports go in `docs/reports/<yyyy-mm>/`), or [the map](docs/README.md) misses a living document or a folder |
 | README from the feature registry | `npm run readme:check` | `README.md` or `README.fa.md` differs from what [`docs/features.json`](docs/features.json) would write (`npm run readme` fixes it), the registry is invalid, or an issue under *Added* in `CHANGELOG.md` belongs to no feature and to no exemption with a reason ([below](#the-feature-registry)) |
 | Test presence | `npm run tests:check` | A source file is imported by no test and is not listed as exempt with a reason ([docs/TESTING.md](docs/TESTING.md)) |
 | User scenarios | `npm run scenarios:check` | A file in `docs/scenarios/` has fewer than 20 scenarios, a category under its minimum or more than 3 manual ones, or a scenario's Playwright test is missing, skipped or without its `@task-<issue>` tag ([docs/scenarios/README.md](docs/scenarios/README.md)) |

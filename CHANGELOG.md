@@ -108,6 +108,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - Cleanup on xomoni.com says that X began in 2006 when a date is earlier, instead of asking Xomoni for a plan it refuses.
+- Audience on xomoni.com, over *All time*, says your followers changed by so many *over all time*, not *in the all time* (#341).
 
 ## [0.4.0] - 2026-11-20
 

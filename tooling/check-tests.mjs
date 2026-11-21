@@ -27,8 +27,6 @@ const EXEMPT = {
   'apps/extension/src/shared/messages.ts': 'message types only',
   'apps/extension/src/ui/navigation.ts': 'types only',
   'apps/extension/src/ui/main.tsx': 'entry point: mounts <App />, which has its own tests',
-  'apps/extension/src/engine/timer-worker.ts':
-    'a Web Worker script that only forwards setTimeout; used through timers.ts',
   'apps/web/src/modules/auth/application/ports.ts': 'interfaces only',
   'apps/web/src/modules/dashboard/application/ports.ts': 'interfaces only',
   'apps/web/src/modules/extension/application/ports.ts': 'interfaces only',

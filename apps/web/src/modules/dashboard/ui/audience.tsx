@@ -98,7 +98,11 @@ export function Audience({
   const figures = audienceFigures(current, followers);
   const reached = milestones(followers);
   const next = figures.followers === null ? null : nextMilestone(figures.followers);
-  const period = PERIODS.find((p) => p.id === scope.period)?.label.toLowerCase() ?? '';
+  // `in the last 30 days`, but `over all time`: `in the all time` isn't English.
+  const during =
+    scope.period === 'all'
+      ? 'over all time'
+      : `in the ${PERIODS.find((p) => p.id === scope.period)?.label.toLowerCase() ?? 'period'}`;
   const overview = sectionHref('overview', scopeQuery(scope));
 
   const whoFollowed = (
@@ -139,11 +143,7 @@ export function Audience({
         <Tile
           label="Followers"
           value={figures.followers === null ? '—' : formatCount(figures.followers)}
-          note={
-            figures.net === null
-              ? 'No change to show yet'
-              : `${signed(figures.net)} in the ${period.replace(/^last /, 'last ')}`
-          }
+          note={figures.net === null ? 'No change to show yet' : `${signed(figures.net)} ${during}`}
         />
         <Tile
           label="Gained"

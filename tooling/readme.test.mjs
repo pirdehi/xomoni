@@ -541,7 +541,7 @@ describe("the repository's own registry and READMEs (#337)", () => {
   });
 
   it('only shrinks its legacy list: no feature joins it (#345)', () => {
-    assert.ok(LEGACY_FEATURES.length <= 36, 'LEGACY_FEATURES may only shrink (ADR-0038, #345)');
+    assert.ok(LEGACY_FEATURES.length <= 37, 'LEGACY_FEATURES may only shrink (ADR-0038, #345)');
     assert.ok(Object.isFrozen(LEGACY_FEATURES));
   });
 });

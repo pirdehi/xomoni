@@ -322,6 +322,22 @@
       }
     },
     {
+      "id": "two-step-verification",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [173, 148],
+      "scenarios": null,
+      "en": {
+        "title": "Two-step verification",
+        "summary": "turn it on in Account with an authenticator app, and every sign-in on xomoni.com asks for its 6-digit code before any private page opens. The website's server and the database both check it, so a password or a copied session alone reads and changes nothing. Changing your email or password, or resetting it by email, asks for a code too, and every app added or removed is emailed to you."
+      },
+      "fa": {
+        "title": "تأیید دومرحله‌ای",
+        "summary": "در بخش حساب با یک اپ احراز هویت روشنش کنید؛ از آن به بعد هر ورود به xomoni.com پیش از باز شدن هر صفحه‌ی خصوصی، کد ۶ رقمی اپ را می‌خواهد. سرور وب‌سایت و پایگاه داده هر دو آن را بررسی می‌کنند، پس رمز عبور یا نشستِ کپی‌شده به‌تنهایی چیزی را نمی‌خواند و تغییر نمی‌دهد. تغییر ایمیل یا رمز، یا بازنشانی رمز با ایمیل هم کد می‌خواهد، و هر اپی که اضافه یا حذف شود به ایمیل شما خبر داده می‌شود."
+      }
+    },
+    {
       "id": "live-job-status",
       "area": "both",
       "status": "shipped",

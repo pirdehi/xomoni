@@ -293,7 +293,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | 🔄 | 9 · Scenarios for the features shipped before the gate. Done: `cleanup-by-date`, 34 scenarios in the built extension ([file](scenarios/199-cleanup-by-date.md)); `keep-rules`, 31 ([file](scenarios/367-keep-rules.md), #367); `x-pacing`, 34 ([file](scenarios/17-x-pacing.md)) | [#345](https://github.com/pirdehi/xomoni/issues/345) | [#365](https://github.com/pirdehi/xomoni/pull/365), [#368](https://github.com/pirdehi/xomoni/pull/368), [#369](https://github.com/pirdehi/xomoni/pull/369) |
 | 🔄 | 10 · The maintainer's settings. Done on 2026-11-21: the `release` and `stores` environments, and `pr-policy`, `dependency-review` and CodeQL's results required by the ruleset. Left: an account for AI agents, then code-owner review; signed commits | [#346](https://github.com/pirdehi/xomoni/issues/346) | |
 | ✅ | 11 · Safety fix found by the scenarios: a job reads X's notice of a limited or suspended account only once X has drawn the page, before anything else reaches X | [#375](https://github.com/pirdehi/xomoni/issues/375) | [#376](https://github.com/pirdehi/xomoni/pull/376) |
-| ✅ | 12 · Safety: each job reads X's Home first, even when the X window is on another page, at the reading pace | [#377](https://github.com/pirdehi/xomoni/issues/377) | |
+| ✅ | 12 · Safety: each job reads X's Home first, even when the X window is on another page, at the reading pace | [#377](https://github.com/pirdehi/xomoni/issues/377) | [#378](https://github.com/pirdehi/xomoni/pull/378) |
 
 ## Dropped
 

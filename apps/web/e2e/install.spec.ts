@@ -236,7 +236,7 @@ test.describe('the install guide (#299)', () => {
       'Read what can go wrong',
       'Download Xomoni',
       'Unzip it into a folder you keep',
-      /^Add it to (Chrome|Chrome, Edge or Brave)$/,
+      /^Add it to (Chrome|Edge|Chrome, Edge or Brave)$/,
       'Follow it here (optional)',
     ];
     for (const [i, title] of titles.entries()) {

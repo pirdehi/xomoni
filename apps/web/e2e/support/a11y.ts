@@ -11,6 +11,8 @@ const LOOKS = 3;
 export interface A11yOptions {
   /** CSS selectors of parts of the page not to check, such as a third party's frame. */
   exclude?: string[];
+  /** Fail the test at its end rather than at once, so a sweep of many pages reports every page's violations. */
+  soft?: boolean;
 }
 
 /**
@@ -87,5 +89,8 @@ export async function expectNoSeriousA11yViolations(page: Page, options: A11yOpt
     body: JSON.stringify({ url: page.url(), violations }, null, 2),
     contentType: 'application/json',
   });
-  expect(describe(violations), `serious or critical accessibility violations on ${page.url()}`).toEqual([]);
+  (options.soft ? expect.soft : expect)(
+    describe(violations),
+    `serious or critical accessibility violations on ${page.url()}`,
+  ).toEqual([]);
 }

@@ -12,6 +12,7 @@
     "test:e2e:extension": "playwright test -c playwright.extension.config.ts"
   },
   "dependencies": {
+    "@fluentui/react-avatar": "^9.11.10",
     "@fluentui/react-components": "^9.75.2",
     "@fluentui/react-icons": "^2.0.346",
     "@marsidev/react-turnstile": "^1.6.3",

@@ -25,11 +25,11 @@ const PUBLIC = [
 /** Every place of the dashboard, in the menu's order, then the account page. */
 const SIGNED_IN = [...SECTIONS.map((section) => sectionHref(section.id)), '/account'];
 
-/** Opens `path` and checks it once its main heading shows. */
+/** Opens `path` and checks it once its main heading shows; the test goes on to the next page and fails at its end. */
 async function check(page: Page, path: string) {
   await page.goto(path);
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
-  await expectNoSeriousA11yViolations(page);
+  await expectNoSeriousA11yViolations(page, { soft: true });
 }
 
 for (const colorScheme of ['light', 'dark'] as const) {

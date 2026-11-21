@@ -2,7 +2,7 @@
 
 Everything the two stores ask for, ready to paste: the permission justifications, the privacy answers, the listing text, the images and the notes for reviewers. It is phase 3 of the one-click install project ([#301](https://github.com/pirdehi/xomoni/issues/301)). The plan is to publish on the Chrome Web Store as **Unlisted** first, and on Microsoft Edge Add-ons as **Hidden**.
 
-> **Status: drafts.** Nothing has been submitted, and no store account exists yet (the maintainer makes them in phase 0: [guide, in Persian](STORE-ACCOUNTS-GUIDE.fa.md)). The name (§3) and the category were decided on 2026-11-21, and the manifest carries the name and the short description (#312). The detailed description (§4) and the privacy answers (§7) still need the maintainer's approval.
+> **Status: drafts.** Nothing has been submitted, and no store account exists yet (the maintainer makes them in phase 0: [guide, in Persian](guides/STORE-ACCOUNTS-GUIDE.fa.md)). The name (§3) and the category were decided on 2026-11-21, and the manifest carries the name and the short description (#312). The detailed description (§4) and the privacy answers (§7) still need the maintainer's approval.
 
 Contents:
 1. [What each store needs](#1-what-each-store-needs)

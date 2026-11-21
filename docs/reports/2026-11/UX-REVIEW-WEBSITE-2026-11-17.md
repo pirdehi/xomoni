@@ -4,7 +4,7 @@
 
 > The website's structure as the people who come to it meet it, and what Phase 16 changes. Reviewed on 17 November 2026, on `main` after [#236](https://github.com/pirdehi/xomoni/pull/236) (one sign-in). The public pages were checked on xomoni.com on desktop and phone, in light and dark. The signed-in pages were checked from their code.
 >
-> The page-by-page defects (wrong numbers, the old screenshot, words that differ from the extension, the duplicated account menu) are in [#239](https://github.com/pirdehi/xomoni/issues/239), fixed by [#241](https://github.com/pirdehi/xomoni/pull/241) (Phase 15), and are not repeated here. This review is about the structure: what the site is made of, how people move through it, and how it becomes one product with the extension ([Phase 14](ROADMAP.md#phase-14--one-xomoni-the-website-and-the-extension-together)).
+> The page-by-page defects (wrong numbers, the old screenshot, words that differ from the extension, the duplicated account menu) are in [#239](https://github.com/pirdehi/xomoni/issues/239), fixed by [#241](https://github.com/pirdehi/xomoni/pull/241) (Phase 15), and are not repeated here. This review is about the structure: what the site is made of, how people move through it, and how it becomes one product with the extension ([Phase 14](../../ROADMAP.md#phase-14--one-xomoni-the-website-and-the-extension-together)).
 
 ## Who comes to xomoni.com, and why
 

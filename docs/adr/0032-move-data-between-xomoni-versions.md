@@ -75,6 +75,7 @@ ADR-0004 keeps X data in the browser, so the move can't go through a server.
 8. **The move is guided:**
    - Settings › *Move your data* explains the two steps.
    - On a new install, onboarding and Home offer *Coming from another Xomoni? Import your data*. The offer shows while Xomoni hasn't done anything here yet (no job, no log line) and goes away for good with *Not now*.
+   - An import's result, *Your data is here* with what came in, stays on screen until the person dismisses it: in Settings, and on Home in the offer's place. The import keeps it in the same transaction as its data, so it is waiting on Home when an import from onboarding turns the dashboard there (#357).
 9. **One file format.** The sign-out dialog's copy of one account (#226) is the same file with that account's records and values only, so it can be imported again.
 
 Built in [#300](https://github.com/pirdehi/xomoni/issues/300).

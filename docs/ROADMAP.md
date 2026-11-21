@@ -290,7 +290,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ✅ | 6 · The extension in a real browser with X fixtures, Chrome and Edge, axe | [#342](https://github.com/pirdehi/xomoni/issues/342) | [#360](https://github.com/pirdehi/xomoni/pull/360) |
 | ✅ | 7 · The nightly full run, and a check after each release | [#343](https://github.com/pirdehi/xomoni/issues/343) | [#359](https://github.com/pirdehi/xomoni/pull/359) |
 | ✅ | 8 · Docs sorted by kind, with one map: dated reports in `docs/reports/<yyyy-mm>/`, the map in `docs/README.md`, checked by `docs:check` | [#344](https://github.com/pirdehi/xomoni/issues/344) | [#364](https://github.com/pirdehi/xomoni/pull/364) |
-| ⬜ | 9 · Scenarios for the features shipped before the gate | [#345](https://github.com/pirdehi/xomoni/issues/345) | |
+| 🔄 | 9 · Scenarios for the features shipped before the gate. Done: `cleanup-by-date`, 32 scenarios in the built extension ([file](scenarios/199-cleanup-by-date.md)) | [#345](https://github.com/pirdehi/xomoni/issues/345) | [#365](https://github.com/pirdehi/xomoni/pull/365) |
 | 🔄 | 10 · The maintainer's settings. Done on 2026-11-21: the `release` and `stores` environments, and `pr-policy`, `dependency-review` and CodeQL's results required by the ruleset. Left: an account for AI agents, then code-owner review; signed commits | [#346](https://github.com/pirdehi/xomoni/issues/346) | |
 
 ## Dropped

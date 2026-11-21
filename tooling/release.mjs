@@ -1,6 +1,8 @@
 // Releasing the extension (docs/RELEASING.md). The release workflow runs these; anyone can run them locally.
 //
-//   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section; warns
+//   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section; with a
+//                                             tag, the features it ships are stamped with its version in
+//                                             docs/features.json and both READMEs' status names it (#337); warns
 //                                             while no release signing key is trusted (#305)
 //   node tooling/release.mjs notes vX.Y.Z     prints the changelog section, for the GitHub release
 //   node tooling/release.mjs package          zips the default build in apps/extension/dist (`npm run build`) into
@@ -25,6 +27,7 @@ import {
   versionOfTag,
   zipChecksums,
 } from './release-lib.mjs';
+import { README_FILES } from './readme-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXT = join(ROOT, 'apps/extension');
@@ -36,7 +39,26 @@ const releaseKeys = trustedReleaseKeys(read('apps/extension/src/update/release-k
 const [command, tag] = process.argv.slice(2);
 
 if (command === 'check') {
-  const problems = releaseProblems({ manifestVersion, packageVersion, changelog: read('CHANGELOG.md'), tag });
+  // An unreadable registry is a problem only for a tag, which needs its features stamped.
+  let registry = {};
+  let registryError = null;
+  try {
+    registry = JSON.parse(read('docs/features.json'));
+  } catch (error) {
+    registryError = `docs/features.json can't be read: ${error instanceof Error ? error.message : String(error)}`;
+  }
+  const readmes = Object.fromEntries(
+    Object.values(README_FILES).map((file) => [file, existsSync(join(ROOT, file)) ? read(file) : undefined]),
+  );
+  const problems = releaseProblems({
+    manifestVersion,
+    packageVersion,
+    changelog: read('CHANGELOG.md'),
+    tag,
+    registry,
+    readmes,
+  });
+  if (tag != null && registryError) problems.push(registryError);
   // `::warning::` makes it an annotation on the release's run in GitHub Actions.
   const warning = releaseKeyWarning(releaseKeys);
   if (warning) console.warn(`::warning::${warning}`);

@@ -30,6 +30,8 @@
     "format:check": "prettier --check .",
     "arch": "depcruise apps packages --config .dependency-cruiser.cjs",
     "docs:check": "node tooling/check-docs.mjs",
+    "readme": "node tooling/readme.mjs",
+    "readme:check": "node tooling/readme.mjs --check",
     "tests:check": "node tooling/check-tests.mjs",
     "test:tooling": "node --test 'tooling/*.test.mjs'",
     "remote-code:check": "npm run --silent build -w @xomoni/extension && node tooling/check-remote-code.mjs",

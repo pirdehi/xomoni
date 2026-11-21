@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, readFileSync, readdirSync, utimesSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { changelogAddedIssues, statusVersion } from './readme-lib.mjs';
 
 /**
  * The zips a release attaches for `version`. `latest` and `versioned` are the same file, the default build with the
@@ -48,8 +49,10 @@ export function versionOfTag(tag) {
  * The problems with releasing `tag`: the extension's manifest and package must carry the same version, the tag
  * (when given) must name it, and the changelog must have a section for it. Empty when all is in order. Trusting no
  * release signing key isn't one: such a release goes out unsigned, with a warning (`releaseKeyWarning`, #305).
+ * Given the feature registry and the READMEs too (`registry`, `readmes`), a tag also needs `featureReleaseProblems`
+ * to be empty (#337, ADR-0039).
  */
-export function releaseProblems({ manifestVersion, packageVersion, changelog, tag }) {
+export function releaseProblems({ manifestVersion, packageVersion, changelog, tag, registry, readmes }) {
   const problems = [];
   if (manifestVersion !== packageVersion)
     problems.push(`manifest.json says ${manifestVersion}, apps/extension/package.json says ${packageVersion}`);
@@ -59,7 +62,40 @@ export function releaseProblems({ manifestVersion, packageVersion, changelog, ta
     else {
       if (version !== manifestVersion) problems.push(`the tag ${tag} doesn't match the manifest's ${manifestVersion}`);
       if (changelogSection(changelog, version) == null) problems.push(`CHANGELOG.md has no section for ${version}`);
+      if (registry != null && readmes != null)
+        problems.push(...featureReleaseProblems({ version, registry, changelog, readmes }));
     }
+  }
+  return problems;
+}
+
+/**
+ * What the feature registry and the READMEs still lack for releasing `version` (#337, ADR-0039): every feature whose
+ * issues CHANGELOG.md names under that version's `### Added` must be stamped (`since` no longer `unreleased`), and
+ * each README's generated status (`readmes` maps file to text) must name the version, which `npm run readme` writes
+ * from the changelog. Empty when all is in order.
+ */
+export function featureReleaseProblems({ version, registry, changelog, readmes }) {
+  const problems = [];
+  const added = changelogAddedIssues(changelog);
+  const features = Array.isArray(registry?.features) ? registry.features : [];
+  if (!Array.isArray(registry?.features)) problems.push('docs/features.json has no "features" list');
+  for (const feature of features) {
+    if (feature?.since !== 'unreleased' || !Array.isArray(feature.issues)) continue;
+    const shipped = feature.issues.find((issue) => added.get(issue)?.includes(version));
+    if (shipped != null)
+      problems.push(
+        `docs/features.json: "${feature.id}" ships in ${version} (#${shipped} is under its ### Added), but its "since" is still "unreleased": set it to "${version}", then run npm run readme`,
+      );
+  }
+  for (const [file, text] of Object.entries(readmes)) {
+    const named = typeof text === 'string' ? statusVersion(text) : null;
+    if (named !== version)
+      problems.push(
+        named
+          ? `${file}'s status names ${named}, not ${version}: run npm run readme`
+          : `${file} has no generated status naming ${version}: run npm run readme`,
+      );
   }
   return problems;
 }

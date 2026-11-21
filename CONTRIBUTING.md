@@ -26,6 +26,7 @@ npm install            # also installs the git hooks (.githooks)
 | Types | `npm run typecheck` | TypeScript errors in any workspace |
 | Architecture | `npm run arch` | An import breaks a rule in `.dependency-cruiser.cjs` |
 | Documentation | `npm run docs:check` | A unit has no README, the architecture doc is out of date, an ADR is malformed, a link is broken, an env var is undocumented |
+| README from the feature registry | `npm run readme:check` | `README.md` or `README.fa.md` differs from what [`docs/features.json`](docs/features.json) would write (`npm run readme` fixes it), the registry is invalid, or an issue under *Added* in `CHANGELOG.md` belongs to no feature and to no exemption with a reason ([below](#the-feature-registry)) |
 | Test presence | `npm run tests:check` | A source file is imported by no test and is not listed as exempt with a reason ([docs/TESTING.md](docs/TESTING.md)) |
 | Tooling tests | `npm run test:tooling` | A test of the repository's own scripts fails (`node --test 'tooling/*.test.mjs'`), or [docs/STORE-LISTING.md](docs/STORE-LISTING.md) no longer matches the manifest or the stores' limits, or an icon no longer matches its drawing in `apps/extension/scripts/icon.mjs` ([ADR-0035](docs/adr/0035-xomoni-has-its-own-mark.md)) |
 | No remote code | `npm run remote-code:check` | The extension's build runs code from a string (`eval`, `new Function`) or loads it from another site, or its CSP would let it ([docs/STORE-LISTING.md](docs/STORE-LISTING.md#6-no-remote-code)) |
@@ -49,7 +50,8 @@ npm run test:e2e -w @xomoni/web
    - a TSDoc comment on every export: what it is for and anything non-obvious;
    - the unit's README when its responsibility, files or dependencies change;
    - `docs/ARCHITECTURE.md` and an ADR when you add a unit, a rule or make a design decision;
-   - `apps/web/.env.example` for every new environment variable.
+   - `apps/web/.env.example` for every new environment variable;
+   - [`docs/features.json`](docs/features.json) for a change people can see: add the feature, or change its entry, in English and Persian, then run `npm run readme` ([the feature registry](#the-feature-registry)).
 5. Add or update tests on both sides, as [docs/TESTING.md](docs/TESTING.md) describes: a backend test (rule, use case, engine step or database policy) and a frontend test (the component the person uses), with the failure and security cases. Security rules (Row Level Security, redirects, auth errors) get tests that prove the negative case too.
 6. Run `npm run verify`, push, and open a pull request. Fill in the template's safety checklist.
 7. When the pull request finishes a roadmap task, tick it in [docs/ROADMAP.md](docs/ROADMAP.md) with the pull request number, in the same pull request.
@@ -69,7 +71,23 @@ The rules are in [ADR-0016](docs/adr/0016-strict-typescript-and-type-aware-lint.
 
 ## Releases
 
-The extension ships as a zip on GitHub Releases from a version tag; [docs/RELEASING.md](docs/RELEASING.md) has the steps. Every pull request that changes what people see adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
+The extension ships as a zip on GitHub Releases from a version tag; [docs/RELEASING.md](docs/RELEASING.md) has the steps. Every pull request that changes what people see adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md). An issue it names under *Added* needs its feature in `docs/features.json`.
+
+## The feature registry
+
+[`docs/features.json`](docs/features.json) lists everything Xomoni does, most important first within each area (#337). The feature list and the status in [README.md](README.md) and [README.fa.md](README.fa.md) are written from it, between `<!-- BEGIN GENERATED: … -->` and `<!-- END GENERATED: … -->`. Never edit those blocks by hand: change the registry and run `npm run readme`. Everything outside them is written by hand.
+
+| Field | What it holds |
+| --- | --- |
+| `id` | A kebab-case name, unique: `keep-rules`. |
+| `area` | `extension`, `website`, or `both` when it needs the extension and xomoni.com together. The README lists each area under its own heading. |
+| `status` | `shipped`, or `preview` while it waits on something outside the code, such as the stores listing Xomoni. |
+| `since` | The first version that shipped it (`0.4.0`), or `unreleased` while it is only under `[Unreleased]`. The release stamps it ([releasing](docs/RELEASING.md)). |
+| `issues` | The issues that built it. Every issue under *Added* in `CHANGELOG.md` belongs to a feature, or to `notFeatures` with a reason. |
+| `scenarios` | Its scenarios file, `docs/scenarios/<issue>-<slug>.md`, for one of its issues. Only the features in `LEGACY_FEATURES` (`tooling/readme-lib.mjs`), which shipped before scenarios were required, may have `null`, until #345 writes theirs. |
+| `en`, `fa` | `title` and `summary`, one line each. English plain and short; Persian fluent, in the tone of `README.fa.md`, not a word-for-word translation. |
+
+`npm run readme:check`, part of `npm run verify`, fails when a README differs from the registry, the registry is invalid, or it disagrees with `CHANGELOG.md`.
 
 ## Database changes
 

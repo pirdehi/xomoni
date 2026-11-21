@@ -8,6 +8,7 @@ const steps = [
   ['Types', 'typecheck'],
   ['Architecture rules', 'arch'],
   ['Documentation', 'docs:check'],
+  ['README from the feature registry', 'readme:check'],
   ['Test presence', 'tests:check'],
   ['Tooling tests', 'test:tooling'],
   ['No remotely hosted code (extension build)', 'remote-code:check'],

@@ -31,15 +31,56 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 
 ## Features
 
+<!-- BEGIN GENERATED: features (npm run readme) -->
+
+### In the extension
+
 - **Bulk cleanup by date:** delete posts, replies, reposts or likes older than a given date, or between two dates.
 - **Keep rules:** spare posts with at least N likes, posts containing given keywords, specific links you paste, and replies in your own threads.
-- **Preview before acting:** see exactly what matches, an estimated duration at your pacing, a JSON backup download, and a typed `DELETE` confirmation.
+- **Preview before acting:** see exactly what matches, an estimated duration at your pacing, a JSON backup download, and a typed `DELETE` confirmation. Before an X account's first job, Xomoni shows the risks and asks you to type `I UNDERSTAND`.
 - **Reaches past the ~3,200 profile limit:** sweeps X search (`from:you until:date`) in pages and imports your official X archive.
-- **Login and 2FA hand-off:** when X needs you (login, 2FA, captcha, email code, account unlock, wrong account), the job pauses, sends you a desktop notification, waits while you complete it in the X window, then **continues by itself**. Xomoni never asks for or stores your password.
+- **Within one fifth of X's limits:** Xomoni never uses more than one fifth of any limit X announces, starts slower on a new account, rests between work sessions, keeps to active hours, and stops at X's first warning. Custom pacing can be slower, never faster.
+- **Acts only on what it can verify:** before deleting, Xomoni checks that the post is yours and still matches the rule, and counts it as removed only when X's response confirms it. A check after a job's first delete, and spot checks later, catch X quietly ignoring deletes.
+- **Login and 2FA hand-off:** when X needs you (login, 2FA, captcha, email code, account unlock, wrong account), the job pauses, sends you a desktop notification, waits while you complete it in the X window, then continues by itself. Xomoni never asks for or stores your password.
 - **Resumable jobs:** pause, close the browser, and resume later without losing progress.
+- **Keeps going while you do other things:** *Keep going while away* keeps the display on and brings a covered X window forward, and *Run hidden* shares the X tab with the dashboard so a job continues with the X window minimized. Nothing of the shared tab is recorded or sent.
+- **Your X archive, requested and imported:** *Get my archive* asks X for your archive on X's own page and downloads it once X has made it. The ZIP is imported as it is, from Downloads › Xomoni or dropped on the Library, and only `account.js`, `tweets.js` and `like.js` are read.
+- **Your copy, in the Library:** shows how much of your account Xomoni has and where it came from, with a search. *Complete my copy* reads your posts, replies, likes and full history from X in one job.
 - **Archive a date range:** pick the dates, let Xomoni read them from X (read-only, at the same careful pace), and download your posts, replies and reposts from that range as a page you can open in any browser, or as JSON. It is saved on your computer only. Your official X archive stays the complete copy, with media.
-- **Dashboard:** removal stats, a year-by-year chart, live limits and pacing, a jobs list, a searchable inventory, and an exportable activity log. Light and dark themes.
-- **Private by design:** no telemetry, and your posts, likes and inventory stay in IndexedDB in your browser profile. If you choose to connect the extension to xomoni.com with a one-time code, only job status goes there (titles, states and counts) so you can follow it from any device.
+- **Watch X search:** follow up to five phrases or #hashtags in X's search. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads: nothing is liked, replied to or posted.
+- **Dashboard:** *Home* says what runs and what X needs, with the one button that helps; *Activity* shows each job's progress, time remaining and a log you can read, and export as CSV or JSON; plus removal counts and a year-by-year chart. Light and dark themes.
+- **Daily numbers:** one row per X account per day, kept in this browser: followers, following, posts and likes, what you published and removed, and an estimate of what your posts received. Only pages X already showed count; nothing new is asked of X.
+- **Sign out of Xomoni:** one dialog names the account and says what happens: the running job pauses, the X window closes and nothing more is recorded. You can also remove the account's data from this browser, with a copy to download first, and sign out of X on X's own page.
+- **Move your data to a new Xomoni** *(next release)*: *Export everything* saves one file in Downloads with your accounts, your copy, jobs, the log and settings; *Import from a file* in the new Xomoni checks the whole file first, then adds it to what is there. The file never leaves your computer.
+- **Update in one click** *(next release, preview)*: a Xomoni installed from the zip downloads the new version from GitHub, checks its signature and every file, and writes it into its own folder, never while a job runs. Your data stays. It starts once the maintainer has set up the signing key; until then, update by hand.
+
+### The extension with xomoni.com
+
+- **Private by design:** no telemetry, and your posts, likes and copy stay in IndexedDB in your browser profile. If you sign in to xomoni.com, only job status goes there (titles, states and counts), and daily counts only if you turn them on. Post text, likes and post ids never reach a server.
+- **One sign-in:** sign in on xomoni.com and Xomoni in the same browser signs in by itself, with no code to type; sign out on either side and the other follows. An account stays optional.
+- **Your jobs, live on xomoni.com:** follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent.
+- **Pause and cancel from xomoni.com:** job cards on xomoni.com pause or cancel a job of the same browser at once, and open Xomoni's pages. *Resume* asks you in Xomoni first: the website never starts or resumes work on X.
+- **Plan a cleanup on xomoni.com:** the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there.
+- **Library, Watch and account health on xomoni.com:** your posts, replies, reposts and likes with a search, each Watch search, and each X account's health and pace, read from Xomoni in the same browser and kept only while the page is open.
+- **Settings from xomoni.com:** change Xomoni's active hours, the failures in a row before a pause, notifications and Watch searches, or set pacing back to Careful. Xomoni applies its own rules, so nothing goes faster than Careful.
+- **Comments on xomoni.com** *(next release)*: find your replies by date, likes, who you replied to and words, see who you reply to most, and send the ones you pick to Xomoni's Cleanup to review. *Replies to you* counts the replies you get each day; Xomoni keeps them on your computer only, for 90 days.
+- **Show my numbers on xomoni.com:** a switch, off until you turn it on, that sends each day's counts (whole numbers only, no text or ids) for the last 400 days. Turning it off deletes every day already sent.
+- **Hear about new versions:** a browser connected to xomoni.com says when a newer Xomoni is out, and whether it fixes a security problem.
+- **Install from the Chrome Web Store and Edge Add-ons** *(next release, preview)*: once a store lists Xomoni, xomoni.com/install shows one button for your browser, a zip install shows the steps to move to the store's Xomoni, and xomoni.com finds Xomoni by the stores' fixed ids.
+- **A checklist that ticks itself** *(next release)*: Xomoni opens xomoni.com/welcome when it is installed, and three steps tick from what the page sees: Xomoni installed, signed in to xomoni.com, and Xomoni signed in with you. Signing up from a page that asked you to brings you back to it.
+
+### On xomoni.com
+
+- **The dashboard on xomoni.com:** Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings, each at its own address, with an account and period picker. A sidebar on a computer, a bottom bar on a phone.
+- **Overview, Audience, Content and Engagement:** your followers, what you published and what it received, each against the period before, in charts that answer on hover and by keyboard, with a table view. What was received is marked as an estimate.
+- **Reports and a weekly email:** weekly, monthly and the year in review, what Xomoni removed, and a report of your own, as CSV or PDF. If you ask for it, an email every Monday compares last week's numbers with the week before; one link stops it.
+- **An install guide that follows you:** xomoni.com/install gives the steps for your browser and computer, one at a time, with short illustrations, ticks as soon as Xomoni is installed, and answers what goes wrong.
+- **Send to my computer:** Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers.
+- **xomoni.com on a phone:** a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page.
+
+*(next release)*: on `main`, and in Xomoni's next release; xomoni.com has its part already. *(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
+
+<!-- END GENERATED: features -->
 
 | Cleanup wizard | Settings (dark) |
 |---|---|
@@ -176,7 +217,7 @@ apps/web/         xomoni.com (Next.js): landing page, sign-in, live job status
 packages/db/      typed contract of the Supabase database, generated from the migrations
 supabase/         database migrations, auth config and email templates (config as code)
 docs/             architecture, decision records, safety playbook, research, store listing
-tooling/          repository checks: documentation gate, verify runner, git hooks
+tooling/          repository checks: documentation gate, README generator, verify runner, git hooks
 ```
 
 How the parts fit together, the layer rules and the documentation rules are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Every app, package and module has its own README.
@@ -187,7 +228,8 @@ How the parts fit together, the layer rules and the documentation rules are in [
 | `npm run watch -w @xomoni/extension` | Rebuilds on change. Reload the extension in `chrome://extensions` after each build. |
 | `npm run preview:ui -w @xomoni/extension` | Opens the dashboard with demo data in a normal browser tab, without connecting to X |
 | `npm run dev -w @xomoni/web` | Runs xomoni.com locally (see [apps/web/README.md](apps/web/README.md)) |
-| `npm run verify` | Everything CI checks: formatting, lint and code docs, types, architecture rules, documentation, unit tests |
+| `npm run readme` | Writes the feature list and status of both READMEs from `docs/features.json` ([CONTRIBUTING.md](CONTRIBUTING.md#the-feature-registry)) |
+| `npm run verify` | Everything CI checks: formatting, lint and code docs, types, architecture rules, documentation, the READMEs against the feature registry, unit tests |
 
 `npm run verify` also runs automatically before every `git push`.
 
@@ -195,7 +237,13 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 ## Project status
 
-Xomoni is an early release (v0.1). The full flow has been tested end to end against a local replica of x.com: deleting, unliking, safety stops, keep rules, and the login and 2FA hand-off. X changes its web app often, so selectors may need updating. If something stops working, [open an issue](https://github.com/pirdehi/xomoni/issues) with the activity log line.
+<!-- BEGIN GENERATED: status (npm run readme) -->
+
+**Latest release: [0.4.0](https://github.com/pirdehi/xomoni/releases/tag/v0.4.0), 2026-11-20.** Xomoni has 36 [features](#features), 8 of them added since 0.4.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+
+<!-- END GENERATED: status -->
+
+The full flow has been tested end to end against a local replica of x.com: deleting, unliking, safety stops, keep rules, and the login and 2FA hand-off. X changes its web app often, so selectors may need updating. If something stops working, [open an issue](https://github.com/pirdehi/xomoni/issues) with the activity log line.
 
 ## Contributing
 

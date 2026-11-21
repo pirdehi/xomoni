@@ -282,7 +282,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ✅ | 0 · The rules: the three ADRs, the definition of done, the release checklist template, `CODEOWNERS`, and the `release` and `stores` environments with the maintainer as required reviewer | [#346](https://github.com/pirdehi/xomoni/issues/346) | [#348](https://github.com/pirdehi/xomoni/pull/348) |
-| ⬜ | 1 · The README's features and status from `docs/features.json`, checked by `verify` and the release check | [#337](https://github.com/pirdehi/xomoni/issues/337) | |
+| ✅ | 1 · The README's features and status from `docs/features.json`, checked by `verify` and the release check | [#337](https://github.com/pirdehi/xomoni/issues/337) | [#349](https://github.com/pirdehi/xomoni/pull/349) |
 | ⬜ | 2 · At least 20 user scenarios per user-facing task, each tied to a browser test, checked by `verify`; the install page's first | [#338](https://github.com/pirdehi/xomoni/issues/338) | |
 | ⬜ | 3 · The `pr-policy` check (task link, changelog line, scenarios, exemptions with reasons) and dependency review | [#339](https://github.com/pirdehi/xomoni/issues/339) | |
 | ⬜ | 4 · The release gate: the full CI on the tag, `npm audit`, the release issue read by the workflow and closed with the release | [#340](https://github.com/pirdehi/xomoni/issues/340) | |

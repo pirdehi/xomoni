@@ -1,4 +1,4 @@
-// Checks on the GitHub workflows (#142, #303, #340), run by `node --test 'tooling/*.test.mjs'` in `npm run verify`.
+// Checks on the GitHub workflows (#142, #303, #340, #343), run by `node --test 'tooling/*.test.mjs'` in `npm run verify`.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { generateKeyPairSync, verify, webcrypto } from 'node:crypto';
@@ -105,15 +105,20 @@ describe('GitHub workflows (#142)', () => {
     assert.match(build, /git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/);
   });
 
-  it('let only the release’s publish job write to issues', () => {
+  it('let only the jobs that record a result write to issues', () => {
+    // The release's publish job, which comments the release on its issue; the nightly's report; the check after each
+    // release's report, and the release job that calls it (#340, #343). Nothing else, however it is written.
+    const writers = {
+      'release.yml': ['publish', 'after-release'],
+      'nightly.yml': ['report'],
+      'release-check.yml': ['report'],
+    };
     for (const { name, text } of workflows) {
-      // Wherever it is written, and however it is indented: one grant in all the workflows.
-      const writers = [...text.matchAll(/\bissues:\s*write\b/g)].length;
-      assert.equal(writers, name === 'release.yml' ? 1 : 0, `${name}: issues: write`);
+      const jobs = writers[name] ?? [];
+      assert.equal([...text.matchAll(/\bissues:\s*write\b/g)].length, jobs.length, `${name}: issues: write`);
+      for (const job of jobs) assert.match(block(text, `  ${job}:`), /^ {6}issues: write$/m, `${name}: ${job}`);
       assert.doesNotMatch(text, /write-all/, `${name}: no blanket write`);
     }
-    const release = workflows.find((w) => w.name === 'release.yml').text;
-    assert.match(block(release, '  publish:'), /^ {6}issues: write$/m);
   });
 });
 
@@ -148,9 +153,11 @@ describe('the release gate (#340, ADR-0037)', () => {
   });
 
   it('keeps its own concurrency group apart from the CI it calls, which would otherwise cancel one of them', () => {
-    // Called by the release, ci.yml's group is ci-<the tag's ref>, which no pull request or push to main shares.
-    assert.match(block(ci, 'concurrency:'), /^ {2}group: ci-\$\{\{ github\.ref \}\}$/m);
-    assert.doesNotMatch(release, /group: ci-/);
+    // Called by the release, ci.yml's group is ci-push-<the tag's ref>; called by the nightly, ci-schedule-refs/heads/main.
+    // No pull request or push to main shares either, so none cancels the other (#343).
+    assert.match(block(ci, 'concurrency:'), /^ {2}group: ci-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}$/m);
+    for (const { name, text } of workflows.filter((w) => w.name !== 'ci.yml'))
+      assert.doesNotMatch(text, /group: ci-/, `${name} takes a group of ci.yml's`);
   });
 
   it('reads the release issue in a job that can only read', () => {
@@ -185,6 +192,25 @@ describe('the release gate (#340, ADR-0037)', () => {
     const steps = ['Create the release', 'Comment the release on its issue and close it'];
     assert.ok(jobs.publish.indexOf(steps[0]) < jobs.publish.indexOf(steps[1]));
     assert.match(jobs.publish, /^ {10}ISSUE: \$\{\{ needs\.readiness\.outputs\.issue \}\}$/m);
+  });
+
+  it('checks the release as people get it once it is out, and passes that check only what it needs (#343)', () => {
+    assert.equal(
+      block(release, '  after-release:').trimEnd(),
+      [
+        '  after-release:',
+        '    name: after-release',
+        '    needs: publish',
+        '    permissions:',
+        '      contents: read',
+        '      attestations: read',
+        '      # Only for its report job, to comment the result on the release issue.',
+        '      issues: write',
+        '    uses: ./.github/workflows/release-check.yml',
+        '    with:',
+        '      tag: ${{ github.ref_name }}',
+      ].join('\n'),
+    );
   });
 });
 
@@ -596,5 +622,123 @@ describe('pull request policy workflow (#339)', () => {
     assert.match(jobs.review, /^ {10}fail-on-severity: high$/m);
     assert.match(jobs.review, /^ {10}comment-summary-in-pr: never$/m);
     assert.doesNotMatch(jobs.review, /actions\/checkout|run:/);
+  });
+});
+
+/** The permissions a job's block grants, one `name: level` each, without comments. */
+function grants(job) {
+  const lines = job.split('\n');
+  const at = lines.findIndex((line) => line === '    permissions:');
+  assert.ok(at >= 0, 'the job sets its permissions');
+  const granted = [];
+  for (const line of lines.slice(at + 1)) {
+    if (!line.startsWith('      ')) break;
+    if (!line.trim().startsWith('#')) granted.push(line.trim());
+  }
+  return granted;
+}
+
+describe('the nightly run (#343, R18 of docs/QUALITY-GATES.md)', () => {
+  const nightly = workflows.find((w) => w.name === 'nightly.yml').text;
+  const jobs = { ci: block(nightly, '  ci:'), audit: block(nightly, '  audit:'), report: block(nightly, '  report:') };
+
+  it('runs every night at the time the docs give, and by hand, never for a push or a pull request', () => {
+    const on = block(nightly, 'on:');
+    const cron = /^ {4}- cron: '(\d{1,2}) (\d{1,2}) \* \* \*'$/m.exec(on);
+    assert.ok(cron, 'one daily schedule');
+    const [minute, hour] = [Number(cron[1]), Number(cron[2])];
+    assert.ok(minute > 0 && minute < 60 && hour < 24, 'off the hour, when GitHub delays scheduled runs the most');
+    assert.match(on, /^ {2}schedule:$/m);
+    assert.match(on, /^ {2}workflow_dispatch:$/m);
+    assert.doesNotMatch(on, /push|pull_request|workflow_run|workflow_call|release/);
+    const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} UTC`;
+    for (const doc of ['docs/QUALITY-GATES.md', 'docs/RELEASING.md'])
+      assert.ok(readFileSync(join(DIR, '../..', doc), 'utf8').includes(time), `${doc} gives the time, ${time}`);
+  });
+
+  it('runs the full CI read-only, and audits every dependency without installing one', () => {
+    assert.equal(
+      jobs.ci.trimEnd(),
+      [
+        '  ci:',
+        '    name: ci',
+        '    permissions:',
+        '      contents: read',
+        '    uses: ./.github/workflows/ci.yml',
+      ].join('\n'),
+      'the ci job calls ci.yml with read-only permissions, and passes it nothing else',
+    );
+    assert.deepEqual(grants(jobs.audit), ['contents: read']);
+    assert.deepEqual(runScripts(jobs.audit), ['npm audit --audit-level=high']);
+    assert.doesNotMatch(jobs.audit, /npm ci|npm install|cache:|secrets\./);
+  });
+
+  it('reports in a job that can write only to issues, runs no npm code, and reads every job it reports', () => {
+    assert.match(jobs.report, /^ {4}needs: \[ci, audit\]$/m);
+    // After a red night too, but not when a person cancels the run.
+    assert.match(jobs.report, /^ {4}if: \$\{\{ !cancelled\(\) \}\}$/m);
+    assert.deepEqual(grants(jobs.report), ['contents: read', 'issues: write']);
+    assert.deepEqual(runScripts(jobs.report), [
+      'node tooling/nightly-report.mjs "ci=$CI_RESULT" "audit=$AUDIT_RESULT"',
+    ]);
+    assert.match(jobs.report, /^ {10}CI_RESULT: \$\{\{ needs\.ci\.result \}\}$/m);
+    assert.match(jobs.report, /^ {10}AUDIT_RESULT: \$\{\{ needs\.audit\.result \}\}$/m);
+    assert.match(jobs.report, /^ {10}GH_TOKEN: \$\{\{ github\.token \}\}$/m);
+    assert.match(jobs.report, /^ {10}sparse-checkout: tooling$/m);
+    assert.doesNotMatch(jobs.report, /npm |cache:|secrets\./);
+  });
+
+  it('reads only by default, sees no secret, and runs one night at a time', () => {
+    assert.match(nightly, /^permissions: \{\}$/m);
+    assert.doesNotMatch(nightly, /secrets\./);
+    assert.equal(
+      block(nightly, 'concurrency:').trimEnd(),
+      'concurrency:\n  group: nightly\n  cancel-in-progress: false',
+    );
+  });
+});
+
+describe('the check after each release (#343, R18 of docs/QUALITY-GATES.md)', () => {
+  const check = workflows.find((w) => w.name === 'release-check.yml').text;
+  const jobs = { check: block(check, '  check:'), report: block(check, '  report:') };
+
+  it('runs when release.yml calls it, by hand for a tag, and when a person publishes a release', () => {
+    const on = block(check, 'on:');
+    assert.match(on, /^ {2}release:\n {4}types: \[published\]$/m);
+    for (const trigger of ['workflow_dispatch', 'workflow_call']) {
+      const inputs = block(on, `  ${trigger}:`);
+      assert.match(inputs, /^ {4}inputs:\n {6}tag:\n/m, trigger);
+      assert.match(inputs, /^ {8}required: true$/m, trigger);
+      assert.match(inputs, /^ {8}type: string$/m, trigger);
+    }
+    assert.doesNotMatch(on, /push|pull_request|schedule|workflow_run/);
+    // The tag reaches the scripts through the environment only; the script checks that it is vX.Y.Z.
+    assert.match(check, /^env:\n {2}TAG: \$\{\{ inputs\.tag \|\| github\.event\.release\.tag_name \}\}$/m);
+  });
+
+  it('checks in a job that can only read, and reports in one that can write only to issues', () => {
+    assert.match(check, /^permissions: \{\}$/m);
+    assert.deepEqual(grants(jobs.check), ['contents: read', 'attestations: read']);
+    assert.match(jobs.check, /^ {4}outputs:\n {6}report: \$\{\{ steps\.check\.outputs\.report \}\}$/m);
+    assert.match(jobs.check, /^ {8}id: check$/m);
+    assert.deepEqual(runScripts(jobs.check), ['node tooling/check-published-release.mjs check "$TAG"']);
+    assert.match(jobs.report, /^ {4}needs: check$/m);
+    assert.match(jobs.report, /^ {4}if: \$\{\{ !cancelled\(\) \}\}$/m);
+    assert.deepEqual(grants(jobs.report), ['contents: read', 'issues: write']);
+    assert.deepEqual(runScripts(jobs.report), ['node tooling/check-published-release.mjs report "$TAG"']);
+    assert.match(jobs.report, /^ {10}RESULT: \$\{\{ needs\.check\.result \}\}$/m);
+    assert.match(jobs.report, /^ {10}REPORT: \$\{\{ needs\.check\.outputs\.report \}\}$/m);
+  });
+
+  it('installs nothing, runs no npm code and sees no secret', () => {
+    const code = check
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n');
+    assert.doesNotMatch(code, /\bnpm\b|cache:|secrets\./);
+    for (const job of Object.values(jobs)) {
+      assert.match(job, /^ {10}sparse-checkout: tooling$/m);
+      assert.match(job, /^ {10}GH_TOKEN: \$\{\{ github\.token \}\}$/m);
+    }
   });
 });

@@ -1,0 +1,89 @@
+# The check after each release (#343, R18 of docs/QUALITY-GATES.md): downloads a published release as people get it,
+# checks it as they would, and comments the result on the version's release issue (tooling/check-published-release.mjs).
+# - `check`, read-only: the release's xomoni-extension.zip, xomoni-extension-X.Y.Z.zip and SHA256SUMS; `sha256sum
+#   --check`; `gh attestation verify` on each zip; and that releases/latest serves the newest release, whose zip the
+#   install page links.
+# - `report` comments the result on the issue titled "Release vX.Y.Z", even if closed, or opens one for a version that
+#   has none. It is the only job that can write, to issues only. Neither job installs anything or runs npm code.
+# How it starts:
+# - release.yml calls it once it has published (`workflow_call`). That is how it runs after every release: GitHub starts
+#   no workflow for what a workflow's own token does, so the release that release.yml creates never fires `release`.
+# - by hand, for any release: Actions › Release check › Run workflow, with the tag (`workflow_dispatch`);
+# - when a person publishes a release some other way (`release`).
+# Actions are pinned by commit SHA; Dependabot keeps them current.
+name: Release check
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release to check, such as v0.5.0 (already on GitHub Releases)
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: The release to check, vX.Y.Z
+        required: true
+        type: string
+
+permissions: {}
+
+# The tag reaches the scripts only as an environment variable, never pasted into them; the scripts check its shape.
+env:
+  TAG: ${{ inputs.tag || github.event.release.tag_name }}
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      attestations: read
+    outputs:
+      report: ${{ steps.check.outputs.report }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: tooling
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Download the release as people get it, and check it
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node tooling/check-published-release.mjs check "$TAG"
+
+  report:
+    name: report
+    needs: check
+    # When the check fails too; not when a person cancels the run.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      # To check out the report script.
+      contents: read
+      # To comment on the release issue, or open one.
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: tooling
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Comment the result on the release issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RESULT: ${{ needs.check.result }}
+          REPORT: ${{ needs.check.outputs.report }}
+        run: node tooling/check-published-release.mjs report "$TAG"

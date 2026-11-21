@@ -402,6 +402,13 @@ describe('reading the event and the diff (#339)', () => {
   });
 });
 
+/**
+ * The environment without git's own variables. A git hook exports GIT_DIR and others, and the pre-push hook runs these
+ * tests: inherited, they point every git call here at the repository being pushed instead of the throwaway one. From a
+ * worktree, `git init` then marked the shared repository bare, and the test's commits moved the worktree's branch.
+ */
+const withoutGit = () => Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')));
+
 /** Runs git in `dir` with a throwaway identity, no signing and no hooks, whatever the computer's own settings. */
 function gitIn(dir) {
   const settings = [
@@ -413,6 +420,7 @@ function gitIn(dir) {
   return (...args) =>
     execFileSync('git', [...settings.flatMap((setting) => ['-c', setting]), ...args], {
       cwd: dir,
+      env: withoutGit(),
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     }).trim();

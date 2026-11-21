@@ -1,10 +1,12 @@
 # Builds the extension from a version tag and publishes it on GitHub Releases (docs/RELEASING.md).
-# Four jobs (#142, #340, ADR-0037):
+# Five jobs (#142, #340, #343, ADR-0037):
 # - `ci` runs the full CI (ci.yml: verify, database, e2e) again, on the tagged commit;
 # - `readiness` reads the version's release issue and fails while a box under "Before the tag" is unticked;
 # - `build`, once CI is green, runs every npm script with a read-only token;
-# - `publish` runs no npm code, is the only job that can write, and the only one that sees the release signing key
-#   (#305). After the release, it comments it on the release issue and closes the issue.
+# - `publish` runs no npm code, is the only job that can write the release, and the only one that sees the release
+#   signing key (#305). After the release, it comments it on the release issue and closes the issue.
+# - `after-release` calls release-check.yml once the release is out: it downloads the release as people get it, checks
+#   the checksums, the provenance and releases/latest, and comments the result on the release issue.
 # Actions are pinned by commit SHA; Dependabot keeps them current.
 name: Release
 
@@ -195,3 +197,18 @@ jobs:
           body="$(printf 'Released %s: %s\n\nWorkflow run: %s\n' "$GITHUB_REF_NAME" "$release_url" "$run_url")"
           gh issue comment "$ISSUE" --body "$body"
           gh issue close "$ISSUE" --reason completed
+
+  # The check after the release (R18 of docs/QUALITY-GATES.md, #343): what people download is what this run built.
+  # A workflow of its own, so it can be run by hand for any release too. It can't wait for the `release` event: GitHub
+  # starts no workflow for what this run's token does, and that token is what creates the release.
+  after-release:
+    name: after-release
+    needs: publish
+    permissions:
+      contents: read
+      attestations: read
+      # Only for its report job, to comment the result on the release issue.
+      issues: write
+    uses: ./.github/workflows/release-check.yml
+    with:
+      tag: ${{ github.ref_name }}

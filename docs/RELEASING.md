@@ -7,6 +7,8 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
 Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/0037-one-written-gate-for-every-merge-and-release.md)).
 
 0. Open the release issue from the **Release** template (*Issues › New issue › Release*), titled exactly `Release vX.Y.Z`, before the release pull request. Tick each box only once you have checked it, with its proof. The release workflow refuses to publish until every box under *Before the tag* is ticked (#340), and then waits for your approval as the `release` environment's required reviewer.
+
+   Check that no issue titled *Nightly run failing* is open. The [nightly run](QUALITY-GATES.md#every-night-and-after-each-release) runs the full CI and `npm audit` on `main` every day at 02:23 UTC, so what would stop the tag usually shows up there first (#343).
 1. On a branch, set the same version in `apps/extension/public/manifest.json` and `apps/extension/package.json` ([Semantic Versioning](https://semver.org/)).
 2. In [`CHANGELOG.md`](../CHANGELOG.md), rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and start a new empty `## [Unreleased]` above it.
 
@@ -20,7 +22,7 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
    git push origin vX.Y.Z
    ```
 
-5. The [release workflow](../.github/workflows/release.yml) runs in four jobs (#142, #340). Each check below is a job or a step of it, so none can be forgotten ([gate 4](QUALITY-GATES.md#the-four-gates)):
+5. The [release workflow](../.github/workflows/release.yml) runs in five jobs (#142, #340, #343). Each check below is a job or a step of it, so none can be forgotten ([gate 4](QUALITY-GATES.md#the-four-gates)):
    - **ci**: the full CI, [`ci.yml`](../.github/workflows/ci.yml) (`verify`, `database`, `e2e`), again, on the tagged commit, with a read-only token and no secret. Its concurrency group is the tag's own, so no pull request or push to `main` cancels it.
    - **readiness**, which can only read the code and the issues, runs `node tooling/check-release-issue.mjs vX.Y.Z`. It finds the open issue labelled `release` and titled exactly `Release vX.Y.Z`, and fails, listing every problem, when:
      - there is no such issue, or more than one;
@@ -40,7 +42,8 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
      - signs each zip of the default build with the release signing key (Ed25519, with OpenSSL only), after checking that the release trusts that key, and checks each signature. While the extension trusts no key, it skips signing with a warning instead (see *Signing key*). The store build isn't signed: it has no updater to check a signature;
      - signs all three zips, the store build's included, with [build provenance](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) (SLSA);
      - creates the release, with the changelog section as notes;
-     - comments the release's address and this run's on the release issue, and closes the issue. The closed issue is that version's record (ADR-0037). This is the only job, in any workflow, that can write to issues. If this last step fails, the release is already out: comment and close the issue by hand.
+     - comments the release's address and this run's on the release issue, and closes the issue. The closed issue is that version's record (ADR-0037). If this last step fails, the release is already out: comment and close the issue by hand, then [run the check after the release](#the-check-after-the-release) by hand.
+   - **after-release**, once `publish` has passed: [the check after the release](#the-check-after-the-release). It downloads the release as people get it, checks it, and comments the result on the release issue.
 
    It attaches:
    - `xomoni-extension.zip`: the same name in every release, so `https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip` always serves the newest one (the website's install page links there);
@@ -64,6 +67,31 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
    1. In **Actions → Stores → Run workflow**, from `main`: the tag, the store (`both`, `chrome` or `edge`) and **upload**. Approve the run when the `stores` environment asks. The release's store build, `xomoni-extension-store-X.Y.Z.zip`, becomes each store's draft; nothing goes to review yet.
    2. Look at the drafts in the [Chrome Web Store dashboard](https://chrome.google.com/webstore/devconsole) and in [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview): the version, and the listing if it needs a change.
    3. Run it again with **publish**. Each draft goes to review and goes live once approved, with the visibility set in the store (unlisted at first).
+
+### The check after the release
+
+[`release-check.yml`](../.github/workflows/release-check.yml) (#343, R18 of [the quality gates](QUALITY-GATES.md)) checks a published release the way a person would, with what is on GitHub rather than what the run built. It runs [`tooling/check-published-release.mjs`](../tooling/check-published-release.mjs) in two jobs, and neither installs anything or runs npm code:
+
+- **check**, read-only, runs every check, even after one fails:
+  - the release has `xomoni-extension.zip`, `xomoni-extension-X.Y.Z.zip` and `SHA256SUMS`;
+  - both zips match `SHA256SUMS` (`sha256sum --check`), and are the same file;
+  - `gh attestation verify` on each zip: built by `release.yml` from the tag, on GitHub's runners;
+  - `releases/latest` is the newest published `vX.Y.Z`, and the zip the install page links, `releases/latest/download/xomoni-extension.zip`, matches that release's `SHA256SUMS`.
+- **report**, which can write to issues and nothing else, comments a table of the results and the run on the issue titled `Release vX.Y.Z`, even closed. It counts only an issue opened by someone who can push, or by this check. A version without one, such as 0.2.0 to 0.4.0, gets a new one: closed when the check passed, left open while it fails.
+
+How it starts:
+- **After every release:** the release workflow's last job, `after-release`, calls it. A `release` event can't start it then, since GitHub starts no workflow for what a workflow's own token does, and that token creates the release.
+- **By hand, for any release:** *Actions › Release check › Run workflow*, from `main`, with the tag, for example to check an older release again.
+- **When a person publishes a release some other way**, through its `release` event.
+
+#### When the check after the release fails
+
+The release is out, and something people download may not be what the release built. Look at the failed check in the run, then:
+
+- **A file is missing, or a zip doesn't match `SHA256SUMS`:** download the release by hand and check it ([Checking a download](#checking-a-download)). If the check was right, people may be getting a broken or replaced file. Releases are immutable and tags never move: release the next patch version from `main`, then say in its notes what happened to the bad one.
+- **Provenance fails:** the zip wasn't built by `release.yml` from that tag. Treat it as a security incident: don't send the release to the stores, and release the next patch version once you know how it happened.
+- **`releases/latest` isn't the newest release:** mark the newest one as the latest, with `gh release edit vX.Y.Z --latest` or *Set as the latest release* on its page, since the install page links `releases/latest`. Then run the check by hand.
+- **The check didn't finish, or GitHub was briefly down:** run the check by hand. It comments on the same issue, and closes it when the check passes if the check opened it.
 
 ### What the release gate can't stop
 
@@ -152,6 +180,7 @@ Set on GitHub, not in code (#142):
 - **Not yet: signed commits.** GitHub refuses to merge a pull request whose own commits are unsigned, even as a squash. So the rule waits until the maintainer signs commits (an SSH signing key added to GitHub, and `git config commit.gpgsign true` with `gpg.format ssh`). It was turned on with #142 and taken back off the same day.
 - **Workflows from forks:** need approval for every outside contributor.
 - **Environment `stores`** (#303): holds the store keys, which only runs from `main` can read, after the maintainer approves ([below](#the-stores-environment)).
+- **The `nightly` label** marks the nightly run's issue. The nightly workflow creates it the first time a night fails, so nothing needs setting up. GitHub turns a schedule off after 60 days without activity in the repository; *Actions › Nightly › Enable workflow* turns it back on.
 - **`pr-policy` and `dependency-review`** (#339, #346): the jobs of [`pr-policy.yml`](../.github/workflows/pr-policy.yml) run on every pull request ([pull request checks](../CONTRIBUTING.md#pull-request-checks)) and are required by the "Protect main" ruleset since 2026-11-21. Dependency review reads the dependency graph (*Settings › Code security*), which must stay on.
 
 ## Checked on every pull request
@@ -163,12 +192,17 @@ The tooling is tested too, with `node --test 'tooling/*.test.mjs'`, part of `npm
 - `tooling/release.test.mjs`: the helpers, reproducible zips included.
 - `tooling/store-api.test.mjs`: the store calls, against a fake network.
 - `tooling/release-issue.test.mjs`: the readiness check (#340), against issues shaped like the Release template and a fake `gh`. It covers missing, duplicate and outsiders' issues, a missing or empty section, unticked boxes, boxes in other sections, comments and code blocks, and the token never on a command line.
+- `tooling/published-release.test.mjs`: the check after the release (#343), against a fake `gh` and `curl` ([`tooling/test-fakes.mjs`](../tooling/test-fakes.mjs)) and the real `sha256sum`. It covers a zip changed after `SHA256SUMS`, a file `SHA256SUMS` leaves out, two zips that differ, a missing file, a zip without the release workflow's provenance, a `releases/latest` that is older or serves another zip, an older release checked by hand, and the report: on the closed release issue, on a new one, never on an outsider's, and the token never on a command line.
+- `tooling/nightly.test.mjs`: the nightly run's issue (#343), against a fake `gh`: opened on the first red night with its label, commented on after that, closed on the first green night, left alone for a run from another branch or a skipped job.
 - `tooling/pr-policy.test.mjs`: the pull request policy (#339). Its workflow runs again when a description or labels change, reads only, never pastes the description into a script and installs nothing.
 - `tooling/workflows.test.mjs`, the workflows:
   - every action pinned by SHA and only from GitHub or `supabase/setup-cli`; reusable workflows only from this repository;
   - no token left in a checkout, no input pasted into a script, no write access by default;
   - a release that runs the full CI before the build and audits the dependencies at high;
-  - a readiness job that can only read, and a publish job that needs it. The publish job is the only one that can write to issues, and its last step, run with a fake `gh`, comments the release on the issue, then closes it;
+  - a readiness job that can only read, and a publish job that needs it. Its last step, run with a fake `gh`, comments the release on the issue, then closes it;
+  - only the jobs that record a result can write to issues: the release's `publish` and `after-release`, and the `report` jobs of the nightly run and of the check after the release, which run no npm code;
+  - the nightly run: on a schedule off the hour and by hand only, the full CI read-only, `npm audit` without installing, and a concurrency group apart from the CI it calls, so that a push to `main` cancels neither;
+  - the check after the release: called by the release once it has published, run by hand with a tag, or on a `release` event; a check job that can only read and a report job that can only write to issues;
   - a release build that can't write, installs without install scripts, and builds, checks and packages the store build after the GitHub zips;
   - the signing step, run with a throwaway key. The extension's check accepts its signatures, and it leaves the store build unsigned. It skips signing with a warning while no key is trusted, and refuses once one is, without the secret or with another key;
   - the step that creates the release, which attaches the signatures only when there are some;

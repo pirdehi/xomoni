@@ -61,7 +61,7 @@ flowchart TD
 | R15 | Releases only from `main`: reproducible, signed, with provenance; tags never move | `release.yml`, the tag rulesets | Enforced |
 | R16 | No release before the checklist is complete and the maintainer approves | The `release` environment; the release issue check, [`tooling/check-release-issue.mjs`](../tooling/check-release-issue.mjs) in `release.yml` | Enforced: the environment since 2026-11-21, the issue check since #340 |
 | R17 | The gate's own files are reviewed by the maintainer | [`CODEOWNERS`](../.github/CODEOWNERS), the ruleset | Planned: #346, once agents have their own account |
-| R18 | The whole suite every night on `main`, and a check of each published release | [`nightly.yml`](../.github/workflows/nightly.yml); [`release-check.yml`](../.github/workflows/release-check.yml), called by `release.yml` once it has published ([below](#every-night-and-after-each-release)) | Enforced (#PR343) |
+| R18 | The whole suite every night on `main`, and a check of each published release | [`nightly.yml`](../.github/workflows/nightly.yml); [`release-check.yml`](../.github/workflows/release-check.yml), called by `release.yml` once it has published ([below](#every-night-and-after-each-release)) | Enforced (#359) |
 
 ## Every night, and after each release
 

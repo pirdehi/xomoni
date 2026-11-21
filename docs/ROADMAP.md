@@ -288,7 +288,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ✅ | 4 · The release gate: the full CI on the tag, `npm audit`, the release issue read by the workflow and closed with the release | [#340](https://github.com/pirdehi/xomoni/issues/340) | [#353](https://github.com/pirdehi/xomoni/pull/353) |
 | ✅ | 5 · The three open CodeQL alerts | [#341](https://github.com/pirdehi/xomoni/issues/341) | [#355](https://github.com/pirdehi/xomoni/pull/355) |
 | ⬜ | 6 · The extension in a real browser with X fixtures, Chrome and Edge, axe | [#342](https://github.com/pirdehi/xomoni/issues/342) | |
-| ✅ | 7 · The nightly full run, and a check after each release | [#343](https://github.com/pirdehi/xomoni/issues/343) | [#PR343](https://github.com/pirdehi/xomoni/pull/PR343) |
+| ✅ | 7 · The nightly full run, and a check after each release | [#343](https://github.com/pirdehi/xomoni/issues/343) | [#359](https://github.com/pirdehi/xomoni/pull/359) |
 | ⬜ | 8 · Docs sorted by kind, with one map | [#344](https://github.com/pirdehi/xomoni/issues/344) | |
 | ⬜ | 9 · Scenarios for the features shipped before the gate | [#345](https://github.com/pirdehi/xomoni/issues/345) | |
 | 🔄 | 10 · The maintainer's settings. Done on 2026-11-21: the `release` and `stores` environments, and `pr-policy`, `dependency-review` and CodeQL's results required by the ruleset. Left: an account for AI agents, then code-owner review; signed commits | [#346](https://github.com/pirdehi/xomoni/issues/346) | |

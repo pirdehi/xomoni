@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-15
-- Amended: 2026-11-17, a signed-in `/connect` pairs without the click, and a signed-in page may sign the extension in without a nonce of its own ([ADR-0025](0025-one-sign-in-for-the-website-and-the-extension.md), #232)
+- Amended: 2026-11-17, a signed-in `/connect` pairs without the click, and a signed-in page may sign the extension in without a nonce of its own ([ADR-0025](0025-one-sign-in-for-the-website-and-the-extension.md), #232); 2026-11-21, a fixed id from the Chrome Web Store's key ([below](#amended-2026-11-21-a-fixed-id-from-the-stores-key-302), #302)
 
 ## Context
 
@@ -42,6 +42,24 @@ ADR-0018 rejected `externally_connectable` because it needed a fixed extension i
 5. **The service worker may import `cloud/web-connect.ts`, and nothing else from `cloud/`** (rule `ext-background-is-thin`). Pairing then works even while the dashboard is closed.
 6. **Nothing else comes in this way.** The single message type can only pair. It can't start, resume or approve work on X (ADR-0006), and anything else gets `invalid`.
 
+## Amended 2026-11-21: a fixed id, from the store's key (#302)
+
+*Alternatives considered* below turned down a fixed id (`key` in the manifest) for two reasons. Both are answered now:
+- **The store gives its own id anyway.** The `key` is the Chrome Web Store item's own public key, so a zip install and the store's copy share that one id. Edge Add-ons gives a second fixed id, which Microsoft assigns.
+- **Changing the id orphans local data.** ADR-0032's export and import move it. They ship first, in 0.5.0 without the key, so people export before a keyed version changes the id, then import into it (the release order on #302).
+
+So:
+1. **The key and the Chrome id come together.** `apps/extension/public/manifest.json` gets the store item's `key` in the same pull request that writes its id in `STORE_EXTENSION_IDS` (`@xomoni/bridge`, ADR-0025's amendment). `apps/extension/tests/manifest-key.test.ts` fails unless:
+   - both are set, or neither;
+   - the key is base64, on one line, of an RSA public key (SubjectPublicKeyInfo) of at least 2048 bits;
+   - the id Chrome derives from it is that Chrome id: the first 128 bits of the key's SHA-256, each hex digit 0–f written as a letter a–p (`readManifestKey`, `manifestKeyProblems`).
+
+   [docs/RELEASING.md](../RELEASING.md) says where the dashboard shows both.
+2. **The handover is unchanged.** `/connect#ext=<id>&nonce=…` still names the extension that asked, with its own id, and the nonce still binds the code to that request. A page that knows a fixed id doesn't skip the nonce.
+3. **The site finds a keyed or store copy without being told** (ADR-0025, amended the same day).
+
+The public key isn't a secret; the private key stays with the Chrome Web Store.
+
 ## Consequences
 
 - Connecting takes three actions on the website, often two:
@@ -52,7 +70,7 @@ ADR-0018 rejected `externally_connectable` because it needed a fixed extension i
 - `externally_connectable` adds no permission warning, and no update is held back for it.
 - A page on xomoni.com that someone could script (XSS) could send a code only while this browser has a fresh request of its own, and only for an account it is signed in to. Other extensions and sites can't send at all. The site's CSP and Trusted Types (#147) keep scripts out.
 - Sign-up through an emailed link ends on the dashboard, not `/connect`. While a request is kept, the dashboard shows *Finish connecting*.
-- A zip install's extension id differs per folder. That's fine: the id travels in the URL. The Chrome Web Store, once there (#43), changes nothing here.
+- A zip install's extension id differs per folder. That's fine: the id travels in the URL. The Chrome Web Store, once there (#43), changes nothing here. Since #302, a zip with the store's key has the store's id instead; older zips keep their folder's id.
 
 ## Alternatives considered
 

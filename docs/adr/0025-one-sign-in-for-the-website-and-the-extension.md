@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-17
+- Amended: 2026-11-20, /welcome on install (#244); 2026-11-21, Xomoni found by its fixed id ([below](#amended-2026-11-21-xomoni-found-by-its-fixed-id-302), #302)
 
 ## Context
 
@@ -79,13 +80,31 @@ What can travel between the two is what ADR-0024 already uses: messages from xom
 
 Amended 2026-11-20 (#244): on install, Xomoni also opens `xomoni.com/welcome#ext=<id>` in front of its own dashboard. The site learns the extension's id from the fragment, which never reaches a server, as `/connect` does. `/welcome` asks nothing of Xomoni: it shows a checklist of what the page can see, and offers the one sign-in or *Continue without an account*. Only an install opens it, never an update.
 
+## Amended 2026-11-21: Xomoni found by its fixed id (#302)
+
+The Chrome Web Store gives Xomoni a fixed id, and a zip whose manifest carries the store item's public key has the same one ([ADR-0024's amendment](0024-connect-a-browser-with-one-click.md#amended-2026-11-21-a-fixed-id-from-the-stores-key-302)). Edge Add-ons gives it a second fixed id. So the site can find Xomoni without being told, in a tab opened before Xomoni was, or after the site's storage was cleared.
+
+1. **One list of fixed ids.** `STORE_EXTENSION_IDS` in `@xomoni/bridge`, with a `chrome` and an `edge` id, both empty until the stores exist. Writing one is all it takes; nothing changes until then. The extension's manifest test reads the Chrome id from there too.
+2. **The site asks every candidate at once**, with the hello of decision 2 (`findXomoni`):
+   - the id a page of Xomoni named (`#ext=`), which the site still keeps;
+   - then the Chrome Web Store's id, then Edge Add-ons'.
+
+   It takes the best that answers, in that order. The named id wins, so a zip install from before the key keeps working, even beside a store copy. A slow candidate holds up only those after it, for at most the hello's 5 seconds. An id nobody has gets `lastError` from Chrome at once. Without `chrome.runtime` (another browser, or no extension that lists the site) nothing is asked.
+3. **The page talks to the copy that answered** (`currentExtensionId`): the sync and the sign-in, the actions, reads and settings (ADR-0027, ADR-0028, ADR-0029), and the sign-out. A sign-out clicked before the page's first sync ended looks for it first. The site still stores only an id a page named. The id it found stays in the page's memory, so a named id is asked first again next time.
+4. **Nothing else changes.**
+   - The only message to an id the site wasn't told is the hello, which changes nothing. Every answer goes through the strict parsers, and the website stays view-only (ADR-0006).
+   - A fixed id isn't proof that Xomoni answers: anyone can load an unpacked extension with the public key and get its id, as any installed extension can take an id an `#ext=` names. The defences are the ones above: a page signs Xomoni in only to the account it is signed in to, and no answer can make the site act on X.
+5. **The end-to-end tests load a real extension with a key of its own.** The site asks its id too (`NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID`), but only while it runs on localhost, so no deployment can be set to ask another extension.
+
+With a store's id written, a store install shows up on every page as soon as it is installed: the checklists on /install and /welcome, the one sign-in, and the pages that read from Xomoni. The first consequence below then holds only for zip installs from before the key.
+
 ## Consequences
 
 - In one browser, one sign-in and one sign-out cover both. The usual paths:
   - sign in on xomoni.com, and Xomoni signs in by itself;
   - press *Sign in to xomoni.com* in Xomoni, and sign in once there;
   - sign out on either side.
-- The first link needs the extension to open a xomoni.com page once, from *Sign in to xomoni.com* or the dashboard link. Before that, the site can't know the extension's id. A Chrome Web Store install (#43) has a fixed id, but zip installs don't.
+- The first link needs the extension to open a xomoni.com page once, from *Sign in to xomoni.com* or the dashboard link. Before that, the site can't know the extension's id. A Chrome Web Store install (#43) has a fixed id, but zip installs don't. Since #302, the site asks the stores' ids by itself, and a zip with the store's key shares the Chrome one.
 - **Security.** A script that ran on xomoni.com (XSS) could now do two things without a fresh request of the extension's:
   - sign the extension out, which pauses its job;
   - sign it in to the account that page is signed in to.

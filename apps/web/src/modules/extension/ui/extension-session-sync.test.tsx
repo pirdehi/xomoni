@@ -90,7 +90,7 @@ describe('ExtensionSessionSync (#232, ADR-0025)', () => {
   });
 
   it('goes to the sign-in page once a sign-out made in the extension signed the website out', async () => {
-    const { services } = fakeServices({ kind: 'website-signed-out' });
+    const { services } = fakeServices({ kind: 'website-signed-out', extensionId: EXT });
 
     render(<ExtensionSessionSync services={() => services} />);
 
@@ -100,7 +100,7 @@ describe('ExtensionSessionSync (#232, ADR-0025)', () => {
 
   it('stays put after any other outcome, and after a sync that failed', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const { services } = fakeServices({ kind: 'extension-signed-in', account: 'a', deviceId: 'd' });
+    const { services } = fakeServices({ kind: 'extension-signed-in', extensionId: EXT, account: 'a', deviceId: 'd' });
     render(<ExtensionSessionSync services={() => services} />);
     await act(() => Promise.resolve());
     expect(router.replace).not.toHaveBeenCalled();

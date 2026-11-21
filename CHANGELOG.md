@@ -4,6 +4,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-21
+
 ### Added
 
 - **Send to my computer, on a phone** (#243). Xomoni installs only on a computer, so on a phone the home page's *Get the extension* (or the store's button, once a store lists Xomoni) becomes *Send to my computer*, and /install offers it beside the note that Xomoni runs on a computer.
@@ -108,6 +110,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Fixed
 
+- After signing out of Xomoni, its dashboard stayed hidden from screen readers until the tab was reloaded, the success message included (#315). The page is readable again as soon as the dialog closes, in Xomoni and on xomoni.com.
 - Cleanup on xomoni.com says that X began in 2006 when a date is earlier, instead of asking Xomoni for a plan it refuses.
 - Audience on xomoni.com, over *All time*, says your followers changed by so many *over all time*, not *in the all time* (#341).
 

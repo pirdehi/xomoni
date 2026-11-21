@@ -162,8 +162,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Then the job waits about a minute: X is having trouble — trying again in about 1 min
 - And nothing is counted as failed, as its log says: X answered HTTP 503 for this page. Waiting; nothing is counted as
   failed
-- And the page load still counts against Xomoni's caps, since X counts every request it answered: page loads 1/60 hr ·
-  1/600 day
+- And the page load still counts against Xomoni's caps, since X counts every request it answered: page loads 2/60 hr ·
+  2/600 day, Home, which opening the X window loaded (#377), and the profile
 - Test: apps/web/e2e/extension/x-pacing.spec.ts
 
 ## S17-16 · error
@@ -173,7 +173,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Then Today’s use of X’s limits shows Risk level 3: Defensive, in red: X refused an action, so the account may be
   limited. Resume opens in 11h 59m. Slower pace for 6d 23h more.
 - And the pace is a quarter of the first warm-up day's: running at 6% of that, deletes 0/2 hr · 0/60 day, unlikes
-  0/2 hr · 0/12 day, page loads 0/15 hr · 0/150 day
+  0/2 hr · 0/12 day, page loads 1/15 hr · 1/150 day: X's Home, which opening the X window loaded, counts (#377)
 - And the rest of the ladder, 226 and locks included, is proven by apps/extension/tests/risk.test.ts
 - Test: apps/web/e2e/extension/x-pacing.spec.ts
 

@@ -7,6 +7,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - **Safety: a job could miss X's notice that your account is limited or suspended, and go on** (#375). When a job started while the X window showed that notice, Xomoni could read X's page before X had drawn it, so it saw no notice. The job then went on at its pace: it loaded your profile or a search, which makes X's page ask X for your posts, and waited for its first delete. Now Xomoni reads the X window's page only once X has drawn it, so the notice stops the job before anything else reaches X. It also reads each page again once its posts show, so a notice that comes with them stops the job before it scrolls or removes anything. This is a safety fix: every release since 0.2.0, 0.5.1 included, had the gap.
+- **Safety: a job now reads X's Home first, even when the X window is on another page** (#377). X shows some notices, such as a limited or suspended account's, on Home only. A job started while the X window showed another page, such as your profile, read only that page, so it could go on past a notice it never saw. Now the first thing each job does is load Home in the X window and read it once X has drawn it, before it loads anything else. Loading Home is a page load like any other: it waits for Xomoni's pace and counts against its limits, at one fifth of X's. Opening the X window counts too, as the page load it is. While a cleanup waits for that first page, its card already says how many posts remain. This is a safety fix.
 
 ## [0.5.1] - 2026-11-21
 

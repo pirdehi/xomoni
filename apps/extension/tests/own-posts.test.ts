@@ -199,6 +199,7 @@ function context(xTab: Partial<XTab> = {}) {
       open: async () => 7,
       keepLoaded: async () => {},
       waitReady: async () => page(),
+      navigate: async () => page(),
       ping: async () => page(),
       ...xTab,
     },
@@ -238,7 +239,8 @@ describe('a refusal is left alone, never a failure (#144)', () => {
 
 describe('the account’s handle (#144)', () => {
   it('stops before acting when X shows a handle X wouldn’t allow', async () => {
-    const { ctx } = context({ waitReady: async () => page({ handle: 'me/../settings' }) });
+    const odd = async () => page({ handle: 'me/../settings' });
+    const { ctx } = context({ waitReady: odd, navigate: odd });
     const err = await ctx.connect().catch((e: unknown) => e);
     expect(err).toBeInstanceOf(Stop);
     expect((err as Stop).message).toMatch(/Could not determine your @handle/);

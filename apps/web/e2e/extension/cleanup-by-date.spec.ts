@@ -424,6 +424,29 @@ test.describe('cleanup by date', { tag: '@task-199' }, () => {
     await expect(dashboard.getByText(/^Checked X’s page before acting/)).toHaveCount(0);
   });
 
+  test('S199-34 with the X window on the profile, the job loads Home first and stops on X’s notice there', async ({
+    dashboard,
+  }) => {
+    test.setTimeout(180_000);
+    // The person browsed their profile in the X window itself, and left it there.
+    const xWindow = await openXWindow(dashboard);
+    await postsBefore2021(dashboard, xWindow, { anyTime: true });
+    await servePage(xWindow.context(), '/home', 'home-limited.html');
+    const sent = xRequests(dashboard);
+    await continueWithoutArchive(dashboard);
+    await startCleanup(dashboard);
+
+    const card = jobCard(dashboard, BEFORE_2021);
+    // Home is a page load like any other: it waits for Xomoni's pace first, up to 2 minutes with a long pause.
+    await expect(card).toContainText('Stopped for safety', { timeout: 150_000 });
+    await expect(card).toContainText(
+      'X shows a restriction on this account: “Your account is temporarily limited”. The account may be limited or read-only.',
+    );
+    await expect(card).toContainText(/0\s*removed/);
+    await expect(xWindow).toHaveURL('https://x.com/home');
+    expect(sent, 'requests the job sent to X').toEqual(['https://x.com/home']);
+  });
+
   test('S199-14 X answering 429 to the job’s page load makes it wait for X’s reset', async ({
     dashboard,
     page,

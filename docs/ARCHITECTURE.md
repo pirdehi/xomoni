@@ -310,14 +310,14 @@ flowchart LR
   edit["Change"] --> push["git push"]
   push -- ".githooks/pre-push" --> verify["npm run verify<br/>format · lint + code docs · types ·<br/>architecture · docs · README · test presence ·<br/>user scenarios · tooling tests · no remote code ·<br/>unit tests + coverage"]
   verify -- pass --> gh["GitHub pull request"]
-  gh --> ci["CI: verify + builds · database · e2e"]
+  gh --> ci["CI: verify + builds · database · e2e · e2e-edge"]
   ci -- "all green" --> main["merge to main<br/>(branch protected)"]
   main --> vercel["Vercel deploys xomoni.com"]
   main -. "every night, 02:23 UTC" .-> nightly["Nightly: CI + npm audit<br/>one issue while red"]
 ```
 
 - **Pre-push hook:** `npm install` points git at [`.githooks`](../.githooks/pre-push), whose `pre-push` runs [`tooling/verify.mjs`](../tooling/verify.mjs). `git push --no-verify` skips it, but CI runs the same checks and `main` only accepts green pull requests.
-- **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): `verify` and both production builds; `database` (fresh migrations, schema lint, Row Level Security tests, generated-types drift); `e2e` (the auth flows in a real browser against a local Supabase, with emails read from Mailpit).
+- **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): `verify` and both production builds; `database` (fresh migrations, schema lint, Row Level Security tests, generated-types drift); `e2e` (the website's flows in a real browser against a local Supabase, with emails read from Mailpit, then the built extension in a real browser on synthetic x.com fixtures with no network, [ADR-0040](adr/0040-test-the-extension-against-recorded-x-fixtures.md); axe checks both for serious accessibility violations); `e2e-edge`, the same in Microsoft Edge, not yet required (#342).
 - **Branch protection on `main`:** pull request required, CI must pass, linear history, no force pushes, no bypass. The gate's own files have a code owner ([`CODEOWNERS`](../.github/CODEOWNERS)).
 - **Releases** ([`release.yml`](../.github/workflows/release.yml)): a version tag runs the full CI again on the tagged commit (it calls `ci.yml`) and checks the version's release issue ([`tooling/check-release-issue.mjs`](../tooling/check-release-issue.mjs)). Then it audits the dependencies, builds the extension's zip, and the store build without the one-click updater, and publishes both on GitHub Releases once the maintainer approves. Last, it comments the release on its issue and closes it (#340), then calls the check after the release (#343). A manual run of [`store.yml`](../.github/workflows/store.yml) sends that release's store build to the Chrome Web Store and Edge Add-ons, with the store keys only in the `stores` environment ([releasing](RELEASING.md#chrome-web-store-and-edge-add-ons)).
 - **Pull request policy** ([`pr-policy.yml`](../.github/workflows/pr-policy.yml)): `pr-policy` ([`tooling/check-pr.mjs`](../tooling/check-pr.mjs)) checks that the description links its task, that a user-facing change brings a changelog line and its scenarios, and that each exemption label has a written reason; `dependency-review` fails on a new dependency with a high or critical vulnerability. Both are required checks on `main` (#346). [Contributing](../CONTRIBUTING.md#pull-request-checks) lists what each one wants.
@@ -327,7 +327,7 @@ The workflows, in [`.github/workflows`](../.github/workflows):
 
 | Workflow | Runs | Jobs |
 | --- | --- | --- |
-| [`ci.yml`](../.github/workflows/ci.yml) | Every pull request and push to `main`; called by `release.yml` and `nightly.yml` | `verify` (with both builds and the release dry run), `database`, `e2e` |
+| [`ci.yml`](../.github/workflows/ci.yml) | Every pull request and push to `main`; called by `release.yml` and `nightly.yml` | `verify` (with both builds and the release dry run), `database`, `e2e`, and `e2e-edge` (Edge, not yet required, #342) |
 | [`pr-policy.yml`](../.github/workflows/pr-policy.yml) | Every pull request, again when its description or labels change | `pr-policy`, `dependency-review` |
 | [`release.yml`](../.github/workflows/release.yml) | A `vX.Y.Z` tag | `ci`, `readiness`, `build`, `publish` (the `release` environment), `after-release` |
 | [`release-check.yml`](../.github/workflows/release-check.yml) | Called by `release.yml`; by hand, with a tag; a release a person publishes | `check` (read-only), `report` (issues only) |

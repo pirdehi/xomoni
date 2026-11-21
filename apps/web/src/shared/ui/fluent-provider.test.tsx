@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { Dialog, DialogBody, DialogContent, DialogSurface, DialogTitle, useFluent } from '@fluentui/react-components';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { XOMONI_BRAND } from '@xomoni/fluent-theme';
+import { XOMONI_BRAND_AA } from '@xomoni/fluent-theme';
 import { isValidElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetNavigation, serverInsertedHTML } from '@test/fakes/navigation';
@@ -41,7 +41,8 @@ afterEach(() => {
 
 describe('Fluent UI on xomoni.com (ADR-0019)', () => {
   it('uses Xomoni’s shared themes on the site’s font', () => {
-    expect(siteLight.colorBrandBackground).toBe(XOMONI_BRAND[80]);
+    // Xomoni's blue, a shade deeper for white text at WCAG AA (#342).
+    expect(siteLight.colorBrandBackground).toBe(XOMONI_BRAND_AA.button);
     expect(siteDark.colorNeutralBackground1).toBe('#1a1a19');
     expect(siteLight.fontFamilyBase).toMatch(/^var\(--font-geist-sans\)/);
   });

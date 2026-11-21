@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { expectNoSeriousA11yViolations } from './support/a11y';
 import { createConfirmedUser } from './support/admin';
 import { PASSWORD, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
@@ -288,6 +289,7 @@ test.describe('Xomoni’s actions on xomoni.com (#251, ADR-0027)', () => {
     const dialog = page.getByRole('dialog', { name: 'You haven’t installed Xomoni yet' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('link', { name: /Install Xomoni/ })).toHaveAttribute('href', '/install');
+    await expectNoSeriousA11yViolations(page);
     await dialog.getByRole('button', { name: 'Close' }).click();
     await expect(dialog).toBeHidden();
   });

@@ -58,8 +58,10 @@ const useStyles = makeStyles({
     },
     '& li + li': { marginTop: tokens.spacingVerticalSNudge },
     '& li::marker': { color: tokens.colorBrandForeground1 },
+    // Underlined: in running text, a link's color alone is too close to the text around it (WCAG 1.4.1, #342).
     '& a': {
       color: tokens.colorBrandForegroundLink,
+      textDecorationLine: 'underline',
       textUnderlineOffset: '2px',
       borderRadius: tokens.borderRadiusSmall,
     },

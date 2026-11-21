@@ -1,4 +1,5 @@
 import type { BrowserContext, Locator, Page } from '@playwright/test';
+import { expectNoSeriousA11yViolations } from './support/a11y';
 import { createConfirmedUser } from './support/admin';
 import { AGENTS, asBrowser } from './support/browsers';
 import { PASSWORD, signIn, signOut, uniqueEmail } from './support/flows';
@@ -145,6 +146,7 @@ test.describe('the header and footer (#242)', () => {
       await page.keyboard.press('Enter');
       const menu = page.getByRole('menu');
       await expect(menu.getByRole('menuitem', { name: 'How it works' })).toBeFocused();
+      await expectNoSeriousA11yViolations(page);
       await page.keyboard.press('Escape');
       await expect(menu).toBeHidden();
       await expect(menuButton).toBeFocused();
@@ -234,7 +236,7 @@ test.describe('the install guide (#299)', () => {
       'Read what can go wrong',
       'Download Xomoni',
       'Unzip it into a folder you keep',
-      /^Add it to (Chrome|Chrome, Edge or Brave)$/,
+      /^Add it to (Chrome|Edge|Chrome, Edge or Brave)$/,
       'Follow it here (optional)',
     ];
     for (const [i, title] of titles.entries()) {
@@ -680,6 +682,7 @@ test.describe('by keyboard and for screen readers (#299)', () => {
         await page.keyboard.press('Enter');
         await expect(steps.getByText(`Step ${step} of 5`)).toBeVisible();
         await expect(titles).toBeFocused();
+        await expectNoSeriousA11yViolations(page);
       }
       await expect(steps.getByRole('button', { name: 'Next' })).toHaveCount(0);
 
@@ -710,6 +713,7 @@ test.describe('by keyboard and for screen readers (#299)', () => {
         'Follow it here (optional)',
       ]);
       await expect(steps.locator('[aria-current="step"]').getByRole('heading')).toHaveText('Follow it here (optional)');
+      await expectNoSeriousA11yViolations(page);
     },
   );
 });

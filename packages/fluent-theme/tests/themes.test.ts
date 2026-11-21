@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAGE_BACKGROUND,
   XOMONI_BRAND,
+  XOMONI_BRAND_AA,
   XOMONI_FONT,
   themeVariables,
   xomoniDarkTheme,
@@ -12,7 +13,33 @@ describe('Xomoni’s Fluent themes (ADR-0019)', () => {
   it('use Xomoni’s blue at shade 80 as the brand color, in 16 shades', () => {
     expect(Object.keys(XOMONI_BRAND)).toHaveLength(16);
     expect(XOMONI_BRAND[80]).toBe('#2a78d6');
-    expect(xomoniLightTheme().colorBrandBackground).toBe(XOMONI_BRAND[80]);
+    expect(xomoniDarkTheme().colorBrandBackground).toBe(XOMONI_BRAND[70]);
+  });
+
+  it('deepen the blue of light mode’s buttons and brand text only as far as WCAG AA needs (#342)', () => {
+    const light = xomoniLightTheme();
+    expect(light.colorBrandBackground).toBe(XOMONI_BRAND_AA.button);
+    expect(light.colorBrandForeground1).toBe(XOMONI_BRAND_AA.text);
+    // Xomoni's blue itself falls short, which is why they differ from it.
+    expect(contrast('#ffffff', XOMONI_BRAND[80])).toBeLessThan(4.5);
+    expect(contrast(XOMONI_BRAND[80], PAGE_BACKGROUND.light)).toBeLessThan(4.5);
+  });
+
+  it.each([
+    ['light', xomoniLightTheme()],
+    ['dark', xomoniDarkTheme()],
+  ])('keep text at WCAG AA, 4.5:1, on every surface in %s mode (#342)', (_, theme) => {
+    const surfaces = [theme.colorNeutralBackground1, theme.colorNeutralBackground2, theme.colorNeutralBackground3];
+    const text = [
+      theme.colorNeutralForeground1,
+      theme.colorNeutralForeground2,
+      theme.colorNeutralForeground3,
+      theme.colorBrandForeground1,
+      theme.colorBrandForegroundLink,
+    ];
+    for (const color of text)
+      for (const surface of surfaces) expect(contrast(color, surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(theme.colorNeutralForegroundOnBrand, theme.colorBrandBackground)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('paint the page in the same color as the theme’s page background', () => {
@@ -43,3 +70,17 @@ describe('Xomoni’s Fluent themes (ADR-0019)', () => {
     expect(css.split('; --')).toHaveLength(Object.keys(dark).length);
   });
 });
+
+/** The WCAG 2 contrast ratio of two `#rrggbb` colors, from 1 to 21. */
+function contrast(a: string, b: string): number {
+  const luminance = (color: string) => {
+    expect(color).toMatch(/^#[0-9a-f]{6}$/i);
+    const [r, g, bl] = [1, 3, 5].map((i) => {
+      const c = parseInt(color.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }) as [number, number, number];
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}

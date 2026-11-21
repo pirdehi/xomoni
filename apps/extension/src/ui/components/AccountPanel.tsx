@@ -158,8 +158,9 @@ export function AccountPanel({
           <button
             type="button"
             className={mergeClasses(s.trigger, open && s.open)}
-            aria-label={`Connections: ${name}, @${account.handle}`}
             aria-expanded={open}
+            // Named by what it shows, as speech input reads it (WCAG 2.5.3, #342); the panel it opens is Connections.
+            aria-haspopup="dialog"
           >
             {/* Decorative: the name is written next to it. Without a picture, the initial stands in. */}
             <Avatar
@@ -169,7 +170,7 @@ export function AccountPanel({
               initials={account.avatar ? undefined : (name || '?').slice(0, 1).toUpperCase()}
             />
             <span className={s.text}>
-              <Body1Strong className={s.truncate}>{name}</Body1Strong>
+              <Body1Strong className={s.truncate}>{name}</Body1Strong>{' '}
               <Caption1 className={mergeClasses(s.truncate, s.muted)}>@{account.handle}</Caption1>
             </span>
             <ChevronUpDown16Regular className={s.chevron} aria-hidden />

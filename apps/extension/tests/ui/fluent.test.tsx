@@ -3,7 +3,7 @@ import { Button, useFluent } from '@fluentui/react-components';
 import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProgressRing } from '../../src/ui/components/ProgressRing';
-import { XOMONI_BRAND } from '@xomoni/fluent-theme';
+import { XOMONI_BRAND, XOMONI_BRAND_AA } from '@xomoni/fluent-theme';
 import { FluentRoot, useThemeMode, xomoniDark, xomoniLight } from '../../src/ui/fluent';
 import { setTheme } from '../../src/ui/theme';
 
@@ -45,7 +45,8 @@ afterEach(() => {
 describe('Xomoni’s Fluent themes (ADR-0019)', () => {
   it('use Xomoni’s blue as the brand color in both modes, on the dashboard’s neutrals', () => {
     expect(XOMONI_BRAND[80]).toBe('#2a78d6');
-    expect(xomoniLight.colorBrandBackground).toBe(XOMONI_BRAND[80]);
+    // A shade deeper on buttons, for white text at WCAG AA (#342).
+    expect(xomoniLight.colorBrandBackground).toBe(XOMONI_BRAND_AA.button);
     expect(xomoniLight.colorNeutralBackground1).toBe('#fcfcfb');
     expect(xomoniDark.colorNeutralBackground1).toBe('#1a1a19');
     expect(xomoniDark.colorBrandForeground1).toBe(XOMONI_BRAND[100]);

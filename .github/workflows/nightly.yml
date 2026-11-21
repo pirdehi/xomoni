@@ -1,6 +1,6 @@
 # The whole suite every night on main (#343, R18 of docs/QUALITY-GATES.md), so a failure shows up the next morning
 # rather than on release day: a flaky test, a dependency's new advisory, a change outside the repository.
-# - `ci` runs the full CI, ci.yml (verify, database, e2e), read-only and with no secret, as every merge does;
+# - `ci` runs the full CI, ci.yml (verify, database, e2e, e2e-edge), read-only and with no secret, as every merge does;
 # - `audit` runs `npm audit` at high on every dependency, as the release build does, from the lockfile alone;
 # - `report` keeps one issue, labelled `nightly` and titled "Nightly run failing": a red night opens it or comments on
 #   it, the first green night closes it (tooling/nightly-report.mjs). It is the only job that can write, to issues only,

@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { expectNoSeriousA11yViolations } from './support/a11y';
 import { addDevice, createConfirmedUser } from './support/admin';
 import {
   NEW_PASSWORD,
@@ -75,6 +76,7 @@ test.describe('two-step verification', () => {
     await enterCode(page, '000000');
     await expect(formAlert(page)).toContainText('That code didn’t work');
     await expect(page).toHaveURL(/\/login\/two-factor$/);
+    await expectNoSeriousA11yViolations(page);
 
     await enterCode(page, totp(secret));
     await expectDashboard(page);

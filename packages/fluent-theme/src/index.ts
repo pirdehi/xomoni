@@ -34,25 +34,38 @@ export const XOMONI_FONT =
 export const PAGE_BACKGROUND = { light: '#f4f4f1', dark: '#0d0d0d' } as const;
 
 /**
+ * Xomoni's blue, deepened just enough to carry text at WCAG AA, 4.5:1 (#342), for the light theme: white text on a
+ * primary button (`button`), and blue text on the light surfaces, the darkest of them included (`text`). Xomoni's blue
+ * itself carries white text at 4.4:1, and sits on the page at 4.0:1.
+ */
+export const XOMONI_BRAND_AA = { button: '#2975d1', text: '#266bbf' } as const;
+
+/**
  * Xomoni in light mode: Fluent's light theme on warm neutrals. `fontFamily` replaces the font stack, for an app that
- * loads its own font (the website's Geist).
+ * loads its own font (the website's Geist). Text meets WCAG AA on every surface (#342): the blue of buttons and brand
+ * text is `XOMONI_BRAND_AA`, and the muted grey is dark enough on the darkest surface, `colorNeutralBackground2`.
  */
 export function xomoniLightTheme(fontFamily = XOMONI_FONT): Theme {
   return {
     ...createLightTheme(XOMONI_BRAND),
     fontFamilyBase: fontFamily,
+    colorBrandBackground: XOMONI_BRAND_AA.button,
+    colorBrandForeground1: XOMONI_BRAND_AA.text,
     colorNeutralBackground1: '#fcfcfb',
     colorNeutralBackground2: '#f0efec',
     colorNeutralBackground3: PAGE_BACKGROUND.light,
     colorNeutralForeground1: '#0b0b0b',
     colorNeutralForeground2: '#52514e',
-    colorNeutralForeground3: '#898781',
+    colorNeutralForeground3: '#6e6c67',
     colorNeutralStroke1: 'rgba(11, 11, 11, 0.14)',
     colorNeutralStroke2: 'rgba(11, 11, 11, 0.1)',
   };
 }
 
-/** Xomoni in dark mode: Fluent's dark theme on near-black surfaces, with lighter brand text for contrast. */
+/**
+ * Xomoni in dark mode: Fluent's dark theme on near-black surfaces, with lighter brand text for contrast. The muted grey
+ * is light enough for WCAG AA on the lightest surface, `colorNeutralBackground2` (#342).
+ */
 export function xomoniDarkTheme(fontFamily = XOMONI_FONT): Theme {
   return {
     ...createDarkTheme(XOMONI_BRAND),
@@ -64,7 +77,7 @@ export function xomoniDarkTheme(fontFamily = XOMONI_FONT): Theme {
     colorNeutralBackground3: PAGE_BACKGROUND.dark,
     colorNeutralForeground1: '#f0efec',
     colorNeutralForeground2: '#c3c2b7',
-    colorNeutralForeground3: '#898781',
+    colorNeutralForeground3: '#8e8c86',
     colorNeutralStroke1: 'rgba(255, 255, 255, 0.14)',
     colorNeutralStroke2: 'rgba(255, 255, 255, 0.1)',
   };

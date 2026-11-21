@@ -4,6 +4,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Fixed
+
+- Text that was hard to read now meets WCAG AA contrast, in Xomoni's dashboard and on xomoni.com (#342). In light mode, muted text and the blue of buttons and blue text are a shade deeper; in dark mode, muted text is a shade lighter.
+- Links in the text of xomoni.com's privacy policy, terms and risks pages are underlined, so they stand out without relying on color (#342).
+- The account button at the bottom of Xomoni's sidebar is named by the words it shows, so voice control can press it by saying them, and screen readers say it opens a panel (#342). On xomoni.com, the account menu's name includes the initials its picture shows, for the same reason.
+
 ## [0.5.0] - 2026-11-21
 
 ### Added

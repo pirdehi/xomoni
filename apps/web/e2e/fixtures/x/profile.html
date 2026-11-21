@@ -1,0 +1,54 @@
+<!doctype html>
+<!--
+  x.com/xomoni_fixture as Xomoni's browser tests serve it (#342, ADR-0040). Synthetic: the account, its posts and every
+  id are made up, never anyone's. Only what Xomoni reads is here (apps/extension/src/content/dom.ts): the sidebar's
+  profile link, posts as article[data-testid="tweet"] with their time links, and X's web app asking its GraphQL API for
+  the profile and the posts, whose answers the interceptor reads (graphql/UserByScreenName.json, UserTweets.json). The
+  posts below are the ones UserTweets.json answers with.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture Person (@xomoni_fixture) / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link">Home</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <h1 data-testid="UserName">Fixture Person <span>@xomoni_fixture</span></h1>
+        <section aria-label="Timeline: Fixture Person’s posts">
+          <article data-testid="tweet">
+            <div data-testid="User-Name">Fixture Person @xomoni_fixture</div>
+            <a href="/xomoni_fixture/status/9000000000000000102"
+              ><time datetime="2021-06-01T12:00:00.000Z">Jun 1, 2021</time></a
+            >
+            <div data-testid="tweetText">Another made-up post, with no one's words in it.</div>
+          </article>
+          <article data-testid="tweet">
+            <div data-testid="User-Name">Fixture Person @xomoni_fixture</div>
+            <a href="/xomoni_fixture/status/9000000000000000101"
+              ><time datetime="2020-03-14T09:26:53.000Z">Mar 14, 2020</time></a
+            >
+            <div data-testid="tweetText">A made-up post for Xomoni's browser tests.</div>
+          </article>
+        </section>
+      </main>
+    </div>
+    <div id="layers"></div>
+    <script>
+      // As X's web app does once the page loads: the profile, then the posts, from x.com's own GraphQL API.
+      const ask = (op, variables) =>
+        fetch(`/i/api/graphql/fixtureQueryId/${op}?variables=${encodeURIComponent(JSON.stringify(variables))}`, {
+          credentials: 'include',
+        });
+      ask('UserByScreenName', { screen_name: 'xomoni_fixture' }).then(() =>
+        ask('UserTweets', { userId: '9000000000000000001', count: 20 }),
+      );
+    </script>
+  </body>
+</html>

@@ -316,7 +316,7 @@ flowchart LR
 - **Pre-push hook:** `npm install` points git at [`.githooks`](../.githooks/pre-push), whose `pre-push` runs [`tooling/verify.mjs`](../tooling/verify.mjs). `git push --no-verify` skips it, but CI runs the same checks and `main` only accepts green pull requests.
 - **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): `verify` and both production builds; `database` (fresh migrations, schema lint, Row Level Security tests, generated-types drift); `e2e` (the auth flows in a real browser against a local Supabase, with emails read from Mailpit).
 - **Branch protection on `main`:** pull request required, CI must pass, linear history, no force pushes.
-- **Releases** ([`release.yml`](../.github/workflows/release.yml)): a version tag builds the extension's zip and publishes it on GitHub Releases. A manual run of [`store.yml`](../.github/workflows/store.yml) sends that same zip to the Chrome Web Store and Edge Add-ons, with the store keys only in the `stores` environment ([releasing](RELEASING.md#stores)).
+- **Releases** ([`release.yml`](../.github/workflows/release.yml)): a version tag builds the extension's zip, and the store build without the one-click updater, and publishes both on GitHub Releases. A manual run of [`store.yml`](../.github/workflows/store.yml) sends that release's store build to the Chrome Web Store and Edge Add-ons, with the store keys only in the `stores` environment ([releasing](RELEASING.md#stores)).
 
 ## 9. Changing the architecture
 

@@ -2,8 +2,9 @@
 // .github/workflows/store.yml runs it with the store's secrets in the environment. The calls live in
 // tooling/store-api.mjs, tested by tooling/store-api.test.mjs.
 //
-//   node tooling/store.mjs upload chrome|edge vX.Y.Z [--dir release]       release/xomoni-extension-X.Y.Z.zip becomes
-//                                                                         the store's draft; nothing goes to review
+//   node tooling/store.mjs upload chrome|edge vX.Y.Z [--dir release]       release/xomoni-extension-store-X.Y.Z.zip,
+//                                                                         the store build, becomes the store's draft;
+//                                                                         nothing goes to review
 //   node tooling/store.mjs publish chrome|edge vX.Y.Z [--percentage N]     the draft goes to review, then live
 import { StoreError, parseStoreArgs, runStore } from './store-api.mjs';
 

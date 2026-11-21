@@ -39,7 +39,7 @@ Out of scope: X's own platform, rate limits or enforcement decisions; social eng
   - Nothing is written while a job runs, or while the backup of an update that didn't finish is kept. A write that fails is undone, and the update is in the activity log.
   - The release is built without dependencies' install scripts. A store build carries no updater.
   - The signing key follows the tag, not reviewed code; ADR-0033 says what that leaves open.
-- The browser stores get that same zip, never a rebuild (#303): the store workflow checks it against the release's checksums and its build provenance first. The store keys are secrets of a GitHub environment that only runs from `main` can read, after the maintainer approves; each store's job gets only its own keys, and no message prints them ([stores](docs/RELEASING.md#stores)).
+- The browser stores get the store build that same release workflow built and attested, `xomoni-extension-store-X.Y.Z.zip` (the same code without the one-click updater, ADR-0033), never a rebuild (#303): the store workflow checks it against the release's checksums and its build provenance first. The store keys are secrets of a GitHub environment that only runs from `main` can read, after the maintainer approves; each store's job gets only its own keys, and no message prints them ([stores](docs/RELEASING.md#stores)).
 
 ## Cloud security review (2026-10-31)
 

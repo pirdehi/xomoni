@@ -424,10 +424,10 @@ describe('Edge Add-ons (API v1.1)', () => {
       { status: 202, headers: { Location: 'op-1' } },
       operation('InProgress'),
       { status: 429, text: 'slow down' },
-      operation('Succeeded', { message: 'Successfully updated package to xomoni-extension-0.5.0.zip' }),
+      operation('Succeeded', { message: 'Successfully updated package to xomoni-extension-store-0.5.0.zip' }),
     );
     assert.deepEqual(await edgeUpload({ ...edgeAuth, zip: ZIP }, deps(fetch)), {
-      message: 'Successfully updated package to xomoni-extension-0.5.0.zip',
+      message: 'Successfully updated package to xomoni-extension-store-0.5.0.zip',
     });
     assert.equal(calls[0].url, `${EDGE_BASE}/draft/package`);
     assert.equal(calls[0].method, 'POST');
@@ -519,7 +519,7 @@ describe('one run (tooling/store.mjs)', () => {
   };
 
   it(
-    'uploads the tag’s zip to Chrome, hiding the access token first',
+    'uploads the tag’s store build to Chrome, hiding the access token first',
     withZip('0.5.0', async (dir) => {
       const { fetch, calls } = fakeFetch(
         { json: { access_token: ACCESS } },
@@ -529,20 +529,20 @@ describe('one run (tooling/store.mjs)', () => {
       const command = parseStoreArgs(['upload', 'chrome', 'v0.5.0', '--dir', dir]);
       const line = await runStore(command, CHROME_ENV, deps(fetch, { mask: (value) => masked.push(value) }));
       assert.deepEqual(masked, [ACCESS]);
-      assert.match(line, /xomoni-extension-0\.5\.0\.zip is the draft now \(version 0\.5\.0\).*"publish"/);
+      assert.match(line, /xomoni-extension-store-0\.5\.0\.zip is the draft now \(version 0\.5\.0\).*"publish"/);
       assert.deepEqual(calls[1].body, ZIP);
     }),
   );
 
   it(
-    'uploads the tag’s zip to Edge',
+    'uploads the tag’s store build to Edge',
     withZip('0.5.0', async (dir) => {
       const { fetch, calls } = fakeFetch(
         { status: 202, headers: { Location: 'op-1' } },
         { json: { status: 'Succeeded', message: 'Successfully updated package' } },
       );
       const line = await runStore(parseStoreArgs(['upload', 'edge', 'v0.5.0', '--dir', dir]), EDGE_ENV, deps(fetch));
-      assert.match(line, /Edge Add-ons: xomoni-extension-0\.5\.0\.zip is the draft now/);
+      assert.match(line, /Edge Add-ons: xomoni-extension-store-0\.5\.0\.zip is the draft now/);
       assert.deepEqual(calls[0].body, ZIP);
     }),
   );
@@ -552,10 +552,32 @@ describe('one run (tooling/store.mjs)', () => {
     withZip('0.4.0', async (dir) => {
       const { fetch, calls } = fakeFetch();
       const command = parseStoreArgs(['upload', 'chrome', 'v0.5.0', '--dir', dir]);
-      assert.match(await storeError(runStore(command, CHROME_ENV, deps(fetch))), /no xomoni-extension-0\.5\.0\.zip/);
+      assert.match(
+        await storeError(runStore(command, CHROME_ENV, deps(fetch))),
+        /no xomoni-extension-store-0\.5\.0\.zip/,
+      );
       assert.equal(calls.length, 0, 'not even the sign-in');
     }),
   );
+
+  it('never sends the GitHub zip, which has the one-click updater, in place of the store build', async () => {
+    assert.equal(zipName('0.5.0'), 'xomoni-extension-store-0.5.0.zip');
+    const dir = mkdtempSync(join(tmpdir(), 'xomoni-store-'));
+    try {
+      for (const name of ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip']) writeFileSync(join(dir, name), ZIP);
+      for (const [store, env] of [
+        ['chrome', CHROME_ENV],
+        ['edge', EDGE_ENV],
+      ]) {
+        const { fetch, calls } = fakeFetch();
+        const command = parseStoreArgs(['upload', store, 'v0.5.0', '--dir', dir]);
+        assert.match(await storeError(runStore(command, env, deps(fetch))), /no xomoni-extension-store-0\.5\.0\.zip/);
+        assert.equal(calls.length, 0, `${store}: nothing sent`);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 
   it('publishes on both stores, linking the release notes for Edge testers', async () => {
     const chrome = fakeFetch(

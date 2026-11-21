@@ -1,7 +1,8 @@
 # Sends a release to the Chrome Web Store and Microsoft Edge Add-ons (docs/RELEASING.md#stores, #303). Run by hand,
-# from main, after the release workflow: `upload` makes the release's zip each store's draft, and a second run with
-# `publish` submits the draft for review. It never builds: it takes xomoni-extension-X.Y.Z.zip from the tag's GitHub
-# release and checks it against SHA256SUMS and its build provenance before any store sees it. The store keys are
+# from main, after the release workflow: `upload` makes the release's store build each store's draft, and a second run
+# with `publish` submits the draft for review. It never builds: it takes xomoni-extension-store-X.Y.Z.zip, the build
+# without the one-click updater (ADR-0033), from the tag's GitHub release, and checks it against SHA256SUMS and its
+# build provenance before any store sees it. The store keys are
 # secrets of the `stores` environment only, which the maintainer can make wait for approval. Actions are pinned by
 # commit SHA; Dependabot keeps them current.
 name: Stores
@@ -69,26 +70,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName
-      - name: Download its zip and checksums
+      - name: Download its store build and checksums
         if: inputs.action == 'upload'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release \
-            --pattern "xomoni-extension-${TAG#v}.zip" --pattern SHA256SUMS
-      - name: The zip matches SHA256SUMS
+            --pattern "xomoni-extension-store-${TAG#v}.zip" --pattern SHA256SUMS
+      - name: The store build matches SHA256SUMS
         if: inputs.action == 'upload'
         working-directory: release
         run: |
-          awk -v zip="xomoni-extension-${TAG#v}.zip" '$2 == zip { found = 1 } END { exit !found }' SHA256SUMS \
-            || { echo "::error::SHA256SUMS doesn't list the zip."; exit 1; }
+          awk -v zip="xomoni-extension-store-${TAG#v}.zip" '$2 == zip { found = 1 } END { exit !found }' SHA256SUMS \
+            || { echo "::error::SHA256SUMS doesn't list the store build: releases before #303 have none, so tag a new one."; exit 1; }
           sha256sum --check --strict --ignore-missing SHA256SUMS
       - name: The release workflow built it from this tag (build provenance)
         if: inputs.action == 'upload'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh attestation verify "release/xomoni-extension-${TAG#v}.zip" --repo "$GITHUB_REPOSITORY" \
+          gh attestation verify "release/xomoni-extension-store-${TAG#v}.zip" --repo "$GITHUB_REPOSITORY" \
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
             --source-ref "refs/tags/$TAG" --deny-self-hosted-runners
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

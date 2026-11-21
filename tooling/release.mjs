@@ -3,22 +3,27 @@
 //   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section; warns
 //                                             while no release signing key is trusted (#305)
 //   node tooling/release.mjs notes vX.Y.Z     prints the changelog section, for the GitHub release
-//   node tooling/release.mjs package          zips apps/extension/dist into apps/extension/release, with SHA256SUMS;
-//                                             reproducible: files dated SOURCE_DATE_EPOCH, else the last commit's time;
-//                                             and release-keys, the signing keys the extension trusts, for the
-//                                             publish job to check its key against (#305)
+//   node tooling/release.mjs package          zips the default build in apps/extension/dist (`npm run build`) into
+//                                             apps/extension/release, with SHA256SUMS; reproducible: files dated
+//                                             SOURCE_DATE_EPOCH, else the last commit's time; and release-keys, the
+//                                             signing keys the extension trusts, for the publish job to check its
+//                                             key against (#305)
+//   node tooling/release.mjs package-store    then, after `npm run build:store`, zips the store build the same way
+//                                             beside them, and lists it in SHA256SUMS (#303)
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   changelogSection,
+  isStoreManifest,
   releaseKeyWarning,
   releaseProblems,
+  releaseZips,
   reproducibleZip,
   trustedReleaseKeys,
   versionOfTag,
+  zipChecksums,
 } from './release-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,34 +52,49 @@ if (command === 'check') {
     process.exit(1);
   }
   console.log(notes);
-} else if (command === 'package') {
-  const dist = join(EXT, 'dist');
-  if (!existsSync(join(dist, 'manifest.json'))) {
-    console.error('apps/extension/dist has no build: run `npm run build -w @xomoni/extension` first.');
+} else if (command === 'package' || command === 'package-store') {
+  const store = command === 'package-store';
+  const build = `npm run ${store ? 'build:store' : 'build'} -w @xomoni/extension`;
+  const fail = (message) => {
+    console.error(message);
     process.exit(1);
-  }
+  };
+  const dist = join(EXT, 'dist');
+  if (!existsSync(join(dist, 'manifest.json'))) fail(`apps/extension/dist has no build: run \`${build}\` first.`);
+  // The GitHub zips must hold the updater and the store's zip must not, whatever was built last.
+  const built = JSON.parse(readFileSync(join(dist, 'manifest.json'), 'utf8'));
+  if (isStoreManifest(built) !== store)
+    fail(
+      store
+        ? `apps/extension/dist is the default build, with the one-click updater: run \`${build}\` first.`
+        : `apps/extension/dist is the store build, without the one-click updater: run \`${build}\` first.`,
+    );
+  if (built.version !== manifestVersion)
+    fail(`apps/extension/dist holds version ${String(built.version)}, not ${manifestVersion}: run \`${build}\` again.`);
   const out = join(EXT, 'release');
-  rmSync(out, { recursive: true, force: true });
-  mkdirSync(out);
-  // One file with a fixed name for the website's "latest" link, and one that names the version.
-  const names = ['xomoni-extension.zip', `xomoni-extension-${manifestVersion}.zip`];
+  const zips = releaseZips(manifestVersion);
   const epoch = Number(
     process.env.SOURCE_DATE_EPOCH ||
       execFileSync('git', ['log', '-1', '--format=%ct'], { cwd: ROOT, encoding: 'utf8' }),
   );
-  reproducibleZip(dist, join(out, names[0]), epoch);
-  writeFileSync(join(out, names[1]), readFileSync(join(out, names[0])));
-  const sums = names.map((name) => {
-    const hash = createHash('sha256')
-      .update(readFileSync(join(out, name)))
-      .digest('hex');
-    return `${hash}  ${name}`;
-  });
-  writeFileSync(join(out, 'SHA256SUMS'), `${sums.join('\n')}\n`);
-  // Not a release file: the publish job checks its signing key against it, then signs the zips (#305).
-  writeFileSync(join(out, 'release-keys'), releaseKeys.map((key) => `${key}\n`).join(''));
-  console.log(`Packaged ${manifestVersion}:\n${sums.join('\n')}`);
+  if (store) {
+    if (!existsSync(join(out, zips.versioned)))
+      fail('Package the default build first: `node tooling/release.mjs package`, then the store build.');
+    rmSync(join(out, zips.store), { force: true });
+    reproducibleZip(dist, join(out, zips.store), epoch);
+  } else {
+    rmSync(out, { recursive: true, force: true });
+    mkdirSync(out);
+    // One file with a fixed name for the website's "latest" link, and one that names the version.
+    reproducibleZip(dist, join(out, zips.latest), epoch);
+    writeFileSync(join(out, zips.versioned), readFileSync(join(out, zips.latest)));
+    // Not a release file: the publish job checks its signing key against it, then signs the zips (#305).
+    writeFileSync(join(out, 'release-keys'), releaseKeys.map((key) => `${key}\n`).join(''));
+  }
+  const sums = zipChecksums(out);
+  writeFileSync(join(out, 'SHA256SUMS'), sums);
+  console.log(`Packaged ${manifestVersion}${store ? ', store build' : ''}:\n${sums.trimEnd()}`);
 } else {
-  console.error('Usage: node tooling/release.mjs check [vX.Y.Z] | notes vX.Y.Z | package');
+  console.error('Usage: node tooling/release.mjs check [vX.Y.Z] | notes vX.Y.Z | package | package-store');
   process.exit(1);
 }

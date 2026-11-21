@@ -107,6 +107,9 @@ function stepScript(text, name) {
 }
 
 const SIGN_STEP = 'Sign the zips for one-click updates (Ed25519)';
+/** The zips a release signs, and the store build's, which it doesn't: nothing in it checks a signature (#303). */
+const SIGNED = ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip'];
+const STORE_ZIP = 'xomoni-extension-store-0.5.0.zip';
 const openssl = spawnSync('openssl', ['version'], { encoding: 'utf8' });
 // `pkeyutl -rawin` for Ed25519 needs OpenSSL 3, as on GitHub's runners; macOS's own LibreSSL lacks it.
 const OPENSSL_3 = openssl.status === 0 && /^OpenSSL 3\./.test(openssl.stdout);
@@ -127,8 +130,7 @@ function runSigning({ secret, trusted }) {
   const runnerTemp = mkdtempSync(join(tmpdir(), 'xomoni-runner-'));
   mkdirSync(join(dir, 'release'));
   const zip = Buffer.from('PK\x03\x04 a release, as bytes');
-  for (const name of ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip'])
-    writeFileSync(join(dir, 'release', name), zip);
+  for (const name of [...SIGNED, STORE_ZIP]) writeFileSync(join(dir, 'release', name), zip);
   writeFileSync(join(dir, 'release/release-keys'), trusted.map((key) => `${key}\n`).join(''));
   const script = stepScript(workflows.find((w) => w.name === 'release.yml').text, SIGN_STEP);
   const env = { PATH: process.env.PATH, RUNNER_TEMP: runnerTemp, ...(secret ? { RELEASE_SIGNING_KEY: secret } : {}) };
@@ -149,6 +151,24 @@ describe('release signing for one-click updates (#305)', () => {
     assert.doesNotMatch(build, /secrets\.|RELEASE_SIGNING_KEY/);
     assert.ok(publish.indexOf(SIGN_STEP) < publish.indexOf('Create the release'), 'signed before the release exists');
     assert.match(publish, /files=\(release\/\*\.zip release\/\*\.zip\.sig release\/SHA256SUMS\)/);
+  });
+
+  it('builds, checks and packages the store build after the GitHub zips, and attests every zip (#303)', () => {
+    const order = [
+      'run: npm run build -w @xomoni/extension',
+      'run: node tooling/check-remote-code.mjs',
+      'node tooling/release.mjs package\n',
+      'run: npm run build:store -w @xomoni/extension',
+      'run: node tooling/check-remote-code.mjs',
+      'node tooling/release.mjs package-store',
+    ];
+    let at = 0;
+    for (const step of order) {
+      const found = build.indexOf(step, at);
+      assert.ok(found >= at, `"${step.trim()}" comes after the steps before it`);
+      at = found + step.length;
+    }
+    assert.match(publish, /subject-path: release\/\*\.zip\n/);
   });
 
   it('builds the release without running any dependency’s install script', () => {
@@ -176,7 +196,14 @@ describe('release signing for one-click updates (#305)', () => {
       assert.equal(run.status, 0, run.output);
       assert.doesNotMatch(run.output, /PRIVATE KEY/);
       assert.deepEqual(readdirSync(run.runnerTemp), [], 'the key file is gone');
-      for (const name of ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip']) {
+      assert.deepEqual(
+        readdirSync(join(run.dir, 'release'))
+          .filter((name) => name.endsWith('.sig'))
+          .sort(),
+        SIGNED.map((name) => `${name}.sig`).sort(),
+        'the store build is not signed',
+      );
+      for (const name of SIGNED) {
         const signature = readFileSync(join(run.dir, 'release', `${name}.sig`));
         assert.equal(signature.length, 64);
         assert.ok(verify(null, run.zip, key.publicKey, signature), `${name}: Node's crypto`);
@@ -266,15 +293,17 @@ describe('creating the release (#305)', () => {
   }
 
   const ZIPS = ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip'];
+  const STORE = 'xomoni-extension-store-0.5.0.zip';
 
   it('attaches the signatures with the zips when the release was signed', () => {
-    const run = runCreate([...ZIPS, ...ZIPS.map((zip) => `${zip}.sig`), 'SHA256SUMS']);
+    const run = runCreate([...ZIPS, STORE, ...ZIPS.map((zip) => `${zip}.sig`), 'SHA256SUMS']);
     assert.equal(run.status, 0, run.output);
-    assert.deepEqual(run.args.slice(0, 7), [
+    assert.deepEqual(run.args.slice(0, 8), [
       'release',
       'create',
       'v0.5.0',
       'release/xomoni-extension-0.5.0.zip',
+      'release/xomoni-extension-store-0.5.0.zip',
       'release/xomoni-extension.zip',
       'release/xomoni-extension-0.5.0.zip.sig',
       'release/xomoni-extension.zip.sig',
@@ -284,13 +313,14 @@ describe('creating the release (#305)', () => {
   });
 
   it('attaches only the zips and the checksums when it wasn’t, with no literal pattern left over', () => {
-    const run = runCreate([...ZIPS, 'SHA256SUMS']);
+    const run = runCreate([...ZIPS, STORE, 'SHA256SUMS']);
     assert.equal(run.status, 0, run.output);
-    assert.deepEqual(run.args.slice(0, 6), [
+    assert.deepEqual(run.args.slice(0, 7), [
       'release',
       'create',
       'v0.5.0',
       'release/xomoni-extension-0.5.0.zip',
+      'release/xomoni-extension-store-0.5.0.zip',
       'release/xomoni-extension.zip',
       'release/SHA256SUMS',
     ]);
@@ -314,14 +344,16 @@ describe('store workflow (#303)', () => {
     for (const job of ['chrome', 'edge']) assert.match(jobs[job], /needs: release\n/);
   });
 
-  it("sends the release's own zip, checked against SHA256SUMS and its provenance, and never builds one", () => {
+  it("sends the release's own store build, checked against SHA256SUMS and its provenance, and never builds one", () => {
     assert.doesNotMatch(store, /\bnpm |release\.mjs|npm run build/);
     assert.match(
       jobs.release,
-      /gh release download "\$TAG" .*\n.*--pattern "xomoni-extension-\$\{TAG#v\}\.zip" --pattern SHA256SUMS/,
+      /gh release download "\$TAG" .*\n.*--pattern "xomoni-extension-store-\$\{TAG#v\}\.zip" --pattern SHA256SUMS/,
     );
     assert.match(jobs.release, /sha256sum --check --strict --ignore-missing SHA256SUMS/);
-    assert.match(jobs.release, /gh attestation verify "release\/xomoni-extension-\$\{TAG#v\}\.zip"/);
+    assert.match(jobs.release, /gh attestation verify "release\/xomoni-extension-store-\$\{TAG#v\}\.zip"/);
+    // Never the GitHub zip, which has the one-click updater (ADR-0033).
+    assert.doesNotMatch(store, /xomoni-extension-\$\{TAG#v\}|xomoni-extension\.zip/);
     assert.match(jobs.release, /--signer-workflow "\$GITHUB_REPOSITORY\/\.github\/workflows\/release\.yml"/);
     assert.match(jobs.release, /--source-ref "refs\/tags\/\$TAG"/);
     for (const job of ['chrome', 'edge']) {

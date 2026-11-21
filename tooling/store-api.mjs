@@ -5,7 +5,7 @@
 // store answered.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { versionOfTag } from './release-lib.mjs';
+import { releaseZips, versionOfTag } from './release-lib.mjs';
 
 /** Google's token endpoint, where the Chrome Web Store refresh token buys a one-hour access token. */
 export const CHROME_TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -29,8 +29,11 @@ export class StoreError extends Error {
   name = 'StoreError';
 }
 
-/** The release asset a store gets for `version`: the versioned name, so a run can't pick up another release. */
-export const zipName = (version) => `xomoni-extension-${version}.zip`;
+/**
+ * The release asset a store gets for `version`: the store build, without the one-click updater (ADR-0033), never the
+ * GitHub zip that has it. Its name holds the version, so a run can't pick up another release.
+ */
+export const zipName = (version) => releaseZips(version).store;
 
 const DEFAULTS = {
   fetch: (url, init) => globalThis.fetch(url, init),

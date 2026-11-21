@@ -45,7 +45,7 @@ import { workerTab } from '../engine/worker-tab';
 import { type Need, NEED_TITLE, needMessage, pageNeed } from '../shared/attention';
 import { db } from '../shared/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Button, type Tone, useModalHost } from './components/ui';
+import { Button, OutsideModals, type Tone, useModalHost } from './components/ui';
 import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
@@ -277,7 +277,8 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
  * Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, and while signed out of Xomoni (#226),
  * only the onboarding view or the signed-out page is shown, whatever the hash says. The sign-out dialog lives here, so
  * it outlives the account menu it was opened from. The shell holds Fluent's focus manager (`useModalHost`), so a page
- * behind a closing dialog never stays hidden from assistive technology (#315).
+ * behind a closing dialog never stays hidden from assistive technology (#315), and its toasts sit outside what an open
+ * dialog hides, so they are read out over it (#352).
  */
 export function App() {
   const styles = useStyles();
@@ -560,25 +561,32 @@ function RunnerBanner() {
   );
 }
 
-/** The toasts, newest last, in the bottom-right corner; a polite live region, so screen readers read them out. */
+/**
+ * The toasts, newest last, in the bottom-right corner: a polite live region (`status`, named *Notifications*) that
+ * reads out each new toast, not the ones already shown. It sits outside the part of the page an open dialog hides
+ * (`OutsideModals`), so a toast that comes while a dialog is open, such as a sign-out that failed, is still read out
+ * (#352).
+ */
 function Toasts() {
   const styles = useStyles();
   const list = useToasts();
   return (
-    <div className={styles.toasts} aria-live="polite">
-      <MessageBarGroup animate="both" className={styles.toastGroup}>
-        {list.map((t) => (
-          <MessageBar
-            key={t.id}
-            intent={TOAST_INTENT[t.tone]}
-            layout="multiline"
-            className={mergeClasses(styles.toast, t.tone === 'neutral' && styles.toastNeutral)}
-            data-tone={t.tone}
-          >
-            <MessageBarBody>{t.text}</MessageBarBody>
-          </MessageBar>
-        ))}
-      </MessageBarGroup>
-    </div>
+    <OutsideModals>
+      <div role="status" aria-label="Notifications" aria-live="polite" aria-atomic="false" className={styles.toasts}>
+        <MessageBarGroup animate="both" className={styles.toastGroup}>
+          {list.map((t) => (
+            <MessageBar
+              key={t.id}
+              intent={TOAST_INTENT[t.tone]}
+              layout="multiline"
+              className={mergeClasses(styles.toast, t.tone === 'neutral' && styles.toastNeutral)}
+              data-tone={t.tone}
+            >
+              <MessageBarBody>{t.text}</MessageBarBody>
+            </MessageBar>
+          ))}
+        </MessageBarGroup>
+      </div>
+    </OutsideModals>
   );
 }

@@ -505,6 +505,37 @@ describe('App toasts and consent', () => {
     expect(screen.getByText('Export failed').closest('[aria-live]')).toHaveAttribute('aria-live', 'polite');
   });
 
+  it('reads out a toast that comes while a dialog is open: the toasts are outside what it hides (#352)', async () => {
+    const start = vi.spyOn(runner, 'start').mockResolvedValue(undefined);
+    const job = await createScanJob(ME, 'Scan: posts', 'posts');
+    render(<App />);
+    const home = await pageHeading('Home');
+
+    let started!: Promise<void>;
+    act(() => {
+      started = startJob(job.id);
+    });
+    const dialog = await screen.findByRole('dialog');
+    // Once the focus is in it (the person goes to type I UNDERSTAND), and a quarter second has passed, the dialog hides
+    // the rest of the page from assistive technology.
+    await userEvent.click(within(dialog).getByRole('textbox'));
+    await waitFor(() => expect(home.closest('[aria-hidden="true"]')).not.toBeNull());
+
+    act(() => toast('Couldn’t finish signing out: the X window didn’t close.', 'critical'));
+
+    // By role, so a region something hides is not found.
+    const toasts = screen.getByRole('status', { name: 'Notifications' });
+    expect(within(toasts).getByText('Couldn’t finish signing out: the X window didn’t close.')).toBeInTheDocument();
+    expect(toasts.closest('[aria-hidden="true"], [inert]')).toBeNull();
+    // The dialog is still open, and the page behind it still hidden: only the toasts are outside.
+    expect(dialog).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Home' })).not.toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Not now' }));
+    await started;
+    expect(start).not.toHaveBeenCalled();
+  });
+
   it('shows the consent dialog before an account’s first job, and closing it starts nothing', async () => {
     const start = vi.spyOn(runner, 'start').mockResolvedValue(undefined);
     const job = await createScanJob(ME, 'Scan: posts', 'posts');

@@ -29,6 +29,7 @@ Constraints:
 - While the migration runs, Tailwind and Fluent coexist: the provider's element takes no part in the layout (`display: contents`) and has no background, so pages not yet migrated keep their look.
 - Reviews reject new Tailwind classes and literal colors in components.
 - A modal `Dialog` hides the rest of the page from assistive technology (`aria-hidden`) through Fluent's focus manager, tabster, which shows it again shortly after the dialog closes. Fluent discards tabster when the last component using it unmounts, forgetting what it hid, so each app's root holds it for the page's life: the dashboard shell (`useModalHost`) and the site's provider. Without that, a dialog that closed as the last user, as the sign-out dialog does, left the page hidden until a reload (#315).
+- The same hiding covers everything outside the open modal, so a live region inside the app's root isn't read out while a modal is open. The dashboard's toasts render in a portal of their own at the end of `<body>`, marked `data-tabster-never-hide` (the mark of Fluent's `useDangerousNeverHidden_unstable`, which its own screen-reader announcer uses), so a toast that comes while a dialog is open, such as a failed sign-out, is still read out (#352). Only toasts go there: the rest of the page belongs behind the modal. xomoni.com has no toasts; its notices sit in the page, next to what they are about.
 
 ## Alternatives considered
 

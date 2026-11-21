@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
@@ -13,6 +14,7 @@ import {
   Field,
   Meter,
   Modal,
+  OutsideModals,
   PageHeader,
   Segmented,
   StatTile,
@@ -455,6 +457,91 @@ describe('useModalHost (#315)', () => {
       rerender(<Shell modal={false} />);
       expect(await screen.findByRole('heading', { level: 1, name: 'You’re signed out' })).toBeInTheDocument();
     }
+  });
+});
+
+describe('OutsideModals (#352)', () => {
+  /**
+   * A page as the dashboard shell draws it: Fluent's focus manager held, a live region outside modals for toasts, and
+   * a modal that hides the rest of the page while it is open.
+   */
+  function Page({ modal, message }: { modal: boolean; message?: string }) {
+    useModalHost();
+    return (
+      <main>
+        <h1>Settings</h1>
+        <OutsideModals>
+          <div role="status" aria-label="Notifications">
+            {message}
+          </div>
+        </OutsideModals>
+        {modal && (
+          <Modal open onClose={vi.fn()} title="Sign out of Xomoni?">
+            <button type="button" data-autofocus>
+              Sign out
+            </button>
+          </Modal>
+        )}
+      </main>
+    );
+  }
+
+  /** The elements at the top of the page that Fluent's focus manager never hides. */
+  const neverHidden = () => document.body.querySelectorAll(':scope > [data-tabster-never-hide]');
+
+  it('renders its content in an element of its own at the end of the page, marked for Fluent never to hide', () => {
+    const { container } = render(<Page modal={false} message="Saved" />);
+
+    const region = screen.getByRole('status', { name: 'Notifications' });
+    expect(container).not.toContainElement(region);
+    expect(region.parentElement?.parentElement).toBe(document.body);
+    expect([...neverHidden()]).toEqual([region.parentElement]);
+  });
+
+  it('keeps its content readable by assistive technology while a modal hides the rest of the page', async () => {
+    const { rerender } = render(<Page modal />);
+    const heading = screen.getByRole('heading', { level: 1, hidden: true });
+    // A quarter second after it opens, Fluent hides everything else on the page from assistive technology.
+    await waitFor(() => expect(heading.closest('[aria-hidden="true"]')).not.toBeNull());
+
+    rerender(<Page modal message="Couldn’t finish signing out: Xomoni couldn’t reach xomoni.com." />);
+
+    // By role, so a region something hides is not found.
+    const region = screen.getByRole('status', { name: 'Notifications' });
+    expect(region).toHaveTextContent('Couldn’t finish signing out: Xomoni couldn’t reach xomoni.com.');
+    expect(region.closest('[aria-hidden="true"], [inert]')).toBeNull();
+    // Only the region is outside: the rest of the page stays behind the modal.
+    expect(screen.getByRole('dialog', { name: 'Sign out of Xomoni?' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+  });
+
+  it('gives its content the app’s Fluent theme and direction, as a Fluent portal does', () => {
+    render(
+      <FluentProvider theme={webLightTheme} dir="rtl">
+        <OutsideModals>
+          <p>Saved</p>
+        </OutsideModals>
+      </FluentProvider>,
+    );
+
+    const element = screen.getByText('Saved').parentElement!;
+    expect(element).toHaveAttribute('dir', 'rtl');
+    // Fluent's provider applies its theme's variables to portals through this class.
+    expect(element).toHaveClass('fui-FluentProvider');
+  });
+
+  it('takes its element off the page when it unmounts', () => {
+    const { unmount } = render(
+      <OutsideModals>
+        <p>Saved</p>
+      </OutsideModals>,
+    );
+    expect(neverHidden()).toHaveLength(1);
+
+    unmount();
+
+    expect(neverHidden()).toHaveLength(0);
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
   });
 });
 

@@ -52,10 +52,10 @@ flowchart TD
 | R6 | A backend test and a frontend test for every feature, with failure and security cases | Review, the pull request template | Review |
 | R7 | Row Level Security tests; generated types match the migrations | CI `database` | Enforced |
 | R8 | Real flows in a real browser | CI `e2e` | Enforced for the website in Chromium. The extension, Edge and axe: #342 |
-| R9 | At least 20 user scenarios per user-facing task, each tied to its browser test | `npm run scenarios:check`, `pr-policy` | Planned: #338, #339 |
-| R10 | A task link; a changelog line for a user-facing change; every exemption with a written reason | `pr-policy` | Planned: #339 |
+| R9 | At least 20 user scenarios per user-facing task, each tied to its browser test | `npm run scenarios:check`, `pr-policy` | `pr-policy` enforced (#350); `scenarios:check`: #338 |
+| R10 | A task link; a changelog line for a user-facing change; every exemption with a written reason | `pr-policy` | Enforced (#350) |
 | R11 | The READMEs' features and status match `docs/features.json`, and the registry matches the changelog | `npm run readme:check`, `node tooling/release.mjs check` | Enforced (#349) |
-| R12 | No new dependency with a high or critical vulnerability | `dependency-review`; `npm audit` in the release | Planned: #339, #340 |
+| R12 | No new dependency with a high or critical vulnerability | `dependency-review`; `npm audit` in the release | `dependency-review` enforced (#350); `npm audit`: #340 |
 | R13 | No open high or critical code scanning alert | The ruleset's code scanning rule | Planned: #341, #346 |
 | R14 | No remotely hosted code in the extension | `npm run remote-code:check` | Enforced |
 | R15 | Releases only from `main`: reproducible, signed, with provenance; tags never move | `release.yml`, the tag rulesets | Enforced |

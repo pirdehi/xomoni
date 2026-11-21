@@ -1,0 +1,47 @@
+# The pull request policy (#339): two checks beside CI that the "Protect main" ruleset will require (#346).
+# - `pr-policy` (tooling/check-pr.mjs): the task link; for a change to what people see, a changelog line and scenarios;
+#   and a written reason for each exemption label. It reads the description from the event file GitHub writes, never
+#   from an expression, and runs with Node's built-ins only, so no `npm ci` and no dependency's code.
+# - `dependency-review`: no new dependency with a high or critical vulnerability.
+# Editing the description or the labels runs both again, so fixing them clears the check. Actions are pinned by commit
+# SHA (#142); Dependabot keeps them current.
+name: Pull request policy
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-policy:
+    name: pr-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The whole history, so git can compare the pull request's head with its base.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Task link, changelog line, scenarios, reasons for exemptions
+        run: node tooling/check-pr.mjs
+
+  dependency-review:
+    name: dependency-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
+        with:
+          fail-on-severity: high
+          # A comment would need write access to pull requests; the job's summary shows the same table.
+          comment-summary-in-pr: never

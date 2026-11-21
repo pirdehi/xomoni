@@ -53,10 +53,34 @@ npm run test:e2e -w @xomoni/web
    - `apps/web/.env.example` for every new environment variable;
    - [`docs/features.json`](docs/features.json) for a change people can see: add the feature, or change its entry, in English and Persian, then run `npm run readme` ([the feature registry](#the-feature-registry)).
 5. Add or update tests on both sides, as [docs/TESTING.md](docs/TESTING.md) describes: a backend test (rule, use case, engine step or database policy) and a frontend test (the component the person uses), with the failure and security cases. Security rules (Row Level Security, redirects, auth errors) get tests that prove the negative case too.
-6. Run `npm run verify`, push, and open a pull request. Fill in the template's safety checklist.
-7. When the pull request finishes a roadmap task, tick it in [docs/ROADMAP.md](docs/ROADMAP.md) with the pull request number, in the same pull request.
+6. When the change is user-facing (below), in the same pull request:
+   - add a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) that says what changes for people;
+   - add the task's scenarios in `docs/scenarios/<issue>-<slug>.md`, or update the file of the feature you fix (ADR-0038). This applies to pull requests opened from 2026-11-22 on.
+7. Run `npm run verify`, push, and open a pull request. Link its task in the description: `Closes #N` (or `Fixes #N`, `Resolves #N`) when it finishes the issue, `Part of #N` when it is one step of it. Fill in the template's safety checklist.
+8. When the pull request finishes a roadmap task, tick it in [docs/ROADMAP.md](docs/ROADMAP.md) with the pull request number, in the same pull request.
+
+**User-facing** means a change to what a person sees or does: xomoni.com's pages, layouts and components (`apps/web/src/app/` except its route handlers, `apps/web/src/modules/*/ui/`, `apps/web/src/shared/ui/`, `apps/web/public/`), and in the extension the dashboard (`apps/extension/dashboard.html`, `apps/extension/src/ui/`), what runs in the X page (`apps/extension/src/content/`, `apps/extension/src/inject/`), and the manifest and icons (`apps/extension/public/`). Tests and docs never are. The exact list is `USER_FACING` in [`tooling/pr-policy-lib.mjs`](tooling/pr-policy-lib.mjs).
+
+**Exemptions** take a label and a reason, written in the description on a line of its own. Reviews look at every one.
+
+- `no-changelog`, with a line `No changelog: <why>`: for a change no one would notice, such as a refactor or a typo.
+- `no-scenarios`, with a line `No scenarios: <why>`: for a change to no behavior a person can see.
+
+Dependabot's pull requests need no task link.
 
 Commit messages: one imperative summary line under ~72 characters ("Add password reset"), then a blank line and the why, if useful.
+
+### Pull request checks
+
+Besides CI's `verify`, `database` and `e2e`, every pull request runs [`pr-policy.yml`](.github/workflows/pr-policy.yml). Both of its checks run again when you push, edit the description or change the labels, and `pr-policy` prints how to fix each problem it finds.
+
+| Check | Fails when | Fix |
+| --- | --- | --- |
+| `pr-policy`: task link | The description has no `Closes #N`, `Fixes #N`, `Resolves #N` or `Part of #N`. A link inside an HTML comment doesn't count. | Add the line |
+| `pr-policy`: changelog | A user-facing file changed, but `CHANGELOG.md` didn't | A line under `## [Unreleased]`, or the `no-changelog` label |
+| `pr-policy`: scenarios | A user-facing file changed, and no `docs/scenarios/*.md` was added or changed. Only for pull requests opened from 2026-11-22 on. | The scenarios, or the `no-scenarios` label |
+| `pr-policy`: reasons | `no-changelog` or `no-scenarios` is set, but no line starts with `No changelog:` or `No scenarios:` and a reason | Write the reason, or remove the label |
+| `dependency-review` | The pull request adds a dependency, or a version of one, with a known high or critical vulnerability | Choose a version without it, or another package |
 
 ## TypeScript
 
@@ -71,7 +95,7 @@ The rules are in [ADR-0016](docs/adr/0016-strict-typescript-and-type-aware-lint.
 
 ## Releases
 
-The extension ships as a zip on GitHub Releases from a version tag; [docs/RELEASING.md](docs/RELEASING.md) has the steps. Every pull request that changes what people see adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md). An issue it names under *Added* needs its feature in `docs/features.json`.
+The extension ships as a zip on GitHub Releases from a version tag; [docs/RELEASING.md](docs/RELEASING.md) has the steps. Every pull request that changes what people see adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md); the `pr-policy` check holds it ([above](#pull-request-checks)). An issue it names under *Added* needs its feature in `docs/features.json`.
 
 ## The feature registry
 

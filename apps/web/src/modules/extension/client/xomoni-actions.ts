@@ -9,9 +9,8 @@ import {
 
 export type { XomoniRead, XomoniSettingsChange };
 import type { XomoniRequest } from '../domain/presence';
-import { createBrowserMemory } from '../infrastructure/browser-memory';
 import { createChromeExtensionChannel } from '../infrastructure/chrome-extension-channel';
-import { createExtensionSessionServices } from './extension-session';
+import { createExtensionSessionServices, currentExtensionId } from './extension-session';
 
 /** What a page can ask of Xomoni in this browser (ADR-0027, #251). */
 export interface XomoniActionServices {
@@ -26,11 +25,12 @@ export interface XomoniActionServices {
 }
 
 /**
- * Composition root in the browser for Xomoni's actions: the extension through `chrome.runtime`, its id from this
- * browser's storage. `recheck` runs the one-sign-in sync, which also refreshes what pages know of the extension.
+ * Composition root in the browser for Xomoni's actions: the extension through `chrome.runtime`, at the id this page
+ * talks to it at (`currentExtensionId`: where the last sync found it, a fixed id included, #302, else the one the site
+ * remembers). `recheck` runs the one-sign-in sync, which also refreshes what pages know of the extension.
  */
 export function createXomoniActionServices(): XomoniActionServices {
-  const deps = { channel: createChromeExtensionChannel(), memory: createBrowserMemory() };
+  const deps = { channel: createChromeExtensionChannel(), memory: { extensionId: currentExtensionId } };
   return {
     ask: (request) => askXomoni(deps, request),
     read: (read) => readXomoni(deps, read),

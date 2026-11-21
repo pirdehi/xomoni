@@ -4,7 +4,7 @@
 
 # Xomoni
 
-**Clean up your own X (Twitter) account — old posts, replies, reposts and likes — from a local dashboard. No API keys. Paced to stay within X's limits.**
+**Digital footprint manager.** Manage your digital footprint, starting with X: review and remove your own old posts, replies, reposts and likes from a dashboard on your computer. No API keys. Paced to stay within X's limits.
 
 [![CI](https://github.com/pirdehi/xomoni/actions/workflows/ci.yml/badge.svg)](https://github.com/pirdehi/xomoni/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

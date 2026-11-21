@@ -5,6 +5,17 @@
 // stop or to open its own page; it can never start, resume or approve work on X, which only the person does in
 // Xomoni (ADR-0027).
 
+export {
+  EXTENSION_ID,
+  type ManifestKey,
+  STORE_EXTENSION_IDS,
+  type Store,
+  isExtensionId,
+  manifestKeyProblems,
+  readManifestKey,
+  storeExtensionIds,
+} from './extension-ids';
+
 /** xomoni.com's origin: the only one the extension's `externally_connectable` lists, checked again on every message. */
 export const WEBSITE_ORIGIN = 'https://xomoni.com';
 
@@ -24,8 +35,6 @@ export const JOB = 'xomoni-job';
 /** Asks the extension to open one of its own pages (ADR-0027). */
 export const OPEN = 'xomoni-open';
 
-/** Chrome's id of an extension: 32 letters from a to p. */
-export const EXTENSION_ID = /^[a-p]{32}$/;
 /** A one-time pairing code, with or without its dash (ADR-0018). */
 export const PAIRING_CODE = /^[0-9A-Za-z]{5}-?[0-9A-Za-z]{5}$/;
 /** A connection request's nonce: base64url, 128 bits or more (ADR-0024). */
@@ -103,11 +112,6 @@ export type WebsiteMessage =
   | ReadMessage
   | SettingsMessage
   | PlanMessage;
-
-/** Whether `value` is shaped like an extension id. */
-export function isExtensionId(value: unknown): value is string {
-  return typeof value === 'string' && EXTENSION_ID.test(value);
-}
 
 function record(raw: unknown): Record<string, unknown> | null {
   return typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;

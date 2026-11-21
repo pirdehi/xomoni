@@ -18,6 +18,8 @@ The messages xomoni.com and the Xomoni extension exchange inside one browser, th
 | `ExtensionState`, `parseExtensionState` | The extension's answer to a hello: its version, its xomoni.com connection (device id and masked account, never the token), since when it is signed out, and when the person last left xomoni.com there. |
 | `parseSignInAnswer`, `parseSignOutAnswer` | The website reads the extension's answers. |
 | `isExtensionId`, `EXTENSION_ID`, `PAIRING_CODE`, `NONCE`, `DEVICE_ID`, `JOB_ID` | Shapes both sides check. |
+| `STORE_EXTENSION_IDS`, `Store`, `storeExtensionIds` (`src/extension-ids.ts`) | Xomoni's fixed id in the Chrome Web Store and in Edge Add-ons, null until the stores exist: the one place they are written (#302). xomoni.com asks them for Xomoni without `#ext=`, Chrome's first; writing one is all it takes. |
+| `readManifestKey`, `ManifestKey`, `manifestKeyProblems` | The extension's manifest test: a `key` must be base64 of an RSA public key (SubjectPublicKeyInfo, 2048 bits or more), and the id Chrome derives from it (SHA-256, first 128 bits, 0–f as a–p) must be `STORE_EXTENSION_IDS.chrome`; no key, no Chrome id. Web Crypto, so the same in Node and a browser. |
 
 ## Rules
 
@@ -26,4 +28,4 @@ The messages xomoni.com and the Xomoni extension exchange inside one browser, th
 
 ## Tests
 
-`tests/bridge.test.ts`: every message shape, the refusals (other types, extra fields, malformed codes, devices and nonces, reads past their limits), and the answers, with 100% coverage.
+`tests/bridge.test.ts`: every message shape, the refusals (other types, extra fields, malformed codes, devices and nonces, reads past their limits), and the answers. `tests/extension-ids.test.ts`: the stores' ids and their order, and manifest keys (a test key whose id Chrome confirmed, keys that aren't base64, EC or too short, and every way the key and the Chrome id can disagree). 100% coverage.

@@ -126,3 +126,21 @@ describe('the manifest locks the extension down (#143)', () => {
     expect(Object.values(sources).some((text) => /onConnectExternal/.test(text))).toBe(false);
   });
 });
+
+describe('the manifest names the product (#312)', () => {
+  it('as Xomoni, the digital footprint manager, within the stores’ limits', () => {
+    expect(manifest.name).toBe('Xomoni — Digital footprint manager');
+    expect(manifest.short_name).toBe('Xomoni');
+    expect(manifest.homepage_url).toBe('https://xomoni.com');
+    expect(String(manifest.name).length).toBeLessThanOrEqual(75);
+    expect(String(manifest.description).length).toBeLessThanOrEqual(132);
+  });
+
+  it('never as a platform’s own product: the name and summary don’t present Xomoni as an X account tool', () => {
+    for (const text of [manifest.name, manifest.description].map(String)) {
+      expect(text).not.toMatch(/X account manager/i);
+      expect(text).not.toMatch(/twitter/i);
+    }
+    expect(String(manifest.description)).toMatch(/^Manage your digital footprint/);
+  });
+});

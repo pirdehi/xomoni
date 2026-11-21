@@ -48,6 +48,8 @@ Build entry points: `dashboard.html` and `src/background/sw.ts` (Vite, `vite.con
 - **Only xomoni.com can talk to it:** no web-accessible resources, `externally_connectable` lets only `https://xomoni.com/*` send, the service worker's `onMessageExternal` is the one listener, and there is no `onConnectExternal` (the test checks the source).
 - **No remote code.** `npm run remote-code:check` (part of `npm run verify`) builds the extension and fails if `dist` builds code from a string or loads it from another site ([`tooling/check-remote-code.mjs`](../../tooling/check-remote-code.mjs)).
 
+**The fixed id (#302).** Without a `key`, Chrome gives a zip install an id made from its folder. With the Chrome Web Store item's public key as `key`, a zip install and the store's copy share the store's id, which xomoni.com then finds by itself. The key goes in together with the Chrome id in `STORE_EXTENSION_IDS` (`@xomoni/bridge`): `tests/manifest-key.test.ts` fails unless both or neither are set, the key is base64 of an RSA public key, and it gives exactly that id. How to take the key from the dashboard, and the release order that keeps people's data: [docs/RELEASING.md](../../docs/RELEASING.md#the-fixed-id-the-chrome-web-stores-key-302).
+
 ## Moving to a new Xomoni
 
 Chrome keeps each extension's data apart, so a Xomoni with another id (a fixed id, or the Chrome Web Store version) starts empty. In the Xomoni you're leaving, **Settings › Move your data › Export everything** saves one checked file in Downloads; in the new one, **Import from a file** (also offered on a new install) checks it and adds it to what is there, deleting nothing. The file never leaves the computer ([ADR-0032](../../docs/adr/0032-move-data-between-xomoni-versions.md)).

@@ -77,3 +77,32 @@ describe('public links', () => {
     expect(site.CONTACT_EMAIL).toBe('privacy@xomoni.com');
   });
 });
+
+describe('TEST_EXTENSION_ID (#302)', () => {
+  const ID = 'lfkkdbhljalnifmdncjhifjonfpajeng';
+
+  it('is taken while the site runs on localhost, for the end-to-end tests’ extension', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+    vi.stubEnv('NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID', ID);
+    expect((await load()).TEST_EXTENSION_ID).toBe(ID);
+    const { testExtensionId } = await load();
+    expect(testExtensionId(ID, 'http://127.0.0.1:3100')).toBe(ID);
+  });
+
+  it('is never taken on xomoni.com or a preview, so no deployment asks another extension', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://xomoni.com');
+    vi.stubEnv('NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID', ID);
+    expect((await load()).TEST_EXTENSION_ID).toBeNull();
+    const { testExtensionId } = await load();
+    expect(testExtensionId(ID, 'https://xomoni-git-feature-pirdehi.vercel.app')).toBeNull();
+    expect(testExtensionId(ID, 'https://localhost.example.com')).toBeNull();
+  });
+
+  it('is null when unset or empty', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+    vi.stubEnv('NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID', '');
+    expect((await load()).TEST_EXTENSION_ID).toBeNull();
+    const { testExtensionId } = await load();
+    expect(testExtensionId(undefined, 'http://localhost:3000')).toBeNull();
+  });
+});

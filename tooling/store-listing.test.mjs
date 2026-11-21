@@ -20,13 +20,6 @@ function block(name) {
   return match[1].replace(/^```\w*\n/, '').replace(/\n```$/, '');
 }
 
-/** The items of a `- ` list block. */
-const items = (name) =>
-  block(name)
-    .split('\n')
-    .filter((line) => line.startsWith('- '))
-    .map((line) => line.slice(2).trim());
-
 /** The first cell of every row of the permissions table (§5). */
 function permissionRows() {
   const section = DOC.slice(DOC.indexOf('## 5. Permissions'), DOC.indexOf('## 6. '));

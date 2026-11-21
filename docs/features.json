@@ -551,7 +551,7 @@
       "status": "shipped",
       "since": "0.2.1",
       "issues": [44, 299, 306],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/299-install-page.md",
       "en": {
         "title": "An install guide that follows you",
         "summary": "xomoni.com/install gives the steps for your browser and computer, one at a time, with short illustrations, ticks as soon as Xomoni is installed, and answers what goes wrong."

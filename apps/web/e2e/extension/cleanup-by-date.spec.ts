@@ -394,7 +394,7 @@ test.describe('cleanup by date', { tag: '@task-199' }, () => {
     page,
     context,
   }) => {
-    test.setTimeout(150_000);
+    test.setTimeout(180_000);
     await postsBefore2021(dashboard, page, { anyTime: true });
     // X draws its notice with the posts, which come a moment after the page itself.
     await servePageWithNotice(
@@ -408,7 +408,8 @@ test.describe('cleanup by date', { tag: '@task-199' }, () => {
     await startCleanup(dashboard);
 
     const xWindow = await xWindowOf(context, page);
-    await expect(xWindow.getByRole('alert')).toHaveText('Your account is temporarily limited', { timeout: 90_000 });
+    // The profile loads at the warm-up's pace, after up to 2 minutes when Xomoni takes one of its long pauses.
+    await expect(xWindow.getByRole('alert')).toHaveText('Your account is temporarily limited', { timeout: 150_000 });
     const card = jobCard(dashboard, BEFORE_2021);
     // At once: the first delete would wait 320–480 seconds first (S199-07), and check X's page again only then.
     await expect(card).toContainText('Stopped for safety', { timeout: 15_000 });

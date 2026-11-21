@@ -51,7 +51,7 @@ flowchart TD
 | R5 | Every source file has a test; coverage thresholds only go up ([ADR-0017](adr/0017-test-standard.md)) | `npm run tests:check`, Vitest thresholds | Enforced |
 | R6 | A backend test and a frontend test for every feature, with failure and security cases | Review, the pull request template | Review |
 | R7 | Row Level Security tests; generated types match the migrations | CI `database` | Enforced |
-| R8 | Real flows in a real browser | CI `e2e` | Enforced for the website in Chromium. The extension, Edge and axe: #342 |
+| R8 | Real flows in a real browser, with no serious accessibility violation | CI `e2e`; `e2e-edge` | Enforced for the website and the extension in Chromium, with axe (#342, [ADR-0040](adr/0040-test-the-extension-against-recorded-x-fixtures.md)). Both run in Edge in `e2e-edge`, which counts once the ruleset requires it |
 | R9 | At least 20 user scenarios per user-facing task, each tied to its browser test | `npm run scenarios:check`, `pr-policy` | Enforced (#350, #356) |
 | R10 | A task link; a changelog line for a user-facing change; every exemption with a written reason | `pr-policy` | Enforced (#350) |
 | R11 | The READMEs' features and status match `docs/features.json`, and the registry matches the changelog | `npm run readme:check`, `node tooling/release.mjs check` | Enforced (#349) |

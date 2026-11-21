@@ -1,7 +1,8 @@
 import { execSync } from 'node:child_process';
 import path from 'node:path';
-import { defineConfig, devices } from '@playwright/test';
+import { type Project, defineConfig, devices } from '@playwright/test';
 import { TEST_EXTENSION_ID } from './e2e/support/fixed-id';
+import { type BrowserName, browsersToTest } from './e2e/support/projects';
 
 /**
  * End-to-end tests against the local Supabase stack (`supabase start`): real Supabase Auth, real emails
@@ -46,8 +47,30 @@ process.env.SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;
 process.env.SUPABASE_SERVICE_ROLE_KEY = required(status.SERVICE_ROLE_KEY, 'SERVICE_ROLE_KEY');
 process.env.SUPABASE_PUBLISHABLE_KEY = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
+/** The extension's own tests: they need neither the site nor Supabase (playwright.extension.config.ts, #342). */
+const EXTENSION = 'extension/**';
+/** The test of the fixed id, which loads a test extension. */
+const FIXED_ID = 'fixed-id.spec.ts';
+
+/**
+ * Each browser the site is tested in (#342): Playwright's Chromium unless `XOMONI_E2E_BROWSERS` names others, such as
+ * `msedge` in CI's `e2e-edge` job. fixed-id.spec.ts loads its test extension into Playwright's Chromium itself, as
+ * Chrome and Edge no longer take --load-extension, so it runs with Chromium only.
+ */
+const PROJECTS: Record<BrowserName, Project> = {
+  chromium: { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  msedge: { name: 'msedge', use: { ...devices['Desktop Edge'], channel: 'msedge' }, testIgnore: [EXTENSION, FIXED_ID] },
+  chrome: {
+    name: 'chrome',
+    use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    testIgnore: [EXTENSION, FIXED_ID],
+  },
+};
+
 export default defineConfig({
   testDir: 'e2e',
+  // A project's own testIgnore replaces this one, so each of Edge and Chrome lists it again.
+  testIgnore: EXTENSION,
   // One worker: the flows share one Auth server and one inbox, and ordering keeps failures readable.
   workers: 1,
   timeout: 60_000,
@@ -59,7 +82,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: browsersToTest().map((name) => PROJECTS[name]),
   webServer: {
     command: process.env.CI ? 'npm run build && npm run start' : 'npm run dev',
     url: 'http://localhost:3000',

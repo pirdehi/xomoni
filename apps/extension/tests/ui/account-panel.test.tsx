@@ -58,14 +58,22 @@ async function openPanel(status = worker(true)) {
       <SignOutDialog />
     </>,
   );
-  await userEvent.click(screen.getByRole('button', { name: 'Connections: Me, @me' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Me @me' }));
   return screen.findByRole('dialog', { name: 'Connections' });
 }
 
 describe('the sidebar’s Connections panel (#182)', () => {
   it('opens from the account in the corner, saying it is open', async () => {
     await openPanel();
-    expect(screen.getByRole('button', { name: 'Connections: Me, @me' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Me @me' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('is named by the words it shows, and says it opens a panel (WCAG 2.5.3, #342)', () => {
+    render(<AccountPanel account={account({ name: 'Me', handle: 'me' })} worker={worker(true)} navigate={navigate} />);
+    const corner = screen.getByRole('button', { name: 'Me @me' });
+    expect(corner).not.toHaveAttribute('aria-label');
+    expect(corner).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(corner).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('draws how this browser links X and xomoni.com, in words too', async () => {

@@ -75,7 +75,37 @@ supabase start
 npm run test:e2e -w @xomoni/web -- --grep @task-299
 ```
 
-The website's tests live in `apps/web/e2e/`, with their helpers in `apps/web/e2e/support/`: the extension played at the page, browsers told apart by their user agent, store listings chosen per test, seeded accounts ([testing](../TESTING.md)). The extension's own pages get a browser harness in #342; until then, their tasks use their manual scenarios.
+The website's tests live in `apps/web/e2e/`, with their helpers in `apps/web/e2e/support/`: the extension played at the page, browsers told apart by their user agent, store listings chosen per test, seeded accounts ([testing](../TESTING.md)).
+
+### The extension's scenarios
+
+A task in the extension proves its scenarios against the built extension in a real browser ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md), #342). Its tests live in `apps/web/e2e/extension/<slug>.spec.ts` and use the harness instead of the website's `test`:
+
+```ts
+import { expectNoSeriousA11yViolations } from '../support/a11y';
+import { expect, openXWindow, tabTo, test } from '../support/extension';
+import { FIXTURE_ACCOUNT } from '../support/x-fixtures';
+
+test('S400-01 the X window opens, and Home names the account', { tag: ['@task-400'] }, async ({ dashboard }) => {
+  await openXWindow(dashboard);
+  await expect(dashboard.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  // …
+});
+```
+
+- Each test gets a fresh install: Xomoni's `dashboard` as it opens itself, with no account until the test opens the X window or an X page.
+- x.com is served from synthetic fixtures (`apps/web/e2e/fixtures/x`). A scenario that needs X to answer otherwise (an `error`: a rate limit, X down, a page X changed) adds its own route over the harness's. `test.use({ xSignedIn: false })` shows X signed out.
+- Nothing reaches the network, and a request to any host but x.com fails the test, which proves `security` scenarios about data that must stay in the browser.
+- `a11y`: `tabTo(locator)` for keyboard-only paths, and `expectNoSeriousA11yViolations(page)` for "no serious violation".
+- `browser`: CI runs every test again in Microsoft Edge (`e2e-edge`); `test.use({ colorScheme: 'dark' })` is another system setting.
+
+Run a task's extension scenarios with no Supabase:
+
+```bash
+npm run test:e2e:extension -w @xomoni/web -- --grep @task-400
+```
+
+What only a real X account can show (X's own pages changing, a real rate limit) stays manual, within the 3 a file may have.
 
 ## What the check fails on
 
@@ -90,7 +120,7 @@ The website's tests live in `apps/web/e2e/`, with their helpers in `apps/web/e2e
 - that test marked `skip`, `fixme`, `only` or `fail` (on itself, on a group around it, or by a `test.skip()` inside), or without the tag `@task-<issue>` (on itself or on a group around it);
 - the other way round, a test whose title starts with an id no scenario has, or that carries `@task-<issue>` without an id of that task, so `--grep @task-<issue>` runs exactly the task's scenarios.
 
-The check reads the files; it doesn't run the tests. CI's `e2e` job does.
+The check reads the files; it doesn't run the tests. CI's `e2e` job does, the website's and the extension's, and `e2e-edge` again in Edge.
 
 ## Files
 

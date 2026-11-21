@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { expectNoSeriousA11yViolations } from './support/a11y';
 import { emailsTo, waitForEmail } from './support/mailpit';
 import { canRenew, refreshTokenOf } from './support/session';
 import { expect, test } from './support/test';
@@ -78,6 +79,7 @@ test.describe('sign-up and email confirmation', () => {
     await expect(page.getByRole('listitem').filter({ hasText: 'At least one number' })).toContainText('(not met yet)');
     await submit(page, 'Create account');
     await expect(page.getByText('Password needs: at least one number (0–9)')).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
 
     await passwordInput(page).fill('letters and 1 number');
     await expect(page.getByRole('listitem').filter({ hasText: 'At least one number' })).toContainText('(met)');
@@ -122,6 +124,7 @@ test.describe('sign-in', () => {
 
     await signIn(page, email, 'not the password 9');
     await expect(formAlert(page)).toHaveText(NO_MATCH);
+    await expectNoSeriousA11yViolations(page);
 
     await signIn(page, uniqueEmail('nobody'), PASSWORD);
     await expect(formAlert(page)).toHaveText(NO_MATCH);

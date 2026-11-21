@@ -193,6 +193,7 @@ npm run test:e2e -w @xomoni/web -- --grep @task-299
 - Given a person using only the keyboard on /install
 - When they Tab to Next and press Enter, step after step, then Shift+Tab to Show all steps and press Enter
 - Then each step's title takes the focus as the step appears
+- And no step has a serious or critical accessibility violation (axe)
 - And step 5 has no Next, and all five steps show
 - Test: apps/web/e2e/install.spec.ts
 
@@ -202,6 +203,7 @@ npm run test:e2e -w @xomoni/web -- --grep @task-299
 - When /install opens on step 5 and they show all steps
 - Then the page's heading, Where you are, Install steps and the progress bar (Step 5 of 5) are named
 - And the four steps before it read "done" after their titles, and step 5 is marked as the current step
+- And the page has no serious or critical accessibility violation (axe)
 - Test: apps/web/e2e/install.spec.ts
 
 ## S299-25 · a11y

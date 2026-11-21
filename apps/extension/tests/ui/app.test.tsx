@@ -96,7 +96,7 @@ describe('App sign-out (#226)', () => {
 
     // A busy machine (CI, or the push hook while other builds run) can take seconds to open the menu and the dialog.
     const slow = { timeout: 10_000 };
-    await userEvent.click(within(sidebar()).getByRole('button', { name: /^Connections: / }));
+    await userEvent.click(within(sidebar()).getByRole('button', { name: 'Me @me' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Sign out of Xomoni' }, slow));
     const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' }, slow);
     // No job runs, so signing out has none to wait for: a running one would hold it up to 30 seconds (#271).
@@ -118,7 +118,7 @@ describe('App sign-out (#226)', () => {
       ),
     ).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Sign out of Xomoni?' })).not.toBeInTheDocument());
-    expect(within(sidebar()).queryByRole('button', { name: /^Connections: / })).not.toBeInTheDocument();
+    expect(within(sidebar()).queryByRole('button', { name: 'Me @me' })).not.toBeInTheDocument();
     expect(await screen.findByText('Signed out of Xomoni. @me is no longer used in this browser.')).toBeInTheDocument();
     expect(await db.accounts.get(ME)).toBeDefined();
   }, 45_000);
@@ -128,7 +128,7 @@ describe('App sign-out (#226)', () => {
     const home = await pageHeading('Home');
 
     const slow = { timeout: 10_000 };
-    await userEvent.click(within(sidebar()).getByRole('button', { name: /^Connections: / }));
+    await userEvent.click(within(sidebar()).getByRole('button', { name: 'Me @me' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Sign out of Xomoni' }, slow));
     const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' }, slow);
     // A person takes longer than Fluent's quarter second to press Sign out: by then the page behind is hidden. The

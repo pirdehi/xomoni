@@ -41,6 +41,7 @@ The end-to-end tests need Docker, so they are not part of `verify`. Run them bef
 supabase start
 npm run test:e2e -w @xomoni/web
 npm run test:e2e -w @xomoni/web -- --grep @task-299   # one task's scenarios
+npm run test:e2e:extension -w @xomoni/web             # the extension in a real browser: no Docker needed
 ```
 
 ## Making a change
@@ -74,7 +75,7 @@ Commit messages: one imperative summary line under ~72 characters ("Add password
 
 ### Pull request checks
 
-Besides CI's `verify`, `database` and `e2e`, every pull request runs [`pr-policy.yml`](.github/workflows/pr-policy.yml). Both of its checks run again when you push, edit the description or change the labels, and `pr-policy` prints how to fix each problem it finds.
+Besides CI's `verify`, `database`, `e2e` and `e2e-edge` (Edge, not yet required), every pull request runs [`pr-policy.yml`](.github/workflows/pr-policy.yml). Both of its checks run again when you push, edit the description or change the labels, and `pr-policy` prints how to fix each problem it finds.
 
 | Check | Fails when | Fix |
 | --- | --- | --- |

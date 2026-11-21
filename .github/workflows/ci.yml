@@ -124,9 +124,62 @@ jobs:
       - name: Auth end-to-end tests (sign-up, confirmation, sign-in, reset, account)
         working-directory: apps/web
         run: npx playwright test
+      # The built extension in Chromium, on x.com pages served from synthetic fixtures, with no network (#342,
+      # ADR-0040). It needs neither the site nor Supabase, and runs even when the site's tests failed.
+      - name: The extension in a real browser (dashboard, content script on X fixtures, axe)
+        if: ${{ !cancelled() }}
+        working-directory: apps/web
+        run: npx playwright test -c playwright.extension.config.ts
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
           name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  # The same tests in Microsoft Edge (#342): the website's, and the extension's, which Edge installs the way its
+  # developer tools do. GitHub's Ubuntu runners come with Edge; it is installed only when one doesn't. The one job here
+  # that branch protection doesn't require yet: it will once the ruleset names it.
+  e2e-edge:
+    name: e2e-edge
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+      TURNSTILE_SECRET_KEY: ci-placeholder
+      RESEND_SMTP_API_KEY: ci-placeholder
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
+      XOMONI_E2E_BROWSERS: msedge
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
+        with:
+          version: 2.116.0
+      - name: Start Supabase (Auth, Postgres, Realtime, Mailpit)
+        run: supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,supavisor,postgres-meta
+      - name: Microsoft Edge
+        working-directory: apps/web
+        run: |
+          if [ ! -x /opt/microsoft/msedge/msedge ]; then npx playwright install --with-deps msedge; fi
+          /opt/microsoft/msedge/msedge --version
+      - name: The website's end-to-end tests in Edge
+        working-directory: apps/web
+        run: npx playwright test
+      - name: The extension in Edge (dashboard, content script on X fixtures, axe)
+        if: ${{ !cancelled() }}
+        working-directory: apps/web
+        run: npx playwright test -c playwright.extension.config.ts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: failure()
+        with:
+          name: playwright-report-edge
           path: apps/web/playwright-report
           retention-days: 7

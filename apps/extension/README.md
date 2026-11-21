@@ -12,7 +12,22 @@ npm run preview:ui -w @xomoni/extension  # dashboard with demo data, no X connec
 npm run store:images -w @xomoni/extension # store icon, logo, screenshots, promo tile → docs/store; Home → apps/web/public/screens
 npm run icons -w @xomoni/extension       # redraw public/icons and the website's icons from scripts/icon.mjs
 npm test -w @xomoni/extension            # engine, kernel and dashboard tests with coverage (tests/, see docs/TESTING.md)
+npm run test:e2e:extension -w @xomoni/web # the built extension in a real browser, on synthetic x.com fixtures (ADR-0040)
 ```
+
+`scripts/build-content.mjs --outdir <folder>` builds the content scripts elsewhere than `dist`, beside `vite build --outDir <folder>`: the browser tests build their own copy that way, so they never rewrite a `dist` loaded in Chrome.
+
+## Tested in a real browser
+
+Besides its unit and component tests in happy-dom, the built extension runs in a real browser (#342, [ADR-0040](../../docs/adr/0040-test-the-extension-against-recorded-x-fixtures.md)). The tests live with the website's in `apps/web/e2e/extension/`, so both share one Playwright and one accessibility check:
+
+- a fresh install in a new profile for each test, with the dashboard Xomoni opens by itself;
+- x.com served from synthetic fixtures (`apps/web/e2e/fixtures/x`), for a made-up account, with no network: no real account and no real X page is ever involved;
+- the content script on those pages, and what the dashboard takes from them;
+- the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
+- Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.
+
+An extension task's user scenarios are proven there ([user scenarios](../../docs/scenarios/README.md#the-extensions-scenarios)).
 
 Load `apps/extension/dist` with **Load unpacked** in `chrome://extensions` (Developer mode).
 

@@ -286,7 +286,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ⬜ | 2 · At least 20 user scenarios per user-facing task, each tied to a browser test, checked by `verify`; the install page's first | [#338](https://github.com/pirdehi/xomoni/issues/338) | |
 | ⬜ | 3 · The `pr-policy` check (task link, changelog line, scenarios, exemptions with reasons) and dependency review | [#339](https://github.com/pirdehi/xomoni/issues/339) | |
 | ⬜ | 4 · The release gate: the full CI on the tag, `npm audit`, the release issue read by the workflow and closed with the release | [#340](https://github.com/pirdehi/xomoni/issues/340) | |
-| ⬜ | 5 · The three open CodeQL alerts | [#341](https://github.com/pirdehi/xomoni/issues/341) | |
+| ✅ | 5 · The three open CodeQL alerts | [#341](https://github.com/pirdehi/xomoni/issues/341) | [#355](https://github.com/pirdehi/xomoni/pull/355) |
 | ⬜ | 6 · The extension in a real browser with X fixtures, Chrome and Edge, axe | [#342](https://github.com/pirdehi/xomoni/issues/342) | |
 | ⬜ | 7 · The nightly full run, and a check after each release | [#343](https://github.com/pirdehi/xomoni/issues/343) | |
 | ⬜ | 8 · Docs sorted by kind, with one map | [#344](https://github.com/pirdehi/xomoni/issues/344) | |

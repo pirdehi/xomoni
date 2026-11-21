@@ -72,6 +72,30 @@ describe('Audience (#253)', () => {
     expect(screen.getByRole('button', { name: 'Open in Xomoni' })).toBeInTheDocument();
   });
 
+  it.each([
+    ['7d', '+12 in the last 7 days'],
+    ['90d', '+20 in the last 90 days'],
+    ['12m', '+20 in the last 12 months'],
+    // Not "in the all time" (#341).
+    ['all', '+20 over all time'],
+  ] as const)('names the period of the followers’ change (%s)', (period, note) => {
+    render(
+      <Audience
+        days={[
+          day('2026-11-10', { followers: 990 }),
+          day('2026-11-15', { followers: 998 }),
+          day('2026-11-18', { followers: 1010 }),
+        ]}
+        scope={{ account: null, period }}
+        now={NOW}
+        shown
+        archives={archives}
+      />,
+    );
+    const [followers] = within(screen.getByRole('list', { name: 'Your audience in numbers' })).getAllByRole('listitem');
+    expect(followers).toHaveTextContent(`Followers1,010${note}`);
+  });
+
   it('says what is missing instead of drawing empty charts', () => {
     render(<Audience days={[day('2026-11-18', { following: 0 })]} scope={MONTH} now={NOW} shown archives={archives} />);
     const tiles = within(screen.getByRole('list', { name: 'Your audience in numbers' })).getAllByRole('listitem');

@@ -186,7 +186,8 @@ test.describe('sign-in', () => {
   test('starts Google sign-in at Google', async ({ page }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: 'Continue with Google' }).click();
-    await page.waitForURL(/accounts\.google\.com/);
+    // The address's origin, not a pattern anywhere in it: `https://elsewhere.example/?accounts.google.com` isn't Google.
+    await page.waitForURL((url) => url.origin === 'https://accounts.google.com');
   });
 });
 

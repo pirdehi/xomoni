@@ -7,21 +7,30 @@ import './globals.css';
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
+// Xomoni, digital footprint manager (#313): X today, the person's email next. Open Graph and Twitter take each page's
+// own title and description (Next.js fills them in when `openGraph` has none), so they are not repeated here.
 export const metadata: Metadata = {
   metadataBase: new URL('https://xomoni.com'),
   title: {
-    default: 'Xomoni: clean up your X account',
+    default: 'Xomoni — Digital footprint manager',
     template: '%s · Xomoni',
   },
   description:
-    'Delete old posts, replies, reposts and likes on X from your own browser. No API keys, no password, paced to stay within X’s limits. Free and open source.',
+    'Manage your digital footprint from your own computer, starting with X: find, understand and clean up old posts and likes. No X password. Free and open source.',
   applicationName: 'Xomoni',
   authors: [{ name: 'Omid Pirdehi', url: 'https://github.com/pirdehi' }],
   openGraph: {
     type: 'website',
     siteName: 'Xomoni',
     url: 'https://xomoni.com',
-    images: [{ url: '/screens/overview.png', width: 1440, height: 1000, alt: 'The Xomoni dashboard' }],
+    images: [
+      {
+        url: '/screens/overview.png',
+        width: 1440,
+        height: 1000,
+        alt: 'Xomoni’s dashboard for an X account: what is still on it, what Xomoni removed, and recent activity',
+      },
+    ],
   },
   twitter: { card: 'summary_large_image' },
 };

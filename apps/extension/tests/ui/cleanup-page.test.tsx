@@ -516,6 +516,23 @@ describe('Cleanup page', () => {
       });
     });
 
+    it('counts a post pasted twice, as a link and as its id, once (#367)', async () => {
+      const props = await renderWithArchive();
+      await openExceptions();
+      fireEvent.change(screen.getByLabelText(/Always keep these posts/), {
+        target: { value: 'https://x.com/me/status/1000000001\n1000000001' },
+      });
+      await waitFor(() => expect(matching()).toHaveTextContent(/^2$/));
+      await openExceptions();
+      expect(screen.getByText('Keeps 1 chosen post.')).toBeInTheDocument();
+
+      await openConfirm();
+      await userEvent.type(confirmInput(), 'DELETE');
+      await userEvent.click(confirmButton());
+      await waitFor(() => expect(props.navigate).toHaveBeenCalledWith('jobs'));
+      expect((await jobs())[0]!.filter!.keepIds).toEqual(['1000000001']);
+    });
+
     it('ignores a minimum of zero likes', async () => {
       await renderWithArchive();
       await openExceptions();

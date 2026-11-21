@@ -434,6 +434,15 @@ describe('cleanup rules', () => {
     expect(parseIdList('https://twitter.com/me/statuses/123456789?s=20')).toEqual(['123456789']);
   });
 
+  it('takes a post pasted twice, as a link and as its id, once (#367)', () => {
+    expect(
+      parseIdList(
+        'https://x.com/me/status/111222333444\n111222333444, https://twitter.com/me/status/111222333444?s=20',
+      ),
+    ).toEqual(['111222333444']);
+    expect(parseIdList('555666777 111222333444 555666777')).toEqual(['555666777', '111222333444']);
+  });
+
   it('estimates duration with batch breaks and daily caps', () => {
     const rule = {
       minDelay: 6,

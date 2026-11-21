@@ -64,6 +64,31 @@ export async function removeBefore(dashboard: Page, date: string) {
   await dashboard.getByLabel('Remove everything before').fill(date);
 }
 
+/**
+ * Cleanup's keep rules, under *Exceptions* (#367): the button that unfolds and folds them, the one line that says
+ * what they keep while they are folded, and the rules themselves, which show only while unfolded. The likes field
+ * shows for posts and replies only, and the switch for replies only.
+ */
+export function keepRules(dashboard: Page) {
+  const card = dashboard
+    .locator('section')
+    .filter({ has: dashboard.getByRole('heading', { level: 2, name: /· Exceptions$/ }) });
+  return {
+    /** *Choose what to keep*, a button that says whether the rules are unfolded (`aria-expanded`). */
+    toggle: card.getByRole('button', { name: 'Choose what to keep' }),
+    /** What the rules keep, in one line, such as *Keeps posts with 50+ likes.*: shown while they are folded. */
+    summary: card.getByText(/^(Keeps .+\.|Nothing is kept: everything that matches is removed\.)$/),
+    /** *Keep if it has at least … likes*: digits only. */
+    minLikes: card.getByRole('textbox', { name: 'Keep if it has at least … likes' }),
+    /** *Keep if the text contains*: words or phrases, separated by commas or new lines. */
+    keywords: card.getByRole('textbox', { name: 'Keep if the text contains' }),
+    /** *Always keep these posts*: post links or ids. */
+    links: card.getByRole('textbox', { name: 'Always keep these posts' }),
+    /** *Keep replies in my own threads*, on unless the person turns it off. */
+    ownThreads: card.getByRole('switch', { name: 'Keep replies in my own threads' }),
+  };
+}
+
 /** The switch under the warning that a cleanup without the X archive can miss old posts (PLAYBOOK E2). */
 export const continueWithoutIt = (dashboard: Page): Locator =>
   dashboard.getByRole('switch', { name: 'Continue without it: I understand old posts may be missed' });

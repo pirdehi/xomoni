@@ -145,6 +145,47 @@ describe('the deep clean trusts a post’s id over its stored date (#145)', () =
   });
 });
 
+describe('the deep clean checks the keep rules against what X shows on the post’s page (#367)', () => {
+  /** Makes each visit to a post's page show it as `shown` says X does now; a post not in it shows nothing new. */
+  function showOnVisit(ctx: ReturnType<typeof deepClean>['ctx'], shown: Record<string, Partial<Item>>) {
+    ctx.navigate.mockImplementation(async (url: string) => {
+      const id = /\/status\/(\d+)$/.exec(url)?.[1] ?? '';
+      // What the interceptor records from X's answer for the page: the post as X shows it, seen now.
+      const now = shown[id];
+      if (now) await db.items.update(itemKey(ACCOUNT, 'post', id), { ...now, seenAt: Date.now() });
+      return { kind: 'tweets', count: 1, http: 200 };
+    });
+  }
+
+  it('with a like threshold, acts only on a post whose like count X showed on this visit', async () => {
+    // The copy saw each with no likes, a minute ago.
+    await db.items.bulkAdd(['1', '2', '3'].map((id) => ({ ...post(id), seenAt: NOW - 60_000 })));
+    const { ctx, run } = deepClean();
+    ctx.job.filter.keepMinLikes = 50 as never;
+    // X now shows 1 with 10 likes and 2 with 60; 3's page sends nothing Xomoni can read.
+    showOnVisit(ctx, { '1': { likes: 10 }, '2': { likes: 60 } });
+    await run();
+
+    expect(commands('delete')).toEqual([{ cmd: 'delete', id: '1', handle: 'me', keep: [] }]);
+    expect(ctx.leaveAlone).toHaveBeenCalledTimes(1);
+    expect(ctx.leaveAlone).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '3' }),
+      'could not confirm its current like count',
+    );
+  });
+
+  it('keeps a post whose text on X has a keep word the copy didn’t have', async () => {
+    await db.items.bulkAdd([post('1'), post('2')]);
+    const { ctx, run } = deepClean();
+    ctx.job.filter.keepKeywords = ['launch'] as never[];
+    showOnVisit(ctx, { '2': { text: 'Our LAUNCH day, as X shows it now' } });
+    await run();
+
+    expect(commands('delete')).toEqual([{ cmd: 'delete', id: '1', handle: 'me', keep: ['launch'] }]);
+    expect(ctx.leaveAlone).not.toHaveBeenCalled();
+  });
+});
+
 /** A job context over fake ports, as the runner builds one. */
 function context(xTab: Partial<XTab> = {}) {
   const job = {

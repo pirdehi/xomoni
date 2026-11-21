@@ -147,7 +147,7 @@ Every interface on Fluent UI React v9, and no Tailwind ([ADR-0019](adr/0019-flue
 
 ## Phase 9 · Security hardening
 
-From the security review of 2026-11-04 of the extension, xomoni.com, the database and the release pipeline. None of it needs X's API. Release integrity comes first, before the first tag.
+From the security review of 2026-11-04 of the extension, xomoni.com, the database and the release pipeline. None of it needs X's API. Release integrity comes first, before the first tag. What came of it: [report](reports/2026-11/PHASE-9-REPORT.md) · [فارسی](reports/2026-11/PHASE-9-REPORT.fa.md).
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |

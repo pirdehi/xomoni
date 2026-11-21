@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { useFluent } from '@fluentui/react-components';
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { Dialog, DialogBody, DialogContent, DialogSurface, DialogTitle, useFluent } from '@fluentui/react-components';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { XOMONI_BRAND } from '@xomoni/fluent-theme';
 import { isValidElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -77,6 +77,52 @@ describe('server rendering', () => {
     expect(isValidElement(first)).toBe(true);
     // Later chunks of the same render insert nothing more.
     expect(serverInsertedHTML().every((html) => html === null)).toBe(true);
+  });
+});
+
+describe('dialogs (#315)', () => {
+  /**
+   * A page with a dialog over it that uses nothing else of Fluent's focus manager. The dialog goes without closing
+   * first, as when a link in it leads to another page.
+   */
+  function Page({ dialog }: { dialog: boolean }) {
+    return (
+      <main>
+        <h1>Install Xomoni</h1>
+        {dialog && (
+          <Dialog open>
+            <DialogSurface>
+              <DialogBody>
+                <DialogTitle>Xomoni isn’t in this browser</DialogTitle>
+                <DialogContent>
+                  <a href="/install">Install Xomoni</a>
+                </DialogContent>
+              </DialogBody>
+            </DialogSurface>
+          </Dialog>
+        )}
+      </main>
+    );
+  }
+
+  it('shows the page again once a dialog that hid it is gone', async () => {
+    stubSystem(false);
+    const { rerender } = render(
+      <SiteFluentProvider>
+        <Page dialog />
+      </SiteFluentProvider>,
+    );
+    const heading = screen.getByRole('heading', { level: 1, hidden: true });
+    // A quarter second after it opens, Fluent hides the page behind the dialog from assistive technology.
+    await waitFor(() => expect(heading.closest('[aria-hidden="true"]')).not.toBeNull());
+
+    rerender(
+      <SiteFluentProvider>
+        <Page dialog={false} />
+      </SiteFluentProvider>,
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Install Xomoni' })).toBe(heading);
+    expect(heading.closest('[aria-hidden="true"], [inert]')).toBeNull();
   });
 });
 

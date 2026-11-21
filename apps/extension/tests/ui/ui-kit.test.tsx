@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +17,7 @@ import {
   Segmented,
   StatTile,
   Toggle,
+  useModalHost,
   useNow,
 } from '../../src/ui/components/ui';
 
@@ -409,6 +410,51 @@ describe('Modal', () => {
     unmount();
     await userEvent.keyboard('{Escape}');
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('useModalHost (#315)', () => {
+  /**
+   * A page that holds the host, as the dashboard shell does, with a modal that is the only other user of Fluent's focus
+   * manager. Its action takes the first focus, as the sign-out dialog's does.
+   */
+  function Shell({ modal }: { modal: boolean }) {
+    useModalHost();
+    return (
+      <main>
+        <h1>You’re signed out</h1>
+        {modal && (
+          <Modal open onClose={vi.fn()} title="Sign out of Xomoni?">
+            <button type="button" data-autofocus>
+              Sign out
+            </button>
+          </Modal>
+        )}
+      </main>
+    );
+  }
+
+  it('shows the page again once the modal that hid it is gone, though nothing else on the page uses Fluent’s focus manager', async () => {
+    const { rerender } = render(<Shell modal />);
+    const heading = screen.getByRole('heading', { level: 1, hidden: true });
+    // A quarter second after it opens, Fluent hides the page behind the modal from assistive technology.
+    await waitFor(() => expect(heading.closest('[aria-hidden="true"]')).not.toBeNull());
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+
+    // The modal goes the way the sign-out dialog does: unmounted, not just closed.
+    rerender(<Shell modal={false} />);
+    expect(await screen.findByRole('heading', { level: 1, name: 'You’re signed out' })).toBe(heading);
+    expect(heading.closest('[aria-hidden="true"], [inert]')).toBeNull();
+  });
+
+  it('keeps doing so for every later modal', async () => {
+    const { rerender } = render(<Shell modal />);
+    for (let i = 0; i < 2; i++) {
+      if (i) rerender(<Shell modal />);
+      await waitFor(() => expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument());
+      rerender(<Shell modal={false} />);
+      expect(await screen.findByRole('heading', { level: 1, name: 'You’re signed out' })).toBeInTheDocument();
+    }
   });
 });
 

@@ -123,6 +123,35 @@ describe('App sign-out (#226)', () => {
     expect(await db.accounts.get(ME)).toBeDefined();
   }, 45_000);
 
+  it('leaves the signed-out page readable by assistive technology once the dialog closes, with the toast (#315)', async () => {
+    render(<App />);
+    const home = await pageHeading('Home');
+
+    const slow = { timeout: 10_000 };
+    await userEvent.click(within(sidebar()).getByRole('button', { name: /^Connections: / }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out of Xomoni' }, slow));
+    const dialog = await screen.findByRole('dialog', { name: 'Sign out of Xomoni?' }, slow);
+    // A person takes longer than Fluent's quarter second to press Sign out: by then the page behind is hidden. The
+    // dialog then closes as the last thing on the signed-out page that used Fluent's focus manager, which used to take
+    // the manager with it and leave the page hidden for good.
+    await waitFor(() => expect(home.closest('[aria-hidden="true"]')).not.toBeNull());
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }));
+
+    // By role, so a heading something still hides is not found.
+    const heading = await screen.findByRole(
+      'heading',
+      { level: 1, name: 'You’re signed out' },
+      {
+        timeout: 30_000,
+        onTimeout: (error) => new Error(`${error.message.split('\n')[0]}\n${signOutState()}`),
+      },
+    );
+    expect(heading.closest('[aria-hidden="true"], [inert]')).toBeNull();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const toastShown = await screen.findByText('Signed out of Xomoni. @me is no longer used in this browser.');
+    expect(toastShown.closest('[aria-hidden="true"], [inert]')).toBeNull();
+  }, 45_000);
+
   it('shows only the signed-out page while signed out, whatever the hash says', async () => {
     await markSignedOut('me', true);
     window.location.hash = '#/settings';

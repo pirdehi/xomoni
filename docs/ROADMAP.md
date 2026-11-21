@@ -267,6 +267,7 @@ The Chrome Web Store (unlisted first) and Edge Add-ons as the way to install, wi
 | 🔄 | 1 · A simpler /install now: the checklist on top, browser- and OS-specific steps, drag the folder, step by step, a pin hint, short videos (all but the videos are in) | [#299](https://github.com/pirdehi/xomoni/issues/299) | [#308](https://github.com/pirdehi/xomoni/pull/308) |
 | ✅ | 2 · Moving data between versions: a full export and a checked import (ADR-0032) | [#300](https://github.com/pirdehi/xomoni/issues/300) | [#310](https://github.com/pirdehi/xomoni/pull/310) |
 | 🔄 | 3 · Ready for the stores: permissions, no remote code, single purpose, name, privacy form, images, notes for reviewers. The name is set: Xomoni — Digital footprint manager, in Tools (#312) | [#301](https://github.com/pirdehi/xomoni/issues/301) | [#309](https://github.com/pirdehi/xomoni/pull/309) |
+| ✅ | 3 · Xomoni's own icon instead of one like X's mark, and X named in words on the connection map ([ADR-0035](adr/0035-xomoni-has-its-own-mark.md)) | [#322](https://github.com/pirdehi/xomoni/issues/322) | [#326](https://github.com/pirdehi/xomoni/pull/326) |
 | ⬜ | 4 · A fixed extension id from the store's key, and release 0.5.0 | [#302](https://github.com/pirdehi/xomoni/issues/302) | |
 | ⬜ | 5 · Submitting: store uploads from GitHub Actions, the Chrome Web Store unlisted, Edge Add-ons | [#303](https://github.com/pirdehi/xomoni/issues/303) | |
 | ⬜ | 6 · /install with one button per browser, and bringing zip users to the store | [#304](https://github.com/pirdehi/xomoni/issues/304) | |

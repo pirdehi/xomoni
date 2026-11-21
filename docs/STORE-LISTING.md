@@ -214,13 +214,15 @@ Installs from a store aren't possible yet, so the privacy page doesn't change no
 ## 8. Images
 
 Made by `npm run store:images -w @xomoni/extension` ([`apps/extension/scripts/store-images.mjs`](../apps/extension/scripts/store-images.mjs)), into [`docs/store`](store):
-- the icons come from the same drawing as the extension's own icons (`scripts/icon.mjs`);
+- the icons come from the same drawing as the extension's own icons (`scripts/icon.mjs`): Xomoni's mark, two shoe prints walking up a tile of Xomoni's blue, the newer one white and the older one fading ([ADR-0035](adr/0035-xomoni-has-its-own-mark.md), #322);
+- the promo tile shows the mark, the name and *Digital footprint manager* on the light theme's page color, where the blue tile stands out;
+- the same run writes the two pictures of Home on xomoni.com's home page (`apps/web/public/screens`), since they show the sidebar's logo too;
 - the screenshots come from the dashboard's UI preview with its made-up demo account, `@demo_user`, never real data;
 - the script starts Vite on 127.0.0.1 port 4791 (`--port` to change it) and uses Playwright's Chromium, headless;
 - run `npx playwright install chromium` once first;
 - nothing reaches X or xomoni.com.
 
-`tooling/store-listing.test.mjs` checks each file's size, and that the screenshots and the tile have no transparency: the dashboard has long asked for JPEG or 24-bit PNG without alpha there.
+`tooling/store-listing.test.mjs` checks each file's size, and that the screenshots and the tile have no transparency: the dashboard has long asked for JPEG or 24-bit PNG without alpha there. `tooling/brand.test.mjs` checks that both icons still match `icon.mjs`.
 
 | File | Size | For |
 | --- | --- | --- |
@@ -231,7 +233,7 @@ Made by `npm run store:images -w @xomoni/extension` ([`apps/extension/scripts/st
 | [`screenshot-3-library.png`](store/screenshot-3-library.png) | 1280 × 800 | Library: the copy on the computer and X's archive |
 | [`screenshot-4-activity.png`](store/screenshot-4-activity.png) | 1280 × 800 | Activity: a job, its progress and account health |
 | [`screenshot-5-settings-dark.png`](store/screenshot-5-settings-dark.png) | 1280 × 800 | Settings in dark mode: the one-fifth pacing and the schedule |
-| [`promo-small-440x280.png`](store/promo-small-440x280.png) | 440 × 280 | Small promo tile, both stores |
+| [`promo-small-440x280.png`](store/promo-small-440x280.png) | 440 × 280 | Small promo tile, both stores: the mark, *Xomoni* and *Digital footprint manager* |
 
 <img src="store/screenshot-2-cleanup.png" alt="The Cleanup page with demo data" width="640" />
 
@@ -272,7 +274,9 @@ Contact: privacy@xomoni.com
 ## 10. Open questions for the maintainer
 
 1. ~~**Name** (§3)~~: decided on 2026-11-21, *Xomoni — Digital footprint manager* (#312).
-2. **The icon looks like X's logo.** It is a white X on a dark rounded square, which is close to X's own mark, and the likeliest cause of a trademark refusal. Redraw it before submitting. The dashboard's subtitle is now "Digital footprint manager" (#312); the 𝕏 badge on the connection map still shows in screenshot 5.
+2. ~~**The icon looks like X's logo.**~~ Answered on 2026-11-21 ([#322](https://github.com/pirdehi/xomoni/issues/322), [ADR-0035](adr/0035-xomoni-has-its-own-mark.md)). The white X on a dark rounded square was close to X's own mark, the likeliest cause of a trademark refusal. The icon is now Xomoni's own mark: two shoe prints walking up a tile of Xomoni's blue, the newer one white and the older one fading, a footprint being tidied. It holds no letter, and no platform's shape or color. The 𝕏 badge on the connection map is now a person icon named *X account* in words (screenshot 5). The dashboard's subtitle is now "Digital footprint manager" (#312).
+
+   <img src="store/icon-128.png" alt="Xomoni's icon: two shoe prints on a blue tile, the older one fading" width="96" />
 3. **Short and detailed description** (§4): approve, or change. Should the description quote X's automation rule, as the consent text does? It is honest, and it matches what the person agrees to in Xomoni, but it may draw a reviewer's attention.
 4. **"Authentication information"** (§7): tick it for the device token, as drafted, or leave it unticked because the token is Xomoni's own credential, not something the person gives? Ticking it is the safer reading of the policy, but the listing would then show "Authentication information" to everyone.
 5. **Watch** ([ADR-0021](adr/0021-watch-x-search-read-only.md)) reads X's search for phrases the person picks. It is read-only, but a reviewer may see it as a second purpose. The single-purpose text doesn't mention it. If a reviewer asks, describe it as part of keeping an eye on the account, or leave it out of the store build.

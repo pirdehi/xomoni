@@ -82,6 +82,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - connecting a browser in one click, not only with a typed code;
   - what xomoni.com shows from the extension in the same browser, which never passes through Xomoni's servers;
   - the replies to you kept on your computer (90 days, 5,000 per X account), and that the file *Export everything* saves is never uploaded.
+- **A new icon: Xomoni's own mark** (#322, [ADR-0035](docs/adr/0035-xomoni-has-its-own-mark.md)). The old one, a white X on a dark square, looked like X's logo.
+  - The new mark is two shoe prints walking up a tile of Xomoni's blue: the newer one white, the older one fading. It shows a footprint being tidied.
+  - It is in the toolbar, the dashboard and the store images, and on xomoni.com: the favicon, the Apple touch icon, the header, the emails and the home page's screenshots.
+  - It is still drawn in code, and a test checks that every copy matches the drawing.
+- **The connection map names X in words.** The X account shows as a person icon labeled *X account*, instead of the 𝕏 glyph on a dark disc.
+- The README's logo shows again: its image path was wrong.
 
 ### Fixed
 

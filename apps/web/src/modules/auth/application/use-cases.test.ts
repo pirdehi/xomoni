@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ADA_PHONE, fakeTwoFactorGateway } from '@test/server-helpers';
 import { authFailure, type AuthResult } from '../domain/auth-error';
-import type { AuthGateway } from './ports';
+import type { AuthGateway, FactorList, TwoFactorGateway } from './ports';
 import * as useCases from './use-cases';
 
 const SITE = 'https://xomoni.test';
@@ -30,8 +31,16 @@ function fakeGateway(overrides: Partial<AuthGateway> = {}): AuthGateway {
   };
 }
 
-const deps = (overrides: Partial<AuthGateway> = {}) => ({ auth: fakeGateway(overrides), siteUrl: SITE });
+/** Ada's account with an authenticator app (#173). */
+const WITH_APP: FactorList = { verified: [ADA_PHONE], unverified: [] };
+
+const deps = (
+  overrides: Partial<AuthGateway> = {},
+  factors: FactorList | null = { verified: [], unverified: [] },
+  twoFactor: Partial<TwoFactorGateway> = {},
+) => ({ auth: fakeGateway(overrides), twoFactor: fakeTwoFactorGateway(factors, twoFactor), siteUrl: SITE });
 const signedOut = { currentClaims: async () => null, currentAccount: async () => null };
+const atAal2 = { currentClaims: async () => ({ sub: 'u1', email: 'ada@example.com', aal: 'aal2' }) };
 
 describe('session', () => {
   it('getViewer returns null when signed out and maps claims otherwise', async () => {
@@ -44,6 +53,86 @@ describe('session', () => {
       deps({ currentAccount: async () => ({ email: 'ada@example.com', pendingEmail: 'new@example.com' }) }),
     );
     expect(account).toMatchObject({ id: 'u1', email: 'ada@example.com', pendingEmail: 'new@example.com' });
+  });
+
+  it('getAccount lists the account’s authenticator apps, verified only (#173)', async () => {
+    const account = await useCases.getAccount(deps(atAal2, { verified: [ADA_PHONE], unverified: ['f-abandoned'] }));
+    expect(account?.secondFactors).toEqual([ADA_PHONE]);
+  });
+
+  it('getAccount is null when the provider no longer knows the session', async () => {
+    expect(await useCases.getAccount(deps({}, null))).toBeNull();
+  });
+});
+
+describe('getSessionState (#173)', () => {
+  it('is signed out without verified claims, and asks nothing more', async () => {
+    const d = deps(signedOut, WITH_APP);
+    expect(await useCases.getSessionState(d)).toEqual({ status: 'signed_out' });
+    expect(d.twoFactor.factors).not.toHaveBeenCalled();
+  });
+
+  it('is signed in at aal1 when the account has no authenticator app', async () => {
+    expect(await useCases.getSessionState(deps())).toMatchObject({ status: 'signed_in', viewer: { id: 'u1' } });
+  });
+
+  it('owes a code at aal1 when the account has one', async () => {
+    expect(await useCases.getSessionState(deps({}, WITH_APP))).toMatchObject({
+      status: 'second_factor_needed',
+      viewer: { email: 'ada@example.com' },
+    });
+  });
+
+  it('treats an app never confirmed as none', async () => {
+    const abandoned = { verified: [], unverified: ['f-abandoned'] };
+    expect(await useCases.getSessionState(deps({}, abandoned))).toMatchObject({ status: 'signed_in' });
+  });
+
+  it('is signed in at aal2 without asking the provider about apps', async () => {
+    const d = deps(atAal2, WITH_APP);
+    expect(await useCases.getSessionState(d)).toMatchObject({ status: 'signed_in' });
+    expect(d.twoFactor.factors).not.toHaveBeenCalled();
+  });
+
+  it('counts an unknown or forged level as aal1', async () => {
+    const forged = { currentClaims: async () => ({ sub: 'u1', aal: 'AAL2 ' }) };
+    expect(await useCases.getSessionState(deps(forged, WITH_APP))).toMatchObject({ status: 'second_factor_needed' });
+  });
+
+  it('is signed out when the provider no longer knows the session', async () => {
+    expect(await useCases.getSessionState(deps({}, null))).toEqual({ status: 'signed_out' });
+  });
+
+  it('nextAfterSignIn goes to the code page first when one is owed, keeping a same-site next', async () => {
+    expect(await useCases.nextAfterSignIn(deps({}, WITH_APP), '/connect')).toBe('/login/two-factor?next=%2Fconnect');
+    expect(await useCases.nextAfterSignIn(deps({}, WITH_APP), 'https://evil.example')).toBe('/login/two-factor');
+    expect(await useCases.nextAfterSignIn(deps(), '/connect')).toBe('/connect');
+  });
+});
+
+describe('verifyWithAnyFactor (#173)', () => {
+  it('tries each app until one takes the code', async () => {
+    const verify = vi.fn(async (id: string) => (id === 'f2' ? { ok: true as const } : authFailure('invalid_code')));
+    const twoFactor = fakeTwoFactorGateway(WITH_APP, { verify });
+    expect(await useCases.verifyWithAnyFactor(twoFactor, ['f1', 'f2', 'f3'], '123456')).toEqual({ ok: true });
+    expect(verify.mock.calls.map(([id]) => id)).toEqual(['f1', 'f2']);
+  });
+
+  it('stops at once on a failure that isn’t about the code, such as too many tries', async () => {
+    const verify = vi.fn(async () => authFailure('rate_limited'));
+    const twoFactor = fakeTwoFactorGateway(WITH_APP, { verify });
+    expect(await useCases.verifyWithAnyFactor(twoFactor, ['f1', 'f2'], '123456')).toMatchObject({
+      code: 'rate_limited',
+    });
+    expect(verify).toHaveBeenCalledOnce();
+  });
+
+  it('fails with the last wrong code when no app takes it, and without any app to try', async () => {
+    const twoFactor = fakeTwoFactorGateway(WITH_APP, { verify: async () => authFailure('invalid_code') });
+    expect(await useCases.verifyWithAnyFactor(twoFactor, ['f1', 'f2'], '000000')).toMatchObject({
+      code: 'invalid_code',
+    });
+    expect(await useCases.verifyWithAnyFactor(twoFactor, [], '000000')).toMatchObject({ code: 'factor_not_found' });
   });
 });
 
@@ -70,6 +159,18 @@ describe('OAuth', () => {
   it('lands on the sanitized next path', async () => {
     const result = await useCases.completeOAuthSignIn(deps(), { code: 'c', next: 'https://evil.example', error: null });
     expect(result).toEqual({ ok: true, next: '/dashboard' });
+  });
+
+  it('goes to the code page first for an account with an authenticator app (#173)', async () => {
+    const result = await useCases.completeOAuthSignIn(deps({}, WITH_APP), { code: 'c', next: '/account', error: null });
+    expect(result).toEqual({ ok: true, next: '/login/two-factor?next=%2Faccount' });
+  });
+
+  it('keeps the failure of a code exchange', async () => {
+    const d = deps({ exchangeCode: async () => authFailure('link_invalid_or_expired') });
+    expect(await useCases.completeOAuthSignIn(d, { code: 'c', next: null, error: null })).toMatchObject({
+      code: 'link_invalid_or_expired',
+    });
   });
 });
 
@@ -150,6 +251,17 @@ describe('signInWithPassword', () => {
     expect(await useCases.signInWithPassword(d, { email: 'ada@example.com', password: 'x', next: '//evil' })).toEqual({
       ok: true,
       next: '/dashboard',
+    });
+  });
+
+  it('goes to the code page first when the account has an authenticator app, keeping next (#173)', async () => {
+    const d = deps({}, WITH_APP);
+    expect(await useCases.signInWithPassword(d, { email: 'ada@example.com', password: 'x', next: '/account' })).toEqual(
+      { ok: true, next: '/login/two-factor?next=%2Faccount' },
+    );
+    expect(await useCases.signInWithPassword(d, { email: 'ada@example.com', password: 'x' })).toEqual({
+      ok: true,
+      next: '/login/two-factor',
     });
   });
 
@@ -262,6 +374,51 @@ describe('passwords while signed in', () => {
     expect(d.auth.updatePassword).toHaveBeenCalledWith(GOOD_PASSWORD, 'old password 1');
   });
 
+  describe('with an authenticator app (#173)', () => {
+    const input = { currentPassword: 'old password 1', newPassword: GOOD_PASSWORD, captchaToken: 't' };
+
+    it('asks for a code before signing in again, so a missing one changes nothing', async () => {
+      const d = deps({}, WITH_APP);
+      expect(await useCases.changePassword(d, input)).toMatchObject({
+        code: 'invalid_input',
+        fieldErrors: { code: expect.any(String) },
+      });
+      expect(d.auth.signInWithPassword).not.toHaveBeenCalled();
+      expect(d.auth.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('verifies the code on the new session, then changes the password', async () => {
+      const d = deps({}, WITH_APP);
+      expect(await useCases.changePassword(d, { ...input, code: '123 456' })).toEqual({ ok: true });
+      expect(d.twoFactor.verify).toHaveBeenCalledWith('f1', '123456');
+      const order = [d.auth.signInWithPassword, d.twoFactor.verify, d.auth.updatePassword].map(
+        (fn) => vi.mocked(fn).mock.invocationCallOrder[0],
+      );
+      expect(order).toEqual([...order].sort((a = 0, b = 0) => a - b));
+    });
+
+    it('keeps the old password when the code is wrong', async () => {
+      const d = deps({}, WITH_APP, { verify: async () => authFailure('invalid_code') });
+      expect(await useCases.changePassword(d, { ...input, code: '000000' })).toMatchObject({
+        code: 'invalid_code',
+        fieldErrors: { code: expect.any(String) },
+      });
+      expect(d.auth.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('passes on other failures of the code as they are', async () => {
+      const d = deps({}, WITH_APP, { verify: async () => authFailure('rate_limited') });
+      expect(await useCases.changePassword(d, { ...input, code: '000000' })).toMatchObject({ code: 'rate_limited' });
+      expect(d.auth.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('needs a session the provider still knows', async () => {
+      expect(await useCases.changePassword(deps({}, null), { ...input, code: '123456' })).toMatchObject({
+        code: 'not_signed_in',
+      });
+    });
+  });
+
   it('changePassword refuses reusing the current password', async () => {
     expect(
       await useCases.changePassword(deps(), { currentPassword: GOOD_PASSWORD, newPassword: GOOD_PASSWORD }),
@@ -304,6 +461,17 @@ describe('deleteAccount', () => {
     const d = deps();
     expect(await useCases.deleteAccount(d)).toEqual({ ok: true });
     expect(d.auth.signOut).toHaveBeenCalledOnce();
+  });
+
+  it('refuses a session that owes a code from the account’s authenticator app, and deletes nothing (#173)', async () => {
+    const d = deps({}, WITH_APP);
+    expect(await useCases.deleteAccount(d)).toMatchObject({ ok: false, code: 'second_factor_required' });
+    expect(d.auth.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('deletes after a verified code', async () => {
+    const d = deps(atAal2, WITH_APP);
+    expect(await useCases.deleteAccount(d)).toEqual({ ok: true });
   });
 
   it('keeps the session when deletion fails', async () => {

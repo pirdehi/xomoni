@@ -15,19 +15,25 @@ const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-cache, no-store, must-r
 type Refresh = { name: string; value: string; options: { path: string; maxAge?: number; httpOnly?: boolean } }[];
 
 const getClaims = vi.fn();
+const listFactors = vi.fn();
+
+/** A verified authenticator app, as Supabase lists it (#173). */
+const PHONE = { id: 'f1', factor_type: 'totp', status: 'verified', friendly_name: 'Phone', created_at: '2026-11-01' };
 
 /**
  * Makes the Supabase client the proxy creates report a session (or none). With `refresh`, reading the session
- * writes those cookies first, as Supabase does when it renews an expiring token or clears an invalid one.
+ * writes those cookies first, as Supabase does when it renews an expiring token or clears an invalid one. `aal` is the
+ * token's assurance level and `factors` the account's MFA factors (#173).
  */
-function supabaseSession(signedIn: boolean, refresh?: Refresh) {
+function supabaseSession(signedIn: boolean, refresh?: Refresh, { aal = 'aal1', factors = [] as object[] } = {}) {
   getClaims.mockReset();
+  listFactors.mockReset().mockResolvedValue({ data: { all: factors }, error: null });
   createServerClient.mockImplementation((_url, _key, options) => {
     getClaims.mockImplementation(async () => {
       if (refresh) await options.cookies.setAll?.(refresh, NO_STORE_HEADERS);
-      return { data: signedIn ? { claims: { sub: 'u1' } } : null, error: null };
+      return { data: signedIn ? { claims: { sub: 'u1', aal } } : null, error: null };
     });
-    return { auth: { getClaims } };
+    return { auth: { getClaims, mfa: { listFactors } } };
   });
 }
 
@@ -135,6 +141,68 @@ describe('updateSession: signed-in visitors', () => {
 
     expect(redirectTarget(response).pathname).toBe('/dashboard');
     expect(response.headers.get('set-cookie')).toMatch(/^sb-auth-token=fresh;/);
+  });
+});
+
+describe('updateSession: a session that owes a code from the account’s authenticator app (#173)', () => {
+  beforeEach(() => supabaseSession(true, undefined, { aal: 'aal1', factors: [PHONE] }));
+
+  it.each(['/account', '/dashboard/reports?week=2', '/reset-password'])(
+    'sends %s to the code page, then back',
+    async (path) => {
+      const target = redirectTarget(await visit(path));
+
+      expect(target.origin).toBe(SITE);
+      expect(target.pathname).toBe('/login/two-factor');
+      expect([...target.searchParams.keys()]).toEqual(['next']);
+      expect(target.searchParams.get('next')).toBe(path);
+    },
+  );
+
+  it('sends the dashboard to the code page, which returns there by default', async () => {
+    expect(redirectTarget(await visit('/dashboard')).href).toBe(`${SITE}/login/two-factor`);
+  });
+
+  it.each(['/login', '/signup', '/forgot-password'])('sends the guest page %s to the code page too', async (path) => {
+    expect(redirectTarget(await visit(path)).pathname).toBe('/login/two-factor');
+  });
+
+  it('keeps a guest page’s same-site next, and drops one to another site', async () => {
+    expect(redirectTarget(await visit(`/login?next=${encodeURIComponent('/connect')}`)).href).toBe(
+      `${SITE}/login/two-factor?next=%2Fconnect`,
+    );
+    expect(redirectTarget(await visit(`/login?next=${encodeURIComponent('//evil.example')}`)).href).toBe(
+      `${SITE}/login/two-factor`,
+    );
+  });
+
+  it('lets the same account in once the session verified a code (aal2), asking the provider nothing', async () => {
+    supabaseSession(true, undefined, { aal: 'aal2', factors: [PHONE] });
+
+    expectPassThrough(await visit('/account'));
+    expect(listFactors).not.toHaveBeenCalled();
+  });
+
+  it('asks nothing more of an account with only an app it never confirmed', async () => {
+    supabaseSession(true, undefined, { aal: 'aal1', factors: [{ ...PHONE, status: 'unverified' }] });
+
+    expectPassThrough(await visit('/account'));
+    expect(redirectTarget(await visit('/login')).href).toBe(`${SITE}/dashboard`);
+  });
+
+  it('treats a token the provider no longer knows as signed out, so sign-in and the page never loop', async () => {
+    // Signed out everywhere from another browser: the token still verifies, but Supabase knows no session.
+    listFactors.mockResolvedValue({ data: null, error: { message: 'Session not found' } });
+
+    const target = redirectTarget(await visit('/account'));
+    expect(target.pathname).toBe('/login');
+    expect(target.searchParams.get('next')).toBe('/account');
+    expectPassThrough(await visit('/login'));
+  });
+
+  it('asks nothing more on a page that is neither guarded nor guest-only', async () => {
+    expectPassThrough(await visit('/login/two-factor'));
+    expect(listFactors).not.toHaveBeenCalled();
   });
 });
 

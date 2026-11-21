@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BrowserSupabase } from '@/shared/supabase/browser';
-import { createSupabaseAccountSession, sessionIdOf } from './supabase-account-session';
+import { createSupabaseAccountSession, owesSecondFactor, sessionIdOf } from './supabase-account-session';
 
 /** A JWT-shaped token with `claims` as its payload, base64url without padding, as Supabase issues them. */
 function token(claims: Record<string, unknown>): string {
@@ -37,9 +37,38 @@ describe('sessionIdOf (#232)', () => {
   });
 });
 
+describe('owesSecondFactor (#173)', () => {
+  const verified = [{ status: 'verified' }];
+
+  it('is owed by a token below aal2 of an account with a verified app', () => {
+    expect(owesSecondFactor(token({ aal: 'aal1' }), verified)).toBe(true);
+    expect(owesSecondFactor(token({}), verified)).toBe(true);
+    expect(owesSecondFactor('opaque', verified)).toBe(true);
+  });
+
+  it('is not owed at aal2, or by an account without a verified app', () => {
+    expect(owesSecondFactor(token({ aal: 'aal2' }), verified)).toBe(false);
+    expect(owesSecondFactor(token({ aal: 'aal1' }), [{ status: 'unverified' }])).toBe(false);
+    expect(owesSecondFactor(token({ aal: 'aal1' }), [])).toBe(false);
+    expect(owesSecondFactor(token({ aal: 'aal1' }), undefined)).toBe(false);
+  });
+});
+
 describe('the account session adapter (#232)', () => {
+  it('treats a session that owes a two-step code as signed out, so the sync waits for the code (#173)', async () => {
+    const owing = client({
+      session: { access_token: token({ session_id: 's1', aal: 'aal1' }), user: { factors: [{ status: 'verified' }] } },
+    });
+    expect(await createSupabaseAccountSession(owing.supabase).currentSessionId()).toBeNull();
+
+    const verified = client({
+      session: { access_token: token({ session_id: 's1', aal: 'aal2' }), user: { factors: [{ status: 'verified' }] } },
+    });
+    expect(await createSupabaseAccountSession(verified.supabase).currentSessionId()).toBe('s1');
+  });
+
   it('reads the current session’s id from the browser’s cookie, or null when signed out', async () => {
-    const signedIn = client({ session: { access_token: token({ session_id: 's1' }) } });
+    const signedIn = client({ session: { access_token: token({ session_id: 's1' }), user: {} } });
     expect(await createSupabaseAccountSession(signedIn.supabase).currentSessionId()).toBe('s1');
 
     const signedOut = client();

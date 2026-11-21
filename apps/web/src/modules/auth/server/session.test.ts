@@ -1,16 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SIGNED_OUT, fakeAuthGateway, redirectOf } from '@test/server-helpers';
-import type { AuthGateway } from '../application/ports';
+import {
+  ADA_PHONE,
+  AT_AAL2,
+  NO_FACTORS,
+  SIGNED_OUT,
+  fakeAuthGateway,
+  fakeTwoFactorGateway,
+  redirectOf,
+} from '@test/server-helpers';
+import type { AuthGateway, FactorList } from '../application/ports';
 import { authDeps } from './deps';
-import { currentViewer, requireAccount, requireViewer } from './session';
+import { currentViewer, requireAccount, requireSecondFactorStep, requireViewer } from './session';
 
 vi.mock('./deps', () => ({ authDeps: vi.fn() }));
 
-function session(overrides: Partial<AuthGateway> = {}): AuthGateway {
+function session(overrides: Partial<AuthGateway> = {}, factors: FactorList | null = NO_FACTORS): AuthGateway {
   const gateway = fakeAuthGateway(overrides);
-  vi.mocked(authDeps).mockResolvedValue({ auth: gateway, siteUrl: 'http://localhost:3000' });
+  vi.mocked(authDeps).mockResolvedValue({
+    auth: gateway,
+    twoFactor: fakeTwoFactorGateway(factors),
+    siteUrl: 'http://localhost:3000',
+  });
   return gateway;
 }
+
+/** Ada's account with an authenticator app (#173). */
+const WITH_APP: FactorList = { verified: [ADA_PHONE], unverified: [] };
 
 /** The `next` query parameter of a same-site redirect destination, checking it stays on the sign-in page. */
 function signInNext(destination: string): string | null {
@@ -91,6 +106,80 @@ describe('requireViewer', () => {
   });
 });
 
+describe('the session’s assurance level, checked on the server (#173)', () => {
+  it('currentViewer is null for a session that owes a code: a password alone is not signed in', async () => {
+    session({}, WITH_APP);
+    expect(await currentViewer()).toBeNull();
+    session(AT_AAL2, WITH_APP);
+    expect(await currentViewer()).toEqual(ADA_VIEWER);
+  });
+
+  it.each(['/dashboard/reports', '/reset-password', '/connect'])(
+    'requireViewer sends an aal1 session of an account with an app from %s to the code page, and back',
+    async (page) => {
+      session({}, WITH_APP);
+      expect(await redirectOf(requireViewer(page))).toBe(`/login/two-factor?next=${encodeURIComponent(page)}`);
+    },
+  );
+
+  it('requireViewer sends it from the dashboard to the code page, which returns there by default', async () => {
+    session({}, WITH_APP);
+    expect(await redirectOf(requireViewer('/dashboard'))).toBe('/login/two-factor');
+  });
+
+  it('requireViewer lets the same account in after a code (aal2)', async () => {
+    session(AT_AAL2, WITH_APP);
+    expect(await requireViewer('/dashboard')).toEqual(ADA_VIEWER);
+  });
+
+  it('requireViewer lets an account without an app in at aal1, as before', async () => {
+    session({}, NO_FACTORS);
+    expect(await requireViewer('/dashboard')).toEqual(ADA_VIEWER);
+    session({}, { verified: [], unverified: ['f-abandoned'] });
+    expect(await requireViewer('/dashboard')).toEqual(ADA_VIEWER);
+  });
+
+  it('never reads the claim from anywhere but the verified token: a forged level is aal1', async () => {
+    session({ currentClaims: () => Promise.resolve({ sub: 'u1', email: 'ada@example.com', aal: ['aal2'] }) }, WITH_APP);
+    expect(await redirectOf(requireViewer('/account'))).toBe('/login/two-factor?next=%2Faccount');
+  });
+
+  it('requireAccount sends an aal1 session of an account with an app to the code page before reading it', async () => {
+    const gateway = session({}, WITH_APP);
+    expect(await redirectOf(requireAccount('/account'))).toBe('/login/two-factor?next=%2Faccount');
+    expect(gateway.currentAccount).not.toHaveBeenCalled();
+  });
+
+  it('requireAccount returns the account with its apps after a code', async () => {
+    session(AT_AAL2, WITH_APP);
+    expect(await requireAccount('/account')).toMatchObject({ email: 'ada@example.com', secondFactors: [ADA_PHONE] });
+  });
+
+  it('requireSecondFactorStep gives the code page the person who owes a code', async () => {
+    session({}, WITH_APP);
+    expect(await requireSecondFactorStep('/account')).toEqual(ADA_VIEWER);
+  });
+
+  it('requireSecondFactorStep sends someone who owes nothing straight on, same-site only', async () => {
+    session(AT_AAL2, WITH_APP);
+    expect(await redirectOf(requireSecondFactorStep('/account'))).toBe('/account');
+    session({}, NO_FACTORS);
+    expect(await redirectOf(requireSecondFactorStep('https://evil.example'))).toBe('/dashboard');
+  });
+
+  it('requireSecondFactorStep sends a signed-out visitor to sign in, keeping a same-site next', async () => {
+    session(SIGNED_OUT);
+    expect(await redirectOf(requireSecondFactorStep('/account'))).toBe('/login?next=%2Faccount');
+    session(SIGNED_OUT);
+    expect(await redirectOf(requireSecondFactorStep('//evil.example'))).toBe('/login?next=%2Fdashboard');
+  });
+
+  it('treats a session the provider no longer knows as signed out', async () => {
+    session({}, null);
+    expect(await redirectOf(requireViewer('/dashboard'))).toBe('/login?next=%2Fdashboard');
+  });
+});
+
 describe('requireAccount', () => {
   it('returns the viewer with the current and pending email from the provider', async () => {
     session({
@@ -101,6 +190,7 @@ describe('requireAccount', () => {
       ...ADA_VIEWER,
       email: 'ada@new.example',
       pendingEmail: 'ada@newer.example',
+      secondFactors: [],
     });
   });
 

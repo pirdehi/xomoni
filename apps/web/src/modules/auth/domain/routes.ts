@@ -2,6 +2,7 @@
 export const ROUTES = {
   home: '/',
   signIn: '/login',
+  twoFactor: '/login/two-factor',
   signUp: '/signup',
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
@@ -26,6 +27,15 @@ export function requiresSession(path: string): boolean {
 /** Whether `path` is only for signed-out visitors. */
 export function isGuestOnly(path: string): boolean {
   return GUEST_ONLY_PATHS.includes(path);
+}
+
+/**
+ * The page that asks for a code from an authenticator app (#173), returning to `next` afterwards. `next` is kept only
+ * when it is a same-site path; the page checks it again before following it.
+ */
+export function twoFactorPath(next?: string | null): string {
+  const target = safeNextPath(next);
+  return target === ROUTES.dashboard ? ROUTES.twoFactor : `${ROUTES.twoFactor}?next=${encodeURIComponent(target)}`;
 }
 
 /**

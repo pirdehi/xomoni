@@ -1,5 +1,6 @@
 import type { AuthFailure, AuthResult } from '../domain/auth-error';
 import type { EmailLinkType } from '../domain/email-link';
+import type { SecondFactor, TotpEnrollment } from '../domain/two-factor';
 import type { IdentityClaims } from '../domain/viewer';
 
 /** OAuth providers the website offers. */
@@ -54,4 +55,31 @@ export interface AuthGateway {
   signOut(everywhere?: boolean): Promise<void>;
   /** Deletes the signed-in account; devices and job summaries cascade in the database. */
   deleteAccount(): Promise<AuthResult>;
+}
+
+/** An account's authenticator apps, as the provider reports them right now. */
+export interface FactorList {
+  /** Apps that sign in, oldest first. */
+  verified: SecondFactor[];
+  /** Ids of apps someone started adding and never confirmed with a code (an abandoned enrollment). */
+  unverified: string[];
+}
+
+/**
+ * Two-step verification with an authenticator app (TOTP, #173, ADR-0036). Supabase Auth implements it; its own rules
+ * stand behind every method: adding a second app, removing a verified one, and changing the email or password need an
+ * `aal2` session, and a code works only for the challenge it answers, within a few minutes.
+ */
+export interface TwoFactorGateway {
+  /** The account's apps, asked of the provider (not read from the cookie), or `null` when signed out. */
+  factors(): Promise<FactorList | null>;
+  /** Starts adding an app: a new unverified factor with its QR code and secret, shown once. */
+  enroll(name: string): Promise<{ ok: true; enrollment: TotpEnrollment } | AuthFailure>;
+  /**
+   * Verifies a code for one factor with a fresh challenge. Success confirms an app being added, and raises the session
+   * to `aal2`.
+   */
+  verify(factorId: string, code: string): Promise<AuthResult>;
+  /** Removes a factor; a verified one only from an `aal2` session. */
+  unenroll(factorId: string): Promise<AuthResult>;
 }

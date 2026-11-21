@@ -11,6 +11,7 @@ What is done and what is left, phase by phase. Every task links its issue and, o
 Both roadmaps are updated together: a pull request that finishes a task ticks it here, and the same task is marked done on the Claude roadmap.
 
 **Current focus:**
+- Phase 19: one written gate for every merge and every release ([quality gates](QUALITY-GATES.md), ADR-0037 to ADR-0039). The rules, the release checklist and the protected `release` and `stores` environments are in. The checks that enforce them come next: the README from a feature registry (#337), at least 20 user scenarios per user-facing task (#338), the pull request policy and dependency review (#339), the release gate (#340) and clean code scanning (#341).
 - Phase 18: install with one click from the Chrome Web Store and Edge Add-ons, with a data move and one-click updates for the zip ([project](INSTALL-PROJECT-2026-11-21.fa.md), #295). Everything that needs no store account is built: the data move (#310), the simpler /install with illustrations (#308, #330), the install FAQ (#311), readiness for the stores (#309, #320, #321, #326), the fixed id (#324), store uploads (#314), one button per browser (#325) and signed one-click updates (#316). What's left is the maintainer's: the store accounts ([guide](STORE-ACCOUNTS-GUIDE.fa.md)), the signing key, release 0.5.0, submitting, and making the listings public.
 - Phase 17: the full dashboard on xomoni.com ([plan](DASHBOARD-PLAN-2026-11-19.md)). The shell (#245) and the extension's actions with the dialog when Xomoni isn't there (#251) are done; daily numbers (#249, #250), release 0.3.0 (#260), Overview, Audience, Content and Engagement with real numbers (#252–#255), the Library, Watch and account health read from Xomoni (#233), Settings (#234), Cleanup (#235) and Comments (#256) are done too. Release 0.4.0 (#282) brought the first of them to Xomoni; Comments needs the next release. Reports (#257) are in, as CSV and PDF, with a weekly email for those who ask for it. Phase 17 is done, and so are the phone menu and footer (#242) and getting started (#244): all of the next 20 tasks are done. Next: release 0.5.0, which brings Comments and /welcome to Xomoni, once the maintainer says so. The next 20 tasks, in order: [فارسی](NEXT-20-TASKS-2026-11-20.fa.md).
 - Phase 15: a UX pass of xomoni.com and the extension (#239, #240), before the extension's pages come to the website (#233).
@@ -156,7 +157,7 @@ From the security review of 2026-11-04 of the extension, xomoni.com, the databas
 | ✅ | Trust only Xomoni's own messages: sender checks, payload validation, a sealed page-world channel | [#145](https://github.com/pirdehi/xomoni/issues/145) | [#165](https://github.com/pirdehi/xomoni/pull/165) |
 | ✅ | Read X's restriction notices only from X's own banners, not from post text | [#146](https://github.com/pirdehi/xomoni/issues/146) | [#154](https://github.com/pirdehi/xomoni/pull/154) |
 | ✅ | xomoni.com: Trusted Types, CSP reports, tighter images, CORP, Origin check on sign-out | [#147](https://github.com/pirdehi/xomoni/issues/147) | [#160](https://github.com/pirdehi/xomoni/pull/160) |
-| 🔄 | Account security: current password checked by the server (on since 14 November), MFA ([#173](https://github.com/pirdehi/xomoni/issues/173)), session age and email quota (paid plans) | [#148](https://github.com/pirdehi/xomoni/issues/148) | |
+| 🔄 | Account security: current password checked by the server (on since 14 November) and two-step verification with an authenticator app, required by the server and the database ([#173](https://github.com/pirdehi/xomoni/issues/173), [ADR-0036](adr/0036-two-step-verification-with-an-authenticator-app.md)) done; session age and email quota wait on paid plans | [#148](https://github.com/pirdehi/xomoni/issues/148) | [#174](https://github.com/pirdehi/xomoni/pull/174), [#335](https://github.com/pirdehi/xomoni/pull/335) |
 | ✅ | Database: private Realtime, no auto-exposed tables, SSL only, expiring device tokens, account shown on pairing | [#149](https://github.com/pirdehi/xomoni/issues/149) | [#170](https://github.com/pirdehi/xomoni/pull/170), [#171](https://github.com/pirdehi/xomoni/pull/171), [#172](https://github.com/pirdehi/xomoni/pull/172) |
 | ✅ | Security monitoring: CodeQL, secret-scanning options, security.txt, alerts (alerts need paid plans: [#161](https://github.com/pirdehi/xomoni/issues/161)) | [#150](https://github.com/pirdehi/xomoni/issues/150) | [#162](https://github.com/pirdehi/xomoni/pull/162) |
 | ✅ | Local data hygiene: token storage, complete wipe, archive size limits, update notice | [#151](https://github.com/pirdehi/xomoni/issues/151) | [#166](https://github.com/pirdehi/xomoni/pull/166), [#167](https://github.com/pirdehi/xomoni/pull/167) |
@@ -273,6 +274,24 @@ The Chrome Web Store (unlisted first) and Edge Add-ons as the way to install, wi
 | ✅ | 6 · /install with one button per browser, the home page's store button, and a card that brings zip users to the store (ADR-0034); both show once a store's address is written. Left: trying /welcome after a store install | [#304](https://github.com/pirdehi/xomoni/issues/304) | [#325](https://github.com/pirdehi/xomoni/pull/325), [#330](https://github.com/pirdehi/xomoni/pull/330) |
 | ✅ | 7 · Signed one-click updates for the zip (ADR-0033): signing starts once the maintainer adds the key, and the store build has no updater | [#305](https://github.com/pirdehi/xomoni/issues/305) | [#316](https://github.com/pirdehi/xomoni/pull/316) |
 | 🔄 | 8 · Docs (ADR-0034) and the install FAQ are in. Left: making the listings public, the maintainer's decision | [#306](https://github.com/pirdehi/xomoni/issues/306) | [#311](https://github.com/pirdehi/xomoni/pull/311), [#325](https://github.com/pirdehi/xomoni/pull/325) |
+
+## Phase 19 · Quality gate 🔄
+
+Every merge and every release passes the same written gate, enforced by commands and GitHub settings rather than memory ([quality gates](QUALITY-GATES.md), [ADR-0037](adr/0037-one-written-gate-for-every-merge-and-release.md), [ADR-0038](adr/0038-user-scenarios-for-every-user-facing-task.md), [ADR-0039](adr/0039-the-readme-comes-from-the-feature-registry.md)).
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| ✅ | 0 · The rules: the three ADRs, the definition of done, the release checklist template, `CODEOWNERS`, and the `release` and `stores` environments with the maintainer as required reviewer | [#346](https://github.com/pirdehi/xomoni/issues/346) | [#348](https://github.com/pirdehi/xomoni/pull/348) |
+| ⬜ | 1 · The README's features and status from `docs/features.json`, checked by `verify` and the release check | [#337](https://github.com/pirdehi/xomoni/issues/337) | |
+| ⬜ | 2 · At least 20 user scenarios per user-facing task, each tied to a browser test, checked by `verify`; the install page's first | [#338](https://github.com/pirdehi/xomoni/issues/338) | |
+| ⬜ | 3 · The `pr-policy` check (task link, changelog line, scenarios, exemptions with reasons) and dependency review | [#339](https://github.com/pirdehi/xomoni/issues/339) | |
+| ⬜ | 4 · The release gate: the full CI on the tag, `npm audit`, the release issue read by the workflow and closed with the release | [#340](https://github.com/pirdehi/xomoni/issues/340) | |
+| ⬜ | 5 · The three open CodeQL alerts | [#341](https://github.com/pirdehi/xomoni/issues/341) | |
+| ⬜ | 6 · The extension in a real browser with X fixtures, Chrome and Edge, axe | [#342](https://github.com/pirdehi/xomoni/issues/342) | |
+| ⬜ | 7 · The nightly full run, and a check after each release | [#343](https://github.com/pirdehi/xomoni/issues/343) | |
+| ⬜ | 8 · Docs sorted by kind, with one map | [#344](https://github.com/pirdehi/xomoni/issues/344) | |
+| ⬜ | 9 · Scenarios for the features shipped before the gate | [#345](https://github.com/pirdehi/xomoni/issues/345) | |
+| 🔄 | 10 · The maintainer's settings: required checks and code scanning in the ruleset, an account for AI agents, code-owner review, signed commits | [#346](https://github.com/pirdehi/xomoni/issues/346) | |
 
 ## Dropped
 

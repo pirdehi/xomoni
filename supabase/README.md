@@ -6,8 +6,8 @@ The Supabase project behind xomoni.com, described entirely by files in this fold
 | --- | --- |
 | `config.toml` | Auth, API and local-stack settings. The top level is the **local** stack; `[remotes.production]` at the end holds production-only overrides (site URL, redirect URLs, Resend SMTP, the real Turnstile secret, stricter rate limits). |
 | `migrations/` | The database schema, applied in order. Every file starts with a comment explaining the change. |
-| `templates/` | Branded HTML for every auth email (confirmation, recovery, email change, invite, magic link, reauthentication) and the security notifications (password changed, email changed, sign-in method added). |
-| `tests/database/` | pgTAP tests for Row Level Security, `delete_account()`, `jobs.risk_level`, the per-account caps and the daily numbers with their choice (`supabase test db`). |
+| `templates/` | Branded HTML for every auth email (confirmation, recovery, email change, invite, magic link, reauthentication) and the security notifications (password changed, email changed, sign-in method added, authenticator app added or removed). |
+| `tests/database/` | pgTAP tests for Row Level Security, `delete_account()`, `jobs.risk_level`, the per-account caps, the daily numbers with their choice, and two-step verification's `aal2` rule (`supabase test db`). |
 | `.env` | **Git-ignored.** Secrets referenced from `config.toml` with `env(…)`: the Google OAuth client, `TURNSTILE_SECRET_KEY`, `RESEND_SMTP_API_KEY`. Never commit it. |
 
 ## Local stack

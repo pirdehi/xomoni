@@ -5,6 +5,7 @@ export type AuthErrorCode =
   | 'invalid_input'
   | 'invalid_credentials'
   | 'wrong_current_password'
+  | 'current_password_required'
   | 'email_not_confirmed'
   | 'account_exists'
   | 'email_unusable'
@@ -17,6 +18,13 @@ export type AuthErrorCode =
   | 'not_signed_in'
   | 'signup_disabled'
   | 'provider_error'
+  | 'invalid_code'
+  | 'code_expired'
+  | 'second_factor_required'
+  | 'two_factor_unavailable'
+  | 'too_many_factors'
+  | 'factor_name_taken'
+  | 'factor_not_found'
   | 'unknown';
 
 /** A failed auth action: a stable code, optional per-field messages, and provider detail for logs. */
@@ -52,6 +60,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   invalid_input: 'Check the highlighted fields.',
   invalid_credentials: 'That email and password don’t match an account.',
   wrong_current_password: 'Your current password is incorrect.',
+  current_password_required: 'Enter your current password to choose a new one.',
   email_not_confirmed: 'Confirm your email address first. We can send the link again.',
   account_exists: 'Check your inbox to continue.',
   email_unusable: 'That email address can’t be used. Check it or try another one.',
@@ -64,5 +73,13 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   not_signed_in: 'Your session has ended. Sign in again.',
   signup_disabled: 'New accounts are paused right now. Try again later.',
   provider_error: 'Sign-in with the provider didn’t complete. Try again.',
+  invalid_code:
+    'That code didn’t work. Enter the newest code from your app; if it keeps failing, check the time on your phone.',
+  code_expired: 'That took too long. Enter the newest code from your app.',
+  second_factor_required: 'For your security, enter a code from your authenticator app first.',
+  two_factor_unavailable: 'Two-step verification is unavailable right now. Try again later.',
+  too_many_factors: 'This account has as many authenticator apps as it can. Remove one first.',
+  factor_name_taken: 'You already have an app with that name. Choose another name.',
+  factor_not_found: 'That authenticator app is no longer on your account. Reload the page.',
   unknown: 'Something went wrong on our side. Try again in a moment.',
 };

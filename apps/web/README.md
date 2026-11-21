@@ -49,7 +49,7 @@ All variables are listed with explanations in [`.env.example`](.env.example). In
 
 ## Deployment
 
-Vercel builds this app with Root Directory `apps/web` on every push; `main` deploys to https://xomoni.com. The Vercel Toolbar stays off in the project's settings: its loader breaks the site under Trusted Types ([ADR-0014](../../docs/adr/0014-security-headers-and-a-static-csp.md)). Database and auth settings are deployed separately from [`supabase/`](../../supabase/README.md).
+Vercel builds this app with Root Directory `apps/web` on every push that changes what it is built from (`vercel.json`'s `ignoreCommand`: this app, `packages/`, the root `package.json`, lockfile and `tsconfig.base.json`; `tooling/vercel.test.mjs` keeps the list complete), so pushes that touch only the extension, docs or tooling don't use up the plan's daily deployments; `main` deploys to https://xomoni.com. The Vercel Toolbar stays off in the project's settings: its loader breaks the site under Trusted Types ([ADR-0014](../../docs/adr/0014-security-headers-and-a-static-csp.md)). Database and auth settings are deployed separately from [`supabase/`](../../supabase/README.md).
 
 ## Depends on
 

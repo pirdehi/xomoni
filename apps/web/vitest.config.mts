@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
-const fake = (name: string) => path.join(__dirname, 'test/fakes', name);
+// An `.mts` file, so Vite loads it as the ES module it is: this package isn't `"type": "module"`, and Vite 8 warns
+// about ES-module syntax in a config it has to load as CommonJS.
+const fake = (name: string) => path.join(import.meta.dirname, 'test/fakes', name);
 
 // Unit and component tests. They run without Supabase, Next.js's server or Cloudflare: domain rules, use
 // cases and adapter mappers in Node; React components in happy-dom (`// @vitest-environment happy-dom`),
@@ -10,8 +12,8 @@ const fake = (name: string) => path.join(__dirname, 'test/fakes', name);
 export default defineConfig({
   resolve: {
     alias: {
-      '@test': path.join(__dirname, 'test'),
-      '@': path.join(__dirname, 'src'),
+      '@test': path.join(import.meta.dirname, 'test'),
+      '@': path.join(import.meta.dirname, 'src'),
       'server-only': fake('server-only.ts'),
       'next/navigation': fake('navigation.ts'),
       '@marsidev/react-turnstile': fake('turnstile.tsx'),

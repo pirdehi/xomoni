@@ -1,4 +1,4 @@
-// Stands in for `next/navigation` in unit tests (aliased in vitest.config.ts). Components get a router of
+// Stands in for `next/navigation` in unit tests (aliased in vitest.config.mts). Components get a router of
 // mocks and a query string the test sets; Server Actions' `redirect` throws so a test can assert where it goes.
 import { vi } from 'vitest';
 

@@ -1,7 +1,11 @@
 # Builds the extension from a version tag and publishes it on GitHub Releases (docs/RELEASING.md).
-# Two jobs (#142): `build` runs every npm script with a read-only token; `publish` runs no npm code, is the only
-# one that can write, and the only one that sees the release signing key (#305). Actions are pinned by commit SHA;
-# Dependabot keeps them current.
+# Four jobs (#142, #340, ADR-0037):
+# - `ci` runs the full CI (ci.yml: verify, database, e2e) again, on the tagged commit;
+# - `readiness` reads the version's release issue and fails while a box under "Before the tag" is unticked;
+# - `build`, once CI is green, runs every npm script with a read-only token;
+# - `publish` runs no npm code, is the only job that can write, and the only one that sees the release signing key
+#   (#305). After the release, it comments it on the release issue and closes the issue.
+# Actions are pinned by commit SHA; Dependabot keeps them current.
 name: Release
 
 on:
@@ -11,8 +15,43 @@ on:
 permissions: {}
 
 jobs:
+  # The same checks as every merge to main, on the commit being released (gate 4 of docs/QUALITY-GATES.md).
+  ci:
+    name: ci
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  # The version's release issue (.github/ISSUE_TEMPLATE/release.md): open, labelled `release`, titled exactly
+  # "Release vX.Y.Z", opened by someone who can push, and every box under "Before the tag" ticked. Its number goes to
+  # `publish`. It only reads: GitHub, not this job, makes the release wait for the maintainer.
+  readiness:
+    name: readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      issue: ${{ steps.check.outputs.issue }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: tooling
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: The release issue is complete
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node tooling/check-release-issue.mjs "$GITHUB_REF_NAME"
+
   build:
     name: build
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,6 +76,9 @@ jobs:
       # No dependency's install script runs where the release is built (#305, ADR-0033). None is needed: only esbuild
       # has one, and it works without it. The repository's own `prepare` (git hooks) has no place here either.
       - run: npm ci --ignore-scripts
+      # Every dependency, the build's tools included: they make the zip (R12 of docs/QUALITY-GATES.md).
+      - name: No dependency with a known high or critical vulnerability
+        run: npm audit --audit-level=high
       - name: The whole quality gate, as for any merge
         run: npm run verify
       - name: Versions match the tag; the changelog has the section
@@ -69,7 +111,7 @@ jobs:
 
   publish:
     name: publish
-    needs: build
+    needs: [build, readiness]
     runs-on: ubuntu-latest
     # The release signing key is a secret of this environment. GitHub, not this file, enforces its protection: only v*
     # tags may use it, and the maintainer approves each run (docs/RELEASING.md, Signing key).
@@ -78,6 +120,8 @@ jobs:
       contents: write
       id-token: write
       attestations: write
+      # Only to comment the release on its issue and close it; no other job can write to issues.
+      issues: write
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -133,3 +177,21 @@ jobs:
           files=(release/*.zip release/*.zip.sig release/SHA256SUMS)
           gh release create "$GITHUB_REF_NAME" "${files[@]}" \
             --title "Xomoni ${GITHUB_REF_NAME#v}" --notes-file release/release-notes.md --verify-tag
+      # The closed issue is the version's record (ADR-0037): what was checked, then the release and the run that made
+      # it. When this step fails, the release is already out: comment and close the issue by hand.
+      - name: Comment the release on its issue and close it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE: ${{ needs.readiness.outputs.issue }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$ISSUE" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::The readiness job named no release issue. $GITHUB_REF_NAME is released: comment it on its issue and close the issue by hand."
+            exit 1
+          fi
+          release_url="$(gh release view "$GITHUB_REF_NAME" --json url --jq .url)"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          body="$(printf 'Released %s: %s\n\nWorkflow run: %s\n' "$GITHUB_REF_NAME" "$release_url" "$run_url")"
+          gh issue comment "$ISSUE" --body "$body"
+          gh issue close "$ISSUE" --reason completed

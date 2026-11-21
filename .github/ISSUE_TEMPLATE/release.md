@@ -6,9 +6,10 @@ labels: release
 ---
 
 <!--
-One issue per version. Tick a box only once you have checked it, and put the proof next to it: a link to the CI run,
-the smoke test's notes. The release workflow will refuse to publish while a box under "Before the tag" is unticked
-(#340). Rules and why: https://github.com/pirdehi/xomoni/blob/main/docs/QUALITY-GATES.md
+One issue per version, titled exactly "Release vX.Y.Z". Tick a box only once you have checked it, and put the proof
+next to it: a link to the CI run, the smoke test's notes. The release workflow refuses to publish while a box under
+"Before the tag" is unticked (#340); boxes elsewhere don't count. Rules and why:
+https://github.com/pirdehi/xomoni/blob/main/docs/QUALITY-GATES.md
 -->
 
 Release pull request: #
@@ -37,7 +38,7 @@ Previous version: vX.Y.Z
 
 **Security**
 
-- [ ] No open high or critical alert in code scanning or Dependabot
+- [ ] No open high or critical alert in code scanning or Dependabot, and `npm audit --audit-level=high` passes on the release pull request (the tag runs it again)
 - [ ] New extension permissions, if any, are justified in `docs/STORE-LISTING.md`
 - [ ] The safety checklist of `docs/PLAYBOOK.md` holds: pacing, stop rules, X's data stays in the browser
 

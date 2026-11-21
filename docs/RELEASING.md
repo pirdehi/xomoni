@@ -6,7 +6,7 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
 
 Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/0037-one-written-gate-for-every-merge-and-release.md)).
 
-0. Open the release issue from the **Release** template (*Issues › New issue › Release*), titled `Release vX.Y.Z`. Tick each box only once you have checked it, with its proof. The release waits for it: the `release` environment's approval now, and the workflow's check of the issue with #340.
+0. Open the release issue from the **Release** template (*Issues › New issue › Release*), titled exactly `Release vX.Y.Z`, before the release pull request. Tick each box only once you have checked it, with its proof. The release workflow refuses to publish until every box under *Before the tag* is ticked (#340), and then waits for your approval as the `release` environment's required reviewer.
 1. On a branch, set the same version in `apps/extension/public/manifest.json` and `apps/extension/package.json` ([Semantic Versioning](https://semver.org/)).
 2. In [`CHANGELOG.md`](../CHANGELOG.md), rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and start a new empty `## [Unreleased]` above it.
 
@@ -20,18 +20,27 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
    git push origin vX.Y.Z
    ```
 
-5. The [release workflow](../.github/workflows/release.yml) runs in two jobs (#142):
-   - **build**, with a read-only token and no token left in the checkout:
+5. The [release workflow](../.github/workflows/release.yml) runs in four jobs (#142, #340). Each check below is a job or a step of it, so none can be forgotten ([gate 4](QUALITY-GATES.md#the-four-gates)):
+   - **ci**: the full CI, [`ci.yml`](../.github/workflows/ci.yml) (`verify`, `database`, `e2e`), again, on the tagged commit, with a read-only token and no secret. Its concurrency group is the tag's own, so no pull request or push to `main` cancels it.
+   - **readiness**, which can only read the code and the issues, runs `node tooling/check-release-issue.mjs vX.Y.Z`. It finds the open issue labelled `release` and titled exactly `Release vX.Y.Z`, and fails, listing every problem, when:
+     - there is no such issue, or more than one;
+     - the issue has no `## Before the tag` section, or no box in it;
+     - a box in that section is unticked. It prints each one.
+
+     Boxes in other sections don't count. An issue counts only if its author can push to the repository: the template labels an issue `release` for anyone who opens it. When the check fails, tick what is missing, with its proof, then **Re-run failed jobs**: the jobs that passed don't run again.
+   - **build**, once `ci` is green, with a read-only token and no token left in the checkout:
      - checks that the tag points at a commit on `main`;
      - installs with `npm ci --ignore-scripts`, so no dependency's install script runs where the release is built (#305);
+     - runs `npm audit --audit-level=high` on every dependency, the build's tools included, since they make the zip;
      - runs `npm run verify`;
      - checks the versions against the tag;
      - builds the extension, checks that it has no remotely hosted code (#301), and packages it reproducibly;
      - then does the same for the store build (`npm run build:store`, #303): the same code without the one-click updater, which is what the stores get (see [Chrome Web Store and Edge Add-ons](#chrome-web-store-and-edge-add-ons)).
-   - **publish**, which runs no npm code and is the only job that sees the signing key (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). It waits for your approval, as the `release` environment's required reviewer:
+   - **publish**, once `build` and `readiness` have passed. It runs no npm code and is the only job that sees the signing key (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). It waits for your approval, as the `release` environment's required reviewer. Before you approve, check that the run has the `ci` and `readiness` jobs, both green (see [what the check can't stop](#what-the-release-gate-cant-stop)). Then it:
      - signs each zip of the default build with the release signing key (Ed25519, with OpenSSL only), after checking that the release trusts that key, and checks each signature. While the extension trusts no key, it skips signing with a warning instead (see *Signing key*). The store build isn't signed: it has no updater to check a signature;
      - signs all three zips, the store build's included, with [build provenance](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) (SLSA);
-     - creates the release, with the changelog section as notes.
+     - creates the release, with the changelog section as notes;
+     - comments the release's address and this run's on the release issue, and closes the issue. The closed issue is that version's record (ADR-0037). This is the only job, in any workflow, that can write to issues. If this last step fails, the release is already out: comment and close the issue by hand.
 
    It attaches:
    - `xomoni-extension.zip`: the same name in every release, so `https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip` always serves the newest one (the website's install page links there);
@@ -39,6 +48,8 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
    - `xomoni-extension.zip.sig` and `xomoni-extension-X.Y.Z.zip.sig`: the Ed25519 signature of each, 64 bytes, which a zip install checks before *Update now* writes anything. Not there while the extension trusts no key;
    - `xomoni-extension-store-X.Y.Z.zip`: the store build, without the one-click updater, for the [store workflow](#chrome-web-store-and-edge-add-ons) to send to the stores. Not for installing by hand: it can't update itself. No signature;
    - `SHA256SUMS`: the SHA-256 of the three zips, to check a download.
+
+   **When the release fails**, the tag stays: tags never move. If the release issue or a flaky test stopped it, fix that and **Re-run failed jobs**. If the code or its dependencies did, such as `npm audit` finding a new advisory, fix it in a pull request and release the next patch version. Run `npm audit --audit-level=high` on the release pull request, as the checklist asks, so it fails there rather than on the tag.
 
 6. Record the release, so connected browsers show that it is out (#151): add a migration that inserts it into `public.extension_releases`, with `security` true when it fixes a vulnerability, merge it, then run `supabase db push`.
 
@@ -53,6 +64,10 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
    1. In **Actions → Stores → Run workflow**, from `main`: the tag, the store (`both`, `chrome` or `edge`) and **upload**. Approve the run when the `stores` environment asks. The release's store build, `xomoni-extension-store-X.Y.Z.zip`, becomes each store's draft; nothing goes to review yet.
    2. Look at the drafts in the [Chrome Web Store dashboard](https://chrome.google.com/webstore/devconsole) and in [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview): the version, and the listing if it needs a change.
    3. Run it again with **publish**. Each draft goes to review and goes live once approved, with the visibility set in the store (unlisted at first).
+
+### What the release gate can't stop
+
+A tag runs the release workflow as it is at the tagged commit. A tag on a commit whose `release.yml` lacks a check skips that check: any commit before #340, or one that removed it. The build's check that the tag is on `main` narrows this to `main`'s history, but no step of a workflow a tag starts can be made impossible to skip. What GitHub enforces, whatever the workflow says, is the `release` environment: its required reviewer, the maintainer, and its `v*` tag rule (set up on 2026-11-21). So approve a release only when its run shows `ci` and `readiness`, both green, and the release issue is complete.
 
 ## Signing key
 
@@ -141,7 +156,23 @@ Set on GitHub, not in code (#142):
 
 ## Checked on every pull request
 
-CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, then builds the store build, checks it for remote code and runs `node tooling/release.mjs package-store`, so a broken build or packaging step shows up before anyone tags. `npm run verify` builds it too and runs `node tooling/check-remote-code.mjs` on the build, which fails on code from a string or from another site, which the stores refuse (#301). The helpers are tested by `tooling/release.test.mjs` (reproducible zips included), and the store calls by `tooling/store-api.test.mjs`, against a fake network. The workflows are tested by `tooling/workflows.test.mjs`: actions pinned by SHA and only from GitHub or `supabase/setup-cli`, no token left in a checkout, no input pasted into a script, no write access by default, a release build that can't write and that builds, checks and packages the store build after the GitHub zips, the signing step, run with a throwaway key, whose signatures the extension's check accepts and which leaves the store build unsigned, and a store workflow that never builds, sends only the store build and keeps each store's keys in the `stores` environment. Signing is skipped with a warning while no key is trusted, and refused once one is, without the secret or with another key. The step that creates the release attaches the signatures only when there are some, and the build installs without install scripts. The pull request policy workflow runs again when a description or labels change, reads only, never pastes the description into a script and installs nothing; the policy itself is tested by `tooling/pr-policy.test.mjs`. They run with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`.
+CI builds the extension and runs `node tooling/release.mjs check` and `node tooling/release.mjs package`, then builds the store build, checks it for remote code and runs `node tooling/release.mjs package-store`, so a broken build or packaging step shows up before anyone tags. `npm run verify` builds it too and runs `node tooling/check-remote-code.mjs` on the build, which fails on code from a string or from another site, which the stores refuse (#301).
+
+The tooling is tested too, with `node --test 'tooling/*.test.mjs'`, part of `npm run verify`:
+
+- `tooling/release.test.mjs`: the helpers, reproducible zips included.
+- `tooling/store-api.test.mjs`: the store calls, against a fake network.
+- `tooling/release-issue.test.mjs`: the readiness check (#340), against issues shaped like the Release template and a fake `gh`. It covers missing, duplicate and outsiders' issues, a missing or empty section, unticked boxes, boxes in other sections, comments and code blocks, and the token never on a command line.
+- `tooling/pr-policy.test.mjs`: the pull request policy (#339). Its workflow runs again when a description or labels change, reads only, never pastes the description into a script and installs nothing.
+- `tooling/workflows.test.mjs`, the workflows:
+  - every action pinned by SHA and only from GitHub or `supabase/setup-cli`; reusable workflows only from this repository;
+  - no token left in a checkout, no input pasted into a script, no write access by default;
+  - a release that runs the full CI before the build and audits the dependencies at high;
+  - a readiness job that can only read, and a publish job that needs it. The publish job is the only one that can write to issues, and its last step, run with a fake `gh`, comments the release on the issue, then closes it;
+  - a release build that can't write, installs without install scripts, and builds, checks and packages the store build after the GitHub zips;
+  - the signing step, run with a throwaway key. The extension's check accepts its signatures, and it leaves the store build unsigned. It skips signing with a warning while no key is trusted, and refuses once one is, without the secret or with another key;
+  - the step that creates the release, which attaches the signatures only when there are some;
+  - a store workflow that never builds, sends only the store build and keeps each store's keys in the `stores` environment.
 
 ## The fixed id: the Chrome Web Store's key (#302)
 

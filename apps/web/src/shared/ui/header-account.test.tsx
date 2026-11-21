@@ -54,10 +54,10 @@ describe('HeaderAccount', () => {
     render(<HeaderAccount />);
     signedIn('ux@example.com', 'Omid Pirdehi');
     // The initials it shows are in its name too, so speech input can say them (WCAG 2.5.3, #342).
-    expect(screen.getByRole('button', { name: 'Account menu for ux@example.com (OP)' })).toHaveTextContent('OP');
+    expect(screen.getByRole('button', { name: 'Account menu for ux@example.com, OP' })).toHaveTextContent('OP');
 
     signedIn('zed@example.com');
-    expect(screen.getByRole('button', { name: 'Account menu for zed@example.com (Z)' })).toHaveTextContent('Z');
+    expect(screen.getByRole('button', { name: 'Account menu for zed@example.com, Z' })).toHaveTextContent('Z');
   });
 
   it('gives a signed-in person the dashboard and a menu that names them, with their pages and Sign out', async () => {
@@ -67,7 +67,7 @@ describe('HeaderAccount', () => {
     expect(screen.queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', ACCOUNT_PATHS.dashboard);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Account menu for ada@example.com (A)' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Account menu for ada@example.com, A' }));
     const menu = await screen.findByRole('menu');
     expect(menu).toHaveTextContent('Signed in as ada@example.com');
     expect(within(menu).getByRole('menuitem', { name: 'Dashboard' })).toHaveAttribute('href', ACCOUNT_PATHS.dashboard);

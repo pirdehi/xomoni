@@ -88,8 +88,8 @@ function AccountMenu({ email, name: displayName }: { email: string; name: string
   const s = useStyles();
   const signOut = useRef<HTMLFormElement>(null);
   const name = email || 'your account';
-  // The initials the avatar shows (Fluent's own rule), also in the button's name: speech input can then say what it
-  // sees (WCAG 2.5.3, #342).
+  // The initials the avatar shows (Fluent's own rule), also in the button's name, as a word of its own: speech input
+  // can then say what it sees (WCAG 2.5.3, #342).
   const initials = getInitials(displayName || email, false);
   return (
     <>
@@ -98,7 +98,7 @@ function AccountMenu({ email, name: displayName }: { email: string; name: string
           <Button
             appearance="subtle"
             shape="circular"
-            aria-label={`Account menu for ${name}${initials ? ` (${initials})` : ''}`}
+            aria-label={`Account menu for ${name}${initials ? `, ${initials}` : ''}`}
             icon={<Avatar name={displayName || email || undefined} size={28} color="colorful" />}
           />
         </MenuTrigger>

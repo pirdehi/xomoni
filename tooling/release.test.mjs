@@ -8,6 +8,7 @@ import { describe, it } from 'node:test';
 import {
   changelogSection,
   filesUnder,
+  releaseKeyWarning,
   releaseProblems,
   reproducibleZip,
   trustedReleaseKeys,
@@ -81,11 +82,11 @@ describe('release signing keys (#305)', () => {
     assert.ok(Array.isArray(trustedReleaseKeys(file)));
   });
 
-  it('must trust a key before a tag can be released, but not for a pull request’s check', () => {
+  it('lets a tag be released while no key is trusted, unsigned and with a warning', () => {
     const base = { manifestVersion: '0.2.0', packageVersion: '0.2.0', changelog: CHANGELOG };
-    assert.deepEqual(releaseProblems({ ...base, releaseKeys: [] }), []);
-    assert.deepEqual(releaseProblems({ ...base, tag: 'v0.2.0', releaseKeys: [KEY] }), []);
-    assert.match(releaseProblems({ ...base, tag: 'v0.2.0', releaseKeys: [] })[0], /trusts no signing key/);
+    assert.deepEqual(releaseProblems({ ...base, tag: 'v0.2.0' }), []);
+    assert.match(releaseKeyWarning([]), /trusts no signing key yet: this release will go out unsigned/);
+    assert.equal(releaseKeyWarning([KEY]), null);
   });
 });
 

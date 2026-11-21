@@ -5,6 +5,8 @@ import {
   RELEASE_HOSTS,
   downloadAccess,
   downloadFile,
+  dropDownloadAccess,
+  fromReleaseHosts,
   releaseUrls,
 } from '../src/update/download';
 import { UpdateFailure } from '../src/update/problems';
@@ -34,25 +36,55 @@ describe('where a release comes from (#305)', () => {
     expect(releaseUrls('0.5.0').zip.startsWith(RELEASE_DOWNLOADS)).toBe(true);
   });
 
-  it('asks for GitHub only on the person’s click, and only once', async () => {
-    const api = { contains: vi.fn(() => Promise.resolve(false)), request: vi.fn(() => Promise.resolve(true)) };
-    expect(await downloadAccess(api)).toBe(true);
-    expect(api.request).toHaveBeenCalledWith({ origins: [...RELEASE_HOSTS] });
+  /** `chrome.permissions` as the browser answers it: `contains`, `request` and `remove` as given. */
+  const api = (contains: boolean, request: () => Promise<boolean>, remove = () => Promise.resolve(true)) => ({
+    contains: vi.fn(() => Promise.resolve(contains)),
+    request: vi.fn(request),
+    remove: vi.fn(remove),
+  });
 
-    const granted = { contains: vi.fn(() => Promise.resolve(true)), request: vi.fn(() => Promise.resolve(true)) };
+  it('asks for GitHub only on the person’s click, and only when it isn’t granted', async () => {
+    const asked = api(false, () => Promise.resolve(true));
+    expect(await downloadAccess(asked)).toBe(true);
+    expect(asked.request).toHaveBeenCalledWith({ origins: [...RELEASE_HOSTS] });
+
+    const granted = api(true, () => Promise.resolve(true));
     expect(await downloadAccess(granted)).toBe(true);
     expect(granted.request).not.toHaveBeenCalled();
   });
 
   it('downloads nothing when the person says no, or Chrome won’t ask', async () => {
-    expect(
-      await downloadAccess({ contains: () => Promise.resolve(false), request: () => Promise.resolve(false) }),
-    ).toBe(false);
-    const noGesture = {
-      contains: () => Promise.resolve(false),
-      request: () => Promise.reject(new Error('This function must be called during a user gesture')),
-    };
+    expect(await downloadAccess(api(false, () => Promise.resolve(false)))).toBe(false);
+    const noGesture = api(false, () => Promise.reject(new Error('This function must be called during a user gesture')));
     expect(await downloadAccess(noGesture)).toBe(false);
+  });
+
+  it('gives the access back after use, even when Chrome won’t', async () => {
+    const given = api(true, () => Promise.resolve(true));
+    await dropDownloadAccess(given);
+    expect(given.remove).toHaveBeenCalledWith({ origins: [...RELEASE_HOSTS] });
+    await expect(
+      dropDownloadAccess(
+        api(
+          true,
+          () => Promise.resolve(true),
+          () => Promise.reject(new Error('busy')),
+        ),
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('trusts a response only from the two release hosts: never an empty URL or a look-alike', () => {
+    expect(fromReleaseHosts(`${RELEASE_DOWNLOADS}v0.5.0/xomoni-extension-0.5.0.zip`)).toBe(true);
+    expect(fromReleaseHosts(`${RELEASE_ASSETS}/github-production-release-asset/1`)).toBe(true);
+    for (const url of [
+      '',
+      'https://github.com/someone-else/xomoni/releases/download/v0.5.0/x.zip',
+      `${RELEASE_ASSETS}.evil.example/x`,
+      'https://evil.example/https://github.com/pirdehi/xomoni/releases/download/',
+    ]) {
+      expect(fromReleaseHosts(url), url).toBe(false);
+    }
   });
 });
 
@@ -66,6 +98,12 @@ describe('downloading a release file (#305)', () => {
     );
     expect(await downloadFile('x', 10, answering(new Response(null), `${RELEASE_DOWNLOADS}v0.5.0/x`))).toEqual(
       new Uint8Array(),
+    );
+  });
+
+  it('refuses a response with no URL, which no real download has', async () => {
+    expect((await failure(downloadFile('x', 10, answering(new Response(new Uint8Array([1])), '')))).detail).toBe(
+      'came from ',
     );
   });
 

@@ -8,6 +8,13 @@ export interface FolderFaults {
   failAlways?: Set<string>;
   /** Paths whose read fails. */
   failRead?: Set<string>;
+  /**
+   * Write attempts that fail, by path and attempt number (1 for the first write of that path, 2 for the next…), as
+   * when a file is written once and putting it back fails: `{ 'sw.js': [2] }`.
+   */
+  failAttempts?: Record<string, number[]>;
+  /** Called after each write lands, with its path, to act in the middle of an update (another tab, a lock check). */
+  onWrite?: (path: string) => void;
   /** The permission `queryPermission` answers, and what `requestPermission` turns it into. */
   permission?: PermissionState;
   grantOnRequest?: boolean;
@@ -39,6 +46,7 @@ export function memoryFolder(
   const writes: string[] = [];
   let permission = faults.permission ?? 'granted';
   const failed = new Set<string>();
+  const attempts = new Map<string, number>();
 
   const join = (prefix: string, part: string) => (prefix ? `${prefix}/${part}` : part);
   const checkName = (part: string) => {
@@ -62,14 +70,19 @@ export function memoryFolder(
           return Promise.resolve();
         },
         close: () => {
+          const attempt = (attempts.get(path) ?? 0) + 1;
+          attempts.set(path, attempt);
           const fails =
-            (faults.failWrite?.has(path) && !failed.has(path)) || (faults.failAlways?.has(path) && failed.has(path));
+            (faults.failWrite?.has(path) && !failed.has(path)) ||
+            (faults.failAlways?.has(path) && failed.has(path)) ||
+            !!faults.failAttempts?.[path]?.includes(attempt);
           if (fails) {
             failed.add(path);
             return Promise.reject(new DOMException(`Couldn’t write ${path}`, 'InvalidStateError'));
           }
           files.set(path, pending ?? new Uint8Array());
           writes.push(path);
+          faults.onWrite?.(path);
           return Promise.resolve();
         },
         abort: () => Promise.resolve(),

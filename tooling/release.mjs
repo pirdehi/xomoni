@@ -1,6 +1,7 @@
 // Releasing the extension (docs/RELEASING.md). The release workflow runs these; anyone can run them locally.
 //
-//   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section
+//   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section; warns
+//                                             while no release signing key is trusted (#305)
 //   node tooling/release.mjs notes vX.Y.Z     prints the changelog section, for the GitHub release
 //   node tooling/release.mjs package          zips apps/extension/dist into apps/extension/release, with SHA256SUMS;
 //                                             reproducible: files dated SOURCE_DATE_EPOCH, else the last commit's time;
@@ -13,6 +14,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   changelogSection,
+  releaseKeyWarning,
   releaseProblems,
   reproducibleZip,
   trustedReleaseKeys,
@@ -29,13 +31,10 @@ const releaseKeys = trustedReleaseKeys(read('apps/extension/src/update/release-k
 const [command, tag] = process.argv.slice(2);
 
 if (command === 'check') {
-  const problems = releaseProblems({
-    manifestVersion,
-    packageVersion,
-    changelog: read('CHANGELOG.md'),
-    tag,
-    releaseKeys,
-  });
+  const problems = releaseProblems({ manifestVersion, packageVersion, changelog: read('CHANGELOG.md'), tag });
+  // `::warning::` makes it an annotation on the release's run in GitHub Actions.
+  const warning = releaseKeyWarning(releaseKeys);
+  if (warning) console.warn(`::warning::${warning}`);
   if (problems.length) {
     console.error(`Not ready to release:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
     process.exit(1);

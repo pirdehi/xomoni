@@ -11,6 +11,8 @@ export type UpdateProblem =
   | 'not-zip'
   /** The version asked for isn't newer than the one running. */
   | 'not-newer'
+  /** An earlier update didn't finish; its backup must be put back first, and is never written over. */
+  | 'unfinished'
   /** A job runs (the runner holds its Web Lock); the update waits until none does. */
   | 'busy'
   /** Xomoni's folder hasn't been chosen yet. */
@@ -35,6 +37,10 @@ export type UpdateProblem =
   | 'wrong-version'
   /** The new version has another `key`, so Chrome would see another extension and the data would stay behind. */
   | 'new-identity'
+  /** The new version asks for more access than this one; Chrome shows that only when it is installed by hand. */
+  | 'new-permissions'
+  /** The new version needs a newer browser than this one (`minimum_chrome_version`). */
+  | 'old-browser'
   /** Writing the files failed; the old ones were put back. */
   | 'write-failed'
   /** Writing failed and putting the old files back failed too; the backup is kept to try again. */
@@ -73,6 +79,8 @@ export function problemText(problem: UpdateProblem, version: string, current: st
       return 'This Xomoni came from a store, which updates it by itself.';
     case 'not-newer':
       return `Xomoni ${current} is already as new as ${version}.`;
+    case 'unfinished':
+      return 'An earlier update didn’t finish. Put back the old version first, with the notice above, then update.';
     case 'busy':
       return 'A job is running. Xomoni updates only while no job runs: pause it, or wait until it ends, then update.';
     case 'no-folder':
@@ -97,6 +105,10 @@ export function problemText(problem: UpdateProblem, version: string, current: st
       return `The download says it is another version than ${version}, so it was thrown away. Nothing was changed.`;
     case 'new-identity':
       return `Xomoni ${version} is a new extension to Chrome, so updating in place would leave your data behind. Export your data first (Settings › Move your data), then install ${version} by hand and import it there.`;
+    case 'new-permissions':
+      return `Xomoni ${version} asks for more access than ${current}, so it can’t update in one click. Download it and load it by hand: Chrome then shows what it asks for. Nothing was changed.`;
+    case 'old-browser':
+      return `Xomoni ${version} needs a newer browser than this one. Update your browser first (Chrome: Settings › About Chrome), then update Xomoni. Nothing was changed.`;
     case 'write-failed':
       return `Couldn’t write Xomoni ${version} into its folder, so the old files were put back. Xomoni ${current} keeps running.`;
     case 'rollback-failed':

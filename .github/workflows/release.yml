@@ -34,7 +34,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # No dependency's install script runs where the release is built (#305, ADR-0033). None is needed: only esbuild
+      # has one, and it works without it. The repository's own `prepare` (git hooks) has no place here either.
+      - run: npm ci --ignore-scripts
       - name: The whole quality gate, as for any merge
         run: npm run verify
       - name: Versions match the tag; the changelog has the section
@@ -59,7 +61,8 @@ jobs:
     name: publish
     needs: build
     runs-on: ubuntu-latest
-    # The release signing key is a secret of this environment, which only v* tags may use (docs/RELEASING.md).
+    # The release signing key is a secret of this environment. GitHub, not this file, enforces its protection: only v*
+    # tags may use it, and the maintainer approves each run (docs/RELEASING.md, Signing key).
     environment: release
     permissions:
       contents: write
@@ -71,14 +74,20 @@ jobs:
           name: release
           path: release
       # Ed25519 over each zip's bytes, for one-click updates of a zip install (#305, ADR-0033). Only OpenSSL runs here.
+      # While the extension trusts no key, the release goes out unsigned, with a warning: no Xomoni can update in one
+      # click without a key anyway. Once it trusts one, a release can't go out unsigned or signed by another key.
       # The key is written to a file only this job can read and removed when the step ends; it is never printed.
       - name: Sign the zips for one-click updates (Ed25519)
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         run: |
           set -euo pipefail
+          if [ ! -s release/release-keys ]; then
+            echo "::warning::Not signed: apps/extension/src/update/release-keys.json trusts no signing key yet, so no Xomoni can update to this release in one click. See Signing key in docs/RELEASING.md."
+            exit 0
+          fi
           if [ -z "${RELEASE_SIGNING_KEY:-}" ]; then
-            echo "::error::The RELEASE_SIGNING_KEY secret is not set: see Signing key in docs/RELEASING.md."
+            echo "::error::The extension trusts a signing key, but the RELEASE_SIGNING_KEY secret is not set: see Signing key in docs/RELEASING.md."
             exit 1
           fi
           key="$RUNNER_TEMP/release-signing.pem"
@@ -105,5 +114,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/*.zip release/*.zip.sig release/SHA256SUMS \
+          set -euo pipefail
+          # The signatures only when the release was signed (see the signing step).
+          shopt -s nullglob
+          files=(release/*.zip release/*.zip.sig release/SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" \
             --title "Xomoni ${GITHUB_REF_NAME#v}" --notes-file release/release-notes.md --verify-tag

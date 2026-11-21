@@ -10,12 +10,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useState } from 'react';
 import {
   type OneClickState,
+  type PutBackResult,
   type UpdateStep,
   oneClickState,
   putBackUnfinished,
   unfinishedUpdate,
   updateOutcome,
   updateTo,
+  updateWriting,
 } from '../../update/update';
 import { kvOwnFolderStore, pickOwnFolder, runningXomoni } from '../../update/own-folder';
 import { type UpdateProblem, problemText } from '../../update/problems';
@@ -116,7 +118,8 @@ export function OneClickUpdate({ version }: { version: string }) {
       setStopped(result.problem);
       setProblem(problemText(result.problem, version, current));
     } catch (err) {
-      setProblem(`Couldn’t update: ${errorMessage(err)}. Nothing was changed.`);
+      // Unexpected: say what failed, and nothing more. A write cut short shows itself above, with *Put back*.
+      setProblem(`Couldn’t update: ${errorMessage(err)}.`);
     }
     setStep(null);
     setBusy(false);
@@ -227,13 +230,56 @@ export function UpdatesCard() {
   );
 }
 
+/** Whether an update is writing in some dashboard tab, looked at every `everyMs`; undefined until the first look. */
+function useUpdateWriting(everyMs = 1500): boolean | undefined {
+  const [writing, setWriting] = useState<boolean>();
+  useEffect(() => {
+    let live = true;
+    const look = () =>
+      void updateWriting().then(
+        (now) => live && setWriting(now),
+        () => live && setWriting(false),
+      );
+    look();
+    const timer = setInterval(look, everyMs);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [everyMs]);
+  return writing;
+}
+
+/** What the notice says after *Put back*, for each result; null when Xomoni restarts. */
+function putBackWords(result: PutBackResult, unfinished: { from: string; to: string }): string | null {
+  switch (result) {
+    case 'restored':
+    case 'done':
+    case 'stale':
+      return null;
+    case 'failed':
+      return 'Some files couldn’t be put back. Try again, or download Xomoni again by hand.';
+    case 'busy':
+      return problemText('busy', unfinished.to, unfinished.from);
+    case 'no-folder':
+      return 'Xomoni’s folder was forgotten. Download Xomoni again by hand to repair it.';
+    case 'needs-click':
+      return `Chrome wants a fresh click before it asks about Xomoni’s folder. Press Put back ${unfinished.from} again.`;
+    case 'folder-denied':
+      return problemText('folder-denied', unfinished.to, unfinished.from);
+  }
+}
+
 /**
  * Above every page (#305): after a one-click update, whether the new version is the one running (said once, as a
- * toast), and an update cut short while writing, with *Put back* to restore the version it replaced.
+ * toast), and an update cut short while writing, with *Put back* to restore the version it replaced. While an update
+ * writes, in this tab or another, its journal is no sign of trouble, so nothing shows. A journal that no longer
+ * applies is forgotten instead of put back (`updateOutcome`, `putBackUnfinished`).
  */
 export function UpdateRecovery() {
   const styles = useStyles();
   const unfinished = useLiveQuery(() => unfinishedUpdate());
+  const writing = useUpdateWriting();
   const [putting, setPutting] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -252,21 +298,20 @@ export function UpdateRecovery() {
     );
   }, []);
 
-  if (!unfinished) return null;
+  if (!unfinished || writing !== false) return null;
   const putBack = async () => {
     setPutting(true);
     setProblem(null);
     const result = await putBackUnfinished().catch(() => 'failed' as const);
     setPutting(false);
-    const words = {
-      restored: null,
-      failed: 'Some files couldn’t be put back. Try again, or download Xomoni again by hand.',
-      busy: problemText('busy', unfinished.to, unfinished.from),
-      'no-folder': 'Xomoni’s folder was forgotten. Download Xomoni again by hand to repair it.',
-      'needs-click': `Chrome wants a fresh click before it asks about Xomoni’s folder. Press Put back ${unfinished.from} again.`,
-      'folder-denied': problemText('folder-denied', unfinished.to, unfinished.from),
-    }[result];
-    setProblem(words);
+    if (result === 'done') toast(`The update to Xomoni ${unfinished.to} had finished: nothing needed putting back.`);
+    if (result === 'stale') {
+      toast(
+        `Xomoni didn’t put back ${unfinished.from}: this Xomoni or its folder holds another version now, and that would mix versions. The activity log says more.`,
+        'critical',
+      );
+    }
+    setProblem(putBackWords(result, unfinished));
   };
   return (
     <div className={styles.notice}>

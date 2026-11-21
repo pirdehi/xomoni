@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build && node scripts/build-content.mjs",
+    "build:store": "vite build --mode store && node scripts/build-content.mjs",
     "watch": "node scripts/watch.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run --coverage",

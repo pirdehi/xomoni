@@ -270,7 +270,7 @@ The Chrome Web Store (unlisted first) and Edge Add-ons as the way to install, wi
 | ⬜ | 4 · A fixed extension id from the store's key, and release 0.5.0 | [#302](https://github.com/pirdehi/xomoni/issues/302) | |
 | ⬜ | 5 · Submitting: store uploads from GitHub Actions, the Chrome Web Store unlisted, Edge Add-ons | [#303](https://github.com/pirdehi/xomoni/issues/303) | |
 | ⬜ | 6 · /install with one button per browser, and bringing zip users to the store | [#304](https://github.com/pirdehi/xomoni/issues/304) | |
-| ⬜ | 7 · Signed one-click updates for the zip (ADR-0033) | [#305](https://github.com/pirdehi/xomoni/issues/305) | |
+| ✅ | 7 · Signed one-click updates for the zip (ADR-0033): signing starts once the maintainer adds the key, and the store build has no updater | [#305](https://github.com/pirdehi/xomoni/issues/305) | [#316](https://github.com/pirdehi/xomoni/pull/316) |
 | 🔄 | 8 · Public listing, docs (ADR-0034), install FAQ (the FAQ is in) | [#306](https://github.com/pirdehi/xomoni/issues/306) | [#311](https://github.com/pirdehi/xomoni/pull/311) |
 
 ## Dropped

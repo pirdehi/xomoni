@@ -33,7 +33,12 @@ Out of scope: X's own platform, rate limits or enforcement decisions; social eng
 - The website cannot start deletions ([ADR-0006](docs/adr/0006-website-is-view-only.md)).
 - Every database table has Row Level Security; the browser uses only the publishable key.
 - Releases are built with a read-only token from a commit on `main`, signed with build provenance, reproducible and immutable once published ([releasing](docs/RELEASING.md#checking-a-download), #142).
-- A zip install updates itself only with a release signed by the release workflow's Ed25519 key, which exists only as a GitHub Actions secret ([ADR-0033](docs/adr/0033-one-click-updates-for-the-zip-install.md), #305). Before anything is written it checks the signature with the browser's own Web Crypto, that the zip is the newer version it claims, that every path stays inside the folder the person chose, and that no job runs. A write that fails is undone, and the update is in the activity log.
+- A zip install updates itself only with a release signed by the release workflow's Ed25519 key ([ADR-0033](docs/adr/0033-one-click-updates-for-the-zip-install.md), #305).
+  - The key exists only as a secret of the `release` environment, whose required reviewer (the maintainer) approves each signing run.
+  - Before anything is written, Xomoni checks the signature with the browser's own Web Crypto. It also checks that the zip is the newer version it claims, asks for no more access than the version running and no newer browser, and that every path stays inside the folder the person chose.
+  - Nothing is written while a job runs, or while the backup of an update that didn't finish is kept. A write that fails is undone, and the update is in the activity log.
+  - The release is built without dependencies' install scripts. A store build carries no updater.
+  - The signing key follows the tag, not reviewed code; ADR-0033 says what that leaves open.
 
 ## Cloud security review (2026-10-31)
 

@@ -1,10 +1,12 @@
 // Writing a checked release into Xomoni's folder (#305, ADR-0033), all of it or none of it. Before the first write,
 // every file the release replaces is read into a backup, which is also kept in IndexedDB (the journal), so an update
-// cut short (the tab closed, the computer slept) can still be undone next time. New files go first, the ones that
-// replace old files next, and `manifest.json` last, so the folder says the new version only once everything else is
-// there. If a write fails, every file written so far is put back (or removed, if it was new). Only after all of it
-// succeeded are the old version's leftovers in `assets/` removed, the one folder only Xomoni's build writes.
-import { kvGet, kvSet } from '../shared/db';
+// cut short (the tab closed, the computer slept) can still be undone next time. A journal already kept is never
+// written over: it may be the only copy of the old files. New files go first, the ones that replace old files next,
+// and `manifest.json` last, so the folder says the new version only once everything else is there. If a write fails,
+// every file written so far is put back (or removed, if it was new). Only after all of it succeeded are the old
+// version's leftovers removed: files in `assets/` that the previous one-click update wrote and this one doesn't, and
+// never a file Xomoni didn't write itself.
+import { UPDATE_KEYS, kvGet, kvSet } from '../shared/db';
 import type { OwnFolder } from './own-folder';
 import { UpdateFailure } from './problems';
 import type { ReleaseFile } from './release-zip';
@@ -32,15 +34,44 @@ export interface JournalStore {
   set(journal: UpdateJournal | null): Promise<void>;
 }
 
-const JOURNAL_KEY = 'updateJournal';
-
-/** The journal in the `kv` table; IndexedDB keeps the backups' bytes as they are. */
+/** The journal in the `kv` table; IndexedDB keeps the backups' bytes as they are. Wiping local data keeps it. */
 export const kvJournal: JournalStore = {
   /** The update that didn't finish, or null. */
-  get: () => kvGet<UpdateJournal | null>(JOURNAL_KEY, null),
+  get: () => kvGet<UpdateJournal | null>(UPDATE_KEYS.journal, null),
   /** Keeps the journal, bytes and all; null forgets it. */
-  set: (journal) => kvSet(JOURNAL_KEY, journal),
+  set: (journal) => kvSet(UPDATE_KEYS.journal, journal),
 };
+
+/** The files a one-click update wrote: the version, and every path in it. */
+export interface Shipped {
+  readonly version: string;
+  readonly paths: readonly string[];
+}
+
+/** Where the files the last one-click update wrote are kept: IndexedDB in the dashboard, memory in tests. */
+export interface ShippedStore {
+  /** The files the last one-click update wrote, or null when none did. */
+  get(): Promise<Shipped | null>;
+  /** Keeps the files an update just wrote. */
+  set(shipped: Shipped): Promise<void>;
+}
+
+/** The files the last one-click update wrote, in the `kv` table. Wiping local data keeps them. */
+export const kvShipped: ShippedStore = {
+  /** The files the last one-click update wrote, or null when none did. */
+  get: () => kvGet<Shipped | null>(UPDATE_KEYS.shipped, null),
+  /** Keeps the files an update just wrote. */
+  set: (shipped) => kvSet(UPDATE_KEYS.shipped, shipped),
+};
+
+/** The two stores a write keeps: the journal and the files written. */
+export interface WriteStores {
+  journal: JournalStore;
+  shipped: ShippedStore;
+}
+
+/** The stores in IndexedDB, as the dashboard uses them. */
+export const KV_STORES: WriteStores = { journal: kvJournal, shipped: kvShipped };
 
 /** The folder only Xomoni's build writes, whose leftovers an update may remove. */
 const OWNED_FOLDER = 'assets';
@@ -105,15 +136,17 @@ export async function writeFileAt(root: OwnFolder, path: string, data: Uint8Arra
   }
 }
 
-/** Removes the file at `path`, if it is there. */
-async function removeFileAt(root: OwnFolder, path: string): Promise<void> {
+/** Removes the file at `path`, if it is there; true when there was one. */
+async function removeFileAt(root: OwnFolder, path: string): Promise<boolean> {
   const { dirs, name } = partsOf(path);
   const folder = await folderAt(root, dirs);
-  if (!folder) return;
+  if (!folder) return false;
   try {
     await folder.removeEntry(name);
+    return true;
   } catch (err) {
     if (!notFound(err)) throw err;
+    return false;
   }
 }
 
@@ -146,16 +179,19 @@ export interface WriteResult {
 
 /**
  * Writes `files` into `root`, the update from `from` to `to`, all or nothing (see the top of this file). Throws
- * `UpdateFailure`: `write-failed` once everything written was put back (the journal is forgotten), or
- * `rollback-failed` when some of it couldn't be (the journal stays, for `restoreJournal`). Nothing is written when
- * the backup can't be read.
+ * `UpdateFailure`: `unfinished`, writing nothing, while an earlier update's journal is kept; `write-failed` once
+ * everything written was put back (the journal is forgotten); or `rollback-failed` when some of it couldn't be (the
+ * journal stays, for `restoreJournal`). Nothing is written when the backup can't be read or kept. Once every file is
+ * written it doesn't throw: a journal it can't forget is found stale after the reload (`update.ts`).
  */
 export async function writeRelease(
   root: OwnFolder,
   files: readonly ReleaseFile[],
   update: { from: string; to: string; at: number },
-  journal: JournalStore = kvJournal,
+  stores: WriteStores = KV_STORES,
 ): Promise<WriteResult> {
+  const { journal, shipped } = stores;
+  if (await journal.get()) throw new UpdateFailure('unfinished', 'an earlier update’s backup is still kept');
   const planned: (Backup & { data: Uint8Array })[] = [];
   try {
     for (const file of files) planned.push({ ...file, old: await readFileAt(root, file.path) });
@@ -174,29 +210,38 @@ export async function writeRelease(
   } catch (err) {
     // The one that failed too: Chrome leaves it whole, but a file system that doesn't is put right as well.
     const restored = await putBack(root, order.slice(0, done + 1));
-    if (restored) await journal.set(null);
+    if (restored) await journal.set(null).catch(() => undefined);
     throw new UpdateFailure(restored ? 'write-failed' : 'rollback-failed', String(err));
   }
-  await journal.set(null);
-  return { written: done, removed: await removeLeftovers(root, new Set(files.map((file) => file.path))) };
+  const before = await shipped.get().catch(() => null);
+  const paths = files.map((file) => file.path);
+  await shipped.set({ version: update.to, paths }).catch(() => undefined);
+  await journal.set(null).catch(() => undefined);
+  // Read back from IndexedDB: taken as a list of paths only when it is one, so nothing here can throw after the write.
+  const leftovers =
+    before?.version === update.from && Array.isArray(before.paths)
+      ? before.paths.filter((path): path is string => typeof path === 'string')
+      : [];
+  return { written: done, removed: await removeLeftovers(root, leftovers, new Set(paths)) };
 }
 
-/** Removes the files in `assets/` the new version doesn't have; best effort, since leftovers harm nothing. */
-async function removeLeftovers(root: OwnFolder, keep: ReadonlySet<string>): Promise<number> {
+/**
+ * Removes the old version's files that the new one doesn't have: only those in `assets/` that the previous one-click
+ * update wrote (`shippedBefore`), never a file Xomoni didn't write itself. Best effort, since a leftover harms nothing.
+ */
+async function removeLeftovers(
+  root: OwnFolder,
+  shippedBefore: readonly string[],
+  keep: ReadonlySet<string>,
+): Promise<number> {
   let removed = 0;
-  try {
-    const folder = await folderAt(root, [OWNED_FOLDER]);
-    if (!folder) return 0;
-    const stale: string[] = [];
-    for await (const entry of folder.values()) {
-      if (entry.kind === 'file' && !keep.has(`${OWNED_FOLDER}/${entry.name}`)) stale.push(entry.name);
+  for (const path of shippedBefore) {
+    if (!path.startsWith(`${OWNED_FOLDER}/`) || keep.has(path)) continue;
+    try {
+      if (await removeFileAt(root, path)) removed++;
+    } catch {
+      // A leftover that stays is only a few unused kilobytes.
     }
-    for (const name of stale) {
-      await folder.removeEntry(name);
-      removed++;
-    }
-  } catch {
-    // A leftover that stays is only a few unused kilobytes.
   }
   return removed;
 }

@@ -4,7 +4,7 @@
 // again on the next click. Xomoni checks that the folder holds this very Xomoni (its `manifest.json` names this
 // extension at this version) before it keeps the folder and again before every update.
 
-import { kvGet, kvSet } from '../shared/db';
+import { UPDATE_KEYS, kvGet, kvSet } from '../shared/db';
 import { asObject, asString } from '../shared/json';
 
 /** A file in the folder: the parts of `FileSystemFileHandle` Xomoni uses. */
@@ -58,7 +58,7 @@ export interface OwnFolderStore {
   set(folder: OwnFolder | null): Promise<void>;
 }
 
-const FOLDER_KEY = 'ownFolder';
+const FOLDER_KEY = UPDATE_KEYS.folder;
 
 /** The handle kept in IndexedDB, which stores handles as they are, with their permission, between visits. */
 export const kvOwnFolderStore: OwnFolderStore = {

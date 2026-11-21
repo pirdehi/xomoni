@@ -33,6 +33,7 @@ export function releaseUrls(version: string): { zip: string; signature: string }
 export interface PermissionsApi {
   contains(permissions: { origins: string[] }): Promise<boolean>;
   request(permissions: { origins: string[] }): Promise<boolean>;
+  remove(permissions: { origins: string[] }): Promise<boolean>;
 }
 
 /**
@@ -48,9 +49,17 @@ export async function downloadAccess(api: PermissionsApi): Promise<boolean> {
   }
 }
 
-/** Whether a response came from one of the two release hosts (an empty URL is a response made in memory). */
-function fromReleaseHosts(url: string): boolean {
-  return !url || url.startsWith(RELEASE_DOWNLOADS) || url.startsWith(`${RELEASE_ASSETS}/`);
+/**
+ * Gives the access to GitHub back once the update has what it downloaded, so Xomoni holds it only while it downloads;
+ * the next update asks again on its click. Best effort: a failure leaves only an access the person granted.
+ */
+export async function dropDownloadAccess(api: PermissionsApi): Promise<void> {
+  await api.remove({ origins: [...RELEASE_HOSTS] }).catch(() => undefined);
+}
+
+/** Whether a response came from one of the two release hosts: anything else, an empty URL included, is refused. */
+export function fromReleaseHosts(url: string): boolean {
+  return url.startsWith(RELEASE_DOWNLOADS) || url.startsWith(`${RELEASE_ASSETS}/`);
 }
 
 /**

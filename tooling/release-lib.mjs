@@ -12,10 +12,10 @@ export function versionOfTag(tag) {
 
 /**
  * The problems with releasing `tag`: the extension's manifest and package must carry the same version, the tag
- * (when given) must name it, the changelog must have a section for it, and the extension must trust a release signing
- * key (`releaseKeys`, when given). Empty when all is in order.
+ * (when given) must name it, and the changelog must have a section for it. Empty when all is in order. Trusting no
+ * release signing key isn't one: such a release goes out unsigned, with a warning (`releaseKeyWarning`, #305).
  */
-export function releaseProblems({ manifestVersion, packageVersion, changelog, tag, releaseKeys = null }) {
+export function releaseProblems({ manifestVersion, packageVersion, changelog, tag }) {
   const problems = [];
   if (manifestVersion !== packageVersion)
     problems.push(`manifest.json says ${manifestVersion}, apps/extension/package.json says ${packageVersion}`);
@@ -26,11 +26,6 @@ export function releaseProblems({ manifestVersion, packageVersion, changelog, ta
       if (version !== manifestVersion) problems.push(`the tag ${tag} doesn't match the manifest's ${manifestVersion}`);
       if (changelogSection(changelog, version) == null) problems.push(`CHANGELOG.md has no section for ${version}`);
     }
-    // A tagged release is signed for one-click updates (#305): the extension must trust a key first.
-    if (releaseKeys != null && releaseKeys.length === 0)
-      problems.push(
-        'apps/extension/src/update/release-keys.json trusts no signing key (docs/RELEASING.md, Signing key)',
-      );
   }
   return problems;
 }
@@ -50,6 +45,16 @@ export function trustedReleaseKeys(json) {
   if (bad.length)
     throw new Error(`release-keys.json has keys that aren't base64 Ed25519 public keys: ${bad.join(', ')}`);
   return keys;
+}
+
+/**
+ * The warning for a release while the extension trusts no signing key (#305, ADR-0033): it goes out unsigned, and no
+ * Xomoni can update to it in one click. Null once a key is trusted, when signing is required instead.
+ */
+export function releaseKeyWarning(releaseKeys) {
+  return releaseKeys.length
+    ? null
+    : 'apps/extension/src/update/release-keys.json trusts no signing key yet: this release will go out unsigned, and no Xomoni can update to it in one click (docs/RELEASING.md, Signing key).';
 }
 
 /** The notes under `## [version]` in a Keep a Changelog file, without the heading; null when there is none. */

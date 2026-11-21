@@ -215,8 +215,11 @@ The extension has a signed-out state of its own ([ADR-0023](adr/0023-sign-out-of
 A zip install can update itself in one click ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md), #305):
 - the person picks the folder Xomoni was loaded from once, and Xomoni checks that it holds this Xomoni at this version;
 - on *Update now*, only while no job runs, `update/` downloads the release from this repository's GitHub releases and checks its Ed25519 signature (the release workflow holds the key; the extension trusts `update/release-keys.json`);
-- it checks every path and the manifest's version, then writes the files into that folder under the runner's lock, all or nothing, and calls `chrome.runtime.reload()`;
+- it checks every path, the manifest's version, and that it asks for no more access and no newer browser;
+- then it writes the files into that folder under the runner's lock, all or nothing, never over the backup of an update that didn't finish, and calls `chrome.runtime.reload()`;
 - the id, and with it every byte of data, stays.
+
+A store build (`npm run build:store`) puts a stand-in in place of the dashboard's update component, so nothing in it imports `update/`, and drops the GitHub access from its manifest: a store updates Xomoni itself.
 
 One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)):
 - every page of the site asks the extension how it stands (`modules/extension`, `cloud/website.ts`), at the id a page of Xomoni named (`#ext=`), else at a store's fixed id (`STORE_EXTENSION_IDS` in `@xomoni/bridge`, #302): the best that answers wins;

@@ -118,7 +118,12 @@ describe('release signing for one-click updates (#305)', () => {
     assert.match(publish, /^ {10}RELEASE_SIGNING_KEY: \$\{\{ secrets\.RELEASE_SIGNING_KEY \}\}$/m);
     assert.doesNotMatch(build, /secrets\.|RELEASE_SIGNING_KEY/);
     assert.ok(publish.indexOf(SIGN_STEP) < publish.indexOf('Create the release'), 'signed before the release exists');
-    assert.match(publish, /gh release create "\$GITHUB_REF_NAME" release\/\*\.zip release\/\*\.zip\.sig /);
+    assert.match(publish, /files=\(release\/\*\.zip release\/\*\.zip\.sig release\/SHA256SUMS\)/);
+  });
+
+  it('builds the release without running any dependency’s install script', () => {
+    assert.match(build, /^ {6}- run: npm ci --ignore-scripts$/m);
+    assert.doesNotMatch(build, /^ {6}- run: npm ci$/m);
   });
 
   it('never prints the key, and removes the file it writes', () => {
@@ -155,11 +160,31 @@ describe('release signing for one-click updates (#305)', () => {
     }
   });
 
-  it('refuses to release without the secret', () => {
+  it('releases unsigned, with a warning, while the extension trusts no key, even with the secret set', () => {
+    for (const secret of ['', throwawayKey().pem]) {
+      const run = runSigning({ secret, trusted: [] });
+      try {
+        assert.equal(run.status, 0, run.output);
+        assert.match(run.output, /::warning::Not signed: .*trusts no signing key yet/);
+        assert.deepEqual(
+          readdirSync(join(run.dir, 'release')).filter((name) => name.endsWith('.sig')),
+          [],
+        );
+        assert.deepEqual(readdirSync(run.runnerTemp), [], 'no key file written');
+      } finally {
+        run.cleanup();
+      }
+    }
+  });
+
+  it('refuses to release without the secret once the extension trusts a key', () => {
     const run = runSigning({ secret: '', trusted: [throwawayKey().raw] });
     try {
       assert.notEqual(run.status, 0);
-      assert.match(run.output, /::error::The RELEASE_SIGNING_KEY secret is not set/);
+      assert.match(
+        run.output,
+        /::error::The extension trusts a signing key, but the RELEASE_SIGNING_KEY secret is not set/,
+      );
       assert.deepEqual(
         readdirSync(join(run.dir, 'release')).filter((name) => name.endsWith('.sig')),
         [],
@@ -191,4 +216,54 @@ describe('release signing for one-click updates (#305)', () => {
       }
     },
   );
+});
+
+describe('creating the release (#305)', () => {
+  const release = workflows.find((w) => w.name === 'release.yml').text;
+
+  /** Runs the create step with a `gh` that prints its arguments, over these files in release/. */
+  function runCreate(names) {
+    const dir = mkdtempSync(join(tmpdir(), 'xomoni-create-'));
+    mkdirSync(join(dir, 'release'));
+    mkdirSync(join(dir, 'bin'));
+    for (const name of names) writeFileSync(join(dir, 'release', name), name);
+    writeFileSync(join(dir, 'bin/gh'), '#!/bin/sh\nfor arg in "$@"; do echo "$arg"; done\n', { mode: 0o755 });
+    const script = stepScript(release, 'Create the release');
+    const env = { PATH: `${join(dir, 'bin')}:${process.env.PATH}`, GITHUB_REF_NAME: 'v0.5.0' };
+    const result = spawnSync('bash', ['-c', script], { cwd: dir, env, encoding: 'utf8' });
+    rmSync(dir, { recursive: true, force: true });
+    return { status: result.status, args: result.stdout.trim().split('\n'), output: result.stderr };
+  }
+
+  const ZIPS = ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip'];
+
+  it('attaches the signatures with the zips when the release was signed', () => {
+    const run = runCreate([...ZIPS, ...ZIPS.map((zip) => `${zip}.sig`), 'SHA256SUMS']);
+    assert.equal(run.status, 0, run.output);
+    assert.deepEqual(run.args.slice(0, 7), [
+      'release',
+      'create',
+      'v0.5.0',
+      'release/xomoni-extension-0.5.0.zip',
+      'release/xomoni-extension.zip',
+      'release/xomoni-extension-0.5.0.zip.sig',
+      'release/xomoni-extension.zip.sig',
+    ]);
+    assert.ok(run.args.includes('release/SHA256SUMS'));
+    assert.ok(run.args.includes('--verify-tag'));
+  });
+
+  it('attaches only the zips and the checksums when it wasn’t, with no literal pattern left over', () => {
+    const run = runCreate([...ZIPS, 'SHA256SUMS']);
+    assert.equal(run.status, 0, run.output);
+    assert.deepEqual(run.args.slice(0, 6), [
+      'release',
+      'create',
+      'v0.5.0',
+      'release/xomoni-extension-0.5.0.zip',
+      'release/xomoni-extension.zip',
+      'release/SHA256SUMS',
+    ]);
+    assert.ok(!run.args.some((arg) => arg.includes('*')));
+  });
 });

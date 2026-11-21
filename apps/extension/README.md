@@ -6,6 +6,7 @@ The part of Xomoni that acts on X. A Chrome MV3 extension that deletes the perso
 
 ```bash
 npm run build -w @xomoni/extension       # → apps/extension/dist
+npm run build:store -w @xomoni/extension # the same for a store, without the one-click updater (ADR-0033)
 npm run watch -w @xomoni/extension       # rebuild on change
 npm run preview:ui -w @xomoni/extension  # dashboard with demo data, no X connection
 npm run store:images -w @xomoni/extension # store icon, logo, screenshots and promo tile → docs/store
@@ -57,7 +58,7 @@ Chrome never updates an extension loaded unpacked. When a newer version is out, 
 - once, *Set up one-click updates* (or *Settings › Updates*) asks for the folder you loaded Xomoni from, and Chrome asks to let Xomoni change it;
 - then *Update now* downloads the release from GitHub, checks its signature and every file, writes it into that folder while no job runs, and restarts Xomoni.
 
-Your data stays: Chrome keeps the same extension. It needs Chrome 137 or later (Ed25519 in Web Crypto), and releases signed with the key the release workflow holds ([docs/RELEASING.md](../../docs/RELEASING.md#signing-key)).
+Your data stays: Chrome keeps the same extension. It needs Chrome 137 or later (Ed25519 in Web Crypto), and releases signed with the key the release workflow holds ([docs/RELEASING.md](../../docs/RELEASING.md#signing-key)). A new version that asks for more access, or a newer browser, is installed by hand instead, where Chrome shows what it asks for. The store build (`npm run build:store`) has no updater: a store updates Xomoni itself.
 
 ## Moving to a new Xomoni
 

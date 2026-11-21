@@ -26,11 +26,24 @@ export interface ReleaseFile {
   readonly data: Uint8Array;
 }
 
-/** A release read and checked: its version, its manifest's `key` (null without one) and its files. */
+/** A release read and checked: its version, its manifest's `key` (null without one), its manifest and its files. */
 export interface ReleasePackage {
   readonly version: string;
   readonly key: string | null;
+  /** The release's `manifest.json`, parsed, for what it asks of Chrome (`manifest-access.ts`, `minimumChrome`). */
+  readonly manifest: Readonly<Record<string, unknown>>;
   readonly files: readonly ReleaseFile[];
+}
+
+/**
+ * The major Chrome version a manifest's `minimum_chrome_version` asks for (`"137"` or `"137.0.7151"`), or null when it
+ * asks for none. A value that can't be read asks for every version there is, so it never passes by mistake.
+ */
+export function minimumChrome(manifest: Readonly<Record<string, unknown>>): number | null {
+  const value = manifest.minimum_chrome_version;
+  if (value === undefined) return null;
+  const major = typeof value === 'string' ? /^(\d{1,4})(\.\d+){0,3}$/.exec(value)?.[1] : undefined;
+  return major === undefined ? Number.POSITIVE_INFINITY : Number(major);
 }
 
 /**
@@ -120,5 +133,5 @@ export async function readRelease(zip: Blob, version: string): Promise<ReleasePa
   if (found !== version) throw new UpdateFailure('wrong-version', `the zip says ${String(found)}`);
   const paths = new Set(files.map((file) => file.path));
   for (const script of namedScripts(manifest)) if (!paths.has(script)) refuse(`${script} is missing`);
-  return { version, key: typeof manifest.key === 'string' ? manifest.key : null, files };
+  return { version, key: typeof manifest.key === 'string' ? manifest.key : null, manifest, files };
 }

@@ -12,6 +12,7 @@ import { kvOwnFolderStore, pickOwnFolder } from '../../src/update/own-folder';
 import { problemText } from '../../src/update/problems';
 import type * as UpdateModule from '../../src/update/update';
 import {
+  UPDATE_LOCK,
   type UpdateResult,
   type UpdateStep,
   oneClickState,
@@ -121,6 +122,9 @@ describe('the one-click update in the notice (#305)', () => {
     'busy',
     'write-failed',
     'new-identity',
+    'new-permissions',
+    'old-browser',
+    'unfinished',
     'needs-click',
   ] as const)('says why it stopped (%s), with nothing changed', async (problem) => {
     vi.mocked(updateTo).mockResolvedValue({ ok: false, problem });
@@ -144,9 +148,7 @@ describe('the one-click update in the notice (#305)', () => {
     vi.mocked(updateTo).mockRejectedValue(new Error('IndexedDB is gone'));
     render(<OneClickUpdate version="0.5.0" />);
     await userEvent.click(await screen.findByRole('button', { name: 'Update now' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Couldn’t update: IndexedDB is gone. Nothing was changed.',
-    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t update: IndexedDB is gone.');
   });
 
   it('waits while a job runs in this tab', async () => {
@@ -274,6 +276,53 @@ describe('after an update (#305)', () => {
     render(<UpdateRecovery />);
     await userEvent.click(await screen.findByRole('button', { name: 'Put back 0.4.0' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(words);
+  });
+
+  it('shows nothing while an update writes, in this tab or another: its journal is no sign of trouble', async () => {
+    await kvJournal.set({ from: '0.4.0', to: '0.5.0', at: 1, backups: [] });
+    let finish: () => void = () => undefined;
+    const writing = navigator.locks.request(UPDATE_LOCK, () => new Promise<void>((resolve) => (finish = resolve)));
+    const { container } = render(<UpdateRecovery />);
+    await waitFor(() => expect(updateOutcome).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(container).toBeEmptyDOMElement();
+
+    // The update stopped with its journal kept: now it is one cut short.
+    finish();
+    await writing;
+    expect(await screen.findByText('The update to Xomoni 0.5.0 didn’t finish')).toBeInTheDocument();
+  });
+
+  it('forgets a journal that doesn’t apply to the Xomoni running, instead of putting it back', async () => {
+    const actual = await vi.importActual<typeof UpdateModule>('../../src/update/update');
+    vi.mocked(putBackUnfinished).mockImplementation(actual.putBackUnfinished);
+    const toasts = renderHook(() => useToasts());
+
+    // stubChrome runs 0.3.0: an update to 0.3.0 had finished.
+    await kvJournal.set({ from: '0.2.0', to: '0.3.0', at: 1, backups: [] });
+    render(<UpdateRecovery />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Put back 0.2.0' }));
+    await waitFor(() =>
+      expect(toasts.result.current).toContainEqual(
+        expect.objectContaining({ text: 'The update to Xomoni 0.3.0 had finished: nothing needed putting back.' }),
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Put back/ })).not.toBeInTheDocument());
+    expect(await kvJournal.get()).toBeNull();
+    cleanup();
+
+    // A journal between two other versions: putting it back would mix them.
+    await kvJournal.set({ from: '0.4.0', to: '0.5.0', at: 2, backups: [] });
+    const later = renderHook(() => useToasts());
+    render(<UpdateRecovery />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Put back 0.4.0' }));
+    await waitFor(() =>
+      expect(later.result.current).toContainEqual(
+        expect.objectContaining({ text: expect.stringContaining('Xomoni didn’t put back 0.4.0'), tone: 'critical' }),
+      ),
+    );
+    expect(await kvJournal.get()).toBeNull();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('shows nothing when there is nothing to say', async () => {

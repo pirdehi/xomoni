@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UpdateFailure } from '../src/update/problems';
-import { MAX_RELEASE_FILES, readRelease, safePath } from '../src/update/release-zip';
+import { MAX_RELEASE_FILES, minimumChrome, readRelease, safePath } from '../src/update/release-zip';
 import { releaseFiles, releaseManifest, releaseZip } from './support/release';
 import type { ZipSpec } from './support/zip';
 
@@ -62,6 +62,20 @@ describe('paths a release may write (zip-slip, #305)', () => {
   });
 });
 
+describe('the browser a release needs (#305)', () => {
+  it('reads the major version of minimum_chrome_version, or none', () => {
+    expect(minimumChrome({})).toBeNull();
+    expect(minimumChrome({ minimum_chrome_version: '137' })).toBe(137);
+    expect(minimumChrome({ minimum_chrome_version: '137.0.7151.55' })).toBe(137);
+  });
+
+  it('reads a value it can’t understand as one no browser meets', () => {
+    for (const value of ['soon', '', '137a', '1.2.3.4.5', 137, null]) {
+      expect(minimumChrome({ minimum_chrome_version: value }), String(value)).toBe(Number.POSITIVE_INFINITY);
+    }
+  });
+});
+
 describe('reading a release (#305)', () => {
   it('reads every file of a complete release, and its key', async () => {
     const release = await readRelease(new Blob([await releaseZip(releaseFiles('0.5.0'))]), '0.5.0');
@@ -76,6 +90,7 @@ describe('reading a release (#305)', () => {
       'manifest.json',
     ]);
     expect(new TextDecoder().decode(release.files[4]!.data)).toBe('// sw 0.5.0');
+    expect(release.manifest).toEqual(releaseManifest('0.5.0'));
 
     const keyed = await readRelease(
       new Blob([await releaseZip(releaseFiles('0.5.0', releaseManifest('0.5.0', { key: 'MIIBIj…' })))]),

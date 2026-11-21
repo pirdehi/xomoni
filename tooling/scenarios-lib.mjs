@@ -261,12 +261,26 @@ function specFiles(root) {
   return out;
 }
 
+/**
+ * A file's text, or null when there is no file at that path. It reads in one step instead of checking first, so
+ * nothing can change between a check and the read (CodeQL's js/file-system-race).
+ */
+function readTextFile(full) {
+  try {
+    return readFileSync(full, 'utf8');
+  } catch (error) {
+    const code = /** @type {{ code?: unknown }} */ (error).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR' || code === 'EISDIR') return null;
+    throw error;
+  }
+}
+
 /** The feature ids in the registry, or null while it doesn't exist (#337); a problem when it can't be read. */
 function featureIds(root) {
-  const path = join(root, FEATURES_FILE);
-  if (!existsSync(path)) return { ids: null, problem: null };
+  const text = readTextFile(join(root, FEATURES_FILE));
+  if (text === null) return { ids: null, problem: null };
   try {
-    const registry = JSON.parse(readFileSync(path, 'utf8'));
+    const registry = JSON.parse(text);
     const features = Array.isArray(registry) ? registry : registry?.features;
     if (!Array.isArray(features)) throw new Error('no "features" list');
     return { ids: new Set(features.map((feature) => feature?.id)), problem: null };
@@ -299,14 +313,9 @@ export function checkScenarios(root) {
   /** The tests in a spec, read once; null when the path isn't a spec in the repository. */
   const testsOf = (path) => {
     if (!specs.has(path)) {
-      const full = join(root, path);
       const inside = !isAbsolute(path) && !normalize(path).startsWith('..');
-      specs.set(
-        path,
-        inside && SPEC_FILE.test(path) && existsSync(full) && statSync(full).isFile()
-          ? testsInSpec(readFileSync(full, 'utf8'), path)
-          : null,
-      );
+      const text = inside && SPEC_FILE.test(path) ? readTextFile(join(root, path)) : null;
+      specs.set(path, text === null ? null : testsInSpec(text, path));
     }
     return specs.get(path);
   };

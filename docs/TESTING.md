@@ -45,7 +45,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 | No updater in the store build | `tooling/store-build.test.mjs`, in `npm run test:tooling` | The store build (`npm run build:store`) holds any of the one-click updater's code, or GitHub's access in its manifest ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). |
 | Database | CI job `database` | A pgTAP test fails, or the generated types drift from the migrations. |
 | End to end | CI job `e2e` | A flow fails, the browser reports a policy violation, or axe finds a serious or critical accessibility violation: the website's tests, then the extension's in a real browser. |
-| End to end in Edge | CI job `e2e-edge` (not yet a required check) | The same, in Microsoft Edge. |
+| End to end in Edge | CI job `e2e-edge`, a required check since 2026-11-21 | The same, in Microsoft Edge. |
 
 ## Writing tests
 

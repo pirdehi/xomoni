@@ -34,7 +34,7 @@ flowchart TD
 | Gate | When | What must pass | Enforced by |
 | --- | --- | --- | --- |
 | 1 · On the computer | Every `git push` | `npm run verify` | [`.githooks/pre-push`](../.githooks/pre-push) |
-| 2 · Merge to `main` | Every pull request | `verify`, `database`, `e2e`, `pr-policy`, `dependency-review`, code scanning, a code owner's review of the gate's files | The "Protect main" ruleset |
+| 2 · Merge to `main` | Every pull request | `verify`, `database`, `e2e`, `e2e-edge`, `pr-policy`, `dependency-review`, code scanning, a code owner's review of the gate's files | The "Protect main" ruleset |
 | 3 · Release candidate | The release pull request | The whole suite; the release issue opened and every box ticked | [The release issue template](../.github/ISSUE_TEMPLATE/release.md) |
 | 4 · Release | A `vX.Y.Z` tag | Full CI on the tagged commit, `npm audit` at high, the release issue complete, the maintainer's approval | [`release.yml`](../.github/workflows/release.yml): `ci` calls [`ci.yml`](../.github/workflows/ci.yml), `readiness` reads the release issue, `build` runs `npm audit`, and `publish` needs them all; the `release` environment. Once it has published, `after-release` checks what people download (R18) |
 
@@ -51,7 +51,7 @@ flowchart TD
 | R5 | Every source file has a test; coverage thresholds only go up ([ADR-0017](adr/0017-test-standard.md)) | `npm run tests:check`, Vitest thresholds | Enforced |
 | R6 | A backend test and a frontend test for every feature, with failure and security cases | Review, the pull request template | Review |
 | R7 | Row Level Security tests; generated types match the migrations | CI `database` | Enforced |
-| R8 | Real flows in a real browser, with no serious accessibility violation | CI `e2e`; `e2e-edge` | Enforced for the website and the extension in Chromium, with axe (#342, [ADR-0040](adr/0040-test-the-extension-against-recorded-x-fixtures.md)). Both run in Edge in `e2e-edge`, which counts once the ruleset requires it |
+| R8 | Real flows in a real browser, with no serious accessibility violation | CI `e2e`; `e2e-edge` | Enforced for the website and the extension in Chromium, with axe (#342, [ADR-0040](adr/0040-test-the-extension-against-recorded-x-fixtures.md)). Both run in Edge too, in `e2e-edge`, required since 2026-11-21 |
 | R9 | At least 20 user scenarios per user-facing task, each tied to its browser test | `npm run scenarios:check`, `pr-policy` | Enforced (#350, #356) |
 | R10 | A task link; a changelog line for a user-facing change; every exemption with a written reason | `pr-policy` | Enforced (#350) |
 | R11 | The READMEs' features and status match `docs/features.json`, and the registry matches the changelog | `npm run readme:check`, `node tooling/release.mjs check` | Enforced (#349) |

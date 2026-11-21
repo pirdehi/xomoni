@@ -1,4 +1,4 @@
-// Sends a GitHub release's zip to a browser store, or submits the store's draft for review (docs/RELEASING.md#stores).
+// Sends a GitHub release's zip to a browser store, or submits the store's draft for review (docs/RELEASING.md#chrome-web-store-and-edge-add-ons).
 // .github/workflows/store.yml runs it with the store's secrets in the environment. The calls live in
 // tooling/store-api.mjs, tested by tooling/store-api.test.mjs.
 //

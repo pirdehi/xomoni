@@ -1,4 +1,4 @@
-# Sends a release to the Chrome Web Store and Microsoft Edge Add-ons (docs/RELEASING.md#stores, #303). Run by hand,
+# Sends a release to the Chrome Web Store and Microsoft Edge Add-ons (docs/RELEASING.md#chrome-web-store-and-edge-add-ons, #303). Run by hand,
 # from main, after the release workflow: `upload` makes the release's store build each store's draft, and a second run
 # with `publish` submits the draft for review. It never builds: it takes xomoni-extension-store-X.Y.Z.zip, the build
 # without the one-click updater (ADR-0033), from the tag's GitHub release, and checks it against SHA256SUMS and its

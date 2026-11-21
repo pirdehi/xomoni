@@ -1,6 +1,6 @@
 # Releasing
 
-A release ships the extension as a zip on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with the store build beside it, which it then sends to the Chrome Web Store and Microsoft Edge Add-ons ([stores](#stores)). The website deploys from `main` on its own and needs no release.
+A release ships the extension as a zip on [GitHub Releases](https://github.com/pirdehi/xomoni/releases), with the store build beside it, which it then sends to the Chrome Web Store and Microsoft Edge Add-ons ([stores](#chrome-web-store-and-edge-add-ons)). The website deploys from `main` on its own and needs no release.
 
 ## Steps
 
@@ -22,7 +22,7 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
      - runs `npm run verify`;
      - checks the versions against the tag;
      - builds the extension, checks that it has no remotely hosted code (#301), and packages it reproducibly;
-     - then does the same for the store build (`npm run build:store`, #303): the same code without the one-click updater, which is what the stores get (see [Stores](#stores)).
+     - then does the same for the store build (`npm run build:store`, #303): the same code without the one-click updater, which is what the stores get (see [Chrome Web Store and Edge Add-ons](#chrome-web-store-and-edge-add-ons)).
    - **publish**, which runs no npm code and is the only job that sees the signing key (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). It waits for your approval, as the `release` environment's required reviewer:
      - signs each zip of the default build with the release signing key (Ed25519, with OpenSSL only), after checking that the release trusts that key, and checks each signature. While the extension trusts no key, it skips signing with a warning instead (see *Signing key*). The store build isn't signed: it has no updater to check a signature;
      - signs all three zips, the store build's included, with [build provenance](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) (SLSA);
@@ -32,7 +32,7 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
    - `xomoni-extension.zip`: the same name in every release, so `https://github.com/pirdehi/xomoni/releases/latest/download/xomoni-extension.zip` always serves the newest one (the website's install page links there);
    - `xomoni-extension-X.Y.Z.zip`: the same file, named for its version;
    - `xomoni-extension.zip.sig` and `xomoni-extension-X.Y.Z.zip.sig`: the Ed25519 signature of each, 64 bytes, which a zip install checks before *Update now* writes anything. Not there while the extension trusts no key;
-   - `xomoni-extension-store-X.Y.Z.zip`: the store build, without the one-click updater, for the [store workflow](#stores) to send to the stores. Not for installing by hand: it can't update itself. No signature;
+   - `xomoni-extension-store-X.Y.Z.zip`: the store build, without the one-click updater, for the [store workflow](#chrome-web-store-and-edge-add-ons) to send to the stores. Not for installing by hand: it can't update itself. No signature;
    - `SHA256SUMS`: the SHA-256 of the three zips, to check a download.
 
 6. Record the release, so connected browsers show that it is out (#151): add a migration that inserts it into `public.extension_releases`, with `security` true when it fixes a vulnerability, merge it, then run `supabase db push`.
@@ -190,7 +190,7 @@ What it does:
   - Microsoft Edge Add-ons, [API v1.1](https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api): uploads the zip to the draft submission, or submits the draft with notes that link the release notes, and follows each operation until it ends. Edge's answers don't name the version, so look at the draft in Partner Center before `publish`.
 - A failure names the missing secret or quotes the store's answer on one line, never a key or a token. A store that is still busy after 10 minutes stops the run; check its dashboard before running again.
 
-Neither API can create an item or change its visibility. The first package, the listing and **Unlisted** or **Public** are set by hand in each store. If the visibility changes in the Chrome dashboard, publish once there by hand before the API can publish again.
+Neither API can create an item or change its visibility. The first package, the listing and the visibility (**Unlisted** or **Public** in Chrome, **Hidden** or **Public** in Edge) are set by hand in each store. If the visibility changes in the Chrome dashboard, publish once there by hand before the API can publish again.
 
 ### The `stores` environment
 

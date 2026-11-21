@@ -18,7 +18,7 @@ Contents:
 
 ## 1. What each store needs
 
-The package is the store build: `xomoni-extension-store-X.Y.Z.zip`, which the release workflow builds with `npm run build:store -w @xomoni/extension` and attaches to each GitHub release, and which the store workflow sends after checking its checksum and build provenance ([releasing](RELEASING.md#stores)). It is the same code as the `xomoni-extension-X.Y.Z.zip` beside it, without the one-click updater, since a store updates Xomoni itself ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). Both stores take the name and the short description from the manifest. To change either one, upload a new zip.
+The package is the store build: `xomoni-extension-store-X.Y.Z.zip`, which the release workflow builds with `npm run build:store -w @xomoni/extension` and attaches to each GitHub release, and which the store workflow sends after checking its checksum and build provenance ([releasing](RELEASING.md#chrome-web-store-and-edge-add-ons)). It is the same code as the `xomoni-extension-X.Y.Z.zip` beside it, without the one-click updater, since a store updates Xomoni itself ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). Both stores take the name and the short description from the manifest. To change either one, upload a new zip.
 
 | Field | Chrome Web Store | Microsoft Edge Add-ons | Xomoni |
 | --- | --- | --- | --- |

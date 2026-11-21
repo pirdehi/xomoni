@@ -1,4 +1,4 @@
-// Sends a GitHub release's zip to the browser stores (docs/RELEASING.md#stores, #303), with the Chrome Web Store
+// Sends a GitHub release's zip to the browser stores (docs/RELEASING.md#chrome-web-store-and-edge-add-ons, #303), with the Chrome Web Store
 // API v2 and the Microsoft Edge Add-ons API v1.1. Kept apart from the command line in tooling/store.mjs, which
 // .github/workflows/store.yml runs, so tooling/store-api.test.mjs can test it. Node built-ins only: every request
 // goes through the `fetch` passed in. No message ever carries a credential, only a variable's name or what the
@@ -87,7 +87,7 @@ export function storeCredentials(store, env) {
   const missing = names.filter((name) => !env[name]?.trim());
   if (missing.length)
     throw new StoreError(
-      `not set: ${missing.join(', ')}. Add them as secrets of the "stores" environment (docs/RELEASING.md#stores).`,
+      `not set: ${missing.join(', ')}. Add them as secrets of the "stores" environment (docs/RELEASING.md#the-stores-environment).`,
     );
   const value = (name) => env[name].trim();
   if (store === 'chrome') {
@@ -137,7 +137,7 @@ const end = (text) => (/[.!?…]$/.test(text) ? text : `${text}.`);
 /** A hint for an answer that refused the credentials. */
 const authHint = (status) =>
   status === 401 || status === 403
-    ? ' The store refused the credentials: check the secrets of the "stores" environment (docs/RELEASING.md#stores).'
+    ? ' The store refused the credentials: check the secrets of the "stores" environment (docs/RELEASING.md#the-stores-environment).'
     : '';
 
 /**
@@ -216,7 +216,7 @@ export async function chromeToken({ clientId, clientSecret, refreshToken }, deps
   if (res.ok && typeof token === 'string' && token) return token;
   const hint =
     res.json?.error === 'invalid_grant'
-      ? ' The refresh token expired or was revoked: make a new one (docs/RELEASING.md#stores).'
+      ? ' The refresh token expired or was revoked: make a new one (docs/RELEASING.md#chrome-web-store-keys).'
       : res.json?.error === 'invalid_client'
         ? ' The client id or secret is wrong.'
         : '';

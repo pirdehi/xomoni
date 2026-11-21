@@ -28,6 +28,8 @@ export const SEL = {
   empty: '[data-testid="emptyState"]',
   /** X's error panel, shown in place of content that failed to load. */
   errorDetail: '[data-testid="error-detail"]',
+  /** The page's main column, which X's app renders once its scripts have run; its notices show at its top. */
+  primaryColumn: '[data-testid="primaryColumn"]',
   /** The sidebar Profile link; its `href` is `/<handle>` of the signed-in user. */
   profileLink: 'a[data-testid="AppTabBar_Profile_Link"]',
   /** The overlay behind an open menu or sheet; clicking it closes them. */
@@ -284,8 +286,19 @@ function textWithoutUserContent(el: HTMLElement): string {
 export function noticeText(): string {
   const alerts = $$('[role="alert"]').map(textWithoutUserContent);
   const dialogs = $$(SEL.dialog).map((el) => textWithoutUserContent(el).slice(0, 1500));
-  const column = $('[data-testid="primaryColumn"]');
+  const column = $(SEL.primaryColumn);
   return [...alerts, ...dialogs, column ? textWithoutUserContent(column).slice(0, 1500) : ''].join('\n');
+}
+
+/**
+ * Whether X has rendered its page far enough for `noticeText` to mean anything: the document is parsed, and X's app
+ * shows its main column, an alert or a pop-up. X serves an empty shell and renders the page, its account notices
+ * included, with its scripts; the content script answers from the start of the load, so until then a page shows no
+ * notice even when X is about to show one (#375).
+ */
+export function pageRendered(): boolean {
+  if (document.readyState === 'loading') return false;
+  return !!($(SEL.primaryColumn) || $('[role="alert"]') || openDialog());
 }
 
 /** The first pop-up covering X's page (PLAYBOOK F3), or null. Between actions Xomoni has none open itself. */

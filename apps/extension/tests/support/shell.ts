@@ -20,6 +20,7 @@ export function pageInfo(over: Partial<PageInfo> = {}): PageInfo {
     locked: false,
     challenge: false,
     restriction: null,
+    rendered: true,
     obstructed: false,
     asksIdentity: false,
     lang: 'en',

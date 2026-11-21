@@ -190,6 +190,7 @@ X usually gets stricter step by step: a warning, then 226, then a temporary rest
 - **Scenario (implemented, #18):**
   - HTTP 403 on any write action (delete, unlike, etc.) or codes 87, 261 or 220 → outcome `restricted`: **the job stops at the first one** and never retries.
   - X's "temporarily limited" or "restricted" notice on the page (alerts, pop-ups and the top of the main column) stops the job before any action. The match is deliberately broad; a false match only stops the job.
+  - The notice is read only once X has drawn the page (#375). X's web app arrives as an empty shell and draws the page, notice included, with its scripts, and Xomoni's content script answers from the start of the load. So a job reads the X window's page once X has drawn it, before it paces, loads a page or acts, and it reads each page it loads again once the posts show. A page X doesn't draw within 30 s is waited out, never acted on.
   - Posts, names and bios are never read for it (#146): anyone could otherwise stop a job, and raise the risk level, by replying with X's wording. The job, its log and notifications get Xomoni's own words for the notice, never the page's text.
   - Unknown failures in a row pause the job after **2** (the setting is capped at 3, was 5).
   - Not done: reading X's countdown from the banner.

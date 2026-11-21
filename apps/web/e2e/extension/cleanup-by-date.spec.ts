@@ -25,7 +25,15 @@ import {
   xWindowOf,
 } from '../support/cleanup';
 import { expect, openXWindow, tabTo, test } from '../support/extension';
-import { FIXTURE_ACCOUNT, FRIEND_ACCOUNT, answerWithRate, servePage, setXSession } from '../support/x-fixtures';
+import {
+  FIXTURE_ACCOUNT,
+  FRIEND_ACCOUNT,
+  answerLate,
+  answerWithRate,
+  servePage,
+  servePageWithNotice,
+  setXSession,
+} from '../support/x-fixtures';
 
 // Cleanup by date (docs/scenarios/199-cleanup-by-date.md, #199, #345): the person's own posts, replies, reposts or
 // likes older than a date, or between two dates, previewed, confirmed with DELETE, and removed at Xomoni's pace. The
@@ -379,6 +387,40 @@ test.describe('cleanup by date', { tag: '@task-199' }, () => {
     await expect(card.getByRole('button', { name: 'Resume anyway…' })).toBeVisible();
     await expect(await xWindowOf(context, page)).toHaveURL('https://x.com/home');
     expect(loads, 'pages of X loaded by the job').toEqual([]);
+  });
+
+  test('S199-33 X’s notice shown with the profile’s posts stops the job there, before it paces a delete', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    test.setTimeout(150_000);
+    await postsBefore2021(dashboard, page, { anyTime: true });
+    // X draws its notice with the posts, which come a moment after the page itself.
+    await servePageWithNotice(
+      context,
+      `/${FIXTURE_ACCOUNT.handle}`,
+      'profile.html',
+      'Your account is temporarily limited',
+    );
+    await answerLate(context, 'UserTweets', 2000);
+    await continueWithoutArchive(dashboard);
+    await startCleanup(dashboard);
+
+    const xWindow = await xWindowOf(context, page);
+    await expect(xWindow.getByRole('alert')).toHaveText('Your account is temporarily limited', { timeout: 90_000 });
+    const card = jobCard(dashboard, BEFORE_2021);
+    // At once: the first delete would wait 320–480 seconds first (S199-07), and check X's page again only then.
+    await expect(card).toContainText('Stopped for safety', { timeout: 15_000 });
+    await expect(card).toContainText(
+      'X shows a restriction on this account: “Your account is temporarily limited”. The account may be limited or read-only.',
+    );
+    await expect(card).toContainText(/0\s*removed/);
+    await expect(xWindow).toHaveURL(`https://x.com/${FIXTURE_ACCOUNT.handle}`);
+    // X's page was never checked for the delete, which comes only after its wait.
+    await dashboard.getByRole('button', { name: 'Show log' }).click();
+    await expect(dashboard.getByText(`Started “${BEFORE_2021}”`)).toBeVisible();
+    await expect(dashboard.getByText(/^Checked X’s page before acting/)).toHaveCount(0);
   });
 
   test('S199-14 X answering 429 to the job’s page load makes it wait for X’s reset', async ({

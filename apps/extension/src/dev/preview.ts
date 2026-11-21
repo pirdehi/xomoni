@@ -16,6 +16,7 @@ const page = {
   locked: false,
   challenge: false,
   restriction: null,
+  rendered: true,
   lang: 'en',
   hidden: false,
 };

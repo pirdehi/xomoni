@@ -69,6 +69,11 @@ export interface PageInfo {
   challenge: boolean;
   /** X's notice that the account is suspended or limited, if the page shows one; see `restrictionNotice`. */
   restriction: string | null;
+  /**
+   * X has rendered the page far enough to read its notices: its main column, an alert or a pop-up shows. False while
+   * the page is still X's empty shell, where `restriction` is null even if X is about to show a notice (#375).
+   */
+  rendered: boolean;
   /** A pop-up covers the page (PLAYBOOK F3), such as a Premium offer; `clearPage` tries to close it. */
   obstructed: boolean;
   /**

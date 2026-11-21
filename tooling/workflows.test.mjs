@@ -1,4 +1,4 @@
-// Checks on the GitHub workflows (#142, #303), run by `node --test 'tooling/*.test.mjs'` in `npm run verify`.
+// Checks on the GitHub workflows (#142, #303, #340), run by `node --test 'tooling/*.test.mjs'` in `npm run verify`.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { generateKeyPairSync, verify, webcrypto } from 'node:crypto';
@@ -13,6 +13,9 @@ const DIR = join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), '.githu
 const workflows = readdirSync(DIR)
   .filter((name) => name.endsWith('.yml'))
   .map((name) => ({ name, text: readFileSync(join(DIR, name), 'utf8') }));
+
+/** A reusable workflow of this repository, called as `uses: ./.github/workflows/<name>.yml`. */
+const LOCAL_WORKFLOW = /^\.\/\.github\/workflows\/([\w-]+\.yml)$/;
 
 /** The lines of `text` from `start` up to the next line indented at most as much (one YAML block). */
 function block(text, start) {
@@ -43,6 +46,8 @@ describe('GitHub workflows (#142)', () => {
   it('pin every action by its full commit SHA, with the version beside it', () => {
     for (const { name, text } of workflows) {
       for (const [, action] of text.matchAll(/uses:\s*(\S+)/g)) {
+        // A workflow of this repository runs from the caller's own commit: there is nothing to pin (#340).
+        if (LOCAL_WORKFLOW.test(action)) continue;
         assert.match(action, /^[\w.-]+\/[\w./-]+@[0-9a-f]{40}$/, `${name}: ${action}`);
       }
       for (const line of text.split('\n').filter((l) => /uses:\s*\S+@[0-9a-f]{40}/.test(l))) {
@@ -55,6 +60,18 @@ describe('GitHub workflows (#142)', () => {
     for (const { name, text } of workflows) {
       for (const [, action] of text.matchAll(/uses:\s*([^@\s]+)@/g)) {
         assert.match(action, /^(actions|github)\/|^supabase\/setup-cli$/, `${name}: ${action}`);
+      }
+    }
+  });
+
+  it("call only this repository's own workflows, each made to be called", () => {
+    for (const { name, text } of workflows) {
+      for (const [, path] of text.matchAll(/uses:\s*(\.\S*)/g)) {
+        const called = LOCAL_WORKFLOW.exec(path)?.[1];
+        assert.ok(called, `${name}: ${path} is not a workflow in .github/workflows`);
+        const target = workflows.find((w) => w.name === called);
+        assert.ok(target, `${name}: ${called} doesn't exist`);
+        assert.match(block(target.text, 'on:'), /^ {2}workflow_call:/m, `${called} has no workflow_call trigger`);
       }
     }
   });
@@ -86,6 +103,88 @@ describe('GitHub workflows (#142)', () => {
     assert.doesNotMatch(publish, /npm |node |actions\/checkout/);
     assert.match(publish, /attest-build-provenance@/);
     assert.match(build, /git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/);
+  });
+
+  it('let only the release’s publish job write to issues', () => {
+    for (const { name, text } of workflows) {
+      // Wherever it is written, and however it is indented: one grant in all the workflows.
+      const writers = [...text.matchAll(/\bissues:\s*write\b/g)].length;
+      assert.equal(writers, name === 'release.yml' ? 1 : 0, `${name}: issues: write`);
+      assert.doesNotMatch(text, /write-all/, `${name}: no blanket write`);
+    }
+    const release = workflows.find((w) => w.name === 'release.yml').text;
+    assert.match(block(release, '  publish:'), /^ {6}issues: write$/m);
+  });
+});
+
+describe('the release gate (#340, ADR-0037)', () => {
+  const release = workflows.find((w) => w.name === 'release.yml').text;
+  const ci = workflows.find((w) => w.name === 'ci.yml').text;
+  const jobs = {
+    ci: block(release, '  ci:'),
+    readiness: block(release, '  readiness:'),
+    build: block(release, '  build:'),
+    publish: block(release, '  publish:'),
+  };
+
+  it('runs the full CI on the tagged commit, read-only, before anything is built', () => {
+    assert.match(block(ci, 'on:'), /^ {2}workflow_call:$/m);
+    assert.equal(
+      jobs.ci.trimEnd(),
+      [
+        '  ci:',
+        '    name: ci',
+        '    permissions:',
+        '      contents: read',
+        '    uses: ./.github/workflows/ci.yml',
+      ].join('\n'),
+      'the ci job calls ci.yml with read-only permissions, and passes it nothing else',
+    );
+    // ci.yml's jobs are the ones a merge needs, and ask for nothing more than read access.
+    for (const job of ['verify', 'database', 'e2e']) assert.match(ci, new RegExp(`\n {2}${job}:\n {4}name: ${job}\n`));
+    assert.match(ci, /^permissions:\n {2}contents: read$/m);
+    assert.doesNotMatch(ci, /write|secrets\./);
+    assert.match(jobs.build, /^ {4}needs: ci$/m);
+  });
+
+  it('keeps its own concurrency group apart from the CI it calls, which would otherwise cancel one of them', () => {
+    // Called by the release, ci.yml's group is ci-<the tag's ref>, which no pull request or push to main shares.
+    assert.match(block(ci, 'concurrency:'), /^ {2}group: ci-\$\{\{ github\.ref \}\}$/m);
+    assert.doesNotMatch(release, /group: ci-/);
+  });
+
+  it('reads the release issue in a job that can only read', () => {
+    assert.match(
+      jobs.readiness,
+      /\n {4}permissions:\n {6}contents: read\n {6}issues: read\n {4}outputs:\n {6}issue: \$\{\{ steps\.check\.outputs\.issue \}\}\n/,
+    );
+    assert.doesNotMatch(jobs.readiness, /write|secrets\.|environment:|npm /);
+    assert.match(jobs.readiness, /\n {8}id: check\n/);
+    assert.match(jobs.readiness, /^ {10}GH_TOKEN: \$\{\{ github\.token \}\}$/m);
+    assert.match(jobs.readiness, /^ {8}run: node tooling\/check-release-issue\.mjs "\$GITHUB_REF_NAME"$/m);
+  });
+
+  it('publishes only after the build and the readiness check, and the build only after CI', () => {
+    assert.match(jobs.publish, /^ {4}needs: \[build, readiness\]$/m);
+    assert.match(jobs.build, /^ {4}needs: ci$/m);
+    // The build keeps its guarantees: a read-only token, no install scripts, the tag on main.
+    assert.match(jobs.build, /permissions:\n {6}contents: read\n {4}env:/);
+    assert.match(jobs.build, /^ {6}- run: npm ci --ignore-scripts$/m);
+    assert.match(jobs.build, /git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/);
+  });
+
+  it('audits every dependency at high in the build, after installing and before anything runs', () => {
+    assert.match(jobs.build, /^ {8}run: npm audit --audit-level=high$/m);
+    assert.doesNotMatch(release, /--omit|--audit-level=(critical|moderate|low|info)/);
+    const install = jobs.build.indexOf('- run: npm ci --ignore-scripts');
+    const audit = jobs.build.indexOf('run: npm audit --audit-level=high');
+    assert.ok(install < audit && audit < jobs.build.indexOf('run: npm run verify'));
+  });
+
+  it('comments the release on its issue and closes it, after the release exists', () => {
+    const steps = ['Create the release', 'Comment the release on its issue and close it'];
+    assert.ok(jobs.publish.indexOf(steps[0]) < jobs.publish.indexOf(steps[1]));
+    assert.match(jobs.publish, /^ {10}ISSUE: \$\{\{ needs\.readiness\.outputs\.issue \}\}$/m);
   });
 });
 
@@ -325,6 +424,71 @@ describe('creating the release (#305)', () => {
       'release/SHA256SUMS',
     ]);
     assert.ok(!run.args.some((arg) => arg.includes('*')));
+  });
+});
+
+describe('recording the release on its issue (#340)', () => {
+  const release = workflows.find((w) => w.name === 'release.yml').text;
+  const STEP = 'Comment the release on its issue and close it';
+  const RELEASE_URL = 'https://github.com/pirdehi/xomoni/releases/tag/v0.5.0';
+
+  /** Runs the step with a `gh` that logs the arguments of each call and answers `release view`. */
+  function runRecord(issue) {
+    const dir = mkdtempSync(join(tmpdir(), 'xomoni-record-'));
+    mkdirSync(join(dir, 'bin'));
+    const log = join(dir, 'gh.log');
+    writeFileSync(
+      join(dir, 'bin/gh'),
+      `#!/bin/bash\nprintf '%s\\x1f' "$@" >> "${log}"\nprintf '\\x1e' >> "${log}"\n` +
+        `[ "$1 $2" = "release view" ] && echo "${RELEASE_URL}"\nexit 0\n`,
+      { mode: 0o755 },
+    );
+    const env = {
+      PATH: `${join(dir, 'bin')}:${process.env.PATH}`,
+      ISSUE: issue,
+      GITHUB_REF_NAME: 'v0.5.0',
+      GITHUB_SERVER_URL: 'https://github.com',
+      GITHUB_REPOSITORY: 'pirdehi/xomoni',
+      GITHUB_RUN_ID: '123456',
+    };
+    const result = spawnSync('bash', ['-c', stepScript(release, STEP)], { cwd: dir, env, encoding: 'utf8' });
+    let calls = [];
+    try {
+      calls = readFileSync(log, 'utf8')
+        .split('\x1e')
+        .slice(0, -1)
+        .map((call) => call.split('\x1f').slice(0, -1));
+    } catch {
+      // No call was made.
+    }
+    rmSync(dir, { recursive: true, force: true });
+    return { status: result.status, calls, output: `${result.stdout}${result.stderr}` };
+  }
+
+  it('comments the release and the run on the issue, then closes it', () => {
+    const run = runRecord('42');
+    assert.equal(run.status, 0, run.output);
+    assert.deepEqual(
+      run.calls.map((args) => args.slice(0, 3)),
+      [
+        ['release', 'view', 'v0.5.0'],
+        ['issue', 'comment', '42'],
+        ['issue', 'close', '42'],
+      ],
+    );
+    const body = run.calls[1][run.calls[1].indexOf('--body') + 1];
+    assert.ok(body.includes(`Released v0.5.0: ${RELEASE_URL}`), body);
+    assert.ok(body.includes('Workflow run: https://github.com/pirdehi/xomoni/actions/runs/123456'), body);
+    assert.deepEqual(run.calls[2].slice(3), ['--reason', 'completed']);
+  });
+
+  it('touches no issue when the readiness job named none, or named something that is no issue number', () => {
+    for (const issue of ['', '0', '12abc', '1; gh repo delete', '$(id)', '-1']) {
+      const run = runRecord(issue);
+      assert.notEqual(run.status, 0, `"${issue}"`);
+      assert.match(run.output, /::error::The readiness job named no release issue/);
+      assert.deepEqual(run.calls, [], `"${issue}": no gh call`);
+    }
   });
 });
 

@@ -36,7 +36,7 @@ flowchart TD
 | 1 · On the computer | Every `git push` | `npm run verify` | [`.githooks/pre-push`](../.githooks/pre-push) |
 | 2 · Merge to `main` | Every pull request | `verify`, `database`, `e2e`, `pr-policy`, `dependency-review`, code scanning, a code owner's review of the gate's files | The "Protect main" ruleset |
 | 3 · Release candidate | The release pull request | The whole suite; the release issue opened and every box ticked | [The release issue template](../.github/ISSUE_TEMPLATE/release.md) |
-| 4 · Release | A `vX.Y.Z` tag | Full CI on the tagged commit, `npm audit` at high, the release issue complete, the maintainer's approval | [`release.yml`](../.github/workflows/release.yml) and the `release` environment |
+| 4 · Release | A `vX.Y.Z` tag | Full CI on the tagged commit, `npm audit` at high, the release issue complete, the maintainer's approval | [`release.yml`](../.github/workflows/release.yml): `ci` calls [`ci.yml`](../.github/workflows/ci.yml), `readiness` reads the release issue, `build` runs `npm audit`, and `publish` needs them all; the `release` environment |
 
 ## Rules and what enforces them
 
@@ -55,11 +55,11 @@ flowchart TD
 | R9 | At least 20 user scenarios per user-facing task, each tied to its browser test | `npm run scenarios:check`, `pr-policy` | `pr-policy` enforced (#350); `scenarios:check`: #338 |
 | R10 | A task link; a changelog line for a user-facing change; every exemption with a written reason | `pr-policy` | Enforced (#350) |
 | R11 | The READMEs' features and status match `docs/features.json`, and the registry matches the changelog | `npm run readme:check`, `node tooling/release.mjs check` | Enforced (#349) |
-| R12 | No new dependency with a high or critical vulnerability | `dependency-review`; `npm audit` in the release | `dependency-review` enforced (#350); `npm audit`: #340 |
+| R12 | No new dependency with a high or critical vulnerability | `dependency-review`; `npm audit --audit-level=high` in the release build, on every dependency | Enforced (#350, #353) |
 | R13 | No open high or critical code scanning alert | The ruleset's code scanning rule | Planned: #341, #346 |
 | R14 | No remotely hosted code in the extension | `npm run remote-code:check` | Enforced |
 | R15 | Releases only from `main`: reproducible, signed, with provenance; tags never move | `release.yml`, the tag rulesets | Enforced |
-| R16 | No release before the checklist is complete and the maintainer approves | The `release` environment; the release issue check | The environment since 2026-11-21. The issue check: #340 |
+| R16 | No release before the checklist is complete and the maintainer approves | The `release` environment; the release issue check, [`tooling/check-release-issue.mjs`](../tooling/check-release-issue.mjs) in `release.yml` | Enforced: the environment since 2026-11-21, the issue check since #340 |
 | R17 | The gate's own files are reviewed by the maintainer | [`CODEOWNERS`](../.github/CODEOWNERS), the ruleset | Planned: #346, once agents have their own account |
 | R18 | The whole suite every night on `main`, and a check of each published release | A nightly workflow | Planned: #343 |
 
@@ -74,7 +74,7 @@ Dependabot's pull requests need no task link. Reviews and the release checklist 
 
 ## The release checklist
 
-Each version gets an issue opened from [the Release template](../.github/ISSUE_TEMPLATE/release.md), before the release pull request. Tick a box only once you have checked it, and link the proof: the CI run, the smoke test's notes. The release workflow will refuse to publish while a box is unticked (#340). After publishing, it comments the release on the issue and closes it. [Releasing](RELEASING.md) has the steps.
+Each version gets an issue opened from [the Release template](../.github/ISSUE_TEMPLATE/release.md), before the release pull request. Tick a box only once you have checked it, and link the proof: the CI run, the smoke test's notes. The release workflow refuses to publish while the issue is missing or a box under *Before the tag* is unticked, and counts only an issue opened by someone who can push to the repository (#340). After publishing, it comments the release on the issue and closes it. [Releasing](RELEASING.md) has the steps, and what the check can't stop.
 
 ## Changing a rule
 

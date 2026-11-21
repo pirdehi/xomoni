@@ -40,10 +40,10 @@ select is(
 select is(
   (select string_agg(name, ', ' order by name) from own_functions
    where has_function_privilege('authenticated', oid, 'execute')),
-  'create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, pair_device, '
-    || 'set_daily_stats, set_weekly_email, stop_weekly_email, unpair_device',
-  'a signed-in person calls only those, plus making a code, deleting their account, and choosing the daily numbers '
-    || 'and the weekly email');
+  'create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, mfa_satisfied, '
+    || 'pair_device, set_daily_stats, set_weekly_email, stop_weekly_email, unpair_device',
+  'a signed-in person calls only those, plus making a code, deleting their account, choosing the daily numbers '
+    || 'and the weekly email, and asking whether their session verified a code where the account needs one (#173)');
 
 -- ── Something created from now on is exposed to nobody ────────────────────────────────────────────
 create table public.exposure_probe (id integer primary key);

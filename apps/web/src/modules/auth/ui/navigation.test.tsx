@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetNavigation, router } from '@test/fakes/navigation';
-import { useSignedInNavigation } from './navigation';
+import { loadPage, useSignedInNavigation } from './navigation';
 
 describe('useSignedInNavigation', () => {
   beforeEach(() => {
@@ -27,5 +27,16 @@ describe('useSignedInNavigation', () => {
     rerender();
 
     expect(result.current).toBe(first);
+  });
+});
+
+describe('loadPage (#173)', () => {
+  it('loads the page anew instead of going through the client router, whose cache may hold a redirect', () => {
+    const assign = vi.fn();
+
+    loadPage('/reset-password', { assign });
+
+    expect(assign).toHaveBeenCalledWith('/reset-password');
+    expect(router.replace).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,14 @@ import { describe, expect, it } from 'vitest';
 import PrivacyPage from './page';
 
 describe('the privacy policy', () => {
+  it('names what two-step verification keeps, only when turned on, and its notices (#173)', () => {
+    render(<PrivacyPage />);
+    const item = screen.getByText('Authenticator apps, only if you turn on two-step verification:').closest('li');
+    expect(item).toHaveTextContent('the shared key your app makes its codes from');
+    expect(item).toHaveTextContent('Removing an app, or deleting your account, deletes them.');
+    expect(screen.getByText(/security notices when your password/)).toHaveTextContent('or authenticator apps change');
+  });
+
   it('names the daily numbers before they can be sent: counts only, by choice, deleted when turned off (#250)', () => {
     render(<PrivacyPage />);
     const item = screen.getByText('Daily numbers, only if you turn them on:').closest('li');

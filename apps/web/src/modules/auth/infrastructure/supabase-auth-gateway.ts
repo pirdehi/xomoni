@@ -30,6 +30,21 @@ const ERROR_CODES: Record<string, AuthErrorCode> = {
   email_provider_disabled: 'signup_disabled',
   oauth_provider_not_supported: 'provider_error',
   provider_disabled: 'provider_error',
+  // With "Require current password" on (#148).
+  current_password_required: 'current_password_required',
+  current_password_invalid: 'wrong_current_password',
+  // Two-step verification (#173).
+  mfa_verification_failed: 'invalid_code',
+  mfa_verification_rejected: 'invalid_code',
+  mfa_challenge_expired: 'code_expired',
+  // What Supabase answers when a used challenge is tried again: the attempt is over either way.
+  mfa_ip_address_mismatch: 'code_expired',
+  mfa_factor_not_found: 'factor_not_found',
+  insufficient_aal: 'second_factor_required',
+  mfa_totp_enroll_not_enabled: 'two_factor_unavailable',
+  mfa_totp_verify_not_enabled: 'two_factor_unavailable',
+  too_many_enrolled_mfa_factors: 'too_many_factors',
+  mfa_factor_name_conflict: 'factor_name_taken',
 };
 
 /** Converts a Supabase error into a domain failure, keeping the original text for logs. */
@@ -40,12 +55,21 @@ export function toAuthFailure(error: Pick<AuthError, 'code' | 'message' | 'statu
 
 const done = ({ error }: { error: AuthError | null }): AuthResult => (error ? toAuthFailure(error) : { ok: true });
 
+/** Hints the database's account functions raise, mapped to domain codes. */
+const DATABASE_HINTS = new Map<string, AuthErrorCode>([
+  // A sign-in within the last 10 minutes is needed (#80).
+  ['reauthentication_needed', 'reauthentication_needed'],
+  // The account has an authenticator app and the session hasn't verified a code from it (#173).
+  ['second_factor_required', 'second_factor_required'],
+]);
+
 /**
  * Maps a failed `delete_account()` call. The function asks for a recent sign-in with the hint
- * `reauthentication_needed` (#80); anything else is unexpected.
+ * `reauthentication_needed` (#80), or for a code from the account's authenticator app with `second_factor_required`
+ * (#173); anything else is unexpected.
  */
 export function toDeleteAccountFailure(error: { hint?: string | null; message: string }): AuthFailure {
-  return authFailure(error.hint === 'reauthentication_needed' ? 'reauthentication_needed' : 'unknown', error.message);
+  return authFailure(DATABASE_HINTS.get(error.hint ?? '') ?? 'unknown', error.message);
 }
 
 /**

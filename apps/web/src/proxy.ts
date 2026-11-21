@@ -8,5 +8,13 @@ export function proxy(request: NextRequest) {
 
 // Only signed-in and auth pages need the session; marketing pages stay static.
 export const config = {
-  matcher: ['/dashboard/:path*', '/account/:path*', '/reset-password', '/login', '/signup', '/forgot-password'],
+  matcher: [
+    '/dashboard/:path*',
+    '/account/:path*',
+    '/reset-password',
+    '/login',
+    '/login/two-factor',
+    '/signup',
+    '/forgot-password',
+  ],
 };

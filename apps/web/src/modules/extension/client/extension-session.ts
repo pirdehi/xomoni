@@ -24,7 +24,7 @@ export interface ExtensionSessionServices {
   signOutBoth(): Promise<void>;
   /** Keeps the extension's id, from a page the extension opened. */
   rememberExtension(extensionId: string): void;
-  /** Calls `onChange` when the browser signs in or out; returns the function that stops listening. */
+  /** Calls `onChange` when the browser signs in or out, or verifies a two-step code; returns the stop function. */
   onSessionChange(onChange: () => void): () => void;
 }
 
@@ -145,7 +145,8 @@ export function createExtensionSessionServices(): ExtensionSessionServices {
     rememberExtension: rememberExtensionId,
     onSessionChange(onChange) {
       const { data } = supabase.auth.onAuthStateChange((event) => {
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') onChange();
+        // A code from the account's authenticator app finishes a sign-in that owed one (#173).
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'MFA_CHALLENGE_VERIFIED') onChange();
       });
       return () => data.subscription.unsubscribe();
     },

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeAuthGateway } from '@test/server-helpers';
-import type { AuthGateway } from '../application/ports';
+import { ADA_PHONE, fakeAuthGateway, fakeTwoFactorGateway } from '@test/server-helpers';
+import type { AuthGateway, FactorList } from '../application/ports';
 import { AUTH_ERROR_MESSAGES, authFailure } from '../domain/auth-error';
 import { authDeps } from './deps';
 import { handleOAuthCallback, handleSignOut } from './route-handlers';
@@ -11,9 +11,9 @@ vi.mock('./deps', () => ({ authDeps: vi.fn() }));
 const SITE = 'https://xomoni.test';
 let gateway: AuthGateway;
 
-function provider(overrides: Partial<AuthGateway> = {}) {
+function provider(overrides: Partial<AuthGateway> = {}, factors?: FactorList) {
   gateway = fakeAuthGateway(overrides);
-  vi.mocked(authDeps).mockResolvedValue({ auth: gateway, siteUrl: SITE });
+  vi.mocked(authDeps).mockResolvedValue({ auth: gateway, twoFactor: fakeTwoFactorGateway(factors), siteUrl: SITE });
 }
 
 /** Where a redirect response sends the browser. */
@@ -49,6 +49,14 @@ describe('GET /auth/callback', () => {
   it('returns to a same-site next path, keeping its query', async () => {
     const response = await callback(`code=c&next=${encodeURIComponent('/account?tab=security')}`);
     expect(location(response).href).toBe(`${SITE}/account?tab=security`);
+  });
+
+  it('asks for a code first when the account has an authenticator app, then returns (#173)', async () => {
+    provider({}, { verified: [ADA_PHONE], unverified: [] });
+
+    const response = await callback(`code=c&next=${encodeURIComponent('/account')}`);
+
+    expect(location(response).href).toBe(`${SITE}/login/two-factor?next=%2Faccount`);
   });
 
   it.each([

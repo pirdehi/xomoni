@@ -261,7 +261,7 @@
       "id": "move-your-data",
       "area": "extension",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [300],
       "scenarios": null,
       "en": {
@@ -277,7 +277,7 @@
       "id": "one-click-updates",
       "area": "extension",
       "status": "preview",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [305],
       "scenarios": null,
       "en": {
@@ -325,7 +325,7 @@
       "id": "two-step-verification",
       "area": "website",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [173, 148],
       "scenarios": null,
       "en": {
@@ -421,7 +421,7 @@
       "id": "comments",
       "area": "both",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [256],
       "scenarios": null,
       "en": {
@@ -469,7 +469,7 @@
       "id": "store-install",
       "area": "both",
       "status": "preview",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [302, 304],
       "scenarios": null,
       "en": {
@@ -485,7 +485,7 @@
       "id": "welcome",
       "area": "both",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [244],
       "scenarios": null,
       "en": {
@@ -533,7 +533,7 @@
       "id": "reports",
       "area": "website",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [257],
       "scenarios": null,
       "en": {
@@ -565,7 +565,7 @@
       "id": "send-to-computer",
       "area": "website",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [243],
       "scenarios": null,
       "en": {
@@ -581,7 +581,7 @@
       "id": "phone-menu",
       "area": "website",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.5.0",
       "issues": [242],
       "scenarios": null,
       "en": {

@@ -51,8 +51,8 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Dashboard:** *Home* says what runs and what X needs, with the one button that helps; *Activity* shows each job's progress, time remaining and a log you can read, and export as CSV or JSON; plus removal counts and a year-by-year chart. Light and dark themes.
 - **Daily numbers:** one row per X account per day, kept in this browser: followers, following, posts and likes, what you published and removed, and an estimate of what your posts received. Only pages X already showed count; nothing new is asked of X.
 - **Sign out of Xomoni:** one dialog names the account and says what happens: the running job pauses, the X window closes and nothing more is recorded. You can also remove the account's data from this browser, with a copy to download first, and sign out of X on X's own page.
-- **Move your data to a new Xomoni** *(next release)*: *Export everything* saves one file in Downloads with your accounts, your copy, jobs, the log and settings; *Import from a file* in the new Xomoni checks the whole file first, then adds it to what is there. The file never leaves your computer.
-- **Update in one click** *(next release, preview)*: a Xomoni installed from the zip downloads the new version from GitHub, checks its signature and every file, and writes it into its own folder, never while a job runs. Your data stays. It starts once the maintainer has set up the signing key; until then, update by hand.
+- **Move your data to a new Xomoni:** *Export everything* saves one file in Downloads with your accounts, your copy, jobs, the log and settings; *Import from a file* in the new Xomoni checks the whole file first, then adds it to what is there. The file never leaves your computer.
+- **Update in one click** *(preview)*: a Xomoni installed from the zip downloads the new version from GitHub, checks its signature and every file, and writes it into its own folder, never while a job runs. Your data stays. It starts once the maintainer has set up the signing key; until then, update by hand.
 
 ### The extension with xomoni.com
 
@@ -63,11 +63,11 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Plan a cleanup on xomoni.com:** the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there.
 - **Library, Watch and account health on xomoni.com:** your posts, replies, reposts and likes with a search, each Watch search, and each X account's health and pace, read from Xomoni in the same browser and kept only while the page is open.
 - **Settings from xomoni.com:** change Xomoni's active hours, the failures in a row before a pause, notifications and Watch searches, or set pacing back to Careful. Xomoni applies its own rules, so nothing goes faster than Careful.
-- **Comments on xomoni.com** *(next release)*: find your replies by date, likes, who you replied to and words, see who you reply to most, and send the ones you pick to Xomoni's Cleanup to review. *Replies to you* counts the replies you get each day; Xomoni keeps them on your computer only, for 90 days.
+- **Comments on xomoni.com:** find your replies by date, likes, who you replied to and words, see who you reply to most, and send the ones you pick to Xomoni's Cleanup to review. *Replies to you* counts the replies you get each day; Xomoni keeps them on your computer only, for 90 days.
 - **Show my numbers on xomoni.com:** a switch, off until you turn it on, that sends each day's counts (whole numbers only, no text or ids) for the last 400 days. Turning it off deletes every day already sent.
 - **Hear about new versions:** a browser connected to xomoni.com says when a newer Xomoni is out, and whether it fixes a security problem.
-- **Install from the Chrome Web Store and Edge Add-ons** *(next release, preview)*: once a store lists Xomoni, xomoni.com/install shows one button for your browser, a zip install shows the steps to move to the store's Xomoni, and xomoni.com finds Xomoni by the stores' fixed ids.
-- **A checklist that ticks itself** *(next release)*: Xomoni opens xomoni.com/welcome when it is installed, and three steps tick from what the page sees: Xomoni installed, signed in to xomoni.com, and Xomoni signed in with you. Signing up from a page that asked you to brings you back to it.
+- **Install from the Chrome Web Store and Edge Add-ons** *(preview)*: once a store lists Xomoni, xomoni.com/install shows one button for your browser, a zip install shows the steps to move to the store's Xomoni, and xomoni.com finds Xomoni by the stores' fixed ids.
+- **A checklist that ticks itself:** Xomoni opens xomoni.com/welcome when it is installed, and three steps tick from what the page sees: Xomoni installed, signed in to xomoni.com, and Xomoni signed in with you. Signing up from a page that asked you to brings you back to it.
 
 ### On xomoni.com
 
@@ -79,7 +79,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Send to my computer:** Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers.
 - **xomoni.com on a phone:** a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page.
 
-*(next release)*: on `main`, and in Xomoni's next release; xomoni.com has its part already. *(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
+*(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
 
 <!-- END GENERATED: features -->
 
@@ -240,7 +240,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.4.0](https://github.com/pirdehi/xomoni/releases/tag/v0.4.0), 2026-11-20.** Xomoni has 37 [features](#features), 9 of them added since 0.4.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+**Latest release: [0.5.0](https://github.com/pirdehi/xomoni/releases/tag/v0.5.0), 2026-11-21.** Xomoni has 37 [features](#features), all of them released.
 
 <!-- END GENERATED: status -->
 

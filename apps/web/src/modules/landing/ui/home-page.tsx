@@ -3,7 +3,8 @@
 // with the dashboard and the one line about risk, the five things Xomoni does (with what each is on X today), the
 // places (X today, email next, the rest later), how it works on X, its principles and safety rules, privacy,
 // questions and a closing call to action. Both install buttons are `InstallButton` (#304): a link to /install today,
-// the store's own button for the visitor's browser once a store lists Xomoni.
+// the store's own button for the visitor's browser once a store lists Xomoni. On a phone or tablet, where Xomoni can't
+// be installed, `InstallOrSend` puts *Send to my computer* in their place (#243).
 import {
   Accordion,
   AccordionHeader,
@@ -51,6 +52,7 @@ import {
   SYNCS,
   placeIcon,
 } from './content';
+import { InstallOrSend } from './install-or-send';
 import { InstallButton, useStoreListings } from './store-install';
 
 const WIDE = '@media (min-width: 640px)';
@@ -544,20 +546,38 @@ function Tile({ icon: Icon, tone }: { icon: Feature['icon']; tone: Tone }) {
   );
 }
 
-/** Today's Home in the extension (#239), taken from `npm run preview:ui` at 1440 × 1000, light and dark. */
+/**
+ * Today's Home in the extension (#239), taken from `npm run preview:ui` at 1440 × 1000, light and dark. On a phone, the
+ * same Home in a 700 × 900 window, its main column's top 460 × 580 at twice the pixels (#243): the whole page shrunk
+ * to a phone's width can't be read. The words fit both.
+ */
 const SHOT_ALT =
-  'Xomoni’s Home for an X account: a paused job to resume, what is still on the account and what Xomoni removed, a chart by year and recent activity.';
+  'Xomoni’s Home for an X account: a paused job to resume, and what is still on the account and what Xomoni removed.';
+
+/** Up to this width (the page's own narrow layout), the screenshot is the narrow one, which reads on a phone. */
+const NARROW_SHOT = '(max-width: 639px)';
 
 /**
- * The dashboard screenshot, light or dark to match the visitor's system. A <picture> lets the browser fetch only the
- * one it shows, so it can load eagerly as the page's largest image.
+ * The dashboard screenshot, light or dark to match the visitor's system, and the narrow one on a phone. A <picture>
+ * lets the browser fetch only the one it shows, so it can load eagerly as the page's largest image. Each <source> has
+ * its own size, so the page keeps the right space for whichever is shown.
  */
 function DashboardShot({ className }: { className: string }) {
   const common = { alt: SHOT_ALT, width: 1440, height: 1000, sizes: '(min-width: 1152px) 1104px, 100vw' };
+  const narrow = { alt: SHOT_ALT, width: 920, height: 1160, sizes: '100vw' };
+  const narrowDark = getImageProps({ ...narrow, src: '/screens/overview-narrow-dark.png' }).props.srcSet;
+  const narrowLight = getImageProps({ ...narrow, src: '/screens/overview-narrow.png' }).props.srcSet;
   const dark = getImageProps({ ...common, src: '/screens/overview-dark.png' }).props.srcSet;
   const { props: light } = getImageProps({ ...common, src: '/screens/overview.png', loading: 'eager' });
   return (
     <picture>
+      <source
+        media={`${NARROW_SHOT} and (prefers-color-scheme: dark)`}
+        srcSet={narrowDark}
+        width={narrow.width}
+        height={narrow.height}
+      />
+      <source media={NARROW_SHOT} srcSet={narrowLight} width={narrow.width} height={narrow.height} />
       <source media="(prefers-color-scheme: dark)" srcSet={dark} />
       <img {...light} alt={SHOT_ALT} fetchPriority="high" className={className} />
     </picture>
@@ -593,7 +613,9 @@ function Hero() {
           your email is next.
         </p>
         <div className={mergeClasses(s.actions, s.centered)}>
-          <InstallButton>Get the extension</InstallButton>
+          <InstallOrSend align="center">
+            <InstallButton>Get the extension</InstallButton>
+          </InstallOrSend>
           <ButtonLink href="/login" size="large">
             Sign in to your dashboard
           </ButtonLink>
@@ -948,7 +970,9 @@ function ClosingCta() {
             </p>
           </div>
           <div className={mergeClasses(s.actions, s.closingActions)}>
-            <InstallButton>Get the extension</InstallButton>
+            <InstallOrSend>
+              <InstallButton>Get the extension</InstallButton>
+            </InstallOrSend>
             <ButtonLink href={GITHUB_URL} size="large" icon={<GithubMark />}>
               Star on GitHub
             </ButtonLink>

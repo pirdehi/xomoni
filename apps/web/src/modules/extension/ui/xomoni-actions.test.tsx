@@ -68,6 +68,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   userAgent(DESKTOP);
   Reflect.deleteProperty(window.navigator, 'share');
+  Reflect.deleteProperty(window.navigator, 'clipboard');
 });
 
 describe('useXomoni: when Xomoni is here (ADR-0027, #251)', () => {
@@ -144,7 +145,33 @@ describe('useXomoni: the dialog when Xomoni isn’t here', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Xomoni runs on a computer' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Send to my computer' }));
     expect(writeText).toHaveBeenCalledWith(window.location.href);
-    expect(await within(dialog).findByText('Link copied. Open it on your computer.')).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText(
+        'Link copied. Paste it into a note or a message to yourself, and open it on your computer.',
+      ),
+    ).toBeInTheDocument();
+    expect(services.ask).not.toHaveBeenCalled();
+  });
+
+  it('on a phone that refuses the clipboard, offers to email the page’s link, and forgets it once closed', async () => {
+    userAgent(IPHONE);
+    const writeText = vi.fn(() => Promise.reject(new DOMException('Not allowed', 'NotAllowedError')));
+    Object.defineProperty(window.navigator, 'clipboard', { value: { writeText }, configurable: true });
+    render(<Page />);
+    await userEvent.click(screen.getByRole('button', { name: 'Pause' }));
+
+    let dialog = await screen.findByRole('dialog', { name: 'Xomoni runs on a computer' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send to my computer' }));
+    expect(await within(dialog).findByRole('status')).toHaveTextContent('Couldn’t share or copy the link here.');
+    const email = within(dialog).getByRole('link', { name: 'Email it to yourself' });
+    expect(email.getAttribute('href')).toMatch(/^mailto:\?subject=/);
+    expect(decodeURIComponent(email.getAttribute('href')!)).toContain(window.location.href);
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await userEvent.click(await screen.findByRole('button', { name: 'Pause' }));
+    dialog = await screen.findByRole('dialog', { name: 'Xomoni runs on a computer' });
+    expect(within(dialog).queryByRole('status')).not.toBeInTheDocument();
     expect(services.ask).not.toHaveBeenCalled();
   });
 

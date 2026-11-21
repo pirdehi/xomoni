@@ -24,8 +24,9 @@ import {
   TextBulletListLtr20Regular,
 } from '@fluentui/react-icons';
 import { type ReactNode, useEffect, useId, useState, useSyncExternalStore } from 'react';
-import { DOWNLOAD_URL, SITE_URL } from '@/shared/config/site';
+import { DOWNLOAD_URL, INSTALL_PAGE_URL } from '@/shared/config/site';
 import { ButtonLink, TextLink } from '@/shared/ui/links';
+import { SendToComputer } from '@/modules/extension/ui/send-to-computer';
 import {
   INSTALL_STEPS,
   type InstallStepId,
@@ -477,9 +478,12 @@ export function InstallGuide({ platform, steps }: { platform: Platform; steps: I
   );
 }
 
+/** The install guide's address as a person would type it: `xomoni.com/install`. */
+const INSTALL_ADDRESS = INSTALL_PAGE_URL.replace(/^https?:\/\//, '');
+
 /**
- * What /install shows on a phone or tablet instead of the steps: Xomoni runs on a computer, with the page's link to
- * copy and open there. Nothing to download.
+ * What /install shows on a phone or tablet instead of the steps: Xomoni runs on a computer, with the page's address and
+ * *Send to my computer* (the share sheet, else the clipboard, else an email to oneself, #243). Nothing to download.
  */
 export function PhoneNotice() {
   const s = useStyles();
@@ -493,11 +497,9 @@ export function PhoneNotice() {
         </h2>
         <p className={s.text}>
           Xomoni is an extension for Chrome, Edge or Brave on a Mac or a Windows computer. Phones and tablets can’t run
-          it. Open this page on your computer to install it:
+          it. Send this page to your computer, or open <code>{INSTALL_ADDRESS}</code> there.
         </p>
-        <p className={s.text}>
-          <CopyText text={`${SITE_URL}/install`} />
-        </p>
+        <SendToComputer url={INSTALL_PAGE_URL} className={s.stepAction} />
       </div>
     </section>
   );

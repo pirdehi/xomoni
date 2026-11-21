@@ -1,0 +1,92 @@
+{
+  "data": {
+    "user": {
+      "result": {
+        "__typename": "User",
+        "timeline": {
+          "timeline": {
+            "instructions": [
+              {
+                "type": "TimelineAddEntries",
+                "entries": [
+                  {
+                    "entryId": "tweet-9000000000000000203",
+                    "sortIndex": "9000000000000000203",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000203",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000002",
+                                  "core": {
+                                    "screen_name": "fixture_friend",
+                                    "name": "Fixture Friend"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000203",
+                              "user_id_str": "9000000000000000002",
+                              "created_at": "Wed Apr 02 12:00:00 +0000 2025",
+                              "full_text": "A newer made-up post by the made-up friend.",
+                              "favorite_count": 2,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": true,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-9000000000000000202",
+                    "sortIndex": "9000000000000000202",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000202",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000002",
+                                  "core": {
+                                    "screen_name": "fixture_friend",
+                                    "name": "Fixture Friend"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000202",
+                              "user_id_str": "9000000000000000002",
+                              "created_at": "Sun May 05 12:00:00 +0000 2019",
+                              "full_text": "An older made-up post by the made-up friend.",
+                              "favorite_count": 6,
+                              "retweet_count": 0,
+                              "reply_count": 1,
+                              "favorited": true,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

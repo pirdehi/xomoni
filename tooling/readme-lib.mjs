@@ -20,7 +20,6 @@ export const README_FILES = { en: 'README.md', fa: 'README.fa.md' };
  * never joins it: it names its `docs/scenarios/<issue>-<slug>.md` from the start.
  */
 export const LEGACY_FEATURES = Object.freeze([
-  'cleanup-by-date',
   'keep-rules',
   'preview-before-acting',
   'beyond-profile-limit',

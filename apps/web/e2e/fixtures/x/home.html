@@ -1,8 +1,10 @@
 <!doctype html>
 <!--
   x.com/home as Xomoni's browser tests serve it (#342, ADR-0040), the page the X window opens on. Synthetic: the
-  account is made up, never anyone's. Only what Xomoni reads is here (apps/extension/src/content/dom.ts): the sidebar's
-  profile link, which names the signed-in account. Whether X counts as signed in is the twid cookie the tests set.
+  accounts are made up, never anyone's. Only what Xomoni reads is here (apps/extension/src/content/dom.ts): the sidebar's
+  profile link, which names the signed-in account, and the primary column. Whether X counts as signed in, and as whom,
+  is the twid cookie the tests set; as X does, the sidebar names that account (#345), and shows no profile link to
+  someone signed out.
 -->
 <html lang="en" dir="ltr">
   <head>
@@ -18,10 +20,20 @@
         </nav>
       </header>
       <main role="main">
-        <h1>Home</h1>
-        <section aria-label="Timeline: Your Home Timeline"></section>
+        <div data-testid="primaryColumn">
+          <h1>Home</h1>
+          <section aria-label="Timeline: Your Home Timeline"></section>
+        </div>
       </main>
     </div>
     <div id="layers"></div>
+    <script>
+      // The made-up accounts the fixtures know, by id: the profile link names the one X's twid cookie says.
+      const HANDLES = { '9000000000000000001': 'xomoni_fixture', '9000000000000000002': 'fixture_friend' };
+      const id = /(?:^|; )twid=u%3D(\d+)/.exec(document.cookie)?.[1];
+      const link = document.querySelector('[data-testid="AppTabBar_Profile_Link"]');
+      if (id && HANDLES[id]) link.setAttribute('href', `/${HANDLES[id]}`);
+      else link.remove();
+    </script>
   </body>
 </html>

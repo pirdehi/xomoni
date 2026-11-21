@@ -1,5 +1,6 @@
 # The merge gate for main, and the first gate of every release. Branch protection requires every job below to pass,
-# and the release workflow calls this one on the tagged commit before it builds anything (#340, ADR-0037).
+# the release workflow calls this one on the tagged commit before it builds anything (#340, ADR-0037), and the nightly
+# workflow calls it on main every night (#343).
 # `verify` is the same command the pre-push hook runs locally (tooling/verify.mjs). Actions are pinned by commit
 # SHA (#142); Dependabot keeps them current.
 name: CI
@@ -8,17 +9,19 @@ on:
   push:
     branches: [main]
   pull_request:
-  # From release.yml, read-only, and given no secret.
+  # From release.yml and nightly.yml, read-only, and given no secret.
   workflow_call:
 
 permissions:
   contents: read
 
-# Called by the release, this sees the release's `github` context, so the group is `ci-refs/tags/vX.Y.Z`. No pull
-# request (`refs/pull/N/merge`) or push to main shares it, so none of them cancels the release's CI or is cancelled
-# by it. release.yml must never take this group for itself: GitHub would then cancel one run for the other.
+# A newer run for the same event and ref cancels the older one. Called by another workflow, this sees the caller's
+# `github` context: the release's group is `ci-push-refs/tags/vX.Y.Z`, the nightly's `ci-schedule-refs/heads/main` (or
+# `ci-workflow_dispatch-…`). No pull request (`ci-pull_request-refs/pull/N/merge`) or push to main
+# (`ci-push-refs/heads/main`) shares them, so none of them cancels the release's or the nightly's CI or is cancelled by
+# it (#343). A caller must never take a `ci-` group for itself: GitHub would then cancel one run for the other.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

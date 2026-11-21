@@ -36,7 +36,7 @@ flowchart TD
 | 1 · On the computer | Every `git push` | `npm run verify` | [`.githooks/pre-push`](../.githooks/pre-push) |
 | 2 · Merge to `main` | Every pull request | `verify`, `database`, `e2e`, `pr-policy`, `dependency-review`, code scanning, a code owner's review of the gate's files | The "Protect main" ruleset |
 | 3 · Release candidate | The release pull request | The whole suite; the release issue opened and every box ticked | [The release issue template](../.github/ISSUE_TEMPLATE/release.md) |
-| 4 · Release | A `vX.Y.Z` tag | Full CI on the tagged commit, `npm audit` at high, the release issue complete, the maintainer's approval | [`release.yml`](../.github/workflows/release.yml): `ci` calls [`ci.yml`](../.github/workflows/ci.yml), `readiness` reads the release issue, `build` runs `npm audit`, and `publish` needs them all; the `release` environment |
+| 4 · Release | A `vX.Y.Z` tag | Full CI on the tagged commit, `npm audit` at high, the release issue complete, the maintainer's approval | [`release.yml`](../.github/workflows/release.yml): `ci` calls [`ci.yml`](../.github/workflows/ci.yml), `readiness` reads the release issue, `build` runs `npm audit`, and `publish` needs them all; the `release` environment. Once it has published, `after-release` checks what people download (R18) |
 
 ## Rules and what enforces them
 
@@ -61,7 +61,16 @@ flowchart TD
 | R15 | Releases only from `main`: reproducible, signed, with provenance; tags never move | `release.yml`, the tag rulesets | Enforced |
 | R16 | No release before the checklist is complete and the maintainer approves | The `release` environment; the release issue check, [`tooling/check-release-issue.mjs`](../tooling/check-release-issue.mjs) in `release.yml` | Enforced: the environment since 2026-11-21, the issue check since #340 |
 | R17 | The gate's own files are reviewed by the maintainer | [`CODEOWNERS`](../.github/CODEOWNERS), the ruleset | Planned: #346, once agents have their own account |
-| R18 | The whole suite every night on `main`, and a check of each published release | A nightly workflow | Planned: #343 |
+| R18 | The whole suite every night on `main`, and a check of each published release | [`nightly.yml`](../.github/workflows/nightly.yml); [`release-check.yml`](../.github/workflows/release-check.yml), called by `release.yml` once it has published ([below](#every-night-and-after-each-release)) | Enforced (#PR343) |
+
+## Every night, and after each release
+
+Two checks run outside the four gates, so what passed once keeps passing (R18, #343):
+
+- **The nightly run** ([`nightly.yml`](../.github/workflows/nightly.yml)), every day at 02:23 UTC and by hand (*Actions › Nightly › Run workflow*). On `main`, it runs the full CI ([`ci.yml`](../.github/workflows/ci.yml), as for a merge) and `npm audit --audit-level=high`, as the release build does. A red night opens one issue, labelled `nightly` and titled *Nightly run failing*, with the run; each red night after that comments on it, and the first green night closes it ([`tooling/nightly-report.mjs`](../tooling/nightly-report.mjs)). While it is open, `main` comes first: every pull request and the next release would meet the same failure.
+- **The check after each release** ([`release-check.yml`](../.github/workflows/release-check.yml)), the last job of every release and by hand for any release. It downloads the release as people get it and checks `SHA256SUMS`, the build provenance of each zip and `releases/latest`, then comments the result on the version's release issue ([releasing](RELEASING.md#the-check-after-the-release)).
+
+Only their report jobs can write, to issues only, and they run no npm code.
 
 ## Exemptions
 

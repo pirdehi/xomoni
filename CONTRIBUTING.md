@@ -84,6 +84,10 @@ Besides CI's `verify`, `database` and `e2e`, every pull request runs [`pr-policy
 | `pr-policy`: reasons | `no-changelog` or `no-scenarios` is set, but no line starts with `No changelog:` or `No scenarios:` and a reason | Write the reason, or remove the label |
 | `dependency-review` | The pull request adds a dependency, or a version of one, with a known high or critical vulnerability | Choose a version without it, or another package |
 
+### When main is red
+
+Every night, [`nightly.yml`](.github/workflows/nightly.yml) runs the full CI and `npm audit` on `main` (#343). When it fails, it opens one issue, *Nightly run failing*, labelled `nightly`, and closes it after the next green night. While it is open, fix `main` first: every pull request, and the next release, would meet the same failure. To check a fix before the next night, run it by hand from *Actions › Nightly › Run workflow*.
+
 ## TypeScript
 
 The rules are in [ADR-0016](docs/adr/0016-strict-typescript-and-type-aware-lint.md) and enforced by `npm run verify`. In short:

@@ -1,0 +1,76 @@
+# The whole suite every night on main (#343, R18 of docs/QUALITY-GATES.md), so a failure shows up the next morning
+# rather than on release day: a flaky test, a dependency's new advisory, a change outside the repository.
+# - `ci` runs the full CI, ci.yml (verify, database, e2e), read-only and with no secret, as every merge does;
+# - `audit` runs `npm audit` at high on every dependency, as the release build does, from the lockfile alone;
+# - `report` keeps one issue, labelled `nightly` and titled "Nightly run failing": a red night opens it or comments on
+#   it, the first green night closes it (tooling/nightly-report.mjs). It is the only job that can write, to issues only,
+#   and it runs no npm code.
+# GitHub runs schedules from main only, and turns them off after 60 days without activity in the repository. Run it by
+# hand from Actions › Nightly › Run workflow. Actions are pinned by commit SHA; Dependabot keeps them current.
+name: Nightly
+
+on:
+  schedule:
+    # 02:23 UTC every day: off the hour, when GitHub's queues are busiest, and before the maintainer's morning.
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+# One night at a time: a run by hand waits for the scheduled one. ci.yml's own group is ci-<event>-<ref>, which no pull
+# request or push to main shares, so neither cancels the other.
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: ci
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      # npm audit reads package-lock.json: nothing is installed, and no dependency's code runs.
+      - name: No dependency with a known high or critical vulnerability
+        run: npm audit --audit-level=high
+
+  report:
+    name: report
+    needs: [ci, audit]
+    # After a red night too; not when a person cancels the run.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      # To check out the report script.
+      contents: read
+      # To open, comment on and close the nightly issue, and create its label once.
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: tooling
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Open, update or close the nightly issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CI_RESULT: ${{ needs.ci.result }}
+          AUDIT_RESULT: ${{ needs.audit.result }}
+        run: node tooling/nightly-report.mjs "ci=$CI_RESULT" "audit=$AUDIT_RESULT"

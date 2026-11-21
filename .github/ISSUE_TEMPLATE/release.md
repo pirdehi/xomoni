@@ -59,5 +59,5 @@ Previous version: vX.Y.Z
 
 Not checkboxes: the workflow comments the release here and closes this issue.
 
-- Download from `releases/latest`, then check `SHA256SUMS` and `gh attestation verify xomoni-extension.zip --repo pirdehi/xomoni`.
+- The check after the release comments here: the files downloaded from the release and from `releases/latest`, `SHA256SUMS`, and `gh attestation verify` on each zip (#343). If it failed, see "When the check after the release fails" in `docs/RELEASING.md`.
 - Record the release in `public.extension_releases` (step 6 of `docs/RELEASING.md`).

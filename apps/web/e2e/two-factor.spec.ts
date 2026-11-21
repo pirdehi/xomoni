@@ -3,6 +3,7 @@ import { addDevice, createConfirmedUser } from './support/admin';
 import {
   NEW_PASSWORD,
   PASSWORD,
+  followEmailLink,
   expectDashboard,
   passwordInput,
   signIn,
@@ -191,6 +192,27 @@ test.describe('two-step verification', () => {
     await signOut(page);
     await signIn(page, email, PASSWORD);
     await expectDashboard(page);
+  });
+
+  test('a password reset by email asks an account with an app for its code before the new password', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('totp-reset');
+    await createConfirmedUser(email, PASSWORD);
+    const { secret } = await apiEnroll(await apiSignIn(email, PASSWORD));
+
+    await page.goto('/forgot-password');
+    await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email);
+    await submit(page, 'Send reset link');
+    await followEmailLink(page, email, 'Reset your Xomoni password');
+    // The emailed link alone signs in at aal1: the inbox is not enough to choose a new password.
+    await expect(page).toHaveURL(/\/login\/two-factor\?next=%2Freset-password$/);
+
+    await enterCode(page, totp(secret));
+    await expect(page).toHaveURL(/\/reset-password$/);
+    await passwordInput(page, 'New password').fill(NEW_PASSWORD);
+    await page.getByRole('button', { name: 'Save new password' }).click();
+    await expect(page).toHaveURL(/\/account\?password=updated$/);
   });
 
   test('changing the password asks an account with an app for a code too', async ({ page }) => {

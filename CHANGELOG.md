@@ -15,7 +15,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 - **Two-step verification on xomoni.com** (#173). Turn it on in *Account › Two-step verification* with an authenticator app, such as 1Password, Google Authenticator or Microsoft Authenticator: scan the QR code, or type its key, then enter the app's first code.
   - Signing in with your password or Google then asks for a 6-digit code from the app before any private page opens.
   - The website's server and the database both check it, so your password alone, or a copy of your session, reads and changes nothing, through the website or the API. Removing an app, adding another, or changing your email or password needs a code in that session too.
-  - Changing your password asks for a code with it.
+  - Changing your password asks for a code with it, and so does a password reset by email: your inbox alone can't choose a new password.
   - Add a second app on another device as a backup. Lost them all? Write to privacy@xomoni.com from your account's address: after checking it's you, we remove them within a few days, telling that address meanwhile.
   - Every app added or removed is emailed to you ([ADR-0036](docs/adr/0036-two-step-verification-with-an-authenticator-app.md)).
 - **xomoni.com finds Xomoni by its fixed id** (#302). Once Xomoni is in the Chrome Web Store and Edge Add-ons, xomoni.com looks for it at the stores' ids. The install checklist, the one sign-in and every page that reads from Xomoni then work as soon as it is installed, without Xomoni opening xomoni.com first.

@@ -10,7 +10,7 @@ import { ROUTES } from '../domain/routes';
 import { RECOVERY_COOL_DOWN_DAYS } from '../domain/two-factor';
 import { SubmitButton, TextField } from './fields';
 import { FormAlert } from './form-alert';
-import { useSignedInNavigation } from './navigation';
+import { loadPage } from './navigation';
 
 const useStyles = makeStyles({
   form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
@@ -94,7 +94,6 @@ export function LostAppHelp({ email }: { email: string }) {
 export function TwoFactorForm({ email }: { email: string }) {
   const s = useStyles();
   const next = useSearchParams().get('next');
-  const navigate = useSignedInNavigation();
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   // A new key empties the field after a failed code, ready for the next one.
@@ -106,7 +105,7 @@ export function TwoFactorForm({ email }: { email: string }) {
     startTransition(async () => {
       const result = await browserAuth.verifySecondFactor({ code: form.get('code'), next });
       if (result.ok) {
-        navigate(result.next);
+        loadPage(result.next);
         return;
       }
       setFailure(result);

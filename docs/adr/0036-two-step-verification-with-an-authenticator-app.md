@@ -32,6 +32,7 @@ What Supabase Auth gives (GoTrue v2.198, `@supabase/supabase-js` 2.118, checked 
    - `getSessionState` (`modules/auth/application/use-cases.ts`) reads `aal` from the verified token (`getClaims`). Only below `aal2` does it ask Supabase Auth whether the account has a verified app (`listFactors` reads the user from the Auth server, never the cookie).
    - The proxy redirects a session that owes a code from every page that needs a session (`/dashboard/*`, `/account`, `/reset-password`) and from the guest pages to `/login/two-factor`.
    - The Data Access Layer is the boundary: `requireViewer` and `requireAccount` redirect there, and `currentViewer` treats such a session as signed out. The *Delete account* Server Action and the OAuth callback check it too.
+   - An emailed reset link signs in at `aal1`, so an account with an app gives a code before `/reset-password`: the inbox alone can't choose a new password. After the code, the page loads anew (`loadPage`), because the client router may still hold the redirect it got at `aal1`.
    - An account without an app is unchanged at `aal1`.
 4. **The database refuses too** (`20261121130000_two_factor.sql`), so the Data API gives a stolen password or session nothing either:
    - `public.mfa_satisfied()` is true at `aal2`, or for an account without a verified factor.

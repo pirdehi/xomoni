@@ -6,11 +6,14 @@ import { resetNavigation, router, setLocation } from '@test/fakes/navigation';
 import { browserAuth } from '../client/auth';
 import { AUTH_ERROR_MESSAGES } from '../domain/auth-error';
 import { RECOVERY_COOL_DOWN_DAYS } from '../domain/two-factor';
+import { loadPage } from './navigation';
 import { CodeField, TwoFactorForm } from './two-factor-form';
 
 vi.mock('../client/auth', () => ({ browserAuth: { verifySecondFactor: vi.fn() } }));
+vi.mock('./navigation', () => ({ loadPage: vi.fn() }));
 
 const verify = vi.mocked(browserAuth.verifySecondFactor);
+const load = vi.mocked(loadPage);
 const codeField = () => screen.getByLabelText('6-digit code');
 
 async function enter(code: string) {
@@ -22,6 +25,7 @@ describe('TwoFactorForm (#173)', () => {
   beforeEach(() => {
     resetNavigation();
     verify.mockReset();
+    load.mockReset();
   });
 
   it('says who is signing in and asks for the code, ready to type', () => {
@@ -48,9 +52,9 @@ describe('TwoFactorForm (#173)', () => {
     await enter('123 456');
 
     expect(verify).toHaveBeenCalledWith({ code: '123 456', next: '/account' });
-    expect(router.replace).toHaveBeenCalledWith('/account');
-    // The server reads the raised session (aal2) at once.
-    expect(router.refresh).toHaveBeenCalled();
+    // A full load: the client router may still hold the redirect the page gave at aal1.
+    expect(load).toHaveBeenCalledWith('/account');
+    expect(router.replace).not.toHaveBeenCalled();
   });
 
   it('says a wrong code is wrong, empties the field for the next one and keeps the focus there', async () => {
@@ -64,7 +68,7 @@ describe('TwoFactorForm (#173)', () => {
     expect(codeField()).toHaveValue('');
     expect(codeField()).toHaveAttribute('aria-invalid', 'true');
     expect(codeField()).toHaveFocus();
-    expect(router.replace).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
   });
 
   it('keeps a malformed code in the field to fix, with no general alert', async () => {

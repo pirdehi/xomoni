@@ -30,14 +30,18 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   };
   const here = `${path}${request.nextUrl.search}`;
 
-  if (!claims && requiresSession(path)) return redirect(onThisSite(ROUTES.signIn, here));
-  if (claims && (requiresSession(path) || isGuestOnly(path))) {
-    // Only below aal2 is the provider asked whether the account has an authenticator app.
-    const level = assuranceOf(claims.aal);
-    const owesCode =
-      level !== 'aal2' &&
-      secondFactorNeeded(level, ((await createSupabaseTwoFactorGateway(supabase).factors())?.verified.length ?? 0) > 0);
-    if (owesCode) {
+  const guarded = requiresSession(path) || isGuestOnly(path);
+  // Only below aal2 is the provider asked about the account's authenticator apps, as the pages do (`getSessionState`).
+  const level = assuranceOf(claims?.aal);
+  const factors =
+    claims && guarded && level !== 'aal2' ? await createSupabaseTwoFactorGateway(supabase).factors() : undefined;
+  // A token the provider no longer knows (signed out everywhere, deleted) counts as signed out here too, as on the
+  // page: otherwise the sign-in page and a protected page would send the browser back and forth.
+  const signedIn = !!claims && factors !== null;
+
+  if (!signedIn && requiresSession(path)) return redirect(onThisSite(ROUTES.signIn, here));
+  if (signedIn && guarded) {
+    if (secondFactorNeeded(level, (factors?.verified.length ?? 0) > 0)) {
       // A guest page's own `next` is untrusted: only a same-site path is kept.
       const next = safeNextPath(requiresSession(path) ? here : request.nextUrl.searchParams.get('next'));
       return redirect(onThisSite(ROUTES.twoFactor, next === ROUTES.dashboard ? undefined : next));

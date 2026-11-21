@@ -176,10 +176,6 @@ describe('updateSession: a session that owes a code from the account’s authent
     );
   });
 
-  it('lets the code page itself open', async () => {
-    expectPassThrough(await visit('/login/two-factor'));
-  });
-
   it('lets the same account in once the session verified a code (aal2), asking the provider nothing', async () => {
     supabaseSession(true, undefined, { aal: 'aal2', factors: [PHONE] });
 
@@ -194,10 +190,19 @@ describe('updateSession: a session that owes a code from the account’s authent
     expect(redirectTarget(await visit('/login')).href).toBe(`${SITE}/dashboard`);
   });
 
-  it('lets the page decide when the provider can’t list the factors', async () => {
-    listFactors.mockResolvedValue({ data: null, error: { message: 'Auth down' } });
+  it('treats a token the provider no longer knows as signed out, so sign-in and the page never loop', async () => {
+    // Signed out everywhere from another browser: the token still verifies, but Supabase knows no session.
+    listFactors.mockResolvedValue({ data: null, error: { message: 'Session not found' } });
 
-    expectPassThrough(await visit('/account'));
+    const target = redirectTarget(await visit('/account'));
+    expect(target.pathname).toBe('/login');
+    expect(target.searchParams.get('next')).toBe('/account');
+    expectPassThrough(await visit('/login'));
+  });
+
+  it('asks nothing more on a page that is neither guarded nor guest-only', async () => {
+    expectPassThrough(await visit('/login/two-factor'));
+    expect(listFactors).not.toHaveBeenCalled();
   });
 });
 

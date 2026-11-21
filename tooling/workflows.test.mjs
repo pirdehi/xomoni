@@ -587,10 +587,9 @@ describe('pull request policy workflow (#339)', () => {
       assert.ok(types.includes(type), type);
     // pull_request_target would run with a write token on a fork's code.
     assert.doesNotMatch(policy, /pull_request_target|workflow_run|^ {2}push:/m);
-    assert.match(
-      policy,
-      /group: pr-policy-\$\{\{ github\.event\.pull_request\.number \}\}\n {2}cancel-in-progress: true/,
-    );
+    // No concurrency group: two events at once (a PR opened with a label) would leave a cancelled required check,
+    // which blocks the merge even though the other run passed (#363).
+    assert.doesNotMatch(policy, /^concurrency:/m);
   });
 
   it('reads only, and sees no secret', () => {

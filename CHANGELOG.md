@@ -4,19 +4,9 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
-### Fixed
+## [0.5.1] - 2026-11-21
 
-- Text that was hard to read now meets WCAG AA contrast, in Xomoni's dashboard and on xomoni.com (#342). In light mode, muted text and the blue of buttons and blue text are a shade deeper; in dark mode, muted text is a shade lighter.
-- Links in the text of xomoni.com's privacy policy, terms and risks pages are underlined, so they stand out without relying on color (#342).
-- The account button at the bottom of Xomoni's sidebar is named by the words it shows, so voice control can press it by saying them, and screen readers say it opens a panel (#342). On xomoni.com, the account menu's name includes the initials its picture shows, for the same reason.
-- Screen readers didn't read out Xomoni's messages, such as *Couldn’t finish signing out*, while a dialog was open, nor one that came as it closed (#352). A dialog hides the rest of the page from them, and the messages were part of it. They now sit outside what a dialog hides, so they are read out at once.
-- After you imported your data from the offer on a new install (*Coming from another Xomoni?*), only a message that faded after a few seconds said it worked: Xomoni went straight to Home, and the import's *Your data is here* summary never showed (#357). Home now shows it until you dismiss it, and so does *Settings › Move your data*.
-- In light mode, the text of a quiet button while the pointer is over it, or while it is selected, is the same deeper blue as other blue text, so it meets WCAG AA contrast too, in Xomoni's dashboard and on xomoni.com (#345). It was 4.3:1, as on *Choose what to keep* in Cleanup.
-- In Cleanup, a post pasted twice under *Always keep these posts*, such as once as its link and once as its id, counted as two: the exceptions said *Keeps 2 chosen posts.* for one post (#367). Each post now counts once. The same posts were kept either way.
-- A cleanup could load the person's profile while X said a fifth of its window for profile lookups was already used, going past one fifth of that limit (ADR-0012, #345). Every profile page, its Likes tab included, asks X for the profile before its timeline, and Xomoni kept to one fifth of the timeline's window only. It now waits for X's reset on either, as *Settings › Today’s use of X’s limits* already said it did, and a page X refuses on the profile counts as X's rate limit, so it is loaded again after the reset.
-- Cleanup's *Review* showed Careful's pace and an estimate at that pace, while a new account runs at a quarter of it on its first active day, and slower after X's warnings (#345). It now shows the pace a run will use, as the job's card does, and why it is slower for now: on a new account, 320–480 s and 240 deletes a day instead of 80–120 s and 960.
-
-## [0.5.0] - 2026-11-21
+0.5.0 was tagged but never published (#354): a pacing defect found after it was built (#369) is fixed here, so 0.5.1 is the first release with everything below.
 
 ### Added
 
@@ -122,6 +112,15 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Fixed
 
+- Text that was hard to read now meets WCAG AA contrast, in Xomoni's dashboard and on xomoni.com (#342). In light mode, muted text and the blue of buttons and blue text are a shade deeper; in dark mode, muted text is a shade lighter.
+- Links in the text of xomoni.com's privacy policy, terms and risks pages are underlined, so they stand out without relying on color (#342).
+- The account button at the bottom of Xomoni's sidebar is named by the words it shows, so voice control can press it by saying them, and screen readers say it opens a panel (#342). On xomoni.com, the account menu's name includes the initials its picture shows, for the same reason.
+- Screen readers didn't read out Xomoni's messages, such as *Couldn’t finish signing out*, while a dialog was open, nor one that came as it closed (#352). A dialog hides the rest of the page from them, and the messages were part of it. They now sit outside what a dialog hides, so they are read out at once.
+- After you imported your data from the offer on a new install (*Coming from another Xomoni?*), only a message that faded after a few seconds said it worked: Xomoni went straight to Home, and the import's *Your data is here* summary never showed (#357). Home now shows it until you dismiss it, and so does *Settings › Move your data*.
+- In light mode, the text of a quiet button while the pointer is over it, or while it is selected, is the same deeper blue as other blue text, so it meets WCAG AA contrast too, in Xomoni's dashboard and on xomoni.com (#345). It was 4.3:1, as on *Choose what to keep* in Cleanup.
+- In Cleanup, a post pasted twice under *Always keep these posts*, such as once as its link and once as its id, counted as two: the exceptions said *Keeps 2 chosen posts.* for one post (#367). Each post now counts once. The same posts were kept either way.
+- A cleanup could load the person's profile while X said a fifth of its window for profile lookups was already used, going past one fifth of that limit (ADR-0012, #345). Every profile page, its Likes tab included, asks X for the profile before its timeline, and Xomoni kept to one fifth of the timeline's window only. It now waits for X's reset on either, as *Settings › Today’s use of X’s limits* already said it did, and a page X refuses on the profile counts as X's rate limit, so it is loaded again after the reset.
+- Cleanup's *Review* showed Careful's pace and an estimate at that pace, while a new account runs at a quarter of it on its first active day, and slower after X's warnings (#345). It now shows the pace a run will use, as the job's card does, and why it is slower for now: on a new account, 320–480 s and 240 deletes a day instead of 80–120 s and 960.
 - After signing out of Xomoni, its dashboard stayed hidden from screen readers until the tab was reloaded, the success message included (#315). The page is readable again as soon as the dialog closes, in Xomoni and on xomoni.com.
 - Cleanup on xomoni.com says that X began in 2006 when a date is earlier, instead of asking Xomoni for a plan it refuses.
 - Audience on xomoni.com, over *All time*, says your followers changed by so many *over all time*, not *in the all time* (#341).

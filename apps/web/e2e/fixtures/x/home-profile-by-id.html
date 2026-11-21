@@ -1,0 +1,37 @@
+<!doctype html>
+<!--
+  x.com/home after X changed its page, as Xomoni's browser tests serve it (#345, ADR-0040): the same page as home.html,
+  but the sidebar's profile link names the signed-in account by its id (/i/user/<id>, a path X also takes), not by its
+  handle, so the page no longer says which handle is the person's (PLAYBOOK F1, F2). Synthetic: the accounts are made
+  up, never anyone's.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Home / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link" aria-current="page">Home</a>
+          <a href="/i/user/9000000000000000001" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1>Home</h1>
+          <section aria-label="Timeline: Your Home Timeline"></section>
+        </div>
+      </main>
+    </div>
+    <div id="layers"></div>
+    <script>
+      // The profile link names whoever X's twid cookie says is signed in, by id, or is gone for someone signed out.
+      const id = /(?:^|; )twid=u%3D(\d+)/.exec(document.cookie)?.[1];
+      const link = document.querySelector('[data-testid="AppTabBar_Profile_Link"]');
+      if (id) link.setAttribute('href', `/i/user/${id}`);
+      else link.remove();
+    </script>
+  </body>
+</html>

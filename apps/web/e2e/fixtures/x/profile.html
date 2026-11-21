@@ -1,15 +1,16 @@
 <!doctype html>
 <!--
   x.com/xomoni_fixture as Xomoni's browser tests serve it (#342, ADR-0040), with its Replies and Likes tabs
-  (/with_replies, /likes, #345). Synthetic: the accounts, their posts and every id are made up, never anyone's. Only what
-  Xomoni reads is here (apps/extension/src/content/dom.ts): the sidebar's profile link, the primary column, and posts as
-  article[data-testid="tweet"] with their author line, time link, text, "…" button and like and repost buttons. The
-  sidebar names the account X's twid cookie says is signed in, as on home.html. As X's
-  web app does, the page asks X's GraphQL API for the profile, then for the tab's timeline, and shows what X answered:
-  its posts, X's empty state, or X's error panel when X refused either (a rate limit, X down), without asking for the
-  timeline once the profile was refused. A post's text is drawn as X draws it: X sends it HTML-escaped, the page shows
-  it decoded (#370). The interceptor reads the same answers (graphql/UserByScreenName.json,
-  UserTweets.json, or another set a test serves).
+  (/with_replies, /likes, #345), and the same pages of the other made-up account, x.com/fixture_friend (#345): the page
+  shows the account its path names. Synthetic: the accounts, their posts and every id are made up, never anyone's. Only
+  what Xomoni reads is here (apps/extension/src/content/dom.ts): the sidebar's profile link, the primary column, and
+  posts as article[data-testid="tweet"] with their author line, time link, text, "…" button and like and repost
+  buttons. A post that quotes another shows it inside, as X does, with the quoted post's time not linked. The sidebar
+  names the account X's twid cookie says is signed in, as on home.html. As X's web app does, the page asks X's GraphQL
+  API for the profile, then for the tab's timeline, and shows what X answered: its posts, X's empty state, or X's error
+  panel when X refused either (a rate limit, X down), without asking for the timeline once the profile was refused. A
+  post's text is drawn as X draws it: X sends it HTML-escaped, the page shows it decoded (#370). The interceptor reads
+  the same answers (graphql/UserByScreenName.json, UserTweets.json, or another set a test serves).
 -->
 <html lang="en" dir="ltr">
   <head>
@@ -46,10 +47,22 @@
         if (id && HANDLES[id]) link.setAttribute('href', `/${HANDLES[id]}`);
         else link.remove();
       })();
+      // The account the path names: the fixture account's own pages, or the other made-up account's.
+      (() => {
+        const handle = location.pathname.split('/')[1];
+        if (handle !== 'fixture_friend') return;
+        document.title = 'Fixture Friend (@fixture_friend) / X';
+        document.querySelector('h1').innerHTML = 'Fixture Friend <span>@fixture_friend</span>';
+        for (const link of document.querySelectorAll('nav[aria-label="Profile timelines"] a'))
+          link.setAttribute('href', link.getAttribute('href').replace('xomoni_fixture', handle));
+        document.querySelector('section').setAttribute('aria-label', 'Timeline: Fixture Friend’s posts');
+      })();
     </script>
     <script>
       (() => {
-        const USER_ID = '9000000000000000001';
+        const IDS = { xomoni_fixture: '9000000000000000001', fixture_friend: '9000000000000000002' };
+        const handle = location.pathname.split('/')[1];
+        const USER_ID = IDS[handle];
         const TIMELINES = { '': 'UserTweets', with_replies: 'UserTweetsAndReplies', likes: 'Likes' };
         const op = TIMELINES[location.pathname.split('/')[2] ?? ''];
         const timeline = document.querySelector('section');
@@ -81,12 +94,32 @@
         const shortDate = (iso) =>
           new Date(iso).toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' });
 
-        // One post as X draws it; a repost draws the original under "You reposted".
+        // A quoted post, as X draws it inside the post that quotes it: its author, its time, which isn't a link, and
+        // its text.
+        const quotedPost = (result) => {
+          const author = result.core.user_results.result.core;
+          const iso = new Date(result.legacy.created_at).toISOString();
+          return el(
+            'div',
+            { role: 'link', tabindex: '0' },
+            el(
+              'div',
+              { 'data-testid': 'User-Name' },
+              el('span', {}, author.name),
+              el('span', {}, `@${author.screen_name}`),
+              el('time', { datetime: iso }, shortDate(iso)),
+            ),
+            el('div', { 'data-testid': 'tweetText', lang: 'en' }, shownText(result.legacy.full_text)),
+          );
+        };
+
+        // One post as X draws it; a repost draws the original under "You reposted", and a quote the post it quotes.
         const article = (result) => {
           const repost = result.legacy.retweeted_status_result?.result;
           const shown = repost ?? result;
           const { legacy } = shown;
           const author = shown.core.user_results.result.core;
+          const quoted = shown.quoted_status_result?.result;
           const iso = new Date(legacy.created_at).toISOString();
           const button = (testid, label) =>
             el('button', { type: 'button', 'data-testid': testid, 'aria-label': label });
@@ -107,6 +140,7 @@
             ),
             button('caret', 'More'),
             el('div', { 'data-testid': 'tweetText', lang: 'en' }, shownText(legacy.full_text)),
+            ...(quoted?.legacy ? [quotedPost(quoted)] : []),
             el(
               'div',
               { role: 'group' },
@@ -138,7 +172,7 @@
           for (const result of list) timeline.append(article(result));
         };
 
-        ask('UserByScreenName', { screen_name: 'xomoni_fixture' })
+        ask('UserByScreenName', { screen_name: handle })
           .then((profile) => (profile.ok ? ask(op, { userId: USER_ID, count: 20 }) : profile))
           .then(async (response) => show(response, response.ok ? await response.json() : null))
           .catch(() => show({ ok: false }, null));

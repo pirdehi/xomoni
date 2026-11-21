@@ -1,0 +1,114 @@
+<!doctype html>
+<!--
+  A post's page on x.com, /<handle>/status/<id>, as Xomoni's browser tests serve it (#345, ADR-0040): where the deep
+  clean opens each known post and the sample checks look again. Synthetic: the accounts and every id are made up, never
+  anyone's. Only what Xomoni reads is here (apps/extension/src/content/dom.ts): the sidebar's profile link, which names
+  the account X's twid cookie says is signed in, as on home.html, the primary column, and the post as
+  article[data-testid="tweet"] with its author line, time link, text and "…" button. As X's web app does, the page asks
+  X's GraphQL API for the post (TweetDetail) and shows what X answered: the post, or, when X has no such post or refused
+  to answer, X's panel saying the page doesn't exist. The fixtures have no TweetDetail answer of their own: a test serves
+  the one it needs, such as graphql/post-not-found/TweetDetail.json.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Post / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link">Home</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1>Post</h1>
+          <section aria-label="Timeline: Conversation"></section>
+        </div>
+      </main>
+    </div>
+    <div id="layers"></div>
+    <script>
+      // As on home.html: the sidebar names the account X's twid cookie says is signed in, or no one.
+      (() => {
+        const HANDLES = { '9000000000000000001': 'xomoni_fixture', '9000000000000000002': 'fixture_friend' };
+        const id = /(?:^|; )twid=u%3D(\d+)/.exec(document.cookie)?.[1];
+        const link = document.querySelector('[data-testid="AppTabBar_Profile_Link"]');
+        if (id && HANDLES[id]) link.setAttribute('href', `/${HANDLES[id]}`);
+        else link.remove();
+      })();
+    </script>
+    <script>
+      (() => {
+        const focalTweetId = location.pathname.split('/')[3];
+        const timeline = document.querySelector('section');
+
+        const el = (tag, attrs = {}, ...children) => {
+          const node = document.createElement(tag);
+          for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
+          node.append(...children);
+          return node;
+        };
+
+        // Every post in X's answer, wherever its entries put it: each tweet_results.result with the post's fields.
+        const posts = (node, out = []) => {
+          if (Array.isArray(node)) node.forEach((child) => posts(child, out));
+          else if (node && typeof node === 'object') {
+            if (node.tweet_results?.result?.legacy) out.push(node.tweet_results.result);
+            else Object.values(node).forEach((child) => posts(child, out));
+          }
+          return out;
+        };
+
+        const shortDate = (iso) =>
+          new Date(iso).toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' });
+
+        const article = ({ core, legacy }) => {
+          const author = core.user_results.result.core;
+          const iso = new Date(legacy.created_at).toISOString();
+          return el(
+            'article',
+            { 'data-testid': 'tweet', tabindex: '0' },
+            el(
+              'div',
+              { 'data-testid': 'User-Name' },
+              el('a', { href: `/${author.screen_name}` }, author.name),
+              el('a', { href: `/${author.screen_name}` }, `@${author.screen_name}`),
+              el(
+                'a',
+                { href: `/${author.screen_name}/status/${legacy.id_str}` },
+                el('time', { datetime: iso }, shortDate(iso)),
+              ),
+            ),
+            el('button', { type: 'button', 'data-testid': 'caret', 'aria-label': 'More' }),
+            el('div', { 'data-testid': 'tweetText', lang: 'en' }, legacy.full_text),
+          );
+        };
+
+        // X's panel for a post it doesn't have: deleted, or never there.
+        const notThere = () =>
+          timeline.append(
+            el(
+              'div',
+              { 'data-testid': 'error-detail' },
+              'Hmm...this page doesn’t exist. Try searching for something else.',
+              el('a', { href: '/explore' }, 'Search'),
+            ),
+          );
+
+        fetch(
+          `/i/api/graphql/fixtureQueryId/TweetDetail?variables=${encodeURIComponent(JSON.stringify({ focalTweetId }))}`,
+          { credentials: 'include' },
+        )
+          .then(async (response) => {
+            const found = response.ok ? posts(await response.json()) : [];
+            if (!found.some((post) => post.legacy.id_str === focalTweetId)) return notThere();
+            for (const post of found) timeline.append(article(post));
+          })
+          .catch(notThere);
+      })();
+    </script>
+  </body>
+</html>

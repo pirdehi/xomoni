@@ -2,6 +2,7 @@
 // its signed-out page, the service worker drops what X pages show, and the dashboard doesn't take up the account the
 // X window is signed in to until the person chooses to continue with it. Kept in `kv` under `signedOut`.
 import { db, kvGet, kvSet, upsertAccount } from './db';
+import { isHandle } from './ids';
 import { asNumber, asObject, asString } from './json';
 
 const KEY = 'signedOut';
@@ -40,11 +41,12 @@ export async function endSignOut(): Promise<void> {
 
 /**
  * Signs in again with the account the X window is signed in to: forgets the sign-out and makes that account the
- * active one, in one transaction. Only from the person's own click on the signed-out page.
+ * active one, in one transaction. Only from the person's own click on the signed-out page. `handle` is what X's page
+ * names the account; one X wouldn't allow, such as X's /i/user/<id>, never replaces the handle Xomoni knows (#345).
  */
 export async function signIn(accountId: string, handle: string): Promise<void> {
   await db.transaction('rw', db.kv, db.accounts, async () => {
-    await upsertAccount({ id: accountId, handle });
+    await upsertAccount({ id: accountId, handle: isHandle(handle) ? handle : '' });
     await kvSet('activeAccount', accountId);
     await db.kv.delete(KEY);
   });

@@ -31,6 +31,40 @@ describe('X’s login routes (#20, PLAYBOOK D2)', () => {
   });
 });
 
+describe('a write counts as done only when X’s answer to it says so (#22, #345)', () => {
+  it('is done when X answered the request with data', () => {
+    expect(classify(event(200, { data: { delete_tweet: { tweet_results: {} } } }), 'DeleteTweet')).toEqual({
+      outcome: 'done',
+      http: 200,
+    });
+  });
+
+  it('fails, never done, when X didn’t answer within the wait', () => {
+    expect(classify(null, 'DeleteTweet')).toEqual({
+      outcome: 'failed',
+      message: 'X did not answer DeleteTweet within 15s',
+    });
+  });
+
+  it('fails when X answered without data, or with an error it doesn’t explain, even beside data', () => {
+    expect(classify(event(200, {}), 'DeleteTweet')).toMatchObject({
+      outcome: 'failed',
+      message: 'Unexpected response',
+    });
+    expect(classify(event(200, null), 'DeleteTweet').outcome).toBe('failed');
+    expect(classify(event(200, { ...errors(999), data: {} }), 'DeleteTweet')).toMatchObject({
+      outcome: 'failed',
+      code: 999,
+    });
+    expect(classify(event(404, null), 'DeleteTweet')).toMatchObject({ outcome: 'failed', http: 404 });
+  });
+
+  it('takes X saying the post is gone as gone, not as removed by Xomoni', () => {
+    expect(classify(event(200, errors(144)), 'DeleteTweet').outcome).toBe('not_found');
+    expect(classify(event(200, errors(34)), 'DeleteTweet').outcome).toBe('not_found');
+  });
+});
+
 describe('suspension and restriction (#18, PLAYBOOK C3, C4)', () => {
   it('stops on a suspension instead of waiting', () => {
     expect(classify(event(403, errors(64)), 'DeleteTweet').outcome).toBe('suspended');

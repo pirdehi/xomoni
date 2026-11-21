@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Fixed
+
+- When X's page named your X account by something other than a handle, such as its `/i/user/<id>` link, Xomoni's dashboard took that as the account's handle: it showed it beside your name, and the account's jobs and daily numbers stopped reaching xomoni.com, which takes handles only (#345). It now keeps the handle X's own profile gave, as the rest of Xomoni already did; a cleanup still stops before acting until X's page names your handle again.
+
 ## [0.6.0] - 2026-11-24
 
 New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.

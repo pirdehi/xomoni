@@ -65,6 +65,16 @@ describe('signing out of Xomoni (#226)', () => {
     expect(await db.accounts.get('1000')).toMatchObject({ id: '1000', handle: 'newme' });
   });
 
+  it('keeps the handle Xomoni knows when X’s page names the account by something else (#345)', async () => {
+    await upsertAccount({ id: '1000', handle: 'newme' });
+    await markSignedOut('newme', true);
+
+    await signIn('1000', 'i/user/1000');
+
+    expect(await getSignedOut()).toBeNull();
+    expect(await db.accounts.get('1000')).toMatchObject({ id: '1000', handle: 'newme' });
+  });
+
   it('ends a sign-out when the person signed in on xomoni.com, keeping the active account (#232)', async () => {
     await kvSet('activeAccount', 'kept');
     await markSignedOut('me', true);

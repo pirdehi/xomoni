@@ -87,14 +87,14 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [21, 22, 144],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/21-verified-actions.md",
       "en": {
         "title": "Acts only on what it can verify",
-        "summary": "before deleting, Xomoni checks that the post is yours and still matches the rule, and counts it as removed only when X's response confirms it. A check after a job's first delete, and spot checks later, catch X quietly ignoring deletes."
+        "summary": "before deleting, Xomoni checks that the post is yours and still matches the rule, and counts it as removed only when X's response confirms it. A check of X's page before a run's first delete, and spot checks later, catch X changing its page or quietly ignoring deletes."
       },
       "fa": {
         "title": "فقط روی چیزی که تأیید شود",
-        "summary": "Xomoni پیش از حذف بررسی می‌کند که پست مال خود شماست و هنوز با قانون جور است، و فقط وقتی آن را حذف‌شده می‌شمارد که پاسخ X تأییدش کند. یک بررسی بعد از اولین حذف هر کار و بررسی‌های نمونه‌ای بعدی نشان می‌دهند اگر X بی‌صدا حذف‌ها را نادیده بگیرد."
+        "summary": "Xomoni پیش از حذف بررسی می‌کند که پست مال خود شماست و هنوز با قانون جور است، و فقط وقتی آن را حذف‌شده می‌شمارد که پاسخ X تأییدش کند. یک بررسی صفحه‌ی X پیش از اولین حذف هر اجرا و بررسی‌های نمونه‌ای بعدی نشان می‌دهند اگر X صفحه‌اش را عوض کرده باشد یا بی‌صدا حذف‌ها را نادیده بگیرد."
       }
     },
     {

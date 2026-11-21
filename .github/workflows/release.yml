@@ -1,6 +1,7 @@
 # Builds the extension from a version tag and publishes it on GitHub Releases (docs/RELEASING.md).
-# Two jobs (#142): `build` runs every npm script with a read-only token; `publish` runs no npm code and is the only
-# one that can write. Actions are pinned by commit SHA; Dependabot keeps them current.
+# Two jobs (#142): `build` runs every npm script with a read-only token; `publish` runs no npm code, is the only
+# one that can write, and the only one that sees the release signing key (#305). Actions are pinned by commit SHA;
+# Dependabot keeps them current.
 name: Release
 
 on:
@@ -33,7 +34,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # No dependency's install script runs where the release is built (#305, ADR-0033). None is needed: only esbuild
+      # has one, and it works without it. The repository's own `prepare` (git hooks) has no place here either.
+      - run: npm ci --ignore-scripts
       - name: The whole quality gate, as for any merge
         run: npm run verify
       - name: Versions match the tag; the changelog has the section
@@ -58,6 +61,9 @@ jobs:
     name: publish
     needs: build
     runs-on: ubuntu-latest
+    # The release signing key is a secret of this environment. GitHub, not this file, enforces its protection: only v*
+    # tags may use it, and the maintainer approves each run (docs/RELEASING.md, Signing key).
+    environment: release
     permissions:
       contents: write
       id-token: write
@@ -67,6 +73,38 @@ jobs:
         with:
           name: release
           path: release
+      # Ed25519 over each zip's bytes, for one-click updates of a zip install (#305, ADR-0033). Only OpenSSL runs here.
+      # While the extension trusts no key, the release goes out unsigned, with a warning: no Xomoni can update in one
+      # click without a key anyway. Once it trusts one, a release can't go out unsigned or signed by another key.
+      # The key is written to a file only this job can read and removed when the step ends; it is never printed.
+      - name: Sign the zips for one-click updates (Ed25519)
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [ ! -s release/release-keys ]; then
+            echo "::warning::Not signed: apps/extension/src/update/release-keys.json trusts no signing key yet, so no Xomoni can update to this release in one click. See Signing key in docs/RELEASING.md."
+            exit 0
+          fi
+          if [ -z "${RELEASE_SIGNING_KEY:-}" ]; then
+            echo "::error::The extension trusts a signing key, but the RELEASE_SIGNING_KEY secret is not set: see Signing key in docs/RELEASING.md."
+            exit 1
+          fi
+          key="$RUNNER_TEMP/release-signing.pem"
+          public="$RUNNER_TEMP/release-signing.pub"
+          trap 'rm -f "$key" "$public"' EXIT
+          (umask 077 && printf '%s\n' "$RELEASE_SIGNING_KEY" > "$key")
+          openssl pkey -in "$key" -pubout -out "$public"
+          raw="$(openssl pkey -pubin -in "$public" -outform DER | tail -c 32 | base64)"
+          # The release must trust its own signing key, or no Xomoni could check the next one.
+          if ! grep -qxF "$raw" release/release-keys; then
+            echo "::error::The extension doesn't trust this signing key. Add $raw to apps/extension/src/update/release-keys.json."
+            exit 1
+          fi
+          for zip in release/*.zip; do
+            openssl pkeyutl -sign -inkey "$key" -rawin -in "$zip" -out "$zip.sig"
+            openssl pkeyutl -verify -pubin -inkey "$public" -rawin -in "$zip" -sigfile "$zip.sig"
+          done
       - name: Sign where the zips were built (SLSA provenance)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
@@ -76,5 +114,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/*.zip release/SHA256SUMS \
+          set -euo pipefail
+          # The signatures only when the release was signed (see the signing step).
+          shopt -s nullglob
+          files=(release/*.zip release/*.zip.sig release/SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" \
             --title "Xomoni ${GITHUB_REF_NAME#v}" --notes-file release/release-notes.md --verify-tag

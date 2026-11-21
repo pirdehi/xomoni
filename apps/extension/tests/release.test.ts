@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   currentUpdateNotice,
   dismissUpdate,
-  isNewer,
   parseReleaseNews,
   saveReleaseNews,
   updateNotice,
 } from '../src/cloud/release';
+import { isNewer, isVersion } from '../src/shared/version';
 import { resetDb } from './support/fixtures';
 
 describe('versions compare as numbers (#151)', () => {
@@ -22,6 +22,14 @@ describe('versions compare as numbers (#151)', () => {
     ['0.2.0', 'dev', false],
   ])('%s is newer than %s: %s', (a, b, newer) => {
     expect(isNewer(a, b)).toBe(newer);
+  });
+
+  it('knows a version Xomoni writes from anything else (#305)', () => {
+    expect(isVersion('0.5.0')).toBe(true);
+    expect(isVersion('10.20.3000')).toBe(true);
+    for (const value of ['v0.5.0', '0.5', '0.5.0-beta', '0.5.0 ', '12345.0.0', 5, null, undefined]) {
+      expect(isVersion(value)).toBe(false);
+    }
   });
 });
 

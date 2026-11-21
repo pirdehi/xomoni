@@ -1,26 +1,40 @@
 // Releasing the extension (docs/RELEASING.md). The release workflow runs these; anyone can run them locally.
 //
-//   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section
+//   node tooling/release.mjs check [vX.Y.Z]   versions agree (and match the tag), the changelog has the section; warns
+//                                             while no release signing key is trusted (#305)
 //   node tooling/release.mjs notes vX.Y.Z     prints the changelog section, for the GitHub release
 //   node tooling/release.mjs package          zips apps/extension/dist into apps/extension/release, with SHA256SUMS;
-//                                             reproducible: files dated SOURCE_DATE_EPOCH, else the last commit's time
+//                                             reproducible: files dated SOURCE_DATE_EPOCH, else the last commit's time;
+//                                             and release-keys, the signing keys the extension trusts, for the
+//                                             publish job to check its key against (#305)
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { changelogSection, releaseProblems, reproducibleZip, versionOfTag } from './release-lib.mjs';
+import {
+  changelogSection,
+  releaseKeyWarning,
+  releaseProblems,
+  reproducibleZip,
+  trustedReleaseKeys,
+  versionOfTag,
+} from './release-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXT = join(ROOT, 'apps/extension');
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const manifestVersion = JSON.parse(read('apps/extension/public/manifest.json')).version;
 const packageVersion = JSON.parse(read('apps/extension/package.json')).version;
+const releaseKeys = trustedReleaseKeys(read('apps/extension/src/update/release-keys.json'));
 
 const [command, tag] = process.argv.slice(2);
 
 if (command === 'check') {
   const problems = releaseProblems({ manifestVersion, packageVersion, changelog: read('CHANGELOG.md'), tag });
+  // `::warning::` makes it an annotation on the release's run in GitHub Actions.
+  const warning = releaseKeyWarning(releaseKeys);
+  if (warning) console.warn(`::warning::${warning}`);
   if (problems.length) {
     console.error(`Not ready to release:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
     process.exit(1);
@@ -57,6 +71,8 @@ if (command === 'check') {
     return `${hash}  ${name}`;
   });
   writeFileSync(join(out, 'SHA256SUMS'), `${sums.join('\n')}\n`);
+  // Not a release file: the publish job checks its signing key against it, then signs the zips (#305).
+  writeFileSync(join(out, 'release-keys'), releaseKeys.map((key) => `${key}\n`).join(''));
   console.log(`Packaged ${manifestVersion}:\n${sums.join('\n')}`);
 } else {
   console.error('Usage: node tooling/release.mjs check [vX.Y.Z] | notes vX.Y.Z | package');

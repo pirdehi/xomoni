@@ -115,14 +115,37 @@ export const db = new XomoniDB();
 export const KEPT_ON_WIPE: readonly string[] = ['reads', 'risk'];
 
 /**
+ * The `kv` keys of a one-click update of a zip install (#305, ADR-0033), defined here so wiping can keep them and
+ * `update/` names them once: the journal that can put back an update cut short (`journal`), Xomoni's own folder, which
+ * putting back needs (`folder`), and the files the last one-click update wrote (`shipped`), the only files a later one
+ * may remove. They hold no X content, only Xomoni's own files.
+ */
+export const UPDATE_KEYS = { journal: 'updateJournal', folder: 'ownFolder', shipped: 'updateShipped' } as const;
+
+/** The `kv` values `wipeLocalData` keeps: an update's (`UPDATE_KEYS`), so wiping never strands a half-written Xomoni. */
+export const KV_KEPT_ON_WIPE: readonly string[] = Object.values(UPDATE_KEYS);
+
+/**
  * Deletes everything Xomoni keeps in this browser except `KEPT_ON_WIPE`, in one transaction: the inventory, jobs,
  * the activity log, X's observed limits, accounts, sampled post ids to check again (`checks`), consents, and
- * `kv` (settings, Watch, the xomoni.com connection). A table added later is wiped too unless it is listed there.
- * Disconnect from xomoni.com first: that needs the token this deletes.
+ * `kv` (settings, Watch, the xomoni.com connection) but `KV_KEPT_ON_WIPE`. A table added later is wiped too unless it
+ * is listed there. Disconnect from xomoni.com first: that needs the token this deletes.
  */
 export async function wipeLocalData() {
   const wiped = db.tables.filter((table) => !KEPT_ON_WIPE.includes(table.name));
-  await db.transaction('rw', wiped, () => Promise.all(wiped.map((table) => table.clear())));
+  await db.transaction('rw', wiped, () =>
+    Promise.all(
+      wiped.map((table) =>
+        // By name: `db.tables` hands out other `Table` objects than `db.kv`.
+        table.name === 'kv'
+          ? db.kv
+              .where('key')
+              .noneOf([...KV_KEPT_ON_WIPE])
+              .delete()
+          : table.clear(),
+      ),
+    ),
+  );
 }
 
 /**

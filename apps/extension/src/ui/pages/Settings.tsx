@@ -31,6 +31,7 @@ import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
 import { CloudCard } from '../components/CloudCard';
 import { LimitsPanel } from '../components/LimitsPanel';
 import { MoveDataCard } from '../components/MoveData';
+import { UpdatesCard } from '../components/OneClickUpdate';
 import { xLinkOf } from '../components/ConnectionMap';
 
 const ACTIONS: ActionKind[] = ['delete', 'unretweet', 'unlike', 'relike', 'read'];
@@ -390,6 +391,8 @@ export function SettingsPage({ account, worker }: PageProps) {
           </Card>
 
           <MoveDataCard />
+
+          <UpdatesCard />
         </div>
       </div>
 
@@ -409,8 +412,8 @@ export function SettingsPage({ account, worker }: PageProps) {
         }
       >
         This removes Xomoni’s inventory, jobs, activity log, settings and xomoni.com connection from this browser. It
-        keeps when pages were loaded in the last day and the risk ladder’s warnings, so X’s limits still hold. Nothing
-        on X is changed.
+        keeps when pages were loaded in the last day and the risk ladder’s warnings, so X’s limits still hold, and
+        Xomoni’s folder for one-click updates, with the backup of an update that didn’t finish. Nothing on X is changed.
       </Modal>
     </>
   );

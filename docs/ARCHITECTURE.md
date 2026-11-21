@@ -36,11 +36,13 @@ flowchart LR
   google["Google<br/>OAuth"]
   resend["Resend<br/>account emails"]
   turnstile["Cloudflare Turnstile<br/>bot check"]
+  gh[("GitHub Releases<br/>signed zips")]
 
   person -- "starts and watches cleanups" --> ext
   person -- "signs up and in, follows progress" --> web
   ext -- "clicks X's own buttons in a normal tab" --> x
   ext -. "job status only, with a device token (ADR-0018)" .-> sb
+  ext -. "a zip install's one-click update: a signed release, downloaded on the person's click (ADR-0033)" .-> gh
   web <-. "same browser: one sign-in, stop or ask, and read the Library, Watch, health, settings and replies, change settings, hand over a cleanup plan (externally_connectable, ADR-0025, ADR-0027, ADR-0028, ADR-0029, ADR-0030)" .-> ext
   web -- "auth, reads status, live updates" --> sb
   web -- "captcha widget on auth forms" --> turnstile
@@ -103,6 +105,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/engine`](../apps/extension/src/engine/README.md) | Job runner, pacing limiter, safety policy, cleanup, scan, watch and archive strategies. |
 | [`apps/extension/src/shared`](../apps/extension/src/shared/README.md) | Types, IndexedDB schema, parsers, filters, settings: the extension's kernel. |
 | [`apps/extension/src/cloud`](../apps/extension/src/cloud/README.md) | Connects the browser to a xomoni.com account with a one-time code and reports job status only (ADR-0018). |
+| [`apps/extension/src/update`](../apps/extension/src/update/README.md) | One-click updates of a zip install: a signed release from GitHub, checked, then written into Xomoni's own folder ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). |
 | [`apps/extension/src/ui`](../apps/extension/src/ui/README.md) | The dashboard (React). |
 | [`apps/extension/src/dev`](../apps/extension/src/dev/README.md) | UI preview with demo data; never shipped. |
 | [`apps/web`](../apps/web/README.md) | xomoni.com: landing and legal pages, sign-in, the live dashboard. |
@@ -192,12 +195,12 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 
 | Context | Area | Can use |
 | --- | --- | --- |
-| Dashboard page (extension origin) | `ui/` + `engine/` + `cloud/` | `chrome.*`, IndexedDB, React, `fetch` to xomoni.com's cloud (status only) |
+| Dashboard page (extension origin) | `ui/` + `engine/` + `cloud/` + `update/` | `chrome.*`, IndexedDB, React, `fetch` to xomoni.com's cloud (status only), and to this repository's GitHub releases for a one-click update (ADR-0033) |
 | Service worker | `background/` + `cloud/website.ts` | `chrome.*`, IndexedDB, messages from xomoni.com's top frame (`@xomoni/bridge`: a hello, a one-time code to pair or sign in, a sign-out; ADR-0024, ADR-0025), `fetch` to xomoni.com's cloud to trade a code or end a token |
 | x.com tab, isolated world | `content/` | DOM of x.com, `chrome.runtime` messaging |
 | x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), a `MessagePort` to the content script |
 
-`shared/` is the kernel every area may use. The other areas don't import each other, with two exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), and `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open. The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The engine's core depends on ports, not on Chrome (#11): `engine/ports.ts` defines `XTab` (the worker tab), `Notifier` and `Presence` (whether the person is away, and keeping the display on), `engine/platform.ts` is the composition root that wires the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`, `presence.ts`) and creates the dashboard's `runner`, and `JobContext` and `Runner` receive the ports. Rule `ext-engine-core-uses-ports` and an ESLint rule against `chrome` in the core keep it that way; tests run the engine on fake ports.
+`shared/` is the kernel every area may use. The other areas don't import each other, with three exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open, and `ui/` offers `update/`, the one-click update of a zip install (ADR-0033). The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The engine's core depends on ports, not on Chrome (#11): `engine/ports.ts` defines `XTab` (the worker tab), `Notifier` and `Presence` (whether the person is away, and keeping the display on), `engine/platform.ts` is the composition root that wires the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`, `presence.ts`) and creates the dashboard's `runner`, and `JobContext` and `Runner` receive the ports. Rule `ext-engine-core-uses-ports` and an ESLint rule against `chrome` in the core keep it that way; tests run the engine on fake ports.
 
 The extension has a signed-out state of its own ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)), `signedOut` in `kv`.
 - While it is set, the dashboard has no active account and the service worker records nothing from X pages but X's rate limits.
@@ -208,6 +211,15 @@ The extension has a signed-out state of its own ([ADR-0023](adr/0023-sign-out-of
   - close the X window;
   - open X's own sign-out page if chosen.
 - Signing in again takes the person's *Continue as @handle*, or *Sign in to xomoni.com*.
+
+A zip install can update itself in one click ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md), #305):
+- the person picks the folder Xomoni was loaded from once, and Xomoni checks that it holds this Xomoni at this version;
+- on *Update now*, only while no job runs, `update/` downloads the release from this repository's GitHub releases and checks its Ed25519 signature (the release workflow holds the key; the extension trusts `update/release-keys.json`);
+- it checks every path, the manifest's version, and that it asks for no more access and no newer browser;
+- then it writes the files into that folder under the runner's lock, all or nothing, never over the backup of an update that didn't finish, and calls `chrome.runtime.reload()`;
+- the id, and with it every byte of data, stays.
+
+A store build (`npm run build:store`) puts a stand-in in place of the dashboard's update component, so nothing in it imports `update/`, and drops the GitHub access from its manifest: a store updates Xomoni itself.
 
 One sign-in covers xomoni.com and the extension in the same browser ([ADR-0025](adr/0025-one-sign-in-for-the-website-and-the-extension.md)):
 - every page of the site asks the extension how it stands (`modules/extension`, `cloud/website.ts`), at the id a page of Xomoni named (`#ext=`), else at a store's fixed id (`STORE_EXTENSION_IDS` in `@xomoni/bridge`, #302): the best that answers wins;
@@ -262,6 +274,7 @@ The fixed id (#302): the manifest's `key` is the Chrome Web Store item's public 
 | `ext-inject-is-isolated` | The page-world script importing anything but `shared/`. |
 | `ext-background-is-thin` | The service worker importing UI or page scripts. |
 | `ext-cloud-is-isolated` | The status reporter importing anything but `shared/`; the engine can't import it either (`ext-engine-is-headless`). |
+| `ext-update-is-isolated` | The one-click update importing anything but `shared/`; only the dashboard imports it, since the engine, the service worker, the page scripts and `cloud/` may not (ADR-0033). |
 | `ext-ui-stays-out-of-the-page` | The dashboard importing content, inject or background code. |
 | `ext-dev-is-not-shipped` | Product code importing the demo-data preview. |
 

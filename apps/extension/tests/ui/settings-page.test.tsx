@@ -555,6 +555,7 @@ describe('Settings page', () => {
       const dialog = await screen.findByRole('dialog');
       expect(dialog).toHaveTextContent('xomoni.com connection');
       expect(dialog).toHaveTextContent('so X’s limits still hold');
+      expect(dialog).toHaveTextContent('the backup of an update that didn’t finish');
       await userEvent.click(within(dialog).getByRole('button', { name: 'Delete local data' }));
 
       await waitFor(() => {

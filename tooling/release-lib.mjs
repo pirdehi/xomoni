@@ -12,7 +12,8 @@ export function versionOfTag(tag) {
 
 /**
  * The problems with releasing `tag`: the extension's manifest and package must carry the same version, the tag
- * (when given) must name it, and the changelog must have a section for it. Empty when all is in order.
+ * (when given) must name it, and the changelog must have a section for it. Empty when all is in order. Trusting no
+ * release signing key isn't one: such a release goes out unsigned, with a warning (`releaseKeyWarning`, #305).
  */
 export function releaseProblems({ manifestVersion, packageVersion, changelog, tag }) {
   const problems = [];
@@ -27,6 +28,33 @@ export function releaseProblems({ manifestVersion, packageVersion, changelog, ta
     }
   }
   return problems;
+}
+
+/** An Ed25519 public key as the extension trusts it: base64 of its 32 raw bytes. */
+const RELEASE_KEY = /^[A-Za-z0-9+/]{43}=$/;
+
+/**
+ * The release signing keys the extension trusts, from the text of `apps/extension/src/update/release-keys.json`
+ * (#305): the publish job signs only with a key in this list, so every release can be checked by the Xomoni it makes.
+ * Throws when the file isn't a `keys` list of base64 Ed25519 public keys.
+ */
+export function trustedReleaseKeys(json) {
+  const keys = JSON.parse(json)?.keys;
+  if (!Array.isArray(keys)) throw new Error('release-keys.json has no "keys" list');
+  const bad = keys.filter((key) => typeof key !== 'string' || !RELEASE_KEY.test(key));
+  if (bad.length)
+    throw new Error(`release-keys.json has keys that aren't base64 Ed25519 public keys: ${bad.join(', ')}`);
+  return keys;
+}
+
+/**
+ * The warning for a release while the extension trusts no signing key (#305, ADR-0033): it goes out unsigned, and no
+ * Xomoni can update to it in one click. Null once a key is trusted, when signing is required instead.
+ */
+export function releaseKeyWarning(releaseKeys) {
+  return releaseKeys.length
+    ? null
+    : 'apps/extension/src/update/release-keys.json trusts no signing key yet: this release will go out unsigned, and no Xomoni can update to it in one click (docs/RELEASING.md, Signing key).';
 }
 
 /** The notes under `## [version]` in a Keep a Changelog file, without the heading; null when there is none. */

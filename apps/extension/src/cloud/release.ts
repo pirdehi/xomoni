@@ -3,6 +3,7 @@
 // newer version is out. Only connected browsers hear it; nothing is asked of any other server.
 import { kvGet, kvSet } from '../shared/db';
 import { asObject, asString } from '../shared/json';
+import { isNewer, isVersion } from '../shared/version';
 
 /** Where releases are published, with their checksums and provenance (docs/RELEASING.md). */
 export const RELEASES_URL = 'https://github.com/pirdehi/xomoni/releases/latest';
@@ -17,30 +18,11 @@ export interface ReleaseNews {
   security: boolean;
 }
 
-const VERSION = /^(\d{1,4})\.(\d{1,4})\.(\d{1,4})$/;
-
-/** `version` as three numbers, or null when it isn't one. */
-function rank(version: string): [number, number, number] | null {
-  const m = VERSION.exec(version);
-  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-}
-
-/** Whether version `a` is newer than `b`, comparing numbers (0.10.0 is after 0.9.0). False when either isn't a version. */
-export function isNewer(a: string, b: string): boolean {
-  const x = rank(a);
-  const y = rank(b);
-  if (!x || !y) return false;
-  const [major, minor, patch] = x;
-  const [otherMajor, otherMinor, otherPatch] = y;
-  if (major !== otherMajor) return major > otherMajor;
-  return minor !== otherMinor ? minor > otherMinor : patch > otherPatch;
-}
-
 /** The answer of `device_report` as release news, or null when it carries none a version can be read from. */
 export function parseReleaseNews(value: unknown): ReleaseNews | null {
   const answer = asObject(value);
   const latest = asString(answer?.latest);
-  if (!latest || !rank(latest)) return null;
+  if (!isVersion(latest)) return null;
   return { latest, security: answer?.security === true };
 }
 

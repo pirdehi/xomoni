@@ -25,7 +25,7 @@ Out of scope: X's own platform, rate limits or enforcement decisions; social eng
 ## How Xomoni is designed to limit damage
 
 - The extension never handles X passwords or session cookies, and never sends its own requests to X ([ADR-0002](docs/adr/0002-drive-x-ui-not-the-api.md), [ADR-0003](docs/adr/0003-no-credentials-no-evasion.md)).
-- X content stays in the browser; the cloud stores job status only ([ADR-0004](docs/adr/0004-x-data-stays-local.md)). The extension's Content-Security-Policy enforces it: its pages can connect only to Xomoni's own API, never to X or anywhere else (#143).
+- X content stays in the browser; the cloud stores job status only ([ADR-0004](docs/adr/0004-x-data-stays-local.md)). The extension's Content-Security-Policy enforces it: its pages can connect only to Xomoni's own API, never to X or anywhere else (#143), apart from downloading this repository's signed releases from GitHub for a one-click update (#305).
 - What reaches the extension from X's page is checked before it is used (#145). The service worker hears only Xomoni's own content script in the top frame of an x.com tab, and stores only messages whose every field has the expected shape and size. The content script takes commands only from Xomoni's own pages. The page-world interceptor captures only requests to x.com and uses built-ins taken before any of X's scripts run, so a page script can't rewrite what it captures. Right before a delete, the post's id must agree with its stored date and with the time X shows, and its text on the page must not contain a word the rule keeps. A rate-limit reset more than a day ahead is cut to a day.
 - Local data is kept tidy (#151). The xomoni.com token lives in the extension's IndexedDB, out of reach of content scripts. "Delete local data" disconnects xomoni.com and clears every table except page-load times and risk events, which hold no X content and keep X's limits in force. If xomoni.com can't be told about a disconnect, the person is asked to remove the browser there. Archive files above 512 MB are refused, and a downloaded archive page carries a CSP that forbids scripts. A connected browser hears about a newer release, and whether it fixes a vulnerability, in the answer to its status report; a security release can't be dismissed.
 - The database exposes nothing by default (#149). Every grant to the Data API roles is made by name, and a test checks the whole schema: Row Level Security on every table, nothing for `anon`, no `TRUNCATE` for anyone. A job's reason is never stored in the cloud. Device tokens stop working after 90 days without a report. Connections to the production database must use SSL. Its network stays open, because migrations are pushed from the maintainer's changing address and the apps use only the HTTPS Data API.
@@ -33,6 +33,12 @@ Out of scope: X's own platform, rate limits or enforcement decisions; social eng
 - The website cannot start deletions ([ADR-0006](docs/adr/0006-website-is-view-only.md)).
 - Every database table has Row Level Security; the browser uses only the publishable key.
 - Releases are built with a read-only token from a commit on `main`, signed with build provenance, reproducible and immutable once published ([releasing](docs/RELEASING.md#checking-a-download), #142).
+- A zip install updates itself only with a release signed by the release workflow's Ed25519 key ([ADR-0033](docs/adr/0033-one-click-updates-for-the-zip-install.md), #305).
+  - The key exists only as a secret of the `release` environment, whose required reviewer (the maintainer) approves each signing run.
+  - Before anything is written, Xomoni checks the signature with the browser's own Web Crypto. It also checks that the zip is the newer version it claims, asks for no more access than the version running and no newer browser, and that every path stays inside the folder the person chose.
+  - Nothing is written while a job runs, or while the backup of an update that didn't finish is kept. A write that fails is undone, and the update is in the activity log.
+  - The release is built without dependencies' install scripts. A store build carries no updater.
+  - The signing key follows the tag, not reviewed code; ADR-0033 says what that leaves open.
 
 ## Cloud security review (2026-10-31)
 

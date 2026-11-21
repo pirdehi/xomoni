@@ -37,6 +37,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 | Coverage | Each workspace's Vitest `coverage.thresholds` (`npm test` runs with coverage) | Lines, branches, functions or statements drop below the workspace's threshold. Thresholds only go up. |
 | Test presence | `npm run tests:check` ([`tooling/check-tests.mjs`](../tooling/check-tests.mjs)) | A source file is imported by no test, unless it is listed there with the reason (types only, a thin entry point covered elsewhere). |
 | No remote code | `npm run remote-code:check` ([`tooling/check-remote-code.mjs`](../tooling/check-remote-code.mjs)), in `npm run verify` and the release workflow | The built extension builds code from a string or loads it from another site, which Manifest V3 and the stores forbid ([store listing](STORE-LISTING.md#6-no-remote-code)). |
+| No updater in the store build | `tooling/store-build.test.mjs`, in `npm run test:tooling` | The store build (`npm run build:store`) holds any of the one-click updater's code, or GitHub's access in its manifest ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). |
 | Database | CI job `database` | A pgTAP test fails, or the generated types drift from the migrations. |
 | End to end | CI job `e2e` | A flow fails or the browser reports a policy violation. |
 

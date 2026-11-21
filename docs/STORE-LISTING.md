@@ -18,7 +18,7 @@ Contents:
 
 ## 1. What each store needs
 
-The package is the same `xomoni-extension-X.Y.Z.zip` that the release workflow attaches to GitHub Releases ([releasing](RELEASING.md)). Both stores take the name and the short description from the manifest. To change either one, upload a new zip.
+The package is the store build (`npm run build:store -w @xomoni/extension`, zipped): the same code as the `xomoni-extension-X.Y.Z.zip` the release workflow attaches to GitHub Releases, without the one-click updater, since a store updates Xomoni itself ([releasing](RELEASING.md#chrome-web-store), [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). Both stores take the name and the short description from the manifest. To change either one, upload a new zip.
 
 | Field | Chrome Web Store | Microsoft Edge Add-ons | Xomoni |
 | --- | --- | --- | --- |
@@ -141,6 +141,8 @@ Each item in [`manifest.json`](../apps/extension/public/manifest.json), where th
 | `incognito`: `not_allowed` | — | Xomoni never runs in incognito windows. |
 | `minimum_chrome_version`: `116` | `background/sw.ts`: `chrome.runtime.getContexts` finds an open dashboard. | Chrome 116 is the first version with that API. |
 
+Only in the zip on GitHub Releases, never in the store build: `optional_host_permissions` for GitHub's release downloads, and the same two hosts in the CSP's `connect-src`, which the zip's one-click update uses (#305, [ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). `npm run build:store` removes them with the updater's code, and `tooling/store-build.test.mjs` checks the built manifest. So the store's manifest is this table, with no other host access.
+
 The **host permission** field (Chrome asks about the `https://x.com/*` matches of the content scripts): *Xomoni works only on x.com, in the person's own signed-in tab: it removes the posts, replies, reposts and likes they chose, by clicking X's own buttons, and reads X's responses to confirm each one and to stay within X's rate limits. It has no other host access.*
 
 Install warnings this gives: *Read and change your data on x.com*, *Display notifications* and *Manage your downloads*.
@@ -154,6 +156,7 @@ Used without a permission, and worth knowing for review:
 Answer in both stores: **No, I am not using remote code.**
 
 - Every script ships in the zip. The dashboard and the service worker are bundled by Vite, and the content scripts by esbuild ([`apps/extension/README.md`](../apps/extension/README.md)).
+- The store build has no updater. The zip on GitHub Releases can update itself: it downloads a signed release and writes it into its own folder, which Chrome loads on the next reload. None of that code is in the store build (`npm run build:store`, checked by `tooling/store-build.test.mjs`).
 - The extension's CSP allows scripts and workers only from the extension itself (`script-src 'self'`, `worker-src 'self'`, no `'unsafe-eval'`).
 - `npm run remote-code:check`, a step of `npm run verify`, builds the extension and reads every script and page in `apps/extension/dist`, libraries included. The release workflow runs the same check on the build it zips. The check fails on any of these ([`tooling/remote-code-lib.mjs`](../tooling/remote-code-lib.mjs), tested by `tooling/remote-code.test.mjs`):
   - code built from a string: `eval`, `new Function`, `Function` or `setTimeout` with a string;

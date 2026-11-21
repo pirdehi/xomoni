@@ -5,7 +5,15 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, wr
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { changelogSection, filesUnder, releaseProblems, reproducibleZip, versionOfTag } from './release-lib.mjs';
+import {
+  changelogSection,
+  filesUnder,
+  releaseKeyWarning,
+  releaseProblems,
+  reproducibleZip,
+  trustedReleaseKeys,
+  versionOfTag,
+} from './release-lib.mjs';
 
 const CHANGELOG = `# Changelog
 
@@ -55,6 +63,30 @@ describe('release checks', () => {
       releaseProblems({ manifestVersion: '1.0.0', packageVersion: '1.0.0', changelog: '', tag: 'latest' })[0],
       /not v<major>/,
     );
+  });
+});
+
+describe('release signing keys (#305)', () => {
+  const KEY = 'PUAXw+hDiVqStwqnTRt+vJyYLM8uxJaMwM1V8Sr0Zgw=';
+
+  it('reads the keys the extension trusts, and refuses anything that isn’t one', () => {
+    assert.deepEqual(trustedReleaseKeys('{"keys": []}'), []);
+    assert.deepEqual(trustedReleaseKeys(JSON.stringify({ keys: [KEY] })), [KEY]);
+    assert.throws(() => trustedReleaseKeys('{}'), /no "keys" list/);
+    assert.throws(() => trustedReleaseKeys(JSON.stringify({ keys: [KEY, 'oops'] })), /oops/);
+    assert.throws(() => trustedReleaseKeys(JSON.stringify({ keys: [KEY.slice(1)] })), /aren't base64/);
+  });
+
+  it('is the source of truth for the extension, which reads the same file', () => {
+    const file = readFileSync(join(import.meta.dirname, '../apps/extension/src/update/release-keys.json'), 'utf8');
+    assert.ok(Array.isArray(trustedReleaseKeys(file)));
+  });
+
+  it('lets a tag be released while no key is trusted, unsigned and with a warning', () => {
+    const base = { manifestVersion: '0.2.0', packageVersion: '0.2.0', changelog: CHANGELOG };
+    assert.deepEqual(releaseProblems({ ...base, tag: 'v0.2.0' }), []);
+    assert.match(releaseKeyWarning([]), /trusts no signing key yet: this release will go out unsigned/);
+    assert.equal(releaseKeyWarning([KEY]), null);
   });
 });
 

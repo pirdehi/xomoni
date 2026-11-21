@@ -111,6 +111,16 @@ async function stoppedByRestriction(dashboard: Page, page: Page, context: Browse
 /** X's headers saying `used` of the 150 requests of a 15-minute window are used, resetting `resetIn` ms after each answer. */
 const used = (count: number, resetIn = 12 * MINUTE * 1000): XRate => ({ limit: 150, remaining: 150 - count, resetIn });
 
+/**
+ * After a job stopped: the person browses their profile while X reports a fifth of its profile-timeline window used,
+ * so Settings' limits panel marks that row. It comes after the stop on purpose: set before the job starts, the job may
+ * first wait for X's window to reset and only then read X's notice, which made S17-29 flaky in Edge (#372).
+ */
+async function profileWindowFifthUsed(page: Page, context: BrowserContext): Promise<void> {
+  await answerWithRate(context, 'UserTweets', used(30));
+  await browseProfile(page, ['posts']);
+}
+
 test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
   test('S17-01 Careful’s caps are one fifth of what X publishes, with X’s sources', async ({ dashboard }) => {
     await openXWindow(dashboard);
@@ -745,9 +755,8 @@ test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
     page,
     context,
   }) => {
-    // A fifth of X's window used on the profile timeline, so the panel marks a row too.
-    await answerWithRate(context, 'UserTweets', used(30));
     await stoppedByRestriction(dashboard, page, context);
+    await profileWindowFifthUsed(page, context);
     await openPage(dashboard, 'Settings');
     await dashboard.getByRole('button', { name: 'Custom', exact: true }).click();
     await dashboard.getByRole('button', { name: 'X’s published limits and Xomoni’s share' }).click();
@@ -766,8 +775,8 @@ test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
       context,
     }) => {
       expect(await dashboard.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true);
-      await answerWithRate(context, 'UserTweets', used(30));
       await stoppedByRestriction(dashboard, page, context);
+      await profileWindowFifthUsed(page, context);
       await openPage(dashboard, 'Settings');
       await dashboard.getByRole('button', { name: 'X’s published limits and Xomoni’s share' }).click();
       const panel = await openLimits(dashboard);

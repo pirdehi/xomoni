@@ -1,11 +1,18 @@
 import { SITE_URL } from '@/shared/config/site';
 import { createBrowserSupabase } from '@/shared/supabase/browser';
+import * as twoFactor from '../application/two-factor';
 import * as useCases from '../application/use-cases';
 import type { FormInput } from '../application/use-cases';
 import { createSupabaseAuthGateway } from '../infrastructure/supabase-auth-gateway';
+import { createSupabaseTwoFactorGateway } from '../infrastructure/supabase-two-factor-gateway';
 
 function deps(): useCases.AuthDeps {
-  return { auth: createSupabaseAuthGateway(createBrowserSupabase()), siteUrl: SITE_URL };
+  const supabase = createBrowserSupabase();
+  return {
+    auth: createSupabaseAuthGateway(supabase),
+    twoFactor: createSupabaseTwoFactorGateway(supabase),
+    siteUrl: SITE_URL,
+  };
 }
 
 /**
@@ -33,4 +40,16 @@ export const browserAuth = {
   changeEmail: (input: FormInput) => useCases.changeEmail(deps(), input),
   /** Starts Google sign-in and returns the URL to open. */
   startGoogleSignIn: (next?: string | null) => useCases.startOAuthSignIn(deps(), 'google', next),
+  /** Verifies a code from the account's authenticator app after sign-in (#173). */
+  verifySecondFactor: (input: FormInput) => twoFactor.verifySecondFactor(deps(), input),
+  /** The account's authenticator apps. */
+  listSecondFactors: () => twoFactor.listSecondFactors(deps()),
+  /** Starts adding an authenticator app: its QR code and secret. */
+  startEnrollment: (input: FormInput) => twoFactor.startEnrollment(deps(), input),
+  /** Confirms the app being added with its first code. */
+  confirmEnrollment: (input: FormInput) => twoFactor.confirmEnrollment(deps(), input),
+  /** Drops an app the person stopped adding. */
+  cancelEnrollment: (factorId: string) => twoFactor.cancelEnrollment(deps(), factorId),
+  /** Removes one of the account's authenticator apps (needs a verified code in this session). */
+  removeSecondFactor: (factorId: string) => twoFactor.removeSecondFactor(deps(), factorId),
 };

@@ -17,3 +17,12 @@ export function useSignedInNavigation(): (path: string) => void {
     [router],
   );
 }
+
+/**
+ * Loads `path` as a new page, for after a code from an authenticator app raised the session to `aal2` (#173). The
+ * client router may have kept what a private page answered at `aal1`, a redirect back to the code page, and would
+ * follow it again; a full load asks the server afresh. `path` must already be a same-site path (`safeNextPath`).
+ */
+export function loadPage(path: string, location: Pick<Location, 'assign'> = window.location): void {
+  location.assign(path);
+}

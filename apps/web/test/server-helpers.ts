@@ -3,7 +3,7 @@
 import type { REALTIME_SUBSCRIBE_STATES, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, DeviceRow, JobRow } from '@xomoni/db';
 import { vi } from 'vitest';
-import type { AuthGateway } from '@/modules/auth/application/ports';
+import type { AuthGateway, FactorList, TwoFactorGateway } from '@/modules/auth/application/ports';
 import type { AuthResult } from '@/modules/auth/domain/auth-error';
 import type { IdentityClaims } from '@/modules/auth/domain/viewer';
 import { NavigationThrow } from './fakes/navigation';
@@ -62,6 +62,37 @@ export const SIGNED_OUT: Partial<AuthGateway> = {
   currentClaims: () => Promise.resolve(null),
   currentAccount: () => Promise.resolve(null),
 };
+
+/** Overrides that make {@link fakeAuthGateway} a session that verified a code from an authenticator app (#173). */
+export const AT_AAL2: Partial<AuthGateway> = { currentClaims: () => Promise.resolve({ ...ADA, aal: 'aal2' }) };
+
+/** Ada's authenticator app, verified. */
+export const ADA_PHONE = { id: 'f1', name: 'Phone', addedAt: '2026-11-01T09:00:00Z' };
+
+/** The factors of an account without an authenticator app. */
+export const NO_FACTORS: FactorList = { verified: [], unverified: [] };
+
+/**
+ * A two-step gateway whose account has `factors` (none by default) and whose every call succeeds unless overridden;
+ * methods are `vi.fn`s.
+ */
+export function fakeTwoFactorGateway(
+  factors: FactorList | null = NO_FACTORS,
+  overrides: Partial<TwoFactorGateway> = {},
+): TwoFactorGateway {
+  return {
+    factors: vi.fn(() => Promise.resolve(factors)),
+    enroll: vi.fn(() =>
+      Promise.resolve({
+        ok: true as const,
+        enrollment: { factorId: 'f-new', qrCode: 'data:image/svg+xml;utf-8,<svg/>', secret: 'JBSWY3DPEHPK3PXP' },
+      }),
+    ),
+    verify: vi.fn(ok),
+    unenroll: vi.fn(ok),
+    ...overrides,
+  };
+}
 
 // ── Dashboard rows ──────────────────────────────────────────────────────────────────────────
 

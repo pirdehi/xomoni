@@ -1,3 +1,5 @@
+import type { SecondFactor } from './two-factor';
+
 /** The signed-in person as the website shows them. Holds no tokens or secrets. */
 export interface Viewer {
   /** Supabase user id (`auth.users.id`). */
@@ -16,6 +18,8 @@ export interface Viewer {
 export interface AccountDetails extends Viewer {
   /** The new address while an email change waits for both confirmations, otherwise `null`. */
   pendingEmail: string | null;
+  /** The authenticator apps the account signs in with (verified only, #173), oldest first. */
+  secondFactors: SecondFactor[];
 }
 
 /** The subset of verified access-token claims Xomoni reads. */
@@ -28,6 +32,8 @@ export interface IdentityClaims {
   user_metadata?: Record<string, unknown>;
   /** Data only the server can set; `providers` lists the account's sign-in methods. */
   app_metadata?: { providers?: unknown };
+  /** Authenticator assurance level of the session, `aal1` or `aal2` (#173); read with `assuranceOf`. */
+  aal?: unknown;
 }
 
 /** Builds the viewer from verified token claims, falling back to the email for a missing name. */

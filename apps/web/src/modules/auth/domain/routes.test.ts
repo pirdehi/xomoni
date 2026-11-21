@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isGuestOnly, requiresSession, ROUTES, safeNextPath } from './routes';
+import { isGuestOnly, requiresSession, ROUTES, safeNextPath, twoFactorPath } from './routes';
 
 describe('safeNextPath', () => {
   it('keeps same-site paths with query and hash', () => {
@@ -43,5 +43,32 @@ describe('route policy', () => {
   it('treats the sign-in page as guest-only', () => {
     expect(isGuestOnly('/login')).toBe(true);
     expect(isGuestOnly('/dashboard')).toBe(false);
+  });
+});
+
+describe('twoFactorPath (#173)', () => {
+  it('keeps a same-site page to return to, encoded as one parameter', () => {
+    expect(twoFactorPath('/account')).toBe('/login/two-factor?next=%2Faccount');
+    expect(twoFactorPath('/dashboard/reports?week=1&x=2')).toBe(
+      '/login/two-factor?next=%2Fdashboard%2Freports%3Fweek%3D1%26x%3D2',
+    );
+  });
+
+  it('leaves the dashboard, the default, out', () => {
+    expect(twoFactorPath('/dashboard')).toBe('/login/two-factor');
+    expect(twoFactorPath(null)).toBe('/login/two-factor');
+    expect(twoFactorPath()).toBe('/login/two-factor');
+  });
+
+  it.each(['https://evil.example', '//evil.example', '/\\evil.example', '/.//evil.example'])(
+    'drops %s, which leaves the site',
+    (next) => {
+      expect(twoFactorPath(next)).toBe('/login/two-factor');
+    },
+  );
+
+  it('is neither guest-only nor behind the session check itself: its page guards it', () => {
+    expect(isGuestOnly(ROUTES.twoFactor)).toBe(false);
+    expect(requiresSession(ROUTES.twoFactor)).toBe(false);
   });
 });

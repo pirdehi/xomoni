@@ -95,6 +95,11 @@ export default function PrivacyPage() {
           your email address is confirmed.
         </li>
         <li>
+          <strong>Authenticator apps, only if you turn on two-step verification:</strong> the name you give each app,
+          when you added it, and the shared key your app makes its codes from. We use them only to check the codes you
+          enter when you sign in. Removing an app, or deleting your account, deletes them.
+        </li>
+        <li>
           <strong>Connected browsers:</strong> a name such as “Chrome on macOS”, the extension version and when it last
           checked in. You connect a browser in one click on this website, in the same browser, which hands the extension
           a one-time code, or by typing that code from your dashboard into the extension. We keep the code and the
@@ -124,7 +129,8 @@ export default function PrivacyPage() {
       <h2>Emails we send</h2>
       <p>
         We send emails about your account: confirming your address, resetting your password, confirming an email change,
-        and security notices when your password, email or sign-in methods change. No newsletters or marketing.
+        and security notices when your password, email, sign-in methods or authenticator apps change. No newsletters or
+        marketing.
       </p>
       <p>
         If you ask for it in Reports, and only while your daily numbers are on, we also send you a weekly email of your

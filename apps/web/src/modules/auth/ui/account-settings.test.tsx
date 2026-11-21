@@ -25,6 +25,13 @@ const ACCOUNT: AccountDetails = {
   avatarUrl: null,
   signInMethods: ['email', 'google'],
   pendingEmail: null,
+  secondFactors: [],
+};
+
+/** Ada's account with an authenticator app (#173). */
+const WITH_APP: AccountDetails = {
+  ...ACCOUNT,
+  secondFactors: [{ id: 'f1', name: 'Phone', addedAt: '2026-11-01T09:00:00Z' }],
 };
 
 const emailSection = () => screen.getByRole('region', { name: 'Sign-in email' });
@@ -76,6 +83,14 @@ describe('AccountSettings', () => {
       const form = screen.getByRole('button', { name: 'Sign out' }).closest('form');
       expect(form).toHaveAttribute('action', '/auth/signout');
       expect(form).toHaveAttribute('method', 'post');
+    });
+
+    it('has the two-step verification section between the password and the sessions (#173)', () => {
+      render(<AccountSettings account={WITH_APP} />);
+
+      const names = screen.getAllByRole('region').map((r) => r.getAttribute('aria-labelledby'));
+      expect(names).toEqual(['sign-in-email', 'password', 'two-step-verification', 'sessions']);
+      expect(screen.getByRole('list', { name: 'Your authenticator apps' })).toHaveTextContent('Phone');
     });
 
     it('signs out every session of the account from the Sessions section', () => {
@@ -180,12 +195,43 @@ describe('AccountSettings', () => {
       expect(changePassword).toHaveBeenCalledWith({
         currentPassword: 'old password 1',
         newPassword: 'new password 2',
+        code: null,
         captchaToken: TEST_TOKEN,
       });
+      expect(within(passwordSection()).queryByLabelText('Code from your authenticator app')).not.toBeInTheDocument();
       expect(await within(passwordSection()).findByRole('status')).toHaveTextContent('Your new password is saved.');
       expect(within(passwordSection()).getByLabelText('Current password')).toHaveValue('');
       expect(within(passwordSection()).getByLabelText('New password')).toHaveValue('');
       expect(turnstile.resets).toBe(1);
+    });
+
+    it('asks an account with an authenticator app for a code with the change (#173)', async () => {
+      changePassword.mockResolvedValue({ ok: true });
+      render(<AccountSettings account={WITH_APP} />);
+
+      expect(passwordSection()).toHaveTextContent('Enter your current password and a code from your authenticator app');
+      const code = within(passwordSection()).getByLabelText('Code from your authenticator app');
+      expect(code).toHaveAttribute('autocomplete', 'one-time-code');
+      expect(code).toHaveAttribute('inputmode', 'numeric');
+      await userEvent.type(code, '123 456');
+      await changeThePassword();
+
+      expect(changePassword).toHaveBeenCalledWith(expect.objectContaining({ code: '123 456' }));
+    });
+
+    it('puts a wrong code next to its field', async () => {
+      changePassword.mockResolvedValue({
+        ok: false,
+        code: 'invalid_code',
+        fieldErrors: { code: 'That code didn’t work' },
+      });
+      render(<AccountSettings account={WITH_APP} />);
+
+      await userEvent.type(within(passwordSection()).getByLabelText('Code from your authenticator app'), '000000');
+      await changeThePassword();
+
+      expect(await within(passwordSection()).findByText('That code didn’t work')).toBeInTheDocument();
+      expect(within(passwordSection()).getByRole('alert')).toHaveTextContent(AUTH_ERROR_MESSAGES.invalid_code);
     });
 
     it('lets password managers save the new password against the account', () => {

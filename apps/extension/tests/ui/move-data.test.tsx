@@ -310,9 +310,12 @@ describe('The offer on a new install (#300)', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent(IMPORTED);
     expect(await db.items.count()).toBe(4);
+    // The import ended the offer: once the offer's live query has seen it, only its result is left, with Dismiss.
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Coming from another Xomoni?' })).not.toBeInTheDocument(),
+    );
     const result = screen.getByRole('region', { name: 'Move your data' });
-    // The import ended the offer: only its result is left, with Dismiss.
-    expect(within(result).queryByRole('heading', { name: 'Coming from another Xomoni?' })).not.toBeInTheDocument();
+    expect(within(result).getByRole('status')).toHaveTextContent(IMPORTED);
     expect(within(result).queryByRole('button', { name: 'Not now' })).not.toBeInTheDocument();
 
     await userEvent.click(within(result).getByRole('button', { name: 'Dismiss' }));

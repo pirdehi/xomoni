@@ -36,10 +36,32 @@ describe('the connection map (#182)', () => {
     render(<ConnectionMap x="signed-in" cloud="off" />);
 
     const map = screen.getByRole('img');
-    expect(map).toHaveTextContent('X');
+    expect(map).toHaveTextContent('X account');
     expect(map).toHaveTextContent('This browser');
     expect(map).toHaveTextContent('xomoni.com');
     expect(map).toHaveAccessibleName(describeConnections('signed-in', 'off'));
+  });
+
+  it.each(['signed-in', 'signed-out', 'unknown'] as const)(
+    'names X in words, with a generic person icon and never X’s mark, when %s (#322, ADR-0035)',
+    (x) => {
+      const { container } = render(<ConnectionMap x={x} cloud="connected" size="large" />);
+
+      const node = container.querySelector('[data-node="x"]')!;
+      // A person icon, the same kind as the other nodes' icons: an SVG, not a letter.
+      expect(node.querySelector('svg')).not.toBeNull();
+      expect(node.textContent).toBe('');
+      expect(node.querySelector('img')).toBeNull();
+      // No double-struck 𝕏 (U+1D54F) or bold 𝐗 (U+1D417) anywhere in the map.
+      expect(container.textContent).not.toMatch(/\u{1D54F}|\u{1D417}/u);
+      expect(screen.getByText('X account')).toBeInTheDocument();
+    },
+  );
+
+  it('shows Xomoni in this browser with its own icon, not a platform’s', () => {
+    const { container } = render(<ConnectionMap x="signed-in" cloud="off" />);
+    const images = [...container.querySelectorAll('img')].map((img) => img.getAttribute('src'));
+    expect(images).toEqual(['icons/icon48.png']);
   });
 
   it.each([

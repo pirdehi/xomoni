@@ -1,19 +1,21 @@
 // Makes the images the Chrome Web Store and Microsoft Edge Add-ons listings need (docs/STORE-LISTING.md, #301):
 //
-//   npm run store:images -w @xomoni/extension [-- --port 4791] [-- --out <folder>]
+//   npm run store:images -w @xomoni/extension [-- --port 4791] [-- --out <folder>] [-- --site <folder>]
 //
 // - the store icon (128 × 128, artwork 96 × 96 with 16 transparent pixels around it) and Edge's logo (300 × 300),
 //   drawn by icon.mjs like the extension's own icons;
 // - five screenshots of the dashboard at 1280 × 800, from the UI preview with its demo data (src/dev/preview.ts):
 //   a made-up account, never anyone's real data;
-// - the small promo tile (440 × 280).
+// - the small promo tile (440 × 280);
+// - and, into apps/web/public/screens (or --site), the two pictures of Home on xomoni.com's home page, light and
+//   dark, at 1440 × 1000, from the same preview: they show the sidebar's logo, so they change with the icon (#322).
 //
 // It starts Vite's dev server for the preview on 127.0.0.1 (port 4791 unless --port says otherwise, never 3000, which
 // the website uses) and drives Playwright's Chromium, headless. Nothing reaches X or xomoni.com: the preview stubs the
 // extension's APIs and the dashboard's CSP is not involved. Needs Playwright's Chromium once:
 // `npx playwright install chromium`.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { chromium } from 'playwright';
@@ -25,26 +27,31 @@ const { values } = parseArgs({
   options: {
     port: { type: 'string', default: '4791' },
     out: { type: 'string', default: resolve(EXT, '../../docs/store') },
+    site: { type: 'string', default: resolve(EXT, '../web/public/screens') },
   },
 });
 const port = Number(values.port);
 if (!Number.isInteger(port) || port < 1024 || port > 65535 || port === 3000)
   throw new Error(`--port must be a free port from 1024 to 65535, and not 3000 (the website's): got ${values.port}`);
 const out = resolve(values.out);
+const site = resolve(values.site);
 mkdirSync(out, { recursive: true });
+mkdirSync(site, { recursive: true });
 
-/** The dashboard pages shown, in the listing's order, with what each screenshot is for. */
+/** The dashboard pages shown: the stores' five, in the listing's order, then the website's two. */
 const SHOTS = [
-  { file: 'screenshot-1-overview.png', page: 'overview', theme: 'light' },
-  { file: 'screenshot-2-cleanup.png', page: 'cleanup', theme: 'light' },
-  { file: 'screenshot-3-library.png', page: 'library', theme: 'light' },
-  { file: 'screenshot-4-activity.png', page: 'jobs', theme: 'light' },
-  { file: 'screenshot-5-settings-dark.png', page: 'settings', theme: 'dark' },
+  { file: join(out, 'screenshot-1-overview.png'), page: 'overview', theme: 'light' },
+  { file: join(out, 'screenshot-2-cleanup.png'), page: 'cleanup', theme: 'light' },
+  { file: join(out, 'screenshot-3-library.png'), page: 'library', theme: 'light' },
+  { file: join(out, 'screenshot-4-activity.png'), page: 'jobs', theme: 'light' },
+  { file: join(out, 'screenshot-5-settings-dark.png'), page: 'settings', theme: 'dark' },
+  { file: join(site, 'overview.png'), page: 'overview', theme: 'light', width: 1440, height: 1000 },
+  { file: join(site, 'overview-dark.png'), page: 'overview', theme: 'dark', width: 1440, height: 1000 },
 ];
 
 // The icons need no browser.
-writeFileSync(join(out, 'icon-128.png'), iconPng(128, 16));
-writeFileSync(join(out, 'edge-logo-300.png'), iconPng(300, 38));
+writeFileSync(join(out, 'icon-128.png'), iconPng(128, { padding: 16 }));
+writeFileSync(join(out, 'edge-logo-300.png'), iconPng(300, { padding: 38 }));
 
 const server = await createServer({
   configFile: join(EXT, 'vite.config.ts'),
@@ -58,7 +65,7 @@ try {
   for (const shot of SHOTS) {
     // A fresh context each time: an empty IndexedDB, which the preview fills with its demo account.
     const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
+      viewport: { width: shot.width ?? 1280, height: shot.height ?? 800 },
       deviceScaleFactor: 1,
       colorScheme: shot.theme,
       reducedMotion: 'reduce',
@@ -83,37 +90,45 @@ try {
     await page.waitForLoadState('networkidle');
     // Let live queries, charts and fonts settle.
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: join(out, shot.file) });
+    await page.screenshot({ path: shot.file });
     await context.close();
-    console.log(`${shot.file}`);
+    console.log(relative(resolve(EXT, '../..'), shot.file));
   }
 
   const tile = await browser.newPage({ viewport: { width: 440, height: 280 }, deviceScaleFactor: 1 });
-  await tile.setContent(promoTile(iconPng(128).toString('base64')));
+  await tile.setContent(promoTile(iconPng(256).toString('base64')));
   await tile.screenshot({ path: join(out, 'promo-small-440x280.png') });
   console.log('promo-small-440x280.png');
 } finally {
   await browser.close();
   await server.close();
 }
-console.log(`Store images written to ${out}`);
+console.log(`Store images written to ${out}, the website's to ${site}`);
 
-/** The small promo tile: the icon, the name and one line on Xomoni's brand blue (packages/fluent-theme). */
+/**
+ * The small promo tile: the mark, the name and what Xomoni is, on the page color of Xomoni's light theme
+ * (packages/fluent-theme), where the blue tile stands out as it does in a light toolbar.
+ */
 function promoTile(iconBase64) {
   return `<!doctype html>
 <html><head><style>
   html, body { margin: 0; width: 440px; height: 280px; }
   body {
-    display: flex; align-items: center; gap: 24px; padding: 0 36px; box-sizing: border-box;
-    background: linear-gradient(135deg, #2a78d6 0%, #184781 100%); color: #ffffff;
+    display: flex; align-items: center; gap: 26px; padding: 0 34px; box-sizing: border-box;
+    background: linear-gradient(135deg, #fcfcfb 0%, #f4f4f1 55%, #ecf2f9 100%); color: #0b0b0b;
     font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   }
-  img { width: 96px; height: 96px; flex: none; }
-  h1 { margin: 0 0 10px; font-size: 40px; font-weight: 700; letter-spacing: -0.5px; }
-  p { margin: 0; font-size: 18px; line-height: 1.35; color: #dce7f4; }
+  img { width: 112px; height: 112px; flex: none; }
+  h1 { margin: 0 0 6px; font-size: 42px; font-weight: 700; letter-spacing: -0.6px; }
+  .what { margin: 0 0 10px; font-size: 20px; font-weight: 600; line-height: 1.25; color: #1e589f; }
+  .how { margin: 0; font-size: 15px; line-height: 1.35; color: #52514e; }
 </style></head>
 <body>
   <img src="data:image/png;base64,${iconBase64}" alt="">
-  <div><h1>Xomoni</h1><p>Clean up your own X account, slowly and safely, on your computer.</p></div>
+  <div>
+    <h1>Xomoni</h1>
+    <p class="what">Digital footprint manager</p>
+    <p class="how">Starting with X: review and remove your old posts and likes.</p>
+  </div>
 </body></html>`;
 }

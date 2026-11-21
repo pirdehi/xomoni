@@ -16,8 +16,8 @@ The module has no data and no actions: a pure `domain/` with what Xomoni is and 
 - **The copy stays true to the product.** Claims about data and safety match the [privacy policy](../../app/privacy/page.tsx), [ADR-0003](../../../../../docs/adr/0003-no-credentials-no-evasion.md), [ADR-0004](../../../../../docs/adr/0004-x-data-stays-local.md) and [ADR-0006](../../../../../docs/adr/0006-website-is-view-only.md); change them together.
 - **Only what exists today, and no dates.** Xomoni works on X only. A place that is planned (`next`, `later`) says so and names no feature and no date; its type can't carry one, and a test checks the words. X's lines under each pillar name features that ship.
 - **One story about risk.** The page says Xomoni stays within X's *limits* and protections, never that it follows X's *rules*: X's rules forbid automating its website, as the hero's risk line, the FAQ and `/risks` (`@xomoni/consent`) say.
-- **No platform logos.** Platforms are named in words only, with the line that Xomoni isn't affiliated with, endorsed by or sponsored by X Corp.
-- **Screenshots come from the dashboard preview** with demo data (`npm run preview:ui -w @xomoni/extension`), never from a real X account: `public/screens/overview.png` (light, also the Open Graph image) and `overview-dark.png`, both 1440 × 1000.
+- **No platform logos.** Platforms are named in words only, with the line that Xomoni isn't affiliated with, endorsed by or sponsored by X Corp. The rule is [ADR-0035](../../../../../docs/adr/0035-xomoni-has-its-own-mark.md).
+- **Screenshots come from the dashboard preview** with demo data, never from a real X account: `public/screens/overview.png` (light, also the Open Graph image) and `overview-dark.png`, both 1440 × 1000. `npm run store:images -w @xomoni/extension` takes them with the stores' screenshots, so they show the current sidebar and logo (#322).
 
 ## Tests
 

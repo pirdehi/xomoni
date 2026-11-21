@@ -303,7 +303,7 @@ Write doc comments for the next maintainer: say what the thing is for and anythi
 
 ## 8. Quality gates
 
-Nothing reaches `main` without passing the same checks twice: on the developer's machine and in CI.
+Nothing reaches `main` without passing the same checks twice: on the developer's machine and in CI. Nothing is released without two more gates: the release candidate and the release itself. [Quality gates](QUALITY-GATES.md) lists every rule and what enforces it ([ADR-0037](adr/0037-one-written-gate-for-every-merge-and-release.md)).
 
 ```mermaid
 flowchart LR
@@ -317,7 +317,7 @@ flowchart LR
 
 - **Pre-push hook:** `npm install` points git at [`.githooks`](../.githooks/pre-push), whose `pre-push` runs [`tooling/verify.mjs`](../tooling/verify.mjs). `git push --no-verify` skips it, but CI runs the same checks and `main` only accepts green pull requests.
 - **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): `verify` and both production builds; `database` (fresh migrations, schema lint, Row Level Security tests, generated-types drift); `e2e` (the auth flows in a real browser against a local Supabase, with emails read from Mailpit).
-- **Branch protection on `main`:** pull request required, CI must pass, linear history, no force pushes.
+- **Branch protection on `main`:** pull request required, CI must pass, linear history, no force pushes, no bypass. The gate's own files have a code owner ([`CODEOWNERS`](../.github/CODEOWNERS)).
 - **Releases** ([`release.yml`](../.github/workflows/release.yml)): a version tag builds the extension's zip, and the store build without the one-click updater, and publishes both on GitHub Releases. A manual run of [`store.yml`](../.github/workflows/store.yml) sends that release's store build to the Chrome Web Store and Edge Add-ons, with the store keys only in the `stores` environment ([releasing](RELEASING.md#chrome-web-store-and-edge-add-ons)).
 
 ## 9. Changing the architecture

@@ -8,12 +8,16 @@
 
 ## Checklist
 
+The [definition of done](https://github.com/pirdehi/xomoni/blob/main/docs/QUALITY-GATES.md#definition-of-done), item by item:
+
+- [ ] The task is linked above: `Closes #N`, `Fixes #N` or `Part of #N`
 - [ ] `npm run verify` passes (the pre-push hook runs it)
 - [ ] Doc comments on new exports; unit README updated if responsibility, files or dependencies changed
 - [ ] `docs/ARCHITECTURE.md` and an ADR updated if structure, rules or decisions changed
 - [ ] Backend tests (rules, use cases, engine, database) cover the new behavior, including failure and security cases
 - [ ] Frontend tests (dashboard or website components) cover what the person sees and does
 - [ ] End-to-end test added when the change crosses the browser, the website and Supabase
+- [ ] User-facing change: at least 20 scenarios, each with its browser test (ADR-0038); a `CHANGELOG.md` line; the feature in `docs/features.json` and `npm run readme` (ADR-0039). Or the `no-changelog` / `no-scenarios` label, with the reason written here
 - [ ] New environment variables documented in `apps/web/.env.example` and set in Vercel
 - [ ] The finished task is ticked in `docs/ROADMAP.md`
 

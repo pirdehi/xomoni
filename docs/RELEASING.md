@@ -4,6 +4,9 @@ A release ships the extension as a zip on [GitHub Releases](https://github.com/p
 
 ## Steps
 
+Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/0037-one-written-gate-for-every-merge-and-release.md)).
+
+0. Open the release issue from the **Release** template (*Issues › New issue › Release*), titled `Release vX.Y.Z`. Tick each box only once you have checked it, with its proof. The release waits for it: the `release` environment's approval now, and the workflow's check of the issue with #340.
 1. On a branch, set the same version in `apps/extension/public/manifest.json` and `apps/extension/package.json` ([Semantic Versioning](https://semver.org/)).
 2. In [`CHANGELOG.md`](../CHANGELOG.md), rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and start a new empty `## [Unreleased]` above it.
 3. Run `node tooling/release.mjs check vX.Y.Z`, then open a pull request and merge it when CI is green.
@@ -66,7 +69,7 @@ On your own computer, with OpenSSL 3 (`brew install openssl@3` on macOS; macOS's
    openssl genpkey -algorithm ed25519 -out xomoni-release-signing.pem
    ```
 
-2. Make the `release` environment, which only the release workflow's `publish` job uses: *Settings › Environments › New environment*, named `release`. Both of these are required:
+2. The `release` environment, which only the release workflow's `publish` job uses, was set up on 2026-11-21 (*Settings › Environments › release*). Check that both of these still hold:
    - **Required reviewers:** add yourself. Every release then waits for your approval before anything is signed. Approve only after checking that the tag is the commit you meant to release, on `main`.
    - **Deployment branches and tags:** choose *Selected branches and tags* and add the tag rule `v*`.
 3. Add the private key as that environment's secret:
@@ -128,7 +131,7 @@ Set on GitHub, not in code (#142):
 - **Tags:** a ruleset on `v*` lets only maintainers create tags, and nobody move or delete one.
 - **Releases** are immutable once published.
 - **The `release` environment** (#305): the maintainer as required reviewer, and only `v*` tags may deploy to it. Its secret `RELEASE_SIGNING_KEY` signs releases for one-click updates (*Signing key* above).
-- **`main`:** branches up to date before merging, and the `verify`, `database` and `e2e` checks. GitHub signs the squash merges it makes.
+- **`main`:** branches up to date before merging, and the `verify`, `database` and `e2e` checks. GitHub signs the squash merges it makes. No one can bypass the ruleset, admins included. More checks join as they land ([quality gates](QUALITY-GATES.md), #346).
 - **Not yet: signed commits.** GitHub refuses to merge a pull request whose own commits are unsigned, even as a squash. So the rule waits until the maintainer signs commits (an SSH signing key added to GitHub, and `git config commit.gpgsign true` with `gpg.format ssh`). It was turned on with #142 and taken back off the same day.
 - **Workflows from forks:** need approval for every outside contributor.
 - **Environment `stores`** (#303): holds the store keys, which only runs from `main` can read, after the maintainer approves ([below](#the-stores-environment)).
@@ -194,9 +197,9 @@ Neither API can create an item or change its visibility. The first package, the 
 
 ### The `stores` environment
 
-Create it before the first run, in **Settings → Environments → New environment**, named `stores`. A run that names a missing environment creates one without any protection.
+It was set up on 2026-11-21 (**Settings → Environments → stores**). A run that names a missing environment would create one without any protection, so check that these still hold:
 - **Deployment branches and tags:** *Selected branches and tags*, with `main` only, so no other branch's copy of the workflow can read the keys.
-- **Required reviewers** (recommended): yourself, with *Prevent self-review* off. Every run then waits for your approval before a store key is read.
+- **Required reviewers:** the maintainer, with *Prevent self-review* off. Every run then waits for your approval before a store key is read.
 - **Environment secrets:** the eight below. Not repository secrets: any workflow could read those.
 
 ### Chrome Web Store keys

@@ -283,7 +283,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | --- | --- | --- | --- |
 | ✅ | 0 · The rules: the three ADRs, the definition of done, the release checklist template, `CODEOWNERS`, and the `release` and `stores` environments with the maintainer as required reviewer | [#346](https://github.com/pirdehi/xomoni/issues/346) | [#348](https://github.com/pirdehi/xomoni/pull/348) |
 | ✅ | 1 · The README's features and status from `docs/features.json`, checked by `verify` and the release check | [#337](https://github.com/pirdehi/xomoni/issues/337) | [#349](https://github.com/pirdehi/xomoni/pull/349) |
-| ⬜ | 2 · At least 20 user scenarios per user-facing task, each tied to a browser test, checked by `verify`; the install page's first | [#338](https://github.com/pirdehi/xomoni/issues/338) | |
+| ✅ | 2 · At least 20 user scenarios per user-facing task, each tied to a browser test, checked by `verify`; the install page's first | [#338](https://github.com/pirdehi/xomoni/issues/338) | [#356](https://github.com/pirdehi/xomoni/pull/356) |
 | ✅ | 3 · The `pr-policy` check (task link, changelog line, scenarios, exemptions with reasons) and dependency review | [#339](https://github.com/pirdehi/xomoni/issues/339) | [#350](https://github.com/pirdehi/xomoni/pull/350) |
 | ✅ | 4 · The release gate: the full CI on the tag, `npm audit`, the release issue read by the workflow and closed with the release | [#340](https://github.com/pirdehi/xomoni/issues/340) | [#353](https://github.com/pirdehi/xomoni/pull/353) |
 | ✅ | 5 · The three open CodeQL alerts | [#341](https://github.com/pirdehi/xomoni/issues/341) | [#355](https://github.com/pirdehi/xomoni/pull/355) |
@@ -291,7 +291,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ⬜ | 7 · The nightly full run, and a check after each release | [#343](https://github.com/pirdehi/xomoni/issues/343) | |
 | ⬜ | 8 · Docs sorted by kind, with one map | [#344](https://github.com/pirdehi/xomoni/issues/344) | |
 | ⬜ | 9 · Scenarios for the features shipped before the gate | [#345](https://github.com/pirdehi/xomoni/issues/345) | |
-| 🔄 | 10 · The maintainer's settings: required checks and code scanning in the ruleset, an account for AI agents, code-owner review, signed commits | [#346](https://github.com/pirdehi/xomoni/issues/346) | |
+| 🔄 | 10 · The maintainer's settings. Done on 2026-11-21: the `release` and `stores` environments, and `pr-policy`, `dependency-review` and CodeQL's results required by the ruleset. Left: an account for AI agents, then code-owner review; signed commits | [#346](https://github.com/pirdehi/xomoni/issues/346) | |
 
 ## Dropped
 

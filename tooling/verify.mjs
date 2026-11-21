@@ -10,6 +10,7 @@ const steps = [
   ['Documentation', 'docs:check'],
   ['README from the feature registry', 'readme:check'],
   ['Test presence', 'tests:check'],
+  ['User scenarios', 'scenarios:check'],
   ['Tooling tests', 'test:tooling'],
   ['No remotely hosted code (extension build)', 'remote-code:check'],
   ['Unit tests and coverage', 'test'],

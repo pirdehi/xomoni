@@ -10,6 +10,7 @@ A change that adds or changes behavior includes, in the same pull request:
 2. **A frontend test**: what the person sees and can do on the page or component that exposes it (the extension dashboard or the website).
 3. **The negative and safety cases**: what must _not_ happen (another user's data, a signed-out visitor, an unconfirmed `DELETE`, a pace above one fifth of X's limits, the website starting work on X).
 4. **An end-to-end test** when the feature crosses the browser, the website and Supabase (sign-in, account changes, the live dashboard).
+5. **User scenarios** when the task changes what a person sees or does: at least 20, across nine categories, each proven by a browser test ([user scenarios](scenarios/README.md)).
 
 Bug fixes start with a test that fails without the fix.
 
@@ -23,6 +24,7 @@ Bug fixes start with a test that fails without the fix.
 | Website server (Server Actions, session, proxy) | `apps/web/src/modules/*/server/*.test.ts`, `apps/web/src/shared/**/*.test.ts` | Vitest, mocked `next/headers` | Every action re-checks the session; redirects are safe; protected routes stay protected. |
 | Website UI | `apps/web/src/modules/*/ui/*.test.tsx`, `apps/web/src/shared/ui/*.test.tsx` | Vitest + Testing Library in happy-dom | Forms, messages, disabled states, the captcha's states; the dashboard stays view-only. |
 | Website end to end | `apps/web/e2e/*.spec.ts` | Playwright against local Supabase and Mailpit | Real flows in a real browser, with emails; no Content-Security-Policy violations. The extension is played at the page (`chrome.runtime` stubbed), or loaded for real: `fixed-id.spec.ts` runs a test extension with a fixed `key` in Chromium (#302). |
+| User scenarios | `docs/scenarios/<issue>-<slug>.md`, each proven by a test in `apps/web/e2e/*.spec.ts` | Markdown, and Playwright run by tag (`--grep @task-<issue>`) | A user-facing task as people use it: at least 20 scenarios (the main path, wrong input, failures, security, a first run, cancelling, keyboard and screen readers, other browsers and screens, what lasts), each tied to the test that proves it ([user scenarios](scenarios/README.md)). |
 | Extension kernel and engine | `apps/extension/tests/*.test.ts` | Vitest + `fake-indexeddb` | Pacing never above one fifth of X's limits, the risk ladder, stop rules, parsers on real response shapes, job states. |
 | Extension in the X page (content script, interceptor) | `apps/extension/tests/*.test.ts` | Vitest in happy-dom | X's buttons are found, nothing else is clicked, responses are matched only on the private channel. |
 | Extension dashboard | `apps/extension/tests/ui/*.test.tsx` | Vitest + Testing Library + a `chrome` stub | Pages and components: what is shown, what each control does, confirmations before anything acts on X. |
@@ -36,6 +38,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 | Unit and component tests | `npm test` (in `npm run verify` and CI) | Any test fails. |
 | Coverage | Each workspace's Vitest `coverage.thresholds` (`npm test` runs with coverage) | Lines, branches, functions or statements drop below the workspace's threshold. Thresholds only go up. |
 | Test presence | `npm run tests:check` ([`tooling/check-tests.mjs`](../tooling/check-tests.mjs)) | A source file is imported by no test, unless it is listed there with the reason (types only, a thin entry point covered elsewhere). |
+| User scenarios | `npm run scenarios:check` ([`tooling/check-scenarios.mjs`](../tooling/check-scenarios.mjs)), in `npm run verify` | A scenarios file has fewer than 20 scenarios, a category under its minimum or more than 3 manual ones; a scenario's test is missing, skipped or without its `@task-<issue>` tag; or a test names a scenario that doesn't exist ([user scenarios](scenarios/README.md#what-the-check-fails-on)). The tests themselves run in the `e2e` job. |
 | No remote code | `npm run remote-code:check` ([`tooling/check-remote-code.mjs`](../tooling/check-remote-code.mjs)), in `npm run verify` and the release workflow | The built extension builds code from a string or loads it from another site, which Manifest V3 and the stores forbid ([store listing](STORE-LISTING.md#6-no-remote-code)). |
 | No updater in the store build | `tooling/store-build.test.mjs`, in `npm run test:tooling` | The store build (`npm run build:store`) holds any of the one-click updater's code, or GitHub's access in its manifest ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). |
 | Database | CI job `database` | A pgTAP test fails, or the generated types drift from the migrations. |
@@ -53,6 +56,17 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 - **Web Locks are per file** in the extension's tests (`tests/setup.ts`, #271): Node's `navigator.locks` is shared by the whole process, so one file's runner would otherwise hold up another file's sign-out.
 - **Types are strict in tests too** ([ADR-0016](adr/0016-strict-typescript-and-type-aware-lint.md)); tests may use `!`.
 
+## Writing user scenarios
+
+A task that changes what a person sees or does gets `docs/scenarios/<issue>-<slug>.md` in the pull request that builds it ([the standard](scenarios/README.md)). In short:
+
+1. Read the code the person meets, then write at least 20 scenarios in Given / When / Then, at least the minimum in each category (`happy` 3, `invalid` 3, `error` 3, `security` 3, `empty` 2, `cancel` 2, `a11y` 2, `browser` 1, `persistence` 1). Only behavior the code really has.
+2. Prove each one with a Playwright test whose title starts with its id and that carries `@task-<issue>`: `test('S299-02 the download moves the guide on to unzipping', { tag: ['@task-299'] }, …)`. Reuse `apps/web/e2e/support/`.
+3. Where no browser test can prove a scenario, mark it `Manual:` with the reason; 3 at most per file.
+4. Run `npm run scenarios:check`, then the task's tests: `npm run test:e2e -w @xomoni/web -- --grep @task-<issue>`.
+
+A later fix to the feature adds its scenario to the same file.
+
 ## Running them
 
 ```bash
@@ -60,8 +74,10 @@ npm test                                  # every workspace, with coverage
 npm test -w @xomoni/extension             # one workspace
 npx vitest run tests/ui -w @xomoni/extension    # a folder
 npm run tests:check                       # test presence
+npm run scenarios:check                   # user scenarios: each file against the standard
 supabase start && supabase test db        # database (needs Docker)
 supabase start && npm run test:e2e -w @xomoni/web   # end to end (needs Docker)
+npm run test:e2e -w @xomoni/web -- --grep @task-299  # one task's user scenarios
 ```
 
 Coverage reports are written to `coverage/` in each workspace (`index.html`).

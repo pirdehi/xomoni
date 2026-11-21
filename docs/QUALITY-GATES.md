@@ -52,11 +52,11 @@ flowchart TD
 | R6 | A backend test and a frontend test for every feature, with failure and security cases | Review, the pull request template | Review |
 | R7 | Row Level Security tests; generated types match the migrations | CI `database` | Enforced |
 | R8 | Real flows in a real browser | CI `e2e` | Enforced for the website in Chromium. The extension, Edge and axe: #342 |
-| R9 | At least 20 user scenarios per user-facing task, each tied to its browser test | `npm run scenarios:check`, `pr-policy` | `pr-policy` enforced (#350); `scenarios:check`: #338 |
+| R9 | At least 20 user scenarios per user-facing task, each tied to its browser test | `npm run scenarios:check`, `pr-policy` | Enforced (#350, #356) |
 | R10 | A task link; a changelog line for a user-facing change; every exemption with a written reason | `pr-policy` | Enforced (#350) |
 | R11 | The READMEs' features and status match `docs/features.json`, and the registry matches the changelog | `npm run readme:check`, `node tooling/release.mjs check` | Enforced (#349) |
 | R12 | No new dependency with a high or critical vulnerability | `dependency-review`; `npm audit --audit-level=high` in the release build, on every dependency | Enforced (#350, #353) |
-| R13 | No open high or critical code scanning alert | The ruleset's code scanning rule | Planned: #341, #346 |
+| R13 | No open high or critical code scanning alert | The ruleset's code scanning rule (CodeQL, no alert at high or above) | Enforced since 2026-11-21 (#355, #346) |
 | R14 | No remotely hosted code in the extension | `npm run remote-code:check` | Enforced |
 | R15 | Releases only from `main`: reproducible, signed, with provenance; tags never move | `release.yml`, the tag rulesets | Enforced |
 | R16 | No release before the checklist is complete and the maintainer approves | The `release` environment; the release issue check, [`tooling/check-release-issue.mjs`](../tooling/check-release-issue.mjs) in `release.yml` | Enforced: the environment since 2026-11-21, the issue check since #340 |

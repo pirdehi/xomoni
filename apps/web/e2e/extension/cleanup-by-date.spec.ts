@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import type { Page, Request } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from '../support/a11y';
 import {
+  FIRST_PAGE_LOAD_MS,
   acceptRisks,
+  allowFirstPageLoad,
   attentionBanner,
   browseProfile,
   confirmCleanup,
@@ -362,6 +364,7 @@ test.describe('cleanup by date', { tag: '@task-199' }, () => {
     page,
     context,
   }) => {
+    allowFirstPageLoad();
     await postsBefore2021(dashboard, page);
     await servePage(context, '/home', 'home-limited.html');
     const loads = xRequests(dashboard, graphql);
@@ -369,7 +372,8 @@ test.describe('cleanup by date', { tag: '@task-199' }, () => {
     await startCleanup(dashboard);
 
     const card = jobCard(dashboard, BEFORE_2021);
-    await expect(card).toContainText('Stopped for safety');
+    // The job reads X's notice on its first page, which waits for Xomoni's pace.
+    await expect(card).toContainText('Stopped for safety', { timeout: FIRST_PAGE_LOAD_MS });
     await expect(card).toContainText(
       'X shows a restriction on this account: “Your account is temporarily limited”. The account may be limited or read-only. Xomoni stopped at the first refusal and won’t retry.',
     );

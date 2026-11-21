@@ -1,10 +1,24 @@
 import type { BrowserContext, Locator, Page } from '@playwright/test';
-import { expect } from './extension';
+import { expect, test } from './extension';
 import { FIXTURE_ACCOUNT } from './x-fixtures';
 
 // A cleanup as a person goes through it in the dashboard (#345): browsing their X profile, so Xomoni has a copy of
 // it, the Cleanup page, its confirmation and the risks dialog, and the job's card under Activity. Each helper presses
 // what a person presses and reads what they see; none reaches into Xomoni's code (ADR-0040).
+
+/**
+ * How long a new job may take before it loads its first page of X. That load waits for Xomoni's pace: Careful's 3–6 s
+ * between page loads, slower by up to four times during the warm-up, so up to 24 s, plus the longer pause Xomoni adds
+ * to about one delay in twenty, up to 90 s (`LONG_PAUSE` in apps/extension/src/shared/pacing.ts). The extension's
+ * timers run in a worker Playwright's clock can't speed up (ADR-0040), so a test that waits for that first page waits
+ * this long, not the 10 s an assertion gets by default (#373).
+ */
+export const FIRST_PAGE_LOAD_MS = 150_000;
+
+/** Gives the running test room, beyond its own timeout, to wait `FIRST_PAGE_LOAD_MS` for a new job's first page. */
+export function allowFirstPageLoad(): void {
+  test.setTimeout(test.info().timeout + FIRST_PAGE_LOAD_MS);
+}
 
 /** The tabs of the fixture account's profile, with X's path for each. */
 const PROFILE_TABS = { posts: '', replies: '/with_replies', likes: '/likes' } as const;

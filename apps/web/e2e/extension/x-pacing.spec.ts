@@ -1,6 +1,8 @@
 import type { BrowserContext, Locator, Page, Request } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from '../support/a11y';
 import {
+  FIRST_PAGE_LOAD_MS,
+  allowFirstPageLoad,
   browseProfile,
   confirmCleanup,
   continueWithoutArchive,
@@ -102,9 +104,13 @@ async function postsBefore2021(dashboard: Page, page: Page, { anyTime = true, br
 async function stoppedByRestriction(dashboard: Page, page: Page, context: BrowserContext): Promise<Locator> {
   await postsBefore2021(dashboard, page);
   await servePage(context, '/home', 'home-limited.html');
+  allowFirstPageLoad();
   await startCleanup(dashboard);
   const card = jobCard(dashboard, BEFORE_2021);
-  await expect(card.getByRole('button', { name: /^Resume in 1[12]h \d+m$/ })).toBeDisabled();
+  // The job reads X's notice on its first page, which waits for Xomoni's pace.
+  await expect(card.getByRole('button', { name: /^Resume in 1[12]h \d+m$/ })).toBeDisabled({
+    timeout: FIRST_PAGE_LOAD_MS,
+  });
   return card;
 }
 

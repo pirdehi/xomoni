@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/icons/icon128.png" width="72" alt="Xomoni logo" />
+<img src="apps/extension/public/icons/icon128.png" width="72" alt="Xomoni logo" />
 
 # Xomoni
 

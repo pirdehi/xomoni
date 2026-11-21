@@ -76,7 +76,7 @@ export default defineConfig(({ mode }) => ({
     emptyOutDir: true,
     target: 'chrome111',
     modulePreload: false,
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         dashboard: resolve(import.meta.dirname, 'dashboard.html'),
         sw: resolve(import.meta.dirname, 'src/background/sw.ts'),

@@ -1,4 +1,4 @@
-// Checks on the GitHub workflows (#142), run by `node --test 'tooling/*.test.mjs'` in `npm run verify`.
+// Checks on the GitHub workflows (#142, #303), run by `node --test 'tooling/*.test.mjs'` in `npm run verify`.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { generateKeyPairSync, verify, webcrypto } from 'node:crypto';
@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { STORE_SECRETS } from './store-api.mjs';
 
 const DIR = join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), '.github/workflows');
 const workflows = readdirSync(DIR)
@@ -23,6 +24,21 @@ function block(text, start) {
   return lines.slice(from, end < 0 ? undefined : end).join('\n');
 }
 
+/** Every `run:` script in `text`: the rest of its line, or the block indented below it. */
+function runScripts(text) {
+  const lines = text.split('\n');
+  const scripts = [];
+  lines.forEach((line, i) => {
+    const match = /^\s*(?:- )?run:\s*(.*)$/.exec(line);
+    if (!match) return;
+    if (!/^[|>]/.test(match[1])) return scripts.push(match[1]);
+    const indent = line.length - line.trimStart().length;
+    const end = lines.findIndex((next, j) => j > i && next.trim() && next.length - next.trimStart().length <= indent);
+    scripts.push(lines.slice(i + 1, end < 0 ? undefined : end).join('\n'));
+  });
+  return scripts;
+}
+
 describe('GitHub workflows (#142)', () => {
   it('pin every action by its full commit SHA, with the version beside it', () => {
     for (const { name, text } of workflows) {
@@ -32,6 +48,20 @@ describe('GitHub workflows (#142)', () => {
       for (const line of text.split('\n').filter((l) => /uses:\s*\S+@[0-9a-f]{40}/.test(l))) {
         assert.match(line, /# v\d/, `${name}: the version comment is missing on "${line.trim()}"`);
       }
+    }
+  });
+
+  it("run only GitHub's own actions and supabase/setup-cli, as the repository allows", () => {
+    for (const { name, text } of workflows) {
+      for (const [, action] of text.matchAll(/uses:\s*([^@\s]+)@/g)) {
+        assert.match(action, /^(actions|github)\/|^supabase\/setup-cli$/, `${name}: ${action}`);
+      }
+    }
+  });
+
+  it('never paste an expression into a script, where an input could inject commands', () => {
+    for (const { name, text } of workflows) {
+      for (const script of runScripts(text)) assert.doesNotMatch(script, /\$\{\{/, `${name}: pass it in env instead`);
     }
   });
 
@@ -77,6 +107,9 @@ function stepScript(text, name) {
 }
 
 const SIGN_STEP = 'Sign the zips for one-click updates (Ed25519)';
+/** The zips a release signs, and the store build's, which it doesn't: nothing in it checks a signature (#303). */
+const SIGNED = ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip'];
+const STORE_ZIP = 'xomoni-extension-store-0.5.0.zip';
 const openssl = spawnSync('openssl', ['version'], { encoding: 'utf8' });
 // `pkeyutl -rawin` for Ed25519 needs OpenSSL 3, as on GitHub's runners; macOS's own LibreSSL lacks it.
 const OPENSSL_3 = openssl.status === 0 && /^OpenSSL 3\./.test(openssl.stdout);
@@ -97,8 +130,7 @@ function runSigning({ secret, trusted }) {
   const runnerTemp = mkdtempSync(join(tmpdir(), 'xomoni-runner-'));
   mkdirSync(join(dir, 'release'));
   const zip = Buffer.from('PK\x03\x04 a release, as bytes');
-  for (const name of ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip'])
-    writeFileSync(join(dir, 'release', name), zip);
+  for (const name of [...SIGNED, STORE_ZIP]) writeFileSync(join(dir, 'release', name), zip);
   writeFileSync(join(dir, 'release/release-keys'), trusted.map((key) => `${key}\n`).join(''));
   const script = stepScript(workflows.find((w) => w.name === 'release.yml').text, SIGN_STEP);
   const env = { PATH: process.env.PATH, RUNNER_TEMP: runnerTemp, ...(secret ? { RELEASE_SIGNING_KEY: secret } : {}) };
@@ -119,6 +151,24 @@ describe('release signing for one-click updates (#305)', () => {
     assert.doesNotMatch(build, /secrets\.|RELEASE_SIGNING_KEY/);
     assert.ok(publish.indexOf(SIGN_STEP) < publish.indexOf('Create the release'), 'signed before the release exists');
     assert.match(publish, /files=\(release\/\*\.zip release\/\*\.zip\.sig release\/SHA256SUMS\)/);
+  });
+
+  it('builds, checks and packages the store build after the GitHub zips, and attests every zip (#303)', () => {
+    const order = [
+      'run: npm run build -w @xomoni/extension',
+      'run: node tooling/check-remote-code.mjs',
+      'node tooling/release.mjs package\n',
+      'run: npm run build:store -w @xomoni/extension',
+      'run: node tooling/check-remote-code.mjs',
+      'node tooling/release.mjs package-store',
+    ];
+    let at = 0;
+    for (const step of order) {
+      const found = build.indexOf(step, at);
+      assert.ok(found >= at, `"${step.trim()}" comes after the steps before it`);
+      at = found + step.length;
+    }
+    assert.match(publish, /subject-path: release\/\*\.zip\n/);
   });
 
   it('builds the release without running any dependency’s install script', () => {
@@ -146,7 +196,14 @@ describe('release signing for one-click updates (#305)', () => {
       assert.equal(run.status, 0, run.output);
       assert.doesNotMatch(run.output, /PRIVATE KEY/);
       assert.deepEqual(readdirSync(run.runnerTemp), [], 'the key file is gone');
-      for (const name of ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip']) {
+      assert.deepEqual(
+        readdirSync(join(run.dir, 'release'))
+          .filter((name) => name.endsWith('.sig'))
+          .sort(),
+        SIGNED.map((name) => `${name}.sig`).sort(),
+        'the store build is not signed',
+      );
+      for (const name of SIGNED) {
         const signature = readFileSync(join(run.dir, 'release', `${name}.sig`));
         assert.equal(signature.length, 64);
         assert.ok(verify(null, run.zip, key.publicKey, signature), `${name}: Node's crypto`);
@@ -236,15 +293,17 @@ describe('creating the release (#305)', () => {
   }
 
   const ZIPS = ['xomoni-extension.zip', 'xomoni-extension-0.5.0.zip'];
+  const STORE = 'xomoni-extension-store-0.5.0.zip';
 
   it('attaches the signatures with the zips when the release was signed', () => {
-    const run = runCreate([...ZIPS, ...ZIPS.map((zip) => `${zip}.sig`), 'SHA256SUMS']);
+    const run = runCreate([...ZIPS, STORE, ...ZIPS.map((zip) => `${zip}.sig`), 'SHA256SUMS']);
     assert.equal(run.status, 0, run.output);
-    assert.deepEqual(run.args.slice(0, 7), [
+    assert.deepEqual(run.args.slice(0, 8), [
       'release',
       'create',
       'v0.5.0',
       'release/xomoni-extension-0.5.0.zip',
+      'release/xomoni-extension-store-0.5.0.zip',
       'release/xomoni-extension.zip',
       'release/xomoni-extension-0.5.0.zip.sig',
       'release/xomoni-extension.zip.sig',
@@ -254,16 +313,70 @@ describe('creating the release (#305)', () => {
   });
 
   it('attaches only the zips and the checksums when it wasn’t, with no literal pattern left over', () => {
-    const run = runCreate([...ZIPS, 'SHA256SUMS']);
+    const run = runCreate([...ZIPS, STORE, 'SHA256SUMS']);
     assert.equal(run.status, 0, run.output);
-    assert.deepEqual(run.args.slice(0, 6), [
+    assert.deepEqual(run.args.slice(0, 7), [
       'release',
       'create',
       'v0.5.0',
       'release/xomoni-extension-0.5.0.zip',
+      'release/xomoni-extension-store-0.5.0.zip',
       'release/xomoni-extension.zip',
       'release/SHA256SUMS',
     ]);
     assert.ok(!run.args.some((arg) => arg.includes('*')));
+  });
+});
+
+describe('store workflow (#303)', () => {
+  const store = workflows.find((w) => w.name === 'store.yml').text;
+  const jobs = {
+    release: block(store, '  release:'),
+    chrome: block(store, '  chrome:'),
+    edge: block(store, '  edge:'),
+  };
+
+  it('runs only by hand, from main, for a release tag', () => {
+    assert.match(block(store, 'on:'), /^on:\n {2}workflow_dispatch:\n/);
+    assert.doesNotMatch(block(store, 'on:'), /push|pull_request|schedule|workflow_run/);
+    assert.match(jobs.release, /\[\[ "\$GITHUB_REF" == refs\/heads\/main \]\]/);
+    assert.match(jobs.release, /\[\[ "\$TAG" =~ \^v\[0-9\]\+/);
+    for (const job of ['chrome', 'edge']) assert.match(jobs[job], /needs: release\n/);
+  });
+
+  it("sends the release's own store build, checked against SHA256SUMS and its provenance, and never builds one", () => {
+    assert.doesNotMatch(store, /\bnpm |release\.mjs|npm run build/);
+    assert.match(
+      jobs.release,
+      /gh release download "\$TAG" .*\n.*--pattern "xomoni-extension-store-\$\{TAG#v\}\.zip" --pattern SHA256SUMS/,
+    );
+    assert.match(jobs.release, /sha256sum --check --strict --ignore-missing SHA256SUMS/);
+    assert.match(jobs.release, /gh attestation verify "release\/xomoni-extension-store-\$\{TAG#v\}\.zip"/);
+    // Never the GitHub zip, which has the one-click updater (ADR-0033).
+    assert.doesNotMatch(store, /xomoni-extension-\$\{TAG#v\}|xomoni-extension\.zip/);
+    assert.match(jobs.release, /--signer-workflow "\$GITHUB_REPOSITORY\/\.github\/workflows\/release\.yml"/);
+    assert.match(jobs.release, /--source-ref "refs\/tags\/\$TAG"/);
+    for (const job of ['chrome', 'edge']) {
+      assert.match(jobs[job], /sha256sum --check --strict --ignore-missing SHA256SUMS/);
+      assert.match(jobs[job], new RegExp(`run: node tooling/store\\.mjs "\\$ACTION" ${job} "\\$TAG"`));
+    }
+  });
+
+  it('keeps the store keys in the stores environment, each job with only its own store', () => {
+    // The job that downloads and checks the release sees no secret and needs no approval.
+    assert.doesNotMatch(jobs.release, /secrets\.|environment:/);
+    assert.match(jobs.release, /permissions:\n {6}contents: read\n {6}attestations: read\n {4}steps:/);
+    for (const job of ['chrome', 'edge']) {
+      assert.match(jobs[job], /\n {4}environment: stores\n/);
+      assert.match(jobs[job], /permissions:\n {6}contents: read\n {4}steps:/, `${job}: read-only, nothing else`);
+      assert.doesNotMatch(jobs[job], /github\.token|GH_TOKEN/);
+      const used = [...jobs[job].matchAll(/secrets\.(\w+)/g)].map((m) => m[1]);
+      assert.deepEqual(used, STORE_SECRETS[job]);
+      // Every key is read from secrets, under its own name: none is written in the workflow.
+      for (const name of STORE_SECRETS[job])
+        assert.match(jobs[job], new RegExp(`\n {10}${name}: \\$\\{\\{ secrets\\.${name} \\}\\}\n`));
+    }
+    const everywhere = [...store.matchAll(/secrets\.(\w+)/g)].map((m) => m[1]).sort();
+    assert.deepEqual(everywhere, Object.values(STORE_SECRETS).flat().sort());
   });
 });

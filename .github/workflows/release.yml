@@ -50,6 +50,16 @@ jobs:
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           node tooling/release.mjs package
           node tooling/release.mjs notes "$GITHUB_REF_NAME" > apps/extension/release/release-notes.md
+      # What the stores get (#303): the same code without the one-click updater, since a store updates Xomoni itself
+      # (#305, ADR-0033). Built here, so the store workflow sends a zip this run built and attested, never a rebuild.
+      - name: Build the store build
+        run: npm run build:store -w @xomoni/extension
+      - name: No remotely hosted code in the store build either (#301)
+        run: node tooling/check-remote-code.mjs
+      - name: Package the store build reproducibly, beside the zips
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          node tooling/release.mjs package-store
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release
@@ -102,9 +112,12 @@ jobs:
             exit 1
           fi
           for zip in release/*.zip; do
+            # The store build has no updater, so nothing would check its signature (#303).
+            case "$zip" in release/xomoni-extension-store-*) continue ;; esac
             openssl pkeyutl -sign -inkey "$key" -rawin -in "$zip" -out "$zip.sig"
             openssl pkeyutl -verify -pubin -inkey "$public" -rawin -in "$zip" -sigfile "$zip.sig"
           done
+      # Every zip, the store build's included: the store workflow checks this before a store sees it (#303).
       - name: Sign where the zips were built (SLSA provenance)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:

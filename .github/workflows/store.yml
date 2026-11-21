@@ -1,0 +1,169 @@
+# Sends a release to the Chrome Web Store and Microsoft Edge Add-ons (docs/RELEASING.md#chrome-web-store-and-edge-add-ons, #303). Run by hand,
+# from main, after the release workflow: `upload` makes the release's store build each store's draft, and a second run
+# with `publish` submits the draft for review. It never builds: it takes xomoni-extension-store-X.Y.Z.zip, the build
+# without the one-click updater (ADR-0033), from the tag's GitHub release, and checks it against SHA256SUMS and its
+# build provenance before any store sees it. The store keys are
+# secrets of the `stores` environment only, which the maintainer can make wait for approval. Actions are pinned by
+# commit SHA; Dependabot keeps them current.
+name: Stores
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release, such as v0.5.0 (already on GitHub Releases)
+        required: true
+        type: string
+      store:
+        description: Which store
+        required: true
+        type: choice
+        options: [both, chrome, edge]
+        default: both
+      action:
+        description: 'upload: the zip becomes the store draft. publish: the draft goes to review.'
+        required: true
+        type: choice
+        options: [upload, publish]
+        default: upload
+      percentage:
+        description: 'Chrome publish only: share of users, 1-100 (empty: all; needs 10,000+ weekly users)'
+        required: false
+        type: string
+        default: ''
+
+permissions: {}
+
+# One store run at a time; a second one waits instead of racing the first.
+concurrency:
+  group: stores
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+# Inputs reach the scripts only as environment variables, never pasted into them.
+env:
+  TAG: ${{ inputs.tag }}
+  ACTION: ${{ inputs.action }}
+  PERCENTAGE: ${{ inputs.percentage }}
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - name: From main, for a release tag
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo "::error::Run this workflow from main."; exit 1; }
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::The tag must look like v1.2.3."; exit 1; }
+          if [[ -n "$PERCENTAGE" ]]; then
+            [[ "$PERCENTAGE" =~ ^(100|[1-9][0-9]?)$ ]] || { echo "::error::The percentage is 1 to 100."; exit 1; }
+            [[ "$ACTION" == publish ]] || { echo "::error::A percentage is for publish only."; exit 1; }
+          fi
+      - name: The release is on GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName
+      - name: Download its store build and checksums
+        if: inputs.action == 'upload'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release \
+            --pattern "xomoni-extension-store-${TAG#v}.zip" --pattern SHA256SUMS
+      - name: The store build matches SHA256SUMS
+        if: inputs.action == 'upload'
+        working-directory: release
+        run: |
+          awk -v zip="xomoni-extension-store-${TAG#v}.zip" '$2 == zip { found = 1 } END { exit !found }' SHA256SUMS \
+            || { echo "::error::SHA256SUMS doesn't list the store build: releases before #303 have none, so tag a new one."; exit 1; }
+          sha256sum --check --strict --ignore-missing SHA256SUMS
+      - name: The release workflow built it from this tag (build provenance)
+        if: inputs.action == 'upload'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify "release/xomoni-extension-store-${TAG#v}.zip" --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-ref "refs/tags/$TAG" --deny-self-hosted-runners
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: inputs.action == 'upload'
+        with:
+          name: store-package
+          path: release
+          if-no-files-found: error
+          retention-days: 1
+
+  chrome:
+    name: chrome
+    needs: release
+    if: inputs.store != 'edge'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: stores
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: tooling
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: inputs.action == 'upload'
+        with:
+          name: store-package
+          path: release
+      - name: The zip still matches SHA256SUMS
+        if: inputs.action == 'upload'
+        working-directory: release
+        run: sha256sum --check --strict --ignore-missing SHA256SUMS
+      - name: Chrome Web Store (upload a draft, or publish it)
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_ITEM_ID: ${{ secrets.CWS_ITEM_ID }}
+        run: node tooling/store.mjs "$ACTION" chrome "$TAG" --dir release --percentage "$PERCENTAGE"
+
+  edge:
+    name: edge
+    needs: release
+    if: inputs.store != 'chrome'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: stores
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: tooling
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: inputs.action == 'upload'
+        with:
+          name: store-package
+          path: release
+      - name: The zip still matches SHA256SUMS
+        if: inputs.action == 'upload'
+        working-directory: release
+        run: sha256sum --check --strict --ignore-missing SHA256SUMS
+      - name: Edge Add-ons (upload a draft, or publish it)
+        env:
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+        run: node tooling/store.mjs "$ACTION" edge "$TAG" --dir release

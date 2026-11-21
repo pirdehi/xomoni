@@ -1,4 +1,4 @@
-// Stands in for `@marsidev/react-turnstile` in unit tests (aliased in vitest.config.ts): no Cloudflare
+// Stands in for `@marsidev/react-turnstile` in unit tests (aliased in vitest.config.mts): no Cloudflare
 // script, and the test decides what the check does. By default it passes at once with TEST_TOKEN.
 import { useEffect, useImperativeHandle, useRef, type Ref } from 'react';
 

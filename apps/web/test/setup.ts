@@ -1,4 +1,4 @@
-// Runs before every unit test file (vitest.config.ts `test.setupFiles`): DOM matchers such as
+// Runs before every unit test file (vitest.config.mts `test.setupFiles`): DOM matchers such as
 // `toBeInTheDocument`, and unmounting whatever a component test rendered.
 import '@testing-library/jest-dom/vitest';
 import { configure } from '@testing-library/dom';

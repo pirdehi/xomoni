@@ -94,7 +94,7 @@ test('S400-01 the X window opens, and Home names the account', { tag: ['@task-40
 ```
 
 - Each test gets a fresh install: Xomoni's `dashboard` as it opens itself, with no account until the test opens the X window or an X page.
-- x.com is served from synthetic fixtures (`apps/web/e2e/fixtures/x`). A scenario that needs X to answer otherwise (an `error`: a rate limit, X down, a page X changed) adds its own route over the harness's, with `answerWithRate`, `answerWithLikes` and `servePage` from `x-fixtures.ts`. `test.use({ xSignedIn: false })` shows X signed out, `setXSession` signs in or out, or in as the other made-up account, during a test, and `test.use({ xHistory: 'long' })` gives the account years of posts, replies, a repost and likes.
+- x.com is served from synthetic fixtures (`apps/web/e2e/fixtures/x`). A scenario that needs X to answer otherwise (an `error`: a rate limit, X down, a page X changed) adds its own route over the harness's, with `answerWithRate` (X's rate-limit headers and clock, a 429 or a 503), `answerWithLikes` and `servePage` from `x-fixtures.ts`. `test.use({ xSignedIn: false })` shows X signed out, `setXSession` signs in or out, or in as the other made-up account, during a test, and `test.use({ xHistory: 'long' })` gives the account years of posts, replies, a repost and likes.
 - A scenario about a cleanup goes through it as the person does with `apps/web/e2e/support/cleanup.ts`: browsing the profile, Cleanup and its keep rules, the typed DELETE, the risks, and the job's card.
 - Nothing reaches the network, and a request to any host but x.com fails the test, which proves `security` scenarios about data that must stay in the browser.
 - `a11y`: `tabTo(locator)` for keyboard-only paths, and `expectNoSeriousA11yViolations(page)` for "no serious violation".
@@ -128,3 +128,4 @@ The check reads the files; it doesn't run the tests. CI's `e2e` job does, the we
 - [`299-install-page.md`](299-install-page.md): the install page, /install, while no store lists Xomoni (#44, #299, #306).
 - [`199-cleanup-by-date.md`](199-cleanup-by-date.md): cleanup by date, from the preview and the typed DELETE to the job's pace and its stops, in the extension (#199, #345).
 - [`367-keep-rules.md`](367-keep-rules.md): the keep rules of a cleanup, likes, words, pasted links and the person's own threads, at their edges and in what the preview, the backup and the job leave out, in the extension (#367, #345).
+- [`17-x-pacing.md`](17-x-pacing.md): within one fifth of X's limits, from the caps and the warm-up the dashboard shows to the waits for X's live limits and the risk ladder's stops, in the extension (#17, #345).

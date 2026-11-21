@@ -38,8 +38,10 @@ import { createCleanupJob } from '../../engine/runner';
 import { type PlannedCleanup, clearPlannedCleanup, plannedCleanup } from '../../shared/cleanup-plan';
 import { archiveImported, getSettings } from '../../shared/db';
 import { actionFor, estimateDuration, findCandidates, normalizeKeywords, parseIdList } from '../../shared/filter';
+import { RISK_LABELS } from '../../shared/risk';
 import { DAY } from '../../shared/time';
 import type { CleanupFilter, CleanupOptions, CleanupTarget } from '../../shared/types';
+import { scaleRule } from '../../shared/x-limits';
 import type { PageProps } from '../navigation';
 import { Button, Callout, Card, Disclosure, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
 import {
@@ -52,7 +54,7 @@ import {
   fromDateInput,
   toDateInput,
 } from '../format';
-import { startJob, toast, useRunner } from '../hooks';
+import { type Pace, startJob, toast, usePace, useRunner } from '../hooks';
 import { useKindCounts } from '../queries';
 
 type Age = '30d' | '90d' | '6m' | '1y' | '2y' | 'custom';
@@ -330,8 +332,21 @@ export function findingSummary(target: CleanupTarget, options: CleanupOptions): 
 }
 
 /**
+ * Why the pace the preview shows is below the account's settings, in one line: the warm-up of a new account's first
+ * active days and the risk ladder after X's warnings, and the share of the full pace they leave (ADR-0012, ADR-0013).
+ */
+export function slowerNote(pace: Pace): string {
+  const why = [
+    pace.step.factor < 1 ? `warm-up day ${pace.step.day} of ${pace.step.days}` : null,
+    pace.risk.capFactor < 1 ? `risk level ${pace.risk.level} (${RISK_LABELS[pace.risk.level]})` : null,
+  ].filter((part): part is string => !!part);
+  return `Slower for now: ${why.join(' · ')}, at ${Math.round(pace.factor * 100)}% of the full pace.`;
+}
+
+/**
  * Builds a cleanup filter (what, older than when, what to keep, how to find it), previews the
- * matching inventory items with a time estimate from the current pacing, and offers a JSON backup. The exceptions
+ * matching inventory items with a time estimate at the pace a run would use now (the settings, slowed by the warm-up and
+ * the risk ladder, as on the job's card), and offers a JSON backup. The exceptions
  * and how Xomoni finds the items are folded, each with a one-line summary, so a cleanup takes three choices (#199).
  * Without an imported archive it warns that old posts can be missed (PLAYBOOK E2) and starts only once the
  * person acknowledges it. The job is created and started only after the user types DELETE in the
@@ -365,6 +380,7 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
   const byDate = pickedIds ? undefined : plan;
   const counts = useKindCounts(account.id);
   const settings = useLiveQuery(getSettings, []);
+  const pace = usePace(account.id);
   const run = useRunner();
 
   // Latest date the custom picker allows; fixed for the life of the page.
@@ -416,7 +432,9 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
   const candidates = useLiveQuery(() => findCandidates(account.id, filter), [account.id, filterKey]);
 
   const action = actionFor(target, options.ghostLikes);
-  const rule = settings?.pacing[action];
+  const stored = settings?.pacing[action];
+  // At the pace a run would use now: the warm-up and the risk ladder slow it down (ADR-0012, ADR-0013), as on the job.
+  const rule = stored && pace ? scaleRule(stored, pace.factor) : undefined;
   const eta = rule && candidates ? estimateDuration(candidates.length, rule) : 0;
   const days = rule && candidates ? Math.ceil(candidates.length / rule.dailyCap) : 0;
   const title = picked
@@ -745,9 +763,10 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
                     Pacing
                   </span>
                   <span className={styles.estimateValue}>
-                    {rule.minDelay}–{rule.maxDelay}s · max {fmtNumber(rule.dailyCap)}/day
+                    {Math.round(rule.minDelay)}–{Math.round(rule.maxDelay)}s · max {fmtNumber(rule.dailyCap)}/day
                   </span>
                 </div>
+                {pace && pace.factor < 1 && <p className={styles.estimateNote}>{slowerNote(pace)}</p>}
                 {days > 1 && (
                   <p className={styles.estimateNote}>
                     Spread over about {days} days by the daily cap. Xomoni waits and continues automatically.

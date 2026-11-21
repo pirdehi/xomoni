@@ -29,7 +29,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When they open Cleanup
 - Then the four cards say 5 posts, 2 replies, 1 repost and 2 likes in your copy, with Posts chosen and 1 year pressed
 - And Review shows 5 matching, the newest four with their date and text, then "and 1 more"
-- And it shows the time it would take, and the pace: 80–120s · max 960/day, one fifth of X's 50 deletes per 15 minutes
+- And it shows the time it would take, and the pace a new account runs at: 320–480s · max 240/day, a quarter of
+  Careful's 80–120 s and 960 a day (one fifth of X's 50 deletes per 15 minutes) on warm-up day 1 of 4 (#345)
 - And Start cleanup stays off until they turn on Continue without it under "No archive imported: old posts can be missed"
 - And nothing is sent to x.com while they look
 - Test: apps/web/e2e/extension/cleanup-by-date.spec.ts

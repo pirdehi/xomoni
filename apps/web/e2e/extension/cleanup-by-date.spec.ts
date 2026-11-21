@@ -111,8 +111,10 @@ test.describe('cleanup by date', { tag: '@task-199' }, () => {
       'and 1 more',
     ]);
     await expect(review).toContainText('searching X may find more that aren’t in your copy yet');
-    // The pace for deletes: one fifth of X's 50 per 15 minutes is 10, so at most 40 an hour and 960 a day.
-    await expect(review).toContainText(/Pacing\s*80–120s · max 960\/day/);
+    // The pace for deletes: one fifth of X's 50 per 15 minutes is 10, so at most 40 an hour and 960 a day; a new account
+    // runs at a quarter of it on its first active day (ADR-0012), and the preview shows the pace a run would use.
+    await expect(review).toContainText(/Pacing\s*320–480s · max 240\/day/);
+    await expect(review).toContainText('Slower for now: warm-up day 1 of 4, at 25% of the full pace.');
     await expect(review).toContainText(/Estimated time\s*≈ \d+m \d+s/);
     await expect(review).toContainText('Stops automatically if X rate-limits, flags, or locks the account.');
 

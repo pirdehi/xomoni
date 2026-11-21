@@ -8,11 +8,14 @@ import { clearPlannedCleanup, plannedCleanup, savePlannedCleanup } from '../../s
 import { db, kvSet, markArchiveImported } from '../../src/shared/db';
 import { estimateDuration } from '../../src/shared/filter';
 import { PRESETS } from '../../src/shared/settings';
-import type { CleanupFilter, Item } from '../../src/shared/types';
+import type { CleanupFilter, Item, PacingRule } from '../../src/shared/types';
+import { assessRisk } from '../../src/shared/risk';
+import { scaleRule, warmup } from '../../src/shared/x-limits';
 import type * as Format from '../../src/ui/format';
 import { fmtDate, fmtDuration, fmtNumber, fromDateInput, toDateInput } from '../../src/ui/format';
 import type * as Hooks from '../../src/ui/hooks';
-import { CleanupPage, exceptionsSummary, findingSummary } from '../../src/ui/pages/Cleanup';
+import type { Pace } from '../../src/ui/hooks';
+import { CleanupPage, exceptionsSummary, findingSummary, slowerNote } from '../../src/ui/pages/Cleanup';
 import { stubChrome } from '../support/chrome';
 import { DAY_MS, draft, seed, watchNetwork } from '../support/cleanup-pages';
 import { ME, pageProps, resetDb } from '../support/fixtures';
@@ -61,6 +64,15 @@ const POSTS = [
   draft({ id: '1000000003', createdAt: Date.UTC(2018, 4, 10), text: 'Went viral', likes: 120 }),
   draft({ id: '1000000004', createdAt: Date.now() - 10 * DAY_MS, text: 'Fresh post' }),
 ];
+
+/** A new account's pace on its first active day: a quarter of the settings (warm-up, ADR-0012). */
+const DAY_ONE = 0.25;
+
+/** The pace line of the Review card for `rule` at `factor` of it, as a run would use it now. */
+const paceLine = (rule: PacingRule, factor = DAY_ONE) => {
+  const r = scaleRule(rule, factor);
+  return `${Math.round(r.minDelay)}–${Math.round(r.maxDelay)}s · max ${fmtNumber(r.dailyCap)}/day`;
+};
 
 const startButton = () => screen.getByRole('button', { name: 'Start cleanup' });
 const dialog = () => screen.getByRole('dialog');
@@ -650,20 +662,16 @@ describe('Cleanup page', () => {
       // The recent like on an old post is dated by the like itself, so only the old like matches.
       await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
 
-      const unlike = PRESETS.careful.unlike;
-      expect(
-        screen.getByText(`${unlike.minDelay}–${unlike.maxDelay}s · max ${fmtNumber(unlike.dailyCap)}/day`),
-      ).toBeVisible();
+      // A new account: a quarter of Careful's unlike pace, 320–480 s and 50 a day.
+      expect(await screen.findByText(paceLine(PRESETS.careful.unlike))).toBeVisible();
+      expect(paceLine(PRESETS.careful.unlike)).toBe('320–480s · max 50/day');
 
       expect(screen.queryByText('Authors may be notified')).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('switch', { name: /^Remove “ghost” likes/ }));
       expect(screen.getByText('Authors may be notified')).toBeInTheDocument();
       await openAdvanced();
       expect(screen.getByText(/Ghost likes are removed too\.$/)).toBeInTheDocument();
-      const relike = PRESETS.careful.relike;
-      expect(
-        screen.getByText(`${relike.minDelay}–${relike.maxDelay}s · max ${fmtNumber(relike.dailyCap)}/day`),
-      ).toBeVisible();
+      expect(await screen.findByText(paceLine(PRESETS.careful.relike))).toBeVisible();
 
       await openConfirm();
       expect(within(dialog()).getByText(`Remove likes older than ${fmtDate(oneYearAgo())}`)).toBeVisible();
@@ -706,14 +714,45 @@ describe('Cleanup page', () => {
       expect(screen.getByRole('button', { name: /^Posts/ })).toHaveTextContent('6 in your copy');
     });
 
-    it('estimates the time from the current pacing', async () => {
+    it('estimates the time at the pace a new account runs at: a quarter of Careful on its first day', async () => {
       await renderWithArchive();
       const rule = PRESETS.careful.delete;
-      expect(screen.getByText(`≈ ${fmtDuration(estimateDuration(3, rule))}`)).toBeVisible();
-      expect(
-        screen.getByText(`${rule.minDelay}–${rule.maxDelay}s · max ${fmtNumber(rule.dailyCap)}/day`),
-      ).toBeVisible();
+      expect(await screen.findByText(`≈ ${fmtDuration(estimateDuration(3, scaleRule(rule, DAY_ONE)))}`)).toBeVisible();
+      expect(screen.getByText(paceLine(rule))).toBeVisible();
+      expect(paceLine(rule)).toBe('320–480s · max 240/day');
+      expect(screen.getByText('Slower for now: warm-up day 1 of 4, at 25% of the full pace.')).toBeVisible();
       expect(screen.queryByText(/Spread over about/)).not.toBeInTheDocument();
+    });
+
+    it('shows Careful’s own pace once the warm-up is over, and the risk ladder’s when X warned', async () => {
+      const day = 86_400_000;
+      await db.logs.bulkAdd(
+        [1, 2, 3].map((n) => ({
+          ts: Date.now() - n * day,
+          accountId: ME,
+          jobId: 'j',
+          level: 'success' as const,
+          action: 'delete' as const,
+          targetId: String(n),
+          outcome: 'done' as const,
+          message: 'Deleted',
+        })),
+      );
+      await renderWithArchive();
+      const rule = PRESETS.careful.delete;
+      expect(await screen.findByText(paceLine(rule, 1))).toBeVisible();
+      expect(paceLine(rule, 1)).toBe('80–120s · max 960/day');
+      expect(screen.getByText(`≈ ${fmtDuration(estimateDuration(3, rule))}`)).toBeVisible();
+      expect(screen.queryByText(/^Slower for now/)).not.toBeInTheDocument();
+
+      // X refused a write: a quarter of the pace for 48 hours, and the warm-up a step back (ADR-0013). The preview
+      // says why.
+      await db.risk.add({ accountId: ME, kind: 'restricted', at: Date.now() - 60_000 });
+      expect(await screen.findByText(paceLine(rule, 0.75 * 0.25))).toBeVisible();
+      expect(paceLine(rule, 0.75 * 0.25)).toBe('427–640s · max 180/day');
+      expect(
+        screen.getByText('Slower for now: warm-up day 3 of 4 · risk level 3 (Defensive), at 19% of the full pace.'),
+      ).toBeVisible();
     });
 
     it('says when the daily cap spreads the work over several days', async () => {
@@ -808,6 +847,24 @@ describe('the folded parts’ summaries (#199)', () => {
     );
     expect(findingSummary('post', { sweep: false, deep: false, ghostLikes: false })).toBe(
       'Neither way is on: turn one on to start.',
+    );
+  });
+});
+
+describe('why the preview’s pace is slower for now (#345)', () => {
+  it('names the warm-up day and the risk level, with the share of the full pace they leave', () => {
+    const now = Date.now();
+    const pace = (warmupDay: number, events: Parameters<typeof assessRisk>[0] = []): Pace => {
+      const step = warmup(warmupDay - 1, 0);
+      const risk = assessRisk(events, now);
+      return { step, risk, reads: 1, factor: Math.min(1, step.factor * risk.capFactor) };
+    };
+    expect(slowerNote(pace(2))).toBe('Slower for now: warm-up day 2 of 4, at 50% of the full pace.');
+    expect(slowerNote(pace(4, [{ accountId: ME, kind: 'automation_flag', at: now - 60_000 }]))).toBe(
+      'Slower for now: risk level 2 (Retreat), at 50% of the full pace.',
+    );
+    expect(slowerNote(pace(3, [{ accountId: ME, kind: 'lock', at: now - 60_000 }]))).toBe(
+      'Slower for now: warm-up day 3 of 4 · risk level 3 (Defensive), at 19% of the full pace.',
     );
   });
 });

@@ -1,9 +1,16 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Limiter } from '../src/engine/limiter';
+import type * as Timers from '../src/engine/timers';
 import { db, upsertAccount } from '../src/shared/db';
 import { DEFAULT_SETTINGS } from '../src/shared/settings';
-import { readFactor } from '../src/shared/x-limits';
+import { type BudgetId, readFactor } from '../src/shared/x-limits';
+
+// The real sleep runs on a Web Worker, which tests don't have; the limiter's waits are read from its notifier.
+vi.mock('../src/engine/timers', async (importOriginal) => ({
+  ...(await importOriginal<typeof Timers>()),
+  sleep: async () => {},
+}));
 
 const ACCOUNT = 'acct-1';
 const limiter = () => new Limiter(DEFAULT_SETTINGS, ACCOUNT, new AbortController().signal, () => {});
@@ -187,5 +194,55 @@ describe('Limiter and the risk ladder (#17)', () => {
     const l = limiter();
     await l.init();
     expect(l.paceFactor).toBe(1);
+  });
+});
+
+describe('Limiter: one fifth of the live limits X reports (ADR-0012)', () => {
+  const RESET = Date.now() + 12 * 60_000;
+  /** Active hours off, so no test waits for the morning. */
+  const anyTime = { ...DEFAULT_SETTINGS, activeHours: { enabled: false, start: 8, end: 23 } };
+  /** X's headers on `op`: `remaining` of 150 left in a window resetting at `RESET`. */
+  const observe = (op: string, remaining: number) =>
+    db.limits.put({
+      key: `${ACCOUNT}:${op}`,
+      accountId: ACCOUNT,
+      op,
+      limit: 150,
+      remaining,
+      reset: RESET,
+      status: 200,
+      at: Date.now(),
+    });
+  /** The waits a new run's limiter goes through before loading a page of `budget`. */
+  const waitsBefore = async (budget: BudgetId) => {
+    const waits: { reason: string; until: number }[] = [];
+    const l = new Limiter(anyTime, ACCOUNT, new AbortController().signal, (reason, until) =>
+      waits.push({ reason, until }),
+    );
+    await l.init();
+    await l.before('read', budget);
+    return waits;
+  };
+  const LIVE = 'one fifth of X’s live limit used — waiting for X’s window to reset';
+
+  beforeEach(async () => {
+    await db.risk.clear();
+  });
+
+  it('waits for X’s reset before a profile page once a fifth of its profile lookup is used (#345)', async () => {
+    await observe('UserByScreenName', 120);
+    for (const budget of ['userTimeline', 'likedPosts'] as const) {
+      const [first, ...rest] = await waitsBefore(budget);
+      expect(first?.reason).toBe(`${budget === 'userTimeline' ? 'Profile timeline' : 'Likes timeline'}: ${LIVE}`);
+      expect(first?.until).toBeGreaterThanOrEqual(RESET);
+      expect(rest.map((w) => w.reason)).toEqual(['Pacing']);
+    }
+  });
+
+  it('lets a profile page go below a fifth, and a search page whatever the profile lookup says', async () => {
+    await observe('UserByScreenName', 121);
+    expect((await waitsBefore('userTimeline')).map((w) => w.reason)).toEqual(['Pacing']);
+    await observe('UserByScreenName', 0);
+    expect((await waitsBefore('search')).map((w) => w.reason)).toEqual(['Pacing']);
   });
 });

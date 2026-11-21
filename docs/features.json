@@ -71,7 +71,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [17, 18, 19, 26, 28, 30, 31, 33],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/17-x-pacing.md",
       "en": {
         "title": "Within one fifth of X's limits",
         "summary": "Xomoni never uses more than one fifth of any limit X announces, starts slower on a new account, rests between work sessions, keeps to active hours, and stops at X's first warning. Custom pacing can be slower, never faster."

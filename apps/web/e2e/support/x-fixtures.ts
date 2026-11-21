@@ -62,26 +62,41 @@ export const FIXTURE_ACCOUNT = {
  */
 export const FRIEND_ACCOUNT = { id: '9000000000000000002', handle: 'fixture_friend', name: 'Fixture Friend' } as const;
 
-/** What X's rate-limit headers say about an operation's 15-minute window. */
+/** What X's rate-limit headers say about an operation's 15-minute window. Null leaves that header out, as X may. */
 export interface XRate {
   /** `x-rate-limit-limit`: requests X allows in the window. 150 unless given. */
-  limit?: number;
+  limit?: number | null;
   /** `x-rate-limit-remaining`: requests left in it. All but one unless given. */
-  remaining?: number;
-  /** When the window resets, epoch ms; `x-rate-limit-reset` carries it in whole seconds. 15 minutes from now unless given. */
-  resetAt?: number;
+  remaining?: number | null;
+  /**
+   * When the window resets, epoch ms; `x-rate-limit-reset` carries it in whole seconds. `resetIn` after each answer
+   * unless given.
+   */
+  resetAt?: number | null;
+  /** How long after each answer its window resets, in ms, when `resetAt` isn't given: 15 minutes unless given. */
+  resetIn?: number;
+  /**
+   * How far X's clock is from this computer's, in ms, as X's `date` header shows it: negative when X's clock is behind,
+   * which is this computer's clock running ahead (PLAYBOOK F7, #31). The same unless given.
+   */
+  xClockOffset?: number;
 }
 
 /**
  * X's rate-limit headers on a GraphQL answer, by default one request of a 15-minute window used, well within one fifth
  * (ADR-0012), and X's clock, which Xomoni compares with this computer's (PLAYBOOK F7).
  */
-function xRateHeaders({ limit = 150, remaining = limit - 1, resetAt }: XRate = {}): Record<string, string> {
+function xRateHeaders({ limit = 150, remaining, resetAt, resetIn = 15 * 60_000, xClockOffset = 0 }: XRate = {}): Record<
+  string,
+  string
+> {
+  const left = remaining === undefined && limit != null ? limit - 1 : remaining;
+  const reset = resetAt === undefined ? Date.now() + resetIn : resetAt;
   return {
-    'x-rate-limit-limit': String(limit),
-    'x-rate-limit-remaining': String(remaining),
-    'x-rate-limit-reset': String(Math.floor((resetAt ?? Date.now() + 15 * 60_000) / 1000)),
-    date: new Date().toUTCString(),
+    ...(limit != null && { 'x-rate-limit-limit': String(limit) }),
+    ...(left != null && { 'x-rate-limit-remaining': String(left) }),
+    ...(reset != null && { 'x-rate-limit-reset': String(Math.floor(reset / 1000)) }),
+    date: new Date(Date.now() + xClockOffset).toUTCString(),
   };
 }
 
@@ -155,26 +170,29 @@ export async function servePage(context: BrowserContext, pathname: string, file:
   );
 }
 
-/** X's answer to a request refused for its rate limit: HTTP 429, with X's error 88. */
-const RATE_LIMITED = '{"errors":[{"code":88,"message":"Rate limit exceeded."}]}';
+/** X's answers to a request it refuses: its rate limit reached (429, X's error 88), or X over capacity (503, error 130). */
+const REFUSED = {
+  429: '{"errors":[{"code":88,"message":"Rate limit exceeded."}]}',
+  503: '{"errors":[{"code":130,"message":"Over capacity"}]}',
+} as const;
 
 /**
  * Makes X answer GraphQL operation `op` with `rate` in its headers from now on (#345): a 429, X's rate limit reached,
- * with `status: 429`, else X's usual answer, from the history `context` is served with. The person's own browsing and
- * Xomoni's page loads both see it, as on X.
+ * with `status: 429`; a 503, X over capacity, with `status: 503`; else X's usual answer, from the history `context` is
+ * served with. The person's own browsing and Xomoni's page loads both see it, as on X.
  */
 export async function answerWithRate(
   context: BrowserContext,
   op: string,
-  { status = 200, ...rate }: XRate & { status?: 200 | 429 },
+  { status = 200, ...rate }: XRate & { status?: 200 | 429 | 503 },
 ): Promise<void> {
   const history = served.get(context) ?? 'short';
   await context.route(
     (url) => url.host === 'x.com' && GRAPHQL.exec(url.pathname)?.[1] === op,
     (route) => {
       const headers = xRateHeaders(status === 429 ? { remaining: 0, ...rate } : rate);
-      if (status === 429)
-        return route.fulfill({ status, contentType: 'application/json', headers, body: RATE_LIMITED });
+      if (status !== 200)
+        return route.fulfill({ status, contentType: 'application/json', headers, body: REFUSED[status] });
       const file = answerFile(op, history);
       if (!file) throw new Error(`The fixtures have no answer for ${op}`);
       return route.fulfill({ status, contentType: 'application/json', headers, path: file });

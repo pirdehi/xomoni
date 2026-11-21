@@ -113,6 +113,25 @@ export function developerModeWhere(browser: BrowserKind): string {
   return browser === 'edge' ? 'in the panel on the left' : 'at the top right';
 }
 
+/**
+ * How to pin Xomoni to the toolbar, as one sentence: an extension can't pin itself. Chrome and Brave keep a pin next to
+ * each extension in the puzzle icon's menu; Edge has an eye there (*Show in toolbar*). General words name both.
+ */
+export function pinHow(browser: BrowserKind): string {
+  const start =
+    'Pin Xomoni to the toolbar to keep it one click away: click the puzzle icon next to the address bar, then';
+  switch (browser) {
+    case 'edge':
+      return `${start} the eye next to Xomoni (Show in toolbar).`;
+    case 'chrome':
+    case 'brave':
+      return `${start} the pin next to Xomoni.`;
+    case 'other':
+    case 'unsupported':
+      return `${start} the pin next to Xomoni (in Edge, the eye: Show in toolbar).`;
+  }
+}
+
 /** How to unzip the download on this system, in one or two plain sentences. */
 export function unzipHow(os: OsKind): string {
   switch (os) {

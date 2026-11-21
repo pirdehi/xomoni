@@ -11,6 +11,7 @@ import {
   extensionsAddress,
   isPhone,
   osOf,
+  pinHow,
   platformOf,
   stepAfter,
   stepBefore,
@@ -153,6 +154,15 @@ describe('the words for each browser and system (#299)', () => {
     expect(unzipHow('windows')).toMatch(/^Right-click xomoni-extension\.zip.*Extract All…/);
     expect(unzipHow('other')).toMatch(/extract xomoni-extension\.zip/);
     for (const os of ['mac', 'windows', 'other'] as const) expect(unzipHow(os)).toContain('xomoni-extension');
+  });
+
+  it('pins from the puzzle icon: with the pin in Chrome and Brave, with the eye in Edge, naming both in general', () => {
+    const start = 'Pin Xomoni to the toolbar to keep it one click away: click the puzzle icon next to the address bar,';
+    expect(pinHow('chrome')).toBe(`${start} then the pin next to Xomoni.`);
+    expect(pinHow('brave')).toBe(`${start} then the pin next to Xomoni.`);
+    expect(pinHow('edge')).toBe(`${start} then the eye next to Xomoni (Show in toolbar).`);
+    expect(pinHow('other')).toBe(`${start} then the pin next to Xomoni (in Edge, the eye: Show in toolbar).`);
+    expect(pinHow('unsupported')).toBe(pinHow('other'));
   });
 });
 

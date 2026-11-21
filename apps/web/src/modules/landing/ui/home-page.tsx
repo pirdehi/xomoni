@@ -2,7 +2,8 @@
 // xomoni.com's landing page on Fluent UI (ADR-0019), telling Xomoni as a digital footprint manager (#313): the hero
 // with the dashboard and the one line about risk, the five things Xomoni does (with what each is on X today), the
 // places (X today, email next, the rest later), how it works on X, its principles and safety rules, privacy,
-// questions and a closing call to action.
+// questions and a closing call to action. Both install buttons are `InstallButton` (#304): a link to /install today,
+// the store's own button for the visitor's browser once a store lists Xomoni.
 import {
   Accordion,
   AccordionHeader,
@@ -24,17 +25,17 @@ import {
   LockClosed24Regular,
   Phone24Regular,
   Prohibited24Regular,
-  PuzzlePiece20Regular,
   ShieldCheckmark16Regular,
   ShieldCheckmark24Regular,
   Warning20Regular,
 } from '@fluentui/react-icons';
 import { getImageProps } from 'next/image';
 import { type ReactNode, useId } from 'react';
-import { GITHUB_URL, INSTALL_URL } from '@/shared/config/site';
+import { GITHUB_URL } from '@/shared/config/site';
 import { ButtonLink, TextLink } from '@/shared/ui/links';
 import { GithubMark, SiteFooter, SiteHeader } from '@/shared/ui/site-chrome';
 import { PILLARS, PILLAR_TEXT, PLACES, type Place, STATUS_LABEL, examplesOf, inStatusOrder } from '../domain/footprint';
+import { listedStores, storeInSentence } from '../domain/store-install';
 import {
   ALWAYS,
   FAQ,
@@ -50,6 +51,7 @@ import {
   SYNCS,
   placeIcon,
 } from './content';
+import { InstallButton, useStoreListings } from './store-install';
 
 const WIDE = '@media (min-width: 640px)';
 const TWO_COLUMNS = '@media (min-width: 768px)';
@@ -562,8 +564,20 @@ function DashboardShot({ className }: { className: string }) {
   );
 }
 
+/**
+ * Where Xomoni comes from, under the hero's buttons: the stores that list it, or, until one does, that the Chrome Web
+ * Store listing is coming.
+ */
+function useWhereFrom(): string {
+  const stores = listedStores(useStoreListings()).map(storeInSentence);
+  return stores.length === 0
+    ? 'For Chrome, Edge and Brave on desktop. Chrome Web Store listing coming soon.'
+    : `For Chrome, Edge and Brave on desktop, from ${stores.join(' or ')}.`;
+}
+
 function Hero() {
   const s = useStyles();
+  const whereFrom = useWhereFrom();
   return (
     <section className={s.hero}>
       <div className={mergeClasses(s.container, s.heroText)}>
@@ -579,14 +593,12 @@ function Hero() {
           your email is next.
         </p>
         <div className={mergeClasses(s.actions, s.centered)}>
-          <ButtonLink href={INSTALL_URL} appearance="primary" size="large" icon={<PuzzlePiece20Regular />}>
-            Get the extension
-          </ButtonLink>
+          <InstallButton>Get the extension</InstallButton>
           <ButtonLink href="/login" size="large">
             Sign in to your dashboard
           </ButtonLink>
         </div>
-        <p className={s.note}>For Chrome, Edge and Brave on desktop. Chrome Web Store listing coming soon.</p>
+        <p className={s.note}>{whereFrom}</p>
         <ul className={s.facts} aria-label="At a glance">
           {HERO_FACTS.map((fact) => (
             <li key={fact} className={s.fact}>
@@ -936,9 +948,7 @@ function ClosingCta() {
             </p>
           </div>
           <div className={mergeClasses(s.actions, s.closingActions)}>
-            <ButtonLink href={INSTALL_URL} appearance="primary" size="large" icon={<PuzzlePiece20Regular />}>
-              Get the extension
-            </ButtonLink>
+            <InstallButton>Get the extension</InstallButton>
             <ButtonLink href={GITHUB_URL} size="large" icon={<GithubMark />}>
               Star on GitHub
             </ButtonLink>

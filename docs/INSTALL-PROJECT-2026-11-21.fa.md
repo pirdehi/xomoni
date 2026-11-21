@@ -3,7 +3,7 @@
 # پروژه‌ی «نصب با یک کلیک»: فازها و تسک‌ها
 
 > - **تاریخ:** ۲۱ نوامبر ۲۰۲۶.
-> - **وضعیت:** 🔄 تأیید شد (۲۱ نوامبر). فاز ۲ تمام شد ([#310](https://github.com/pirdehi/xomoni/pull/310)). فاز ۱ هم به‌جز ویدیوها تمام شد ([#308](https://github.com/pirdehi/xomoni/pull/308)). فازهای ۳، ۵، ۷ و ۸ در حال انجام‌اند. نام محصول تعیین شد: «Xomoni — Digital footprint manager» در دسته‌ی Tools. فاز ۰ منتظر حساب‌های شماست: [راهنما](STORE-ACCOUNTS-GUIDE.fa.md).
+> - **وضعیت:** 🔄 تأیید شد (۲۱ نوامبر). فاز ۲ تمام شد ([#310](https://github.com/pirdehi/xomoni/pull/310)). فاز ۱ هم تمام شد ([#308](https://github.com/pirdehi/xomoni/pull/308)، و به‌جای ویدیوها تصویرسازی‌های کوتاه در [#330](https://github.com/pirdehi/xomoni/pull/330)). فازهای ۳، ۵، ۷ و ۸ در حال انجام‌اند. نام محصول تعیین شد: «Xomoni — Digital footprint manager» در دسته‌ی Tools. فاز ۰ منتظر حساب‌های شماست: [راهنما](STORE-ACCOUNTS-GUIDE.fa.md).
 > - **Issueها:** فاز ۰ [#298](https://github.com/pirdehi/xomoni/issues/298)، ۱ [#299](https://github.com/pirdehi/xomoni/issues/299)، ۲ [#300](https://github.com/pirdehi/xomoni/issues/300)، ۳ [#301](https://github.com/pirdehi/xomoni/issues/301)، ۴ [#302](https://github.com/pirdehi/xomoni/issues/302)، ۵ [#303](https://github.com/pirdehi/xomoni/issues/303)، ۶ [#304](https://github.com/pirdehi/xomoni/issues/304)، ۷ [#305](https://github.com/pirdehi/xomoni/issues/305)، ۸ [#306](https://github.com/pirdehi/xomoni/issues/306).
 > - **پایه:** [تحلیل راه‌حل‌های نصب](INSTALL-UX-2026-11-21.fa.md) و issue [#295](https://github.com/pirdehi/xomoni/issues/295).
 > - **تصمیم شما:**
@@ -62,7 +62,7 @@
 | ۱.۴ | **بعد از Download** صفحه به قدم بعد، «zip را باز کنید»، می‌رود. | تست e2e. |
 | ۱.۵ | **حالت قدم‌به‌قدم:** هر بار یک قدم، با نوار پیشرفت و رفتن خودکار وقتی Xomoni دیده شد. | تست e2e روی موبایل و دسکتاپ. |
 | ۱.۶ | **راهنمای سنجاق کردن** در `/welcome` بعد از نصب: «روی آیکن پازل بزنید، بعد روی سنجاق». | تست واحد. |
-| ۱.۷ | **ویدیوی کوتاه بی‌صدا** (۵ تا ۱۰ ثانیه) برای Developer mode و Load unpacked، با متن جایگزین برای کسی که ویدیو نمی‌بیند. | ویدیوها کم‌حجم‌اند و صفحه کند نمی‌شود. |
+| ۱.۷ | ✅ **ویدیوی کوتاه بی‌صدا** (۵ تا ۱۰ ثانیه) برای Developer mode و Load unpacked، با متن جایگزین برای کسی که ویدیو نمی‌بیند. **انجام شد (۲۱ نوامبر):** به‌جای فایل ویدیو، تصویرسازی‌های کوتاه و متحرک با SVG و CSS ساختیم، چون ضبط صفحه‌ی chrome://extensions خودکار نمی‌شود (پنجره‌ی انتخاب پوشه) و با هر به‌روزرسانی مرورگر کهنه می‌شود. سه تصویر: روشن کردن Developer mode (بالا سمت راست در Chrome و Brave، پنل چپ در Edge) و پیدا شدن Load unpacked، کشیدن پوشه روی صفحه، و سنجاق کردن Xomoni (سنجاق، یا چشم در Edge). هر کدام برچسب «Illustration» دارد، زیرنویسش همان حرف قدم را می‌زند، دکمه‌ی Pause/Play دارد و با «کاهش حرکت» ثابت می‌ماند. دکمه‌ی صفحه‌ی اول هم به `InstallButton` تبدیل شد ([#330](https://github.com/pirdehi/xomoni/pull/330)). | ویدیوها کم‌حجم‌اند و صفحه کند نمی‌شود. |
 
 ## فاز ۲: انتقال داده‌ها
 

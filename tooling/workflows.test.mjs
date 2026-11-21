@@ -380,3 +380,57 @@ describe('store workflow (#303)', () => {
     assert.deepEqual(everywhere, Object.values(STORE_SECRETS).flat().sort());
   });
 });
+
+describe('pull request policy workflow (#339)', () => {
+  const policy = workflows.find((w) => w.name === 'pr-policy.yml').text;
+  const ci = workflows.find((w) => w.name === 'ci.yml').text;
+  const jobs = { policy: block(policy, '  pr-policy:'), review: block(policy, '  dependency-review:') };
+
+  it('runs on every pull request, again when its description or labels change', () => {
+    const on = block(policy, 'on:');
+    assert.match(on.trimEnd(), /^on:\n {2}pull_request:\n {4}types: \[[^\]]+\]$/);
+    const types = /types: \[([^\]]+)\]/
+      .exec(on)[1]
+      .split(',')
+      .map((type) => type.trim());
+    for (const type of ['opened', 'edited', 'synchronize', 'reopened', 'labeled', 'unlabeled'])
+      assert.ok(types.includes(type), type);
+    // pull_request_target would run with a write token on a fork's code.
+    assert.doesNotMatch(policy, /pull_request_target|workflow_run|^ {2}push:/m);
+    assert.match(
+      policy,
+      /group: pr-policy-\$\{\{ github\.event\.pull_request\.number \}\}\n {2}cancel-in-progress: true/,
+    );
+  });
+
+  it('reads only, and sees no secret', () => {
+    assert.match(policy, /^permissions:\n {2}contents: read\n/m);
+    assert.doesNotMatch(policy, /: write\b|secrets\.|github\.token|GH_TOKEN/);
+    // Only the top-level permissions: no job asks for more.
+    assert.equal((policy.match(/permissions:/g) ?? []).length, 1);
+  });
+
+  it('names the two jobs as the ruleset will require them', () => {
+    assert.match(jobs.policy, /^ {4}name: pr-policy$/m);
+    assert.match(jobs.review, /^ {4}name: dependency-review$/m);
+  });
+
+  it('checks the policy from the event file, with the whole history and no dependency installed', () => {
+    assert.deepEqual(runScripts(jobs.policy), ['node tooling/check-pr.mjs']);
+    assert.match(jobs.policy, /fetch-depth: 0\n/);
+    assert.doesNotMatch(jobs.policy, /npm |cache:/);
+    // The description and title are the author's text: they reach the script only through the event file.
+    assert.doesNotMatch(policy, /github\.event\.pull_request\.(?:body|title|head\.ref)|github\.head_ref/);
+    for (const action of ['actions/checkout', 'actions/setup-node']) {
+      const pin = new RegExp(`uses: ${action}@[0-9a-f]{40} # v\\d+`);
+      assert.equal(pin.exec(jobs.policy)?.[0], pin.exec(ci)?.[0], `${action}: the same pin as ci.yml`);
+    }
+  });
+
+  it('fails on a new dependency with a high or critical vulnerability, without commenting', () => {
+    assert.match(jobs.review, /uses: actions\/dependency-review-action@[0-9a-f]{40} # v\d/);
+    assert.match(jobs.review, /^ {10}fail-on-severity: high$/m);
+    assert.match(jobs.review, /^ {10}comment-summary-in-pr: never$/m);
+    assert.doesNotMatch(jobs.review, /actions\/checkout|run:/);
+  });
+});

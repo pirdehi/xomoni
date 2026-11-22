@@ -454,9 +454,10 @@ test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
       dashboard.getByText('X answered HTTP 503 for this page. Waiting; nothing is counted as failed'),
     ).toBeVisible();
 
-    // X counts every request it answered, so Xomoni does too.
+    // X counts every request it answered, so Xomoni does too: Home, which opening the X window loaded (#377), and the
+    // profile.
     const panel = await openLimits(dashboard);
-    await expect(caps(panel, 'Page loads & scrolls')).toHaveText('1/60 hr · 1/600 day');
+    await expect(caps(panel, 'Page loads & scrolls')).toHaveText('2/60 hr · 2/600 day');
   });
 
   test('S17-16 X’s notice of a limited account: Defensive, Resume locked 12 hours, a quarter of the pace', async ({
@@ -477,7 +478,8 @@ test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
     await expect(panel).toContainText('warm-up day 1 of 4 · running at 6% of that');
     await expect(caps(panel, 'Delete posts & replies')).toHaveText('0/2 hr · 0/60 day');
     await expect(caps(panel, 'Unlike')).toHaveText('0/2 hr · 0/12 day');
-    await expect(caps(panel, 'Page loads & scrolls')).toHaveText('0/15 hr · 0/150 day');
+    // The one page the job loaded: X's Home, as it opened the X window (#377).
+    await expect(caps(panel, 'Page loads & scrolls')).toHaveText('1/15 hr · 1/150 day');
   });
 
   test('S17-17 X’s notice of a suspended account is a full stop, with no resume of its own', async ({

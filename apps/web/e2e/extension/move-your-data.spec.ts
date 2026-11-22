@@ -34,6 +34,9 @@ const VERSION = (
   }
 ).version;
 
+/** `text` as a regular expression that matches it as it is. */
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /** The text of the fixture account's two posts, newest first, as the Library lists them. */
 const POSTS = ["Another made-up post, with no one's words in it.", "A made-up post for Xomoni's browser tests."];
 
@@ -246,7 +249,7 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
     await expect(fresh.getByRole('main')).toContainText(`@${FIXTURE_ACCOUNT.handle} · everything Xomoni knows`);
     await expect(imported(fresh)).toContainText(
       new RegExp(
-        `Imported from Xomoni ${VERSION.replace(/\./g, '\\.')}\\. Added \\d+ records and updated 0 with newer copies\\. Nothing was replaced with less or deleted, and nothing started on X\\.`,
+        `Imported from Xomoni ${escapeRegExp(VERSION)}\\. Added \\d+ records and updated 0 with newer copies\\. Nothing was replaced with less or deleted, and nothing started on X\\.`,
       ),
     );
     await expect(fresh.getByRole('region', { name: 'Counts' })).toContainText(/Posts\s*2/);
@@ -518,8 +521,9 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
     await openLibrary(other.dashboard);
     await expect(libraryRows(other.dashboard)).toHaveCount(2);
 
-    // Only the dashboard's own files, from inside the extension: nothing to x.com, xomoni.com or anywhere else.
-    const network = (sent: string[]) => sent.filter((r) => !/^GET (chrome-extension|blob):/.test(r));
+    // Nothing to the network: not x.com, xomoni.com or anywhere else. The browser's own pages, such as Edge's icon for
+    // a download (edge://fileicon), and the dashboard's own files aren't the network.
+    const network = (sent: string[]) => sent.filter((r) => /^\S+ (https?|wss?):/.test(r));
     expect(network(sentByOld), 'requests while exporting').toEqual([]);
     expect(network(sentByNew), 'requests while importing').toEqual([]);
   });
@@ -555,7 +559,7 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
     await expect(card.getByRole('button', { name: 'Resume' })).toHaveCount(0);
     // No X window opened, and nothing was asked of X.
     expect(other.context.pages().filter((p) => p.url().startsWith('https://x.com/'))).toEqual([]);
-    expect(sent.filter((r) => r.includes('://x.com/'))).toEqual([]);
+    expect(sent.filter((r) => new URL(r.slice(r.indexOf(' ') + 1)).host === 'x.com')).toEqual([]);
   });
 
   test('S300-17 the new Xomoni asks for the person’s informed consent again before its first job', async ({

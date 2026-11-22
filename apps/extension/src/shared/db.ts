@@ -17,9 +17,13 @@ import {
 import { type RiskEvent, type RiskEventKind, isDuplicateRisk } from './risk';
 import { normalizeSettings } from './settings';
 import { DAY } from './time';
+import { asObject } from './json';
 import {
+  type ReadyTab,
+  WATCH_POSTS,
   WATCH_TABS,
   type WatchResult,
+  type WatchSeen,
   type WatchTab,
   isInitialTab,
   newTabId,
@@ -362,6 +366,9 @@ export async function kvSet(key: string, value: unknown) {
   await db.kv.put({ key, value });
 }
 
+/** Where the posts from new accounts the person has seen on the Watch page are kept in `kv`, by tab (#391). */
+export const watchSeenKey = (accountId: string) => `watchSeen:${accountId}`;
+
 /** Where an account's Watch tabs (#158) are kept in `kv`. */
 export const watchTabsKey = (accountId: string) => `watchTabs:${accountId}`;
 /** Where the last check of each of an account's Watch tabs is kept in `kv`, by tab id. */
@@ -372,7 +379,7 @@ export async function watchTabs(accountId: string): Promise<WatchTab[]> {
   return normalizeTabs(await kvGet<unknown>(watchTabsKey(accountId), null));
 }
 
-/** Stores an account's Watch tabs, and forgets the results of tabs no longer there. */
+/** Stores an account's Watch tabs, and forgets the results of tabs no longer there, and what was seen of them. */
 export async function saveWatchTabs(accountId: string, tabs: readonly WatchTab[]) {
   const kept = normalizeTabs(tabs);
   await db.transaction('rw', db.kv, async () => {
@@ -380,6 +387,47 @@ export async function saveWatchTabs(accountId: string, tabs: readonly WatchTab[]
     const results = await watchResults(accountId);
     const ids = new Set(kept.map((t) => t.id));
     await kvSet(watchResultsKey(accountId), Object.fromEntries(Object.entries(results).filter(([id]) => ids.has(id))));
+    const seen = await watchSeen(accountId);
+    await kvSet(watchSeenKey(accountId), Object.fromEntries(Object.entries(seen).filter(([id]) => ids.has(id))));
+  });
+}
+
+/**
+ * Turns a ready tab (#391) on, after the others, or off, with its results. Answers false when it can't be turned on:
+ * `WATCH_TABS.max` tabs are in use. Turning on a tab that is on, or off one that is off, changes nothing.
+ */
+export async function setReadyTab(accountId: string, ready: ReadyTab, on: boolean): Promise<boolean> {
+  return db.transaction('rw', db.kv, async () => {
+    const tabs = await watchTabs(accountId);
+    const has = tabs.some((t) => t.ready === ready);
+    if (on === has) return true;
+    if (on && tabs.length >= WATCH_TABS.max) return false;
+    await saveWatchTabs(
+      accountId,
+      on ? [...tabs, { id: ready, query: '', ready }] : tabs.filter((t) => t.ready !== ready),
+    );
+    return true;
+  });
+}
+
+/** The posts from new accounts the person has seen on the Watch page, by tab (#391). */
+export async function watchSeen(accountId: string): Promise<WatchSeen> {
+  const stored = await kvGet<unknown>(watchSeenKey(accountId), null);
+  const out: Record<string, string[]> = {};
+  for (const [tab, ids] of Object.entries(asObject(stored) ?? {})) {
+    if (Array.isArray(ids)) out[tab] = ids.filter((id): id is string => typeof id === 'string');
+  }
+  return out;
+}
+
+/** Remembers that the person saw `ids` on a Watch tab: they no longer count toward the toolbar's badge (#391). */
+export async function markWatchSeen(accountId: string, tabId: string, ids: readonly string[]) {
+  if (!ids.length) return;
+  await db.transaction('rw', db.kv, async () => {
+    const seen = await watchSeen(accountId);
+    // The last check's posts are at most WATCH_POSTS; a few checks' worth is plenty to remember.
+    const kept = [...new Set([...(seen[tabId] ?? []), ...ids])].slice(-WATCH_POSTS * 5);
+    await kvSet(watchSeenKey(accountId), { ...seen, [tabId]: kept });
   });
 }
 
@@ -415,14 +463,19 @@ export async function setWatchQuery(accountId: string, tabId: string, query: str
  */
 export async function setWatchQueries(accountId: string, queries: readonly string[]) {
   await db.transaction('rw', db.kv, async () => {
-    const before = await watchTabs(accountId);
+    // The ready tabs (#391) are the person's own choice in Xomoni: the website's searches leave them as they are.
+    const all = await watchTabs(accountId);
+    const ready = all.filter((t) => t.ready);
+    const before = all.filter((t) => !t.ready);
     const tabs: WatchTab[] = [];
-    for (const query of queries.slice(0, WATCH_TABS.max)) {
-      tabs.push({ id: before[tabs.length]?.id ?? newTabId([...before, ...tabs]), query: normalizeQuery(query) });
+    for (const query of queries.slice(0, WATCH_TABS.max - ready.length)) {
+      tabs.push({ id: before[tabs.length]?.id ?? newTabId([...all, ...tabs]), query: normalizeQuery(query) });
     }
-    await saveWatchTabs(accountId, tabs);
+    await saveWatchTabs(accountId, [...tabs, ...ready]);
     const kept = await watchTabs(accountId);
-    const same = new Set(kept.filter((t) => before.some((b) => b.id === t.id && b.query === t.query)).map((t) => t.id));
+    const same = new Set(
+      kept.filter((t) => t.ready || before.some((b) => b.id === t.id && b.query === t.query)).map((t) => t.id),
+    );
     const results = await watchResults(accountId);
     await kvSet(watchResultsKey(accountId), Object.fromEntries(Object.entries(results).filter(([id]) => same.has(id))));
   });

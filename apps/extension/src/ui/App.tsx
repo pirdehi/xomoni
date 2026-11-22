@@ -67,6 +67,7 @@ import {
 } from './hooks';
 import { finishSignOutMadeElsewhere } from './sign-out';
 import { tabShare } from './tab-share';
+import { useWatchBadge } from './watch-badge';
 import { ActivityPage } from './pages/Activity';
 import { CleanupPage } from './pages/Cleanup';
 import { LibraryPage } from './pages/Library';
@@ -286,6 +287,7 @@ export function App() {
   const [page, navigate] = useHashRoute();
   const account = useActiveAccount();
   const worker = useWorkerStatus();
+  useWatchBadge(account?.id ?? null);
   useCloudSync();
   useShareGuard();
   useSignOutGuard(finishSignOutMadeElsewhere);

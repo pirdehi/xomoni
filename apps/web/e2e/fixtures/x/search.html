@@ -1,0 +1,129 @@
+<!doctype html>
+<!--
+  x.com/search as Xomoni's browser tests serve it (#345), X's search page, "Latest" (f=live), the page Watch loads
+  (#158). Synthetic: the accounts, their posts and every id are made up, never anyone's. Only what Xomoni reads is here
+  (apps/extension/src/content/dom.ts): the sidebar's profile link, the primary column, and posts as
+  article[data-testid="tweet"], drawn as on profile.html. As X's web app does, the page asks X's GraphQL API for the
+  search (SearchTimeline, with the query) and shows what X answered: its posts, X's empty state, or X's error panel when
+  X refused (a rate limit, X down). The answer is graphql/SearchTimeline.json, or another a test serves.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Search / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link">Home</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1>Search</h1>
+          <section aria-label="Timeline: Search timeline"></section>
+        </div>
+      </main>
+    </div>
+    <div id="layers"></div>
+    <script>
+      // As on home.html: the sidebar names the account X's twid cookie says is signed in, or no one.
+      (() => {
+        const HANDLES = { '9000000000000000001': 'xomoni_fixture', '9000000000000000002': 'fixture_friend' };
+        const id = /(?:^|; )twid=u%3D(\d+)/.exec(document.cookie)?.[1];
+        const link = document.querySelector('[data-testid="AppTabBar_Profile_Link"]');
+        if (id && HANDLES[id]) link.setAttribute('href', `/${HANDLES[id]}`);
+        else link.remove();
+      })();
+    </script>
+    <script>
+      (() => {
+        const query = new URLSearchParams(location.search).get('q') ?? '';
+        const timeline = document.querySelector('section');
+
+        // X's web app asks its own GraphQL API, with the variables in the query string.
+        const ask = (name, variables) =>
+          fetch(`/i/api/graphql/fixtureQueryId/${name}?variables=${encodeURIComponent(JSON.stringify(variables))}`, {
+            credentials: 'include',
+          });
+
+        const el = (tag, attrs = {}, ...children) => {
+          const node = document.createElement(tag);
+          for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
+          node.append(...children);
+          return node;
+        };
+
+        // The posts of a search answer, in order: every tweet_results.result of its entries.
+        const posts = (json) =>
+          (json?.data?.search_by_raw_query?.search_timeline?.timeline?.instructions ?? [])
+            .flatMap((instruction) => instruction.entries ?? [])
+            .map((entry) => entry.content?.itemContent?.tweet_results?.result)
+            .filter((result) => result?.legacy);
+
+        // X sends a post's text HTML-escaped, and its web app draws it decoded, as text (#370).
+        const ESCAPED = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+        const shownText = (text) => text.replace(/&(amp|lt|gt|quot|#39);/g, (_, name) => ESCAPED[name]);
+
+        const shortDate = (iso) =>
+          new Date(iso).toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' });
+
+        // One post as X draws it in search results.
+        const article = (result) => {
+          const { legacy } = result;
+          const author = result.core.user_results.result.core;
+          const iso = new Date(legacy.created_at).toISOString();
+          const button = (testid, label) =>
+            el('button', { type: 'button', 'data-testid': testid, 'aria-label': label });
+          return el(
+            'article',
+            { 'data-testid': 'tweet', tabindex: '0' },
+            el(
+              'div',
+              { 'data-testid': 'User-Name' },
+              el('a', { href: `/${author.screen_name}` }, author.name),
+              el('a', { href: `/${author.screen_name}` }, `@${author.screen_name}`),
+              el(
+                'a',
+                { href: `/${author.screen_name}/status/${legacy.id_str}` },
+                el('time', { datetime: iso }, shortDate(iso)),
+              ),
+            ),
+            button('caret', 'More'),
+            el('div', { 'data-testid': 'tweetText', lang: 'en' }, shownText(legacy.full_text)),
+            el(
+              'div',
+              { role: 'group' },
+              button('reply', `${legacy.reply_count ?? 0} Replies. Reply`),
+              button('retweet', `${legacy.retweet_count ?? 0} reposts. Repost`),
+              button('like', `${legacy.favorite_count ?? 0} Likes. Like`),
+            ),
+          );
+        };
+
+        const show = (response, json) => {
+          if (!response.ok) {
+            timeline.append(
+              el(
+                'div',
+                { 'data-testid': 'error-detail' },
+                'Something went wrong. Try reloading.',
+                el('button', { type: 'button' }, 'Retry'),
+              ),
+            );
+            return;
+          }
+          const list = posts(json);
+          if (!list.length) timeline.append(el('div', { 'data-testid': 'emptyState' }, `No results for "${query}"`));
+          for (const result of list) timeline.append(article(result));
+        };
+
+        ask('SearchTimeline', { rawQuery: query, count: 20, querySource: 'typed_query', product: 'Latest' })
+          .then(async (response) => show(response, response.ok ? await response.json() : null))
+          .catch(() => show({ ok: false }, null));
+      })();
+    </script>
+  </body>
+</html>

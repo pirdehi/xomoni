@@ -17,7 +17,8 @@ import { accessRefusal, activeAccount } from './website-access';
 export async function readSettings(): Promise<XomoniSettings> {
   const settings = await getSettings();
   const account = await activeAccount();
-  const tabs = account ? await watchTabs(account.id) : [];
+  // The ready tabs (#391) are set in Xomoni only, and their searches are the account's own: not the site's to show.
+  const tabs = account ? (await watchTabs(account.id)).filter((tab) => !tab.ready) : [];
   const pace = {} as XomoniSettings['pace'];
   for (const action of PACE_ACTIONS) {
     const rule = settings.pacing[action];

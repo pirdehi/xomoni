@@ -39,7 +39,7 @@ import type {
   SampleCheck,
   ScanTarget,
 } from './types';
-import type { WatchResult, WatchTab } from './watch';
+import { READY_TABS, type ReadyTab, type WatchResult, type WatchTab } from './watch';
 import type { ArchiveMode, ArchiveRequest } from './x-archive';
 import type { ViewCap } from './x-limits';
 import { WATCHED_OPS } from './x-operations';
@@ -743,10 +743,18 @@ function settings(value: unknown, now: number): Record<string, unknown> {
   });
 }
 
+/** The names of Watch's ready tabs (#391). */
+const READY: ReadonlySet<string> = new Set(READY_TABS);
+
 function watchTabs(value: unknown, now: number): WatchTab[] {
   if (!Array.isArray(value) || value.length > 20) return bad();
   return (value as unknown[]).map((tab) =>
-    object(tab, now, (f) => ({ id: f.text('id', 50), query: f.text('query', 500) })),
+    object(tab, now, (f) => ({
+      id: f.text('id', 50),
+      query: f.text('query', 500),
+      // A ready tab (#391), by its name: its query is the account's own.
+      ...f.optional('ready', (n) => f.oneOf<ReadyTab>(n, READY)),
+    })),
   );
 }
 
@@ -770,6 +778,8 @@ function watchResults(value: unknown, now: number): Record<string, WatchResult> 
             name: p.text('name', 1_000, ''),
             text: p.text('text', MAX_POST_TEXT, ''),
             time: p.timeOrNull('time'),
+            // When the author's account was made, as X's search said (#391); any past time, or a little ahead.
+            ...p.optional('accountCreatedAt', (n) => p.time(n)),
           })),
         ),
         error: f.text('error', MAX_NOTE, ''),

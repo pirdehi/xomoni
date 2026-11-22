@@ -1,7 +1,7 @@
 // Watch (#158, ADR-0021): searches X for each watched phrase or #hashtag about once a minute, through the worker
 // tab and within the read budget (ADR-0012), and keeps the newest posts of each. Read-only: it never acts on a post.
-import { saveWatchResult, watchResults, watchTabs } from '../shared/db';
-import { WATCH_POSTS, type WatchResult, nextCheck, searchUrl } from '../shared/watch';
+import { db, saveWatchResult, watchResults, watchTabs } from '../shared/db';
+import { WATCH_POSTS, type WatchResult, nextCheck, searchUrl, withQueries } from '../shared/watch';
 import { type JobContext, Stop } from './context';
 
 /** Why the watch job pauses itself when no tab has a query. */
@@ -14,13 +14,16 @@ export const NO_RESULTS_SHOWN = 'X didn’t show the search results this time; t
 /**
  * Runs the watch job until it is paused: the most overdue tab first, each about once a minute (`WATCH_EVERY_MS`)
  * and never more often than the limiter allows. The tabs are read again before every check, so edits on the Watch
- * page apply while it runs, at the latest after the wait in progress. No tab with a query pauses the job.
+ * page apply while it runs, at the latest after the wait in progress. A ready tab (#391) searches the job's account's
+ * handle as Xomoni last saw it, so it follows a change of handle. No tab with a query pauses the job.
  */
 export async function runWatch(ctx: JobContext) {
   const accountId = ctx.job.accountId;
   for (;;) {
     ctx.checkpoint();
-    const next = nextCheck(await watchTabs(accountId), await watchResults(accountId), Date.now());
+    const handle = (await db.accounts.get(accountId))?.handle ?? '';
+    const tabs = withQueries(await watchTabs(accountId), handle);
+    const next = nextCheck(tabs, await watchResults(accountId), Date.now());
     if (!next) throw new Stop('paused', NOTHING_TO_WATCH);
     if (next.at > Date.now()) {
       await ctx.limiter.cooldown(next.at, `Next search: ${next.tab.query}`);

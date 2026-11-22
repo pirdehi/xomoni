@@ -169,6 +169,7 @@ Following phrases and #hashtags in X's search, read-only ([ADR-0021](adr/0021-wa
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
 | ✅ | Watch page: up to 5 tabs of phrases or #hashtags, searched about once a minute within the read budget, newest 10 posts each | [#158](https://github.com/pirdehi/xomoni/issues/158) | [#159](https://github.com/pirdehi/xomoni/pull/159) |
+| ✅ | Watch, about you: ready searches for mentions of and replies to the account, posts from accounts made in the last 30 days marked from X's own answer, a toolbar count | [#391](https://github.com/pirdehi/xomoni/issues/391) | |
 
 ## Phase 11 · The X archive without the chores
 

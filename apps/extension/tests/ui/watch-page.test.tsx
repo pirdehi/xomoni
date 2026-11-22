@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runner } from '../../src/engine/platform';
 import { watchJob } from '../../src/engine/runner';
-import { db, recordConsent, saveWatchResult, saveWatchTabs, watchTabs } from '../../src/shared/db';
+import { db, recordConsent, saveWatchResult, saveWatchTabs, watchSeen, watchTabs } from '../../src/shared/db';
 import { initialTabs } from '../../src/shared/watch';
 import { WatchPage } from '../../src/ui/pages/Watch';
 import { stubChrome } from '../support/chrome';
@@ -151,5 +151,99 @@ describe('Watch page (#158)', () => {
 
     expect(await screen.findByText(/Watching waits while another job runs/)).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
+  });
+});
+
+describe('Watch page: about you (#391)', () => {
+  const DAY = 86_400_000;
+  const mentions = () => screen.getByRole('switch', { name: 'Mentions of you' });
+  const replies = () => screen.getByRole('switch', { name: 'Replies to you' });
+
+  beforeEach(async () => {
+    stubChrome();
+    await resetDb();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('offers two ready searches, off until turned on, each with the query it would search', async () => {
+    await renderPage();
+    expect(mentions()).not.toBeChecked();
+    expect(replies()).not.toBeChecked();
+    expect(mentions()).toHaveAccessibleDescription('Posts by others that name you. Searches X for @me -from:me');
+    expect(replies()).toHaveAccessibleDescription('Replies to your posts. Searches X for to:me');
+    expect(tabs()).toHaveLength(2);
+  });
+
+  it('turns one on as a tab of its own, showing its query in place of a field, and off again', async () => {
+    await renderPage();
+    await userEvent.click(replies());
+    await waitFor(() => expect(replies()).toBeChecked());
+    const tab = await screen.findByRole('tab', { name: /^Replies to you/, selected: true });
+    expect(tab).toBeInTheDocument();
+    const panel = screen.getByRole('tabpanel', { name: 'Replies to you' });
+    expect(panel).toHaveTextContent('Searches X for to:me');
+    expect(within(panel).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'Remove tab' })).not.toBeInTheDocument();
+    expect((await watchTabs(ME)).map((t) => t.id)).toEqual(['tab-1', 'tab-2', 'replies']);
+
+    await userEvent.click(replies());
+    await waitFor(() => expect(tabs()).toHaveLength(2));
+  });
+
+  it('counts the ready tabs toward five: with five in use, the other can’t be turned on, and says why', async () => {
+    await saveWatchTabs(ME, [
+      { id: 'tab-1', query: 'a' },
+      { id: 'tab-2', query: 'b' },
+      { id: 'tab-3', query: 'c' },
+      { id: 'tab-4', query: 'd' },
+      { id: 'mentions', query: '', ready: 'mentions' },
+    ]);
+    await renderPage();
+    expect(mentions()).toBeChecked();
+    expect(replies()).toBeDisabled();
+    expect(screen.getByText('All 5 tabs are in use: remove a tab of your own to turn on another.')).toBeInTheDocument();
+    expect(addTab()).toBeDisabled();
+  });
+
+  it('marks a post from an account made in the last 30 days, and only from what X’s search said', async () => {
+    const now = Date.now();
+    await saveWatchTabs(ME, [...initialTabs(), { id: 'mentions', query: '', ready: 'mentions' }]);
+    await saveWatchResult(ME, 'mentions', {
+      query: '@me -from:me',
+      checkedAt: now - 30_000,
+      error: '',
+      posts: [
+        { id: '1', handle: 'new_one', name: 'New', text: 'about you', time: now, accountCreatedAt: now - 6 * DAY },
+        {
+          id: '2',
+          handle: 'old_one',
+          name: 'Old',
+          text: 'about you too',
+          time: now,
+          accountCreatedAt: now - 900 * DAY,
+        },
+        { id: '3', handle: 'no_date', name: 'No date', text: 'and you', time: now },
+      ],
+    });
+    await renderPage();
+    // The tab says it has posts from new accounts, before it is opened.
+    expect(await screen.findByRole('tab', { name: /^Mentions of you\s?, 1 new account/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('tab', { name: /^Mentions of you/ }));
+    const list = await screen.findByRole('list', { name: 'Newest posts for @me -from:me' });
+    const [fresh, old, undated] = within(list).getAllByRole('listitem');
+    expect(fresh).toHaveTextContent('account made 6 days ago');
+    expect(old).not.toHaveTextContent('account made');
+    expect(undated).not.toHaveTextContent('account made');
+
+    // Seen once on screen: the tab's mark goes, and the toolbar's count with it.
+    await waitFor(async () => expect(await watchSeen(ME)).toEqual({ mentions: ['1'] }));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /^Mentions of you/ })).not.toHaveAccessibleName(/new account/),
+    );
   });
 });

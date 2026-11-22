@@ -4,7 +4,16 @@ import { READ, SETTINGS, type SettingsChange } from '@xomoni/bridge';
 import { type CloudConnection, saveConnection } from '../src/cloud/connection';
 import { answerRead } from '../src/cloud/website-reads';
 import { answerSettings, describeChange, readSettings } from '../src/cloud/website-settings';
-import { db, getSettings, kvSet, saveWatchResult, upsertAccount, watchResults, watchTabs } from '../src/shared/db';
+import {
+  db,
+  getSettings,
+  kvSet,
+  saveWatchResult,
+  setReadyTab,
+  upsertAccount,
+  watchResults,
+  watchTabs,
+} from '../src/shared/db';
 import { markSignedOut } from '../src/shared/session';
 import { PRESETS } from '../src/shared/settings';
 import { stubChrome } from './support/chrome';
@@ -151,6 +160,15 @@ describe('answerSettings (ADR-0029, #234)', () => {
     // The two first tabs always stay, empty when cleared.
     await change({ watch: [] });
     expect((await watchTabs(ME)).map((t) => t.query)).toEqual(['', '']);
+  });
+
+  it('shows and changes only the person’s own searches: the ready tabs stay as Xomoni has them (#391)', async () => {
+    await setReadyTab(ME, 'mentions', true);
+    expect(await readSettings()).toMatchObject({ watch: ['', ''] });
+    const answer = await change({ watch: ['xomoni', '#rust', 'a', 'b', 'c'] });
+    // Four searches fit beside the one ready tab, which keeps its place.
+    expect(answer).toMatchObject({ ok: true, settings: { watch: ['xomoni', '#rust', 'a', 'b'] } });
+    expect((await watchTabs(ME)).map((t) => t.id)).toEqual(['tab-1', 'tab-2', 'mentions', 'tab-3', 'tab-4']);
   });
 
   it('writes every change to the activity log', async () => {

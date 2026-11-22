@@ -3,6 +3,7 @@
 import {
   MUTATION_OPS,
   PROFILE_OPS,
+  type ParsedTweet,
   TIMELINE_OPS,
   draftsFromTimeline,
   extractProfile,
@@ -107,6 +108,38 @@ export function clockAhead(date: string | null | undefined, receivedAt: number):
   return Number.isFinite(xNow) ? receivedAt - xNow : 0;
 }
 
+/**
+ * When the authors of the posts X's search answered with on this page made their accounts (epoch ms), by handle in
+ * lower case (#391): read from the search's own answer, never asked of X. Each navigation loads a new page, so it holds
+ * the current page's; capped like `unavailable`.
+ */
+const accountsMade = new Map<string, number>();
+const MAX_ACCOUNTS_MADE = 1000;
+
+/**
+ * When the account `handle` was made, as X's search answer on this page said; null when it said nothing of it, or a
+ * time after `now`, which isn't a date Xomoni can trust (#391).
+ */
+export function accountMadeAt(handle: string, now = Date.now()): number | null {
+  const made = accountsMade.get(handle.toLowerCase());
+  return made !== undefined && made <= now ? made : null;
+}
+
+/** Keeps when each author of a search answer's posts made their account, where X's answer says. */
+function rememberAccountsMade(tweets: readonly ParsedTweet[]) {
+  for (const tweet of tweets) {
+    if (!tweet.authorHandle || tweet.authorCreatedAt == null) continue;
+    const handle = tweet.authorHandle.toLowerCase();
+    // Moved to the end, as the newest: the oldest goes first when the cap is reached.
+    accountsMade.delete(handle);
+    accountsMade.set(handle, tweet.authorCreatedAt);
+    if (accountsMade.size > MAX_ACCOUNTS_MADE) {
+      const oldest = accountsMade.keys().next().value;
+      if (oldest !== undefined) accountsMade.delete(oldest);
+    }
+  }
+}
+
 /** Posts X answered for but won't show (PLAYBOOK E6), newest last; capped so a long session can't grow it. */
 const unavailable = new Set<string>();
 const MAX_UNAVAILABLE = 1000;
@@ -160,6 +193,8 @@ export function handleCapture(raw: {
   if (TIMELINE_OPS.has(ev.op)) {
     timelineStatus = ev.status;
     if (ev.status < 400) for (const id of unavailableTweetIds(json)) rememberUnavailable(id);
+    // Watch's posts (#391): the age of their authors' accounts comes from the search's answer, as the page got it.
+    if (ev.status < 400 && ev.op === 'SearchTimeline') rememberAccountsMade(extractTweets(json));
   }
   if (MUTATION_OPS.has(ev.op)) {
     for (const w of [...waiters]) if (w.ops.includes(ev.op) && w.match(ev.variables)) w.resolve(ev);

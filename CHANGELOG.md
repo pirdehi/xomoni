@@ -4,6 +4,15 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Added
+
+- **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
+  - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
+  - A post from an account made in the last 30 days is marked with its age, such as "account made 6 days ago". The date comes from X's own answer to the search Xomoni already loads, never from a request of its own; where X's answer has no date, there is no badge, never a guess.
+  - When a check finds such a post, the tab is marked and Xomoni's toolbar button shows how many you haven't seen yet; opening the tab clears it. No new permission is asked for.
+
+  Watch still only reads, within its read limits, and nothing it finds leaves your computer: not the posts, the handles or the counts, nor to xomoni.com, which sees only your own searches.
+
 ### Fixed
 
 - **Safety: a read now stops at X's rate limit, as a cleanup does** (#392). When X refused a page of a read with its rate limit (a 429), the read passed the page over. A read of several pages, such as *Complete my copy*, a full history or a date range, went on to its next pages. The risk ladder never heard of X's warning, so X's second rate limit within an hour didn't stop Xomoni for 6 hours, and the read ended *Completed*, with *Healthy: no warnings from X*. A post page X refused while Xomoni checked an earlier delete counted that delete as done, and a scroll X refused counted as the end of the page. Now each of these puts X's warning on the risk ladder and waits for X's reset. The read then loads the same page again, up to 3 times, and pauses after that; the check waits for the next page. This is a safety fix.

@@ -20,6 +20,7 @@ import type {
   VisibleTweet,
 } from '../shared/messages';
 import type { WatchPost } from '../shared/watch';
+import { keepWordIn } from '../shared/x-text';
 import {
   $,
   $$,
@@ -251,14 +252,15 @@ function notMine(article: HTMLElement, handle: string): string | null {
 /**
  * Why the post the page shows must be kept although the inventory says otherwise, or null (#145): the time the
  * page shows for it disagrees with its id, or its text there contains one of the rule's `keep` words. The
- * inventory is built from what X's page sent, so the page is asked again right before deleting.
+ * inventory is built from what X's page sent, so the page is asked again right before deleting. The page's text is
+ * decoded already ("R&D", where X's answers send `R&amp;D`), and is matched by the preview's own rule (`keepWordIn`,
+ * #370). Only a delete has this check: an unlike or an undone repost relies on the rule as the job applied it.
  */
 function pageSaysKeep(article: Element, id: string, keep: readonly string[]): string | null {
   const time = articleInfo(article)?.time;
   if (time != null && !timeMatchesId(id, time)) return 'the time X shows for it doesn’t match its id';
-  const text = ($(SEL.tweetText, article)?.textContent ?? '').toLowerCase();
-  const word = keep.find((k) => k && text.includes(k.toLowerCase()));
-  return word ? `X shows it with “${word}”, a word this rule keeps` : null;
+  const word = keepWordIn($(SEL.tweetText, article)?.textContent ?? '', keep);
+  return word === undefined ? null : `X shows it with “${word}”, a word this rule keeps`;
 }
 
 async function deletePost(id: string, handle: string, keep: readonly string[]): Promise<ActionResult> {

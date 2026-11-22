@@ -365,6 +365,33 @@ describe('the page is asked again right before a delete (#145)', { timeout: 15_0
     signedOut();
   });
 
+  it('leaves a post alone when X draws a keep word with &, < or > from its escaped text (#370)', async () => {
+    signedIn();
+    // X's answers send "R&amp;D notes &lt;3"; X's page draws it decoded, as this markup does.
+    renderX({ text: 'R&amp;D notes &lt;3 &gt; Q&amp;A' });
+    for (const word of ['r&d', '<3', '> q&a']) {
+      expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me', keep: [word] })).toEqual({
+        outcome: 'skipped',
+        message: `X shows it with “${word}”, a word this rule keeps`,
+      });
+    }
+    expect(menuOpen()).toBe(false);
+    expect(optionClicks).toEqual([]);
+    signedOut();
+  });
+
+  it('matches keep words on the page by the preview’s rule, so a post whose text shows an entity is kept too (#370)', async () => {
+    signedIn();
+    // A post whose text on X reads "R&amp;D": the preview, which also looks at the decoded text, keeps it for r&d.
+    renderX({ text: 'R&amp;amp;D' });
+    expect(await runCommand({ cmd: 'delete', id: '1', handle: 'me', keep: ['r&d'] })).toEqual({
+      outcome: 'skipped',
+      message: 'X shows it with “r&d”, a word this rule keeps',
+    });
+    expect(optionClicks).toEqual([]);
+    signedOut();
+  });
+
   it('deletes a post whose text has none of the words the rule keeps', async () => {
     signedIn();
     renderX({ text: 'An old joke' });

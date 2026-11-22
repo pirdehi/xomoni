@@ -7,7 +7,8 @@
   sidebar names the account X's twid cookie says is signed in, as on home.html. As X's
   web app does, the page asks X's GraphQL API for the profile, then for the tab's timeline, and shows what X answered:
   its posts, X's empty state, or X's error panel when X refused either (a rate limit, X down), without asking for the
-  timeline once the profile was refused. The interceptor reads the same answers (graphql/UserByScreenName.json,
+  timeline once the profile was refused. A post's text is drawn as X draws it: X sends it HTML-escaped, the page shows
+  it decoded (#370). The interceptor reads the same answers (graphql/UserByScreenName.json,
   UserTweets.json, or another set a test serves).
 -->
 <html lang="en" dir="ltr">
@@ -73,6 +74,10 @@
             .map((entry) => entry.content?.itemContent?.tweet_results?.result)
             .filter((result) => result?.legacy);
 
+        // X sends a post's text HTML-escaped ("R&amp;D &lt;3"), and its web app draws it decoded, as text (#370).
+        const ESCAPED = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+        const shownText = (text) => text.replace(/&(amp|lt|gt|quot|#39);/g, (_, name) => ESCAPED[name]);
+
         const shortDate = (iso) =>
           new Date(iso).toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -101,7 +106,7 @@
               ),
             ),
             button('caret', 'More'),
-            el('div', { 'data-testid': 'tweetText', lang: 'en' }, legacy.full_text),
+            el('div', { 'data-testid': 'tweetText', lang: 'en' }, shownText(legacy.full_text)),
             el(
               'div',
               { role: 'group' },

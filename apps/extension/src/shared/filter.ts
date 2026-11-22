@@ -1,5 +1,6 @@
 import { db } from './db';
 import type { ActionKind, CleanupFilter, CleanupTarget, Item, PacingRule } from './types';
+import { keepWordIn } from './x-text';
 
 /** The date a cleanup rule compares against. Likes use the like time when known. */
 export function effectiveTime(item: Item): number {
@@ -28,7 +29,10 @@ export function parseIdList(raw: string): string[] {
   return [...new Set(ids)];
 }
 
-/** Whether an item should be removed under the filter (false = keep it). */
+/**
+ * Whether an item should be removed under the filter (false = keep it). Keep words match the text as stored and as X
+ * shows it (`keepWordIn`, #370), the same rule as the content script's last check before a delete.
+ */
 export function matchesFilter(filter: CleanupFilter, item: Item): boolean {
   if (item.kind !== filter.target || item.status !== 'present') return false;
   // Picked on xomoni.com (#256): only those, and still only while every other rule allows.
@@ -42,10 +46,7 @@ export function matchesFilter(filter: CleanupFilter, item: Item): boolean {
     item.likes >= filter.keepMinLikes
   )
     return false;
-  if (filter.keepKeywords.length) {
-    const text = item.text.toLowerCase();
-    if (filter.keepKeywords.some((k) => text.includes(k))) return false;
-  }
+  if (keepWordIn(item.text, filter.keepKeywords) !== undefined) return false;
   if (filter.keepIds.includes(item.id) || (item.targetId && filter.keepIds.includes(item.targetId))) return false;
   if (filter.target === 'reply' && filter.skipSelfReplies && item.selfReply) return false;
   return true;

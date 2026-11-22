@@ -4,6 +4,7 @@ import { isHandle } from './ids';
 import { asId, asNumber, asObject, asPostId, asString, at } from './json';
 import { parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
+import { decodeXText } from './x-text';
 
 /** The archive data files Xomoni reads; everything else in the archive is ignored. */
 export type ArchiveFileKind = 'account' | 'tweets' | 'likes';
@@ -46,7 +47,8 @@ export function parseArchiveAccount(rows: readonly unknown[]): { accountId: stri
 
 /**
  * Turns `tweets.js` rows into drafts. A repost is recognized by its `RT @handle:` text and gets an empty
- * `targetId`, because the archive does not say which post it points to. `accountId` decides `selfReply`.
+ * `targetId`, because the archive does not say which post it points to. `accountId` decides `selfReply`. The text is
+ * decoded as X's page shows it: the archive's `full_text` is HTML-escaped, as in X's GraphQL answers (#370).
  */
 export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, handle: string): ItemDraft[] {
   const drafts: ItemDraft[] = [];
@@ -54,7 +56,7 @@ export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, 
     const t = asObject(at(row, 'tweet')) ?? asObject(row);
     const id = asPostId(t?.id_str) ?? asPostId(t?.id);
     if (!t || !id) continue;
-    const text = asString(t.full_text) ?? asString(t.text) ?? '';
+    const text = decodeXText(asString(t.full_text) ?? asString(t.text) ?? '');
     const createdAt = parseTwitterDate(t.created_at) ?? snowflakeTime(id) ?? 0;
     const repost = text.match(/^RT @(\w+):/);
     const inReplyToId = asPostId(t.in_reply_to_status_id_str) ?? null;
@@ -81,7 +83,7 @@ export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, 
 
 /**
  * Turns `likes.js` rows into like drafts. The archive has no like time or author; `createdAt` comes from the
- * post id (0 if it is not a snowflake).
+ * post id (0 if it is not a snowflake). The liked post's `fullText` is decoded as for `tweets.js` (#370).
  */
 export function archiveLikeDrafts(rows: readonly unknown[]): ItemDraft[] {
   const drafts: ItemDraft[] = [];
@@ -95,7 +97,7 @@ export function archiveLikeDrafts(rows: readonly unknown[]): ItemDraft[] {
       targetId: id,
       createdAt: snowflakeTime(id) ?? 0,
       likedAt: null,
-      text: asString(l.fullText) ?? '',
+      text: decodeXText(asString(l.fullText) ?? ''),
       author: '',
       inReplyToId: null,
       selfReply: false,

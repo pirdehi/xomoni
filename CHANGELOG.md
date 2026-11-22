@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Fixed
+
+- **Safety: a keep word with &, < or > now keeps the posts and likes that have it** (#370). X sends a post's text HTML-escaped, in its answers and in your archive: "R&D <3" arrives as `R&amp;D &lt;3`. Xomoni matched keep words against that text, so a word such as "R&D", "Q&A" or "<3" kept nothing. Cleanup's preview, its count and the job then listed posts you asked to keep, and a job could unlike a like or undo a repost the word should have kept. A delete was still refused: right before deleting, Xomoni reads the post's text on X's page, which X shows decoded, and skips a post with a keep word. Now Xomoni decodes X's text once, where it reads it, so the Library, the preview and the backup show it as X does, and keep words match both forms, so what Xomoni stored before this fix is kept too. This is a safety fix.
+
 ## [0.5.2] - 2026-11-22
 
 A security release: every version since 0.2.0 could miss X's notice of a limited or suspended account at the start of a job, and send requests to X before reading it. Update now.

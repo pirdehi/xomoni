@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { Page, Request } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from '../support/a11y';
 import {
+  acceptRisks,
   browseProfile,
   confirmDialog,
   continueWithoutArchive,
@@ -21,7 +22,13 @@ import {
   xWindowOf,
 } from '../support/cleanup';
 import { expect, openXWindow, tabTo, test } from '../support/extension';
-import { FIXTURE_ACCOUNT, FRIEND_ACCOUNT, answerWithLikes, answerWithRate } from '../support/x-fixtures';
+import {
+  FIXTURE_ACCOUNT,
+  FRIEND_ACCOUNT,
+  answerWithLikes,
+  answerWithRate,
+  answerWithText,
+} from '../support/x-fixtures';
 
 // Keep rules (docs/scenarios/367-keep-rules.md, #367, #345): what a cleanup spares although it matches, posts with at
 // least N likes, posts whose text contains given words, posts the person pastes the link of, and replies in their own
@@ -80,6 +87,21 @@ const FRIEND_POST = {
   reposted: '9000000000000000201',
   olderLike: '9000000000000000202',
   newerLike: 'Apr 2, 2025A newer made-up post by the made-up friend.',
+} as const;
+
+/**
+ * Text with &, < and >, as X sends it in its answers, HTML-escaped, and as its page shows it (#370): the post from Jun 1,
+ * 2021, and the post by @fixture_friend from May 5, 2019 the person liked.
+ */
+const ESCAPED = {
+  post: {
+    sent: 'R&amp;D notes: Q&amp;A &lt;3 &gt; FAQ, all made up.',
+    shown: 'R&D notes: Q&A <3 > FAQ, all made up.',
+  },
+  like: {
+    sent: 'Fish &amp; chips &lt;3, an older made-up post by the made-up friend.',
+    shown: 'Fish & chips <3, an older made-up post by the made-up friend.',
+  },
 } as const;
 
 /** The link X gives a post of the fixture account's. */
@@ -756,5 +778,82 @@ test.describe('keep rules', { tag: '@task-367' }, () => {
     await second.goto(`chrome-extension://${extensionId}/dashboard.html#/cleanup`);
     await expect(second.getByRole('heading', { level: 1, name: 'Cleanup' })).toBeVisible();
     await expect(keepRules(second).summary).toHaveText(NOTHING_KEPT);
+  });
+
+  test('S367-32 a keyword with &, < or > keeps a post whose text X sends HTML-escaped', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    await answerWithText(context, 'UserTweets', { [POSTS.jun2021.id]: ESCAPED.post.sent });
+    await browseProfile(page, ['posts']);
+    // X's page shows the text decoded, as the person wrote it.
+    await expect(page.getByText(ESCAPED.post.shown, { exact: true })).toBeVisible();
+    await openCleanup(dashboard);
+    await expect.poll(() => matching(dashboard)).toBe(5);
+    const keep = keepRules(dashboard);
+    await keep.toggle.click();
+
+    for (const word of ['R&D', '<3', '> faq', 'q&a <3']) {
+      await keep.keywords.fill(word);
+      await expectPreview(dashboard, ['launch', 'liked', 'mar2020', 'aug2019']);
+    }
+    await keep.toggle.click();
+    await expect(keep.summary).toHaveText('Keeps text with “q&a <3”.');
+
+    // Without the rule, the preview shows the post as X does, never X's escaped form.
+    await keep.toggle.click();
+    await keep.keywords.fill('');
+    await expect.poll(() => matching(dashboard)).toBe(5);
+    await expect(previewed(dashboard).nth(2)).toHaveText(`${POSTS.jun2021.date}${ESCAPED.post.shown}`);
+    await expect(reviewCard(dashboard)).not.toContainText('&amp;');
+  });
+
+  test('S367-33 a like kept by a word with & is left out of the job, and nothing reaches X for it', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    // The job's first page load waits 12–24 s, up to 90 s more one time in twenty.
+    test.setTimeout(180_000);
+    await answerWithText(context, 'Likes', { [FRIEND_POST.olderLike]: ESCAPED.like.sent });
+    await browseProfile(page);
+    await expect(page.getByText(ESCAPED.like.shown, { exact: true })).toBeVisible();
+    await workAnyTime(dashboard);
+    const sent = xRequests(dashboard);
+    await openCleanup(dashboard);
+    await targetCard(dashboard, 'Likes').click();
+    await expect.poll(() => matching(dashboard)).toBe(2);
+    const keep = keepRules(dashboard);
+    await keep.toggle.click();
+    await keep.keywords.fill('fish & chips <3');
+    await expect.poll(() => matching(dashboard)).toBe(1);
+    await expect(previewed(dashboard)).toHaveText([FRIEND_POST.newerLike]);
+
+    await continueWithoutArchive(dashboard);
+    await startButton(dashboard).click();
+    const confirm = confirmDialog(dashboard);
+    // The job's name, Remove likes older than a year ago's date, then the count.
+    await expect(confirm).toContainText(/Remove likes older than \w{3} \d{1,2}, \d{4}1 in your copy match/);
+    await confirm.getByRole('textbox', { name: 'Type DELETE to confirm' }).fill('DELETE');
+    await confirm.getByRole('button', { name: 'Start cleanup' }).click();
+    await acceptRisks(dashboard);
+    await expect(dashboard.getByRole('heading', { level: 1, name: 'Activity' })).toBeVisible();
+    // The job counts the other like only, and loads the person's likes in the X window, where X shows the kept one.
+    const card = dashboard
+      .getByRole('main')
+      .getByRole('group')
+      .filter({ hasText: /Remove likes older than / });
+    await expect(card).toContainText('1 remaining');
+    const xWindow = await xWindowOf(context, page);
+    await expect(xWindow).toHaveURL(`https://x.com/${FIXTURE_ACCOUNT.handle}/likes`, { timeout: 150_000 });
+    await expect(xWindow.getByText(ESCAPED.like.shown, { exact: true })).toBeVisible();
+    await expect(card).toContainText('1 remaining');
+    // An unlike has no last check on X's page: the rule alone keeps it, and no request to X names it or the words.
+    expect(sent.length, 'requests to X from the job').toBeGreaterThan(0);
+    for (const request of sent) {
+      expect(request).not.toContain(FRIEND_POST.olderLike);
+      expect(request.toLowerCase()).not.toMatch(/fish|chips/);
+    }
   });
 });

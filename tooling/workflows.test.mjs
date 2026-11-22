@@ -122,6 +122,46 @@ describe('GitHub workflows (#142)', () => {
   });
 });
 
+describe('the browser tests, in parts behind the e2e and e2e-edge gates (#412)', () => {
+  const ci = workflows.find((w) => w.name === 'ci.yml').text;
+  const gates = { e2e: 'e2e-parts', 'e2e-edge': 'e2e-edge-parts' };
+
+  it('passes a gate only when every part passed, and never skips it', () => {
+    for (const [gate, parts] of Object.entries(gates)) {
+      const job = block(ci, `  ${gate}:`);
+      assert.match(job, new RegExp(`^ {4}name: ${gate}$`, 'm'), `${gate} keeps the name branch protection requires`);
+      assert.match(job, new RegExp(`^ {4}needs: ${parts}$`, 'm'));
+      // A skipped check counts as passed: the gate runs even when a part failed or was cancelled.
+      assert.match(job, /^ {4}if: \$\{\{ always\(\) \}\}$/m);
+      assert.match(job, new RegExp(`RESULT: \\$\\{\\{ needs\\.${parts}\\.result \\}\\}`));
+      assert.match(job, /run: test "\$RESULT" = success/);
+    }
+  });
+
+  it("runs the website's tests and every shard of the extension's, each once, in both browsers", () => {
+    for (const parts of Object.values(gates)) {
+      const job = block(ci, `  ${parts}:`);
+      assert.match(job, /^ {6}fail-fast: false$/m, `${parts}: one failing part doesn't cancel the others`);
+      const names = [...job.matchAll(/^ {10}- part: (\S+)$/gm)].map((m) => m[1]);
+      const shards = [...job.matchAll(/^ {12}shard: (\d+)\/(\d+)$/gm)].map((m) => [Number(m[1]), Number(m[2])]);
+      assert.equal(names[0], 'website');
+      assert.equal(names.length, shards.length + 1, `${parts}: every extension part has a shard`);
+      const total = shards[0][1];
+      assert.deepEqual(
+        shards,
+        Array.from({ length: total }, (_, i) => [i + 1, total]),
+        `${parts}: shards 1/${total} to ${total}/${total}, each once`,
+      );
+      assert.match(job, /npx playwright test -c playwright\.extension\.config\.ts --shard="\$SHARD"/);
+      // Only the website's part needs Supabase.
+      assert.equal((job.match(/^ {8}if: matrix\.part == 'website'$/gm) ?? []).length, 2);
+      assert.match(job, /name: playwright-report-(edge-)?\$\{\{ matrix\.part \}\}/);
+    }
+    assert.match(block(ci, '  e2e-edge-parts:'), /XOMONI_E2E_BROWSERS: msedge/);
+    assert.doesNotMatch(block(ci, '  e2e-parts:'), /XOMONI_E2E_BROWSERS/);
+  });
+});
+
 describe('the release gate (#340, ADR-0037)', () => {
   const release = workflows.find((w) => w.name === 'release.yml').text;
   const ci = workflows.find((w) => w.name === 'ci.yml').text;

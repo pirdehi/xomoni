@@ -28,7 +28,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'keeps-going',
   'x-archive',
   'library',
-  'archive-date-range',
   'watch',
   'dashboard',
   'daily-numbers',

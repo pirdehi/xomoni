@@ -183,7 +183,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [97],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/97-archive-date-range.md",
       "en": {
         "title": "Archive a date range",
         "summary": "pick the dates, let Xomoni read them from X (read-only, at the same careful pace), and download your posts, replies and reposts from that range as a page you can open in any browser, or as JSON. It is saved on your computer only. Your official X archive stays the complete copy, with media."

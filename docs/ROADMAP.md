@@ -295,6 +295,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ✅ | 11 · Safety fix found by the scenarios: a job reads X's notice of a limited or suspended account only once X has drawn the page, before anything else reaches X | [#375](https://github.com/pirdehi/xomoni/issues/375) | [#376](https://github.com/pirdehi/xomoni/pull/376) |
 | ✅ | 12 · Safety: each job reads X's Home first, even when the X window is on another page, at the reading pace | [#377](https://github.com/pirdehi/xomoni/issues/377) | [#378](https://github.com/pirdehi/xomoni/pull/378) |
 | ✅ | 13 · Safety fix found by the scenarios: a read stops at X's rate limit as a cleanup does, on the risk ladder, waiting for X's reset and loading the same page again | [#392](https://github.com/pirdehi/xomoni/issues/392) | [#394](https://github.com/pirdehi/xomoni/pull/394) |
+| ✅ | 14 · Accessibility: axe on every page of the extension, light and dark, laptop and phone width, before and after an account, and on the dialogs, menus, errors, empty lists, toasts and job states of both the extension and xomoni.com | [#389](https://github.com/pirdehi/xomoni/issues/389) | [#393](https://github.com/pirdehi/xomoni/pull/393) |
 
 ## Dropped
 

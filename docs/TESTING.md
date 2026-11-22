@@ -91,8 +91,11 @@ A job waits as Xomoni's pace says, in a dedicated worker Playwright's clock does
 `expectNoSeriousA11yViolations(page)` (`apps/web/e2e/support/a11y.ts`, `@axe-core/playwright`) fails a test on any serious or critical violation axe finds, with every rule axe runs by default (WCAG 2.0 to 2.2, A and AA, and best practices). It waits for the page to settle, looks again when it finds something, and attaches the full results to the report. Tabster's focus sentinels, which Fluent adds around dialogs and menus, are left out: they are empty and pass the focus on at once.
 
 - `apps/web/e2e/a11y.spec.ts` checks every page of xomoni.com, signed out and signed in, in light and dark mode.
-- Feature tests call it where they reach a state no page shows on load: an error, an open dialog or menu, a step of a guide.
-- The extension's tests check the dashboard before and after an account, in both modes, and every page of its menu.
+- `apps/web/e2e/extension/a11y.spec.ts` checks every page of the built extension the address can open, each fold unfolded, the Library's lists and a custom pace, in light and dark mode, at a laptop's width and a phone's (390 px), before an X account and with one that has years of posts, replies, reposts and likes (#389). Xomoni has no toolbar popup: its button opens the dashboard.
+- `apps/web/e2e/a11y-states.spec.ts` and `apps/web/e2e/extension/a11y-states.spec.ts` open, on purpose, the states no page shows on load, in both modes (#389): every dialog and menu (the account panel, opened from the keyboard and with the pointer over it, signing out, the typed DELETE, the risks, *Resume anyway*, *Delete all local data*, *Download a copy*, the site's account and phone menus, deleting an account, two-step verification), errors and refusals (a wrong password, a refused link, a file that is no export, a ZIP that is no archive, dates that make no sense), empty lists, toasts, and jobs running, paused, cancelled, waiting, failed and stopped for safety.
+- These sweeps use `soft: true`, so one run reports every page and state; a feature's own tests check its other states where they reach them.
+
+Hovered, pressed and open controls are where contrast fails first: muted text inside a quiet control takes the muted grey of its state (`colorNeutralForeground3Hover`, `…Pressed`, `…Selected`), which `packages/fluent-theme` checks at 4.5:1 on those states' backgrounds.
 
 A user scenario of the `a11y` category ([user scenarios](scenarios/README.md)) uses it for "no serious violation".
 

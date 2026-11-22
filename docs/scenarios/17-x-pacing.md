@@ -365,3 +365,11 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
   restriction on this account, 0 posts looked at, Resume locked for 12 hours
 - And no page of posts is loaded
 - Test: apps/web/e2e/extension/x-pacing.spec.ts
+
+## S17-37 · a11y
+
+- Given a cleanup that X's notice of a limited account stopped at its first look at Home, in light mode and in dark mode
+- When the person reads the job's card, opens Resume anyway… and then the limits panel in Settings
+- Then axe finds no serious or critical violation on the held card with its locked Resume, in the dialog that asks for
+  RESUME, or on the panel that shows Risk level 3: Defensive (#389)
+- Test: apps/web/e2e/extension/a11y-states.spec.ts

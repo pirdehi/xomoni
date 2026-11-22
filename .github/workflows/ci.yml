@@ -96,7 +96,9 @@ jobs:
   e2e:
     name: e2e
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The website's tests and the extension's took about 20 minutes before the accessibility sweeps (#389) added
+    # about 5; a stuck test still ends the job well before GitHub's 6 hours.
+    timeout-minutes: 35
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
@@ -143,7 +145,8 @@ jobs:
   e2e-edge:
     name: e2e-edge
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # As e2e's (#389).
+    timeout-minutes: 35
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder

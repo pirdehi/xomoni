@@ -199,7 +199,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [158],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/158-watch.md",
       "en": {
         "title": "Watch X search",
         "summary": "follow up to five phrases or #hashtags in X's search. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads: nothing is liked, replied to or posted."

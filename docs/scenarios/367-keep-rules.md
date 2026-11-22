@@ -6,7 +6,7 @@ feature: keep-rules
 
 # Keep rules
 
-What a cleanup spares although it matches (#367): posts with at least a number of likes, posts whose text contains given words, posts the person pastes the link of, and replies in their own threads, under Cleanup's *Exceptions*. A rule that fails removes something the person wanted to keep, so each kind is proven at its edges: at, under and over a like threshold, the case and the parts of words, every form of a post's link and links that aren't a post's, rules together, and what the preview, the backup, the confirmation and the job leave out. Written for #345, the features shipped before the scenarios gate. A fix the scenarios found is in the same pull request: the same post pasted twice counted as two chosen posts (S367-13).
+What a cleanup spares although it matches (#367): posts with at least a number of likes, posts whose text contains given words, posts the person pastes the link of, and replies in their own threads, under Cleanup's *Exceptions*. A rule that fails removes something the person wanted to keep, so each kind is proven at its edges: at, under and over a like threshold, the case and the parts of words, every form of a post's link and links that aren't a post's, rules together, and what the preview, the backup, the confirmation and the job leave out. Written for #345, the features shipped before the scenarios gate. A fix the scenarios found is in the same pull request: the same post pasted twice counted as two chosen posts (S367-13). A later fix added S367-32 and S367-33 (#370): X sends a post's text HTML-escaped, so a keep word with &, < or > didn't match it.
 
 The tests run the built extension in a real browser on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), never the real X: the made-up `@xomoni_fixture`, with years behind it (`xHistory: 'long'`, `apps/web/e2e/fixtures/x/graphql/long-history`). Once the person has browsed their profile's tabs, Xomoni's copy holds:
 
@@ -293,3 +293,24 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - And with a like threshold, a post whose like count X didn't show during the job is left alone, never removed on the
   copy's old count
 - Manual: as for S199-32, the first delete comes 320 to 480 seconds after the job's first page load on a new account (Careful's 80–120 s, at a quarter on its first day, ADR-0012), and each later one at least 80 seconds after the one before. The job's timers run in a dedicated worker that Playwright's clock doesn't reach, so a browser test would take that long per delete: too long for the merge gate. The engine's tests prove the checks on the post's page, a like count seen on this visit and a keep word X shows now (apps/extension/tests/own-posts.test.ts), the content script's that it refuses to delete a post whose text on X has a keep word (canary.test.ts), and the pilot checks it on the real X.
+
+## S367-32 · invalid
+
+- Given X sends the text of the post from Jun 1, 2021 HTML-escaped, as its answers do: R&amp;D notes: Q&amp;A &lt;3
+  &gt; FAQ, while X's page shows R&D notes: Q&A <3 > FAQ
+- When the person keeps text with R&D, then <3, then > faq, then q&a <3
+- Then each keeps that post: the other 4 still match
+- And once folded, the exceptions read: Keeps text with “q&a <3”.
+- And without the rule, the preview shows the post as X does, R&D notes: Q&A <3 > FAQ, and never X's escaped form
+- Test: apps/web/e2e/extension/keep-rules.spec.ts
+
+## S367-33 · security
+
+- Given X sends the text of @fixture_friend's post from May 5, 2019, which the person liked, HTML-escaped: Fish &amp;
+  chips &lt;3
+- When the person keeps likes with the text fish & chips <3, and starts the cleanup
+- Then that like is kept: 1 matches, the confirmation says 1 in your copy match, and the job counts 1 remaining
+- And the job loads the person's likes in the X window, which shows Fish & chips <3, and the like stays out of it
+- And no request to X carries the kept like's id or the words: an unlike has no last check on X's page, so the rule
+  alone keeps it
+- Test: apps/web/e2e/extension/keep-rules.spec.ts

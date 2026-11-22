@@ -186,6 +186,39 @@ describe('the deep clean checks the keep rules against what X shows on the postâ
   });
 });
 
+describe('a keep word with &, < or > keeps what X sent escaped (#370)', () => {
+  /** Item `id` of `kind`: a repost points to post 9<id>. Its copy holds `text`. */
+  const stored = (kind: 'post' | 'like' | 'repost', id: string, text: string): Item => ({
+    ...post(id),
+    key: itemKey(ACCOUNT, kind, id),
+    kind,
+    targetId: kind === 'repost' ? `9${id}` : id,
+    text,
+  });
+
+  it.each([
+    ['post', 'delete'],
+    ['like', 'unlike'],
+    ['repost', 'unretweet'],
+  ] as const)('sends nothing to X for a %s whose copy holds Xâ€™s escaped text with the word', async (kind, cmd) => {
+    // Copies stored before Xomoni decoded X's text: X's answers send "R&D <3" as "R&amp;D &lt;3".
+    await db.items.bulkAdd([stored(kind, '1', 'R&amp;D notes &lt;3'), stored(kind, '2', 'An old joke')]);
+    const { ctx, run } = deepClean();
+    ctx.job.filter.target = kind;
+    ctx.job.filter.keepKeywords = ['r&d'] as never[];
+    send.mockImplementation(async (command) =>
+      command.cmd === 'canary' ? { verdict: 'ok', message: 'ok' } : { outcome: 'done' },
+    );
+    await run();
+
+    // Only the other item is acted on; the kept one's page is never even opened.
+    const acted = send.mock.calls.map(([c]) => c).filter((c) => c.cmd !== 'canary');
+    expect(acted).toHaveLength(1);
+    expect(acted[0]).toMatchObject({ cmd, id: kind === 'repost' ? '92' : '2' });
+    expect(ctx.navigate.mock.calls.map(([url]) => url.split('/').pop())).toEqual([kind === 'repost' ? '92' : '2']);
+  });
+});
+
 /** A job context over fake ports, as the runner builds one. */
 function context(xTab: Partial<XTab> = {}) {
   const job = {

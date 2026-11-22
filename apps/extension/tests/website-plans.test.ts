@@ -112,6 +112,16 @@ describe('a plan from xomoni.com (#235)', () => {
     });
   });
 
+  it('counts a post kept by a word with &, < or > as kept, though its copy holds X’s escaped text (#370)', async () => {
+    // A copy stored before Xomoni decoded X's text: X's answers send "R&D <3" as "R&amp;D &lt;3".
+    await seed([draft({ id: '1000000005', createdAt: Date.UTC(2018, 6, 10), text: 'R&amp;D notes &lt;3' })]);
+    const open = { ...PLAN_2019, keepMinLikes: null, keepKeywords: [] };
+    await expect(estimatePlan(open)).resolves.toMatchObject({ matching: 4 });
+    for (const word of ['R&D', ' <3 ']) {
+      await expect(estimatePlan({ ...open, keepKeywords: [word] })).resolves.toMatchObject({ matching: 3 });
+    }
+  });
+
   it('estimates nothing while Xomoni knows no account', async () => {
     await db.accounts.clear();
     await db.kv.delete('activeAccount');

@@ -91,6 +91,35 @@ describe('time', () => {
 });
 
 describe('graphql parsing', () => {
+  it('decodes the HTML entities X escapes post text with, as X’s page shows it (#370)', () => {
+    const escaped = 'R&amp;D notes &lt;3 &gt; Q&amp;A: &quot;fish&quot; &#39;n&#x27; chips';
+    const shown = 'R&D notes <3 > Q&A: "fish" \'n\' chips';
+    expect(parseTweet(tweet('1', { text: escaped }), null)?.text).toBe(shown);
+    // One pass: a post that reads "&lt;" on X arrives as &amp;lt; and stays "&lt;".
+    expect(parseTweet(tweet('1', { text: 'x &amp;lt; y &amp;amp; AT&T' }), null)?.text).toBe('x &lt; y &amp; AT&T');
+    // A long post's text, and a reposted post's, are decoded too.
+    const long = { ...tweet('2'), note_tweet: { note_tweet_results: { result: { text: 'Long R&amp;D &lt;3' } } } };
+    expect(parseTweet(long, null)?.text).toBe('Long R&D <3');
+    const repost = tweet('3', {
+      text: 'RT @friend: Fish &amp; chips',
+      rt: tweet('4', { user: '9', text: 'Fish &amp; chips' }),
+    });
+    const [draft] = draftsFromTimeline(
+      'UserTweets',
+      extractTweets({ entries: [entry('tweet-3', '1', repost)] }),
+      ME,
+      {},
+    );
+    expect(draft).toMatchObject({ kind: 'repost', text: 'Fish & chips' });
+    // A like, from the person's Likes timeline, and someone's reply to the person.
+    const liked = extractTweets({
+      entries: [entry('tweet-5', '1', tweet('5', { user: '9', text: '&lt;3 &amp; more' }))],
+    });
+    expect(draftsFromTimeline('Likes', liked, ME, { userId: ME })[0]?.text).toBe('<3 & more');
+    const reply = tweet('6', { user: '9', handle: 'friend', text: 'Q&amp;A?', replyTo: '1', replyToUser: ME });
+    expect(incomingFromTimeline('UserTweetsAndReplies', [parseTweet(reply, null)!], ME)[0]?.text).toBe('Q&A?');
+  });
+
   it('reads quotes, bookmarks, views and whether a post quotes another (#249)', () => {
     const base = tweet('1');
     const withCounts = {
@@ -353,6 +382,29 @@ describe('archive', () => {
       parseArchiveAccount(parseYtd('window.YTD.account.part0 = [{"account":{"accountId":"1000","username":"me"}}]')),
     ).toEqual({ accountId: ME, handle: 'me' });
   });
+
+  it('decodes the HTML entities of the archive’s escaped text, as X’s page shows it (#370)', () => {
+    const tweets = parseYtd(
+      `window.YTD.tweets.part0 = ${JSON.stringify([
+        {
+          tweet: {
+            id_str: '11',
+            created_at: 'Wed Oct 10 20:19:24 +0000 2018',
+            full_text: 'R&amp;D &lt;3 &gt; &quot;x&quot;',
+          },
+        },
+        { tweet: { id_str: '12', created_at: 'Wed Oct 10 20:19:24 +0000 2018', full_text: 'RT @someone: Q&amp;A' } },
+      ])}`,
+    );
+    expect(archiveTweetDrafts(tweets, ME, 'me').map((d) => [d.kind, d.author, d.text])).toEqual([
+      ['post', 'me', 'R&D <3 > "x"'],
+      // Still a repost, of @someone: the decoded text starts as the escaped one did.
+      ['repost', 'someone', 'RT @someone: Q&A'],
+    ]);
+    const likeId = idAt(Date.UTC(2019, 5, 1));
+    const likes = archiveLikeDrafts([{ like: { tweetId: likeId, fullText: 'Fish &amp; chips &#39;n&#39; &lt;3' } }]);
+    expect(likes[0]?.text).toBe("Fish & chips 'n' <3");
+  });
 });
 
 describe('cleanup rules', () => {
@@ -410,6 +462,24 @@ describe('cleanup rules', () => {
     expect(matchesFilter({ ...picked, keepKeywords: ['hello'] }, item({ kind: 'reply' }))).toBe(false);
     expect(matchesFilter(picked, item({ kind: 'reply', status: 'deleted' }))).toBe(false);
     expect(matchesFilter(picked, item({ kind: 'reply', createdAt: Date.UTC(2024, 5, 1) }))).toBe(false);
+  });
+
+  it('keeps a post by a word with &, < or >, whether its copy holds X’s escaped text or the text X shows (#370)', () => {
+    // A copy stored before Xomoni decoded X's text, or from an older Xomoni's move file, still holds X's escaped text.
+    const escaped = item({ text: 'R&amp;D notes &lt;3 &gt; Q&amp;A' });
+    const shown = item({ text: 'R&D notes <3 > Q&A' });
+    for (const word of ['r&d', '<3', '> q&a', 'R&D']) {
+      expect(matchesFilter({ ...base, keepKeywords: [word] }, escaped)).toBe(false);
+      expect(matchesFilter({ ...base, keepKeywords: [word] }, shown)).toBe(false);
+    }
+    // A like and a repost are kept the same way: nothing on X's page checks their text again before they are undone.
+    const like = item({ kind: 'like', text: 'Fish &amp; chips' });
+    expect(matchesFilter({ ...base, target: 'like', keepKeywords: ['fish & chips'] }, like)).toBe(false);
+    const repost = item({ kind: 'repost', text: 'Fish &amp; chips' });
+    expect(matchesFilter({ ...base, target: 'repost', keepKeywords: ['fish & chips'] }, repost)).toBe(false);
+    // A word that isn't in the post, in either form, keeps nothing.
+    expect(matchesFilter({ ...base, keepKeywords: ['r&b', '<4'] }, escaped)).toBe(true);
+    expect(matchesFilter({ ...base, keepKeywords: ['r&b', '<4'] }, shown)).toBe(true);
   });
 
   it('uses the like time for likes when known', () => {

@@ -5,6 +5,7 @@ import { type JsonObject, asArray, asId, asNumber, asObject, asPostId, asString,
 import { isHandle } from './ids';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from './time';
 import type { IncomingDraft, ItemDraft } from './types';
+import { decodeXText } from './x-text';
 
 export { MUTATION_OPS, PROFILE_OPS, TIMELINE_OPS } from './x-operations';
 
@@ -15,7 +16,10 @@ export interface ParsedTweet {
   authorHandle: string;
   /** Epoch ms from `created_at`, else from the snowflake id, else 0. */
   createdAt: number;
-  /** Full text, including the long-post (`note_tweet`) text when there is one. */
+  /**
+   * Full text, including the long-post (`note_tweet`) text when there is one, as X's page shows it: X sends `full_text`
+   * HTML-escaped (`&amp;`, `&lt;`, `&gt;`), and it is decoded here (`decodeXText`, #370).
+   */
   text: string;
   inReplyToId: string | null;
   inReplyToUserId: string | null;
@@ -119,7 +123,9 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
     authorId: asId(legacy.user_id_str) ?? asId(at(user, 'rest_id')) ?? '',
     authorHandle: asString(at(user, 'core', 'screen_name')) ?? asString(at(user, 'legacy', 'screen_name')) ?? '',
     createdAt: parseTwitterDate(legacy.created_at) ?? snowflakeTime(id) ?? 0,
-    text: asString(at(t, 'note_tweet', 'note_tweet_results', 'result', 'text')) ?? asString(legacy.full_text) ?? '',
+    text: decodeXText(
+      asString(at(t, 'note_tweet', 'note_tweet_results', 'result', 'text')) ?? asString(legacy.full_text) ?? '',
+    ),
     inReplyToId: asPostId(legacy.in_reply_to_status_id_str) ?? null,
     inReplyToUserId: asId(legacy.in_reply_to_user_id_str) ?? null,
     inReplyToHandle: handleOf(legacy.in_reply_to_screen_name),

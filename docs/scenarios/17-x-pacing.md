@@ -10,7 +10,7 @@ Xomoni's core safety promise (ADR-0012, ADR-0013; #17, #18, #19, #26, #28, #30, 
 
 The tests run the built extension in a real browser on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), never the real X: the made-up `@xomoni_fixture`, which X shows as Premium (but in S17-07), with years behind it (`xHistory: 'long'`), and which Xomoni has never seen act, so every test starts on its first warm-up day. X's answers carry rate-limit headers the tests choose (`answerWithRate` in `apps/web/e2e/support/x-fixtures.ts`): how much of a window is used, when it resets, X's clock, a 429 with or without a reset, or a 503.
 
-Writing them found two bugs, fixed with them (#345): a profile page asks X for the profile before its timeline, and Xomoni didn't keep to one fifth of that lookup's live limit (S17-05, S17-18); and Cleanup's Review showed Careful's pace to a new account running at a quarter of it (S17-04, and S199-01 with it).
+Writing them found two bugs, fixed with them (#345): a profile page asks X for the profile before its timeline, and Xomoni didn't keep to one fifth of that lookup's live limit (S17-05, S17-18); and Cleanup's Review showed Careful's pace to a new account running at a quarter of it (S17-04, and S199-01 with it). The Library's scenarios later found a read passing over a page X refused with a 429 (#392): S17-35 and S17-36 prove that a read keeps to X's warnings as a cleanup does.
 
 A job's timers run in a dedicated worker that Playwright's clock doesn't reach, so the tests prove what a job decides to wait for, and how long it says, rather than waiting it out. The arithmetic behind each number (each fifth, each warm-up step, each rung of the ladder) is proven by the unit tests a scenario names. Run them with no Supabase:
 
@@ -345,3 +345,23 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
   has 8; after its first page, a job loads its next only once it has scrolled the profile to its end and moved on to
   X's search, at a new account's pace minutes later. S17-14 proves the wait after such a 429 in the browser;
   apps/extension/tests/view-cap.test.ts proves the learning, the 80% and that a cap only ever goes down.
+
+## S17-35 · error
+
+- Given a read of the person's posts, started from the Library's Read one part, with active hours off
+- When X answers the read's load of the profile timeline with 429, its rate limit reached
+- Then the read waits for X's reset: X rate limit — waiting for the window to reset, with more than 10 minutes to go,
+  and the log says X rate limit hit; resuming at …, and nothing says the read finished
+- And Today’s use of X’s limits shows Risk level 1: Caution, X rate-limited Xomoni in the last hour., and the Profile
+  timeline row in red, as after a cleanup's 429 (S17-13): a read used to pass the refused page over and end Completed,
+  Healthy (#392)
+- Test: apps/web/e2e/extension/x-pacing.spec.ts
+
+## S17-36 · security
+
+- Given X's Home shows its notice that the account is temporarily limited, with active hours off
+- When the person starts a read of their posts from the Library
+- Then the read loads Home first, at its pace, and stops there for safety, as a cleanup does (S199-34): X shows a
+  restriction on this account, 0 posts looked at, Resume locked for 12 hours
+- And no page of posts is loaded
+- Test: apps/web/e2e/extension/x-pacing.spec.ts

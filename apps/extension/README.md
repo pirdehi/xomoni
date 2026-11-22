@@ -30,6 +30,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - signing out of Xomoni: the dialog, removing the account's data, X's own sign-out page, the signed-out page and signing in again, and what is kept and stopped (`sign-out.spec.ts`, #226);
 - one sign-in with xomoni.com, played at the extension: signing in and out from either side, the messages Xomoni refuses and who may send them (`one-sign-in.spec.ts`, #232);
 - the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
+- the dashboard's Home, Activity and themes: the status and the one button that helps, the counts and the chart's table, the log and its exports, and the theme's choices named for screen readers (`dashboard-scenarios.spec.ts`, #34);
 - Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.
 
 An extension task's user scenarios are proven there ([user scenarios](../../docs/scenarios/README.md#the-extensions-scenarios)).

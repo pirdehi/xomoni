@@ -27,7 +27,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'resumable-jobs',
   'keeps-going',
   'x-archive',
-  'library',
   'archive-date-range',
   'watch',
   'dashboard',

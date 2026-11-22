@@ -167,7 +167,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [185, 203],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/185-library.md",
       "en": {
         "title": "Your copy, in the Library",
         "summary": "shows how much of your account Xomoni has and where it came from, with a search. *Complete my copy* reads your posts, replies, likes and full history from X in one job."

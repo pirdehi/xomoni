@@ -296,7 +296,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ✅ | 12 · Safety: each job reads X's Home first, even when the X window is on another page, at the reading pace | [#377](https://github.com/pirdehi/xomoni/issues/377) | [#378](https://github.com/pirdehi/xomoni/pull/378) |
 | ✅ | 13 · Safety fix found by the scenarios: a read stops at X's rate limit as a cleanup does, on the risk ladder, waiting for X's reset and loading the same page again | [#392](https://github.com/pirdehi/xomoni/issues/392) | [#394](https://github.com/pirdehi/xomoni/pull/394) |
 | ✅ | 14 · Accessibility: axe on every page of the extension, light and dark, laptop and phone width, before and after an account, and on the dialogs, menus, errors, empty lists, toasts and job states of both the extension and xomoni.com | [#389](https://github.com/pirdehi/xomoni/issues/389) | [#393](https://github.com/pirdehi/xomoni/pull/393) |
-| ✅ | 15 · Performance at 100,000 posts and 100,000 likes: a seeded history in the tests, budgets for the Library, Cleanup, Home, the daily numbers, the archive import, *Export everything* and the move-your-data import, and the slow paths fixed | [#390](https://github.com/pirdehi/xomoni/issues/390) | |
+| ✅ | 15 · Performance at 100,000 posts and 100,000 likes: a seeded history in the tests, budgets for the Library, Cleanup, Home, the daily numbers, the archive import, *Export everything* and the move-your-data import, and the slow paths fixed | [#390](https://github.com/pirdehi/xomoni/issues/390) | [#397](https://github.com/pirdehi/xomoni/pull/397) |
 
 ## Dropped
 

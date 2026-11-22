@@ -297,8 +297,9 @@ test.describe('archive a date range', { tag: '@task-97' }, () => {
     const file = await download(dashboard);
     const archive = await openFile(context, file);
     await expect(archive.getByRole('article')).toHaveCount(8);
-    // The download from the page's own blob, and the file itself: nothing from x.com or anywhere else.
-    expect(sent.filter((r) => !/^GET (blob:chrome-extension:|file:)/.test(r))).toEqual([]);
+    // Only the network counts: the page's own blob, the file, and the browser's own icon of it (Edge's
+    // edge://fileicon) go nowhere. Nothing reached x.com or anywhere else.
+    expect(sent.filter((r) => /^\S+ (https?|wss?):/.test(r))).toEqual([]);
   });
 
   test('S97-13 every link in the page goes to x.com, and likes are never in a copy', async ({

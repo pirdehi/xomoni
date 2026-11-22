@@ -459,10 +459,11 @@ export async function setWatchQuery(accountId: string, tabId: string, query: str
 /**
  * Sets an account's Watch searches in order, as xomoni.com sends them (ADR-0029): each tab keeps its place and id,
  * tabs past the end are removed (the initial ones come back empty), and a tab whose search changed loses its old
- * results, so they never show under the new search.
+ * results, so they never show under the new search. The ready tabs (#391) stay as they are; searches past the room
+ * they leave (`watchSearchRoom`) are not kept. Answers the searches as stored.
  */
-export async function setWatchQueries(accountId: string, queries: readonly string[]) {
-  await db.transaction('rw', db.kv, async () => {
+export async function setWatchQueries(accountId: string, queries: readonly string[]): Promise<string[]> {
+  return db.transaction('rw', db.kv, async () => {
     // The ready tabs (#391) are the person's own choice in Xomoni: the website's searches leave them as they are.
     const all = await watchTabs(accountId);
     const ready = all.filter((t) => t.ready);
@@ -478,7 +479,16 @@ export async function setWatchQueries(accountId: string, queries: readonly strin
     );
     const results = await watchResults(accountId);
     await kvSet(watchResultsKey(accountId), Object.fromEntries(Object.entries(results).filter(([id]) => same.has(id))));
+    return kept.filter((t) => !t.ready).map((t) => t.query);
   });
+}
+
+/**
+ * How many searches of the person's own an account's Watch has room for: `WATCH_TABS.max` less the ready tabs that are
+ * on (#391). xomoni.com's searches must fit in it, or none are taken.
+ */
+export async function watchSearchRoom(accountId: string): Promise<number> {
+  return WATCH_TABS.max - (await watchTabs(accountId)).filter((t) => t.ready).length;
 }
 
 /** Removes a Watch tab added by the person, with its results; the initial tabs stay. */

@@ -174,3 +174,11 @@ from synthetic fixtures (ADR-0040), with the made-up @xomoni_fixture and made-up
 - When the person reloads the dashboard
 - Then it is still on, with its tab and what it searches
 - Test: apps/web/e2e/extension/watch-about-you.spec.ts
+
+## S391-21 · happy
+
+- Given Replies to you just turned on, so its tab is the one shown, and watching started
+- When the person goes to another browser tab, and a check finds a reply from an account made 6 days ago
+- Then Xomoni's toolbar button shows 1 while they are away: the post isn't seen because its tab is shown
+- And once they come back to the dashboard, with the tab in front, the badge clears
+- Test: apps/web/e2e/extension/watch-about-you.spec.ts

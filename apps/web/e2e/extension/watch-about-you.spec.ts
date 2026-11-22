@@ -165,6 +165,21 @@ const toolbarBadge = (dashboard: Page): Promise<string> =>
     ).chrome.action.getBadgeText({}),
   );
 
+/**
+ * Tells the dashboard its tab is hidden, as Chrome does when the person goes to another tab or window, or shown again.
+ * Headless Chrome reports every page as visible whatever is in front, even in a minimized window, so the test sets the
+ * page's own `document.visibilityState` and sends the `visibilitychange` Chrome would.
+ */
+async function dashboardShown(dashboard: Page, shown: boolean) {
+  await dashboard.evaluate((visible) => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => (visible ? 'visible' : 'hidden'),
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, shown);
+}
+
 /** The posts of a check, once the tab shows them: a check comes about half a minute after Start watching. */
 async function checked(dashboard: Page, query: string, count: number) {
   await expect(newest(dashboard, query)).toHaveCount(count, { timeout: 120_000 });
@@ -231,6 +246,31 @@ test.describe('Watch, about you', { tag: '@task-391' }, () => {
     await expect(newest(dashboard, REPLIES).first()).toContainText('account made 6 days ago');
     await expect.poll(() => toolbarBadge(dashboard)).toBe('');
     await expect(dashboard.getByRole('tab', { name: /^Replies to you/ })).not.toHaveAccessibleName(/new account/);
+  });
+
+  test('S391-21 a new account’s reply that comes in while the person is in another tab stays counted until they look', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    await serveSearch(context, MIXED);
+    await openWatch(dashboard, page);
+    // Turned on, the ready tab is the one shown: the person starts watching and goes to another tab.
+    await repliesSwitch(dashboard).click();
+    await expect(dashboard.getByRole('tab', { name: /^Replies to you/ })).toHaveAttribute('aria-selected', 'true');
+    await startWatching(dashboard);
+    // The person moves away from the dashboard; the X window, a window of its own, stays on screen.
+    await page.bringToFront();
+    await dashboardShown(dashboard, false);
+
+    await expect.poll(() => toolbarBadge(dashboard), { timeout: 120_000 }).toBe('1');
+    // Still counted a while after the check, as nobody has looked.
+    await expect(newest(dashboard, REPLIES).first()).toContainText('account made 6 days ago');
+    expect(await toolbarBadge(dashboard)).toBe('1');
+
+    await dashboard.bringToFront();
+    await dashboardShown(dashboard, true);
+    await expect.poll(() => toolbarBadge(dashboard)).toBe('');
   });
 
   test('S391-04 an author X gave no date for, or a date still to come, gets no badge and isn’t counted', async ({

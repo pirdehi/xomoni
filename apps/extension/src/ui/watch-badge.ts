@@ -3,11 +3,14 @@
 // permission, so no install or update asks for one; the count never leaves the browser (ADR-0004).
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect } from 'react';
-import { watchResults, watchSeen, watchTabs } from '../shared/db';
-import { badgeText, unseenNewAccounts } from '../shared/watch';
+import { db, watchResults, watchSeen, watchTabs } from '../shared/db';
+import { badgeText, unseenNewAccounts, withQueries } from '../shared/watch';
 
-/** The toolbar button's name, as its manifest gives it (`action.default_title`). */
-const TITLE = 'Open Xomoni dashboard';
+/** The toolbar button's name, as the manifest gives it (`action.default_title`). */
+function title(): string {
+  const { action } = chrome.runtime.getManifest() as { action?: { default_title?: unknown } };
+  return typeof action?.default_title === 'string' ? action.default_title : 'Xomoni';
+}
 
 /** The badge's color: a dark amber that carries its white count at WCAG AA. */
 const BADGE_COLOR = '#8a4b00';
@@ -15,12 +18,15 @@ const BADGE_COLOR = '#8a4b00';
 /** How many posts from new accounts in an account's ready tabs the person hasn't seen; 0 without an account. */
 export async function watchBadgeCount(accountId: string | null): Promise<number> {
   if (!accountId) return 0;
-  const [tabs, results, seen] = await Promise.all([
+  const [account, tabs, results, seen] = await Promise.all([
+    db.accounts.get(accountId),
     watchTabs(accountId),
     watchResults(accountId),
     watchSeen(accountId),
   ]);
-  return Object.values(unseenNewAccounts(tabs, results, seen)).reduce((sum, n) => sum + n, 0);
+  // Only checks of the ready tabs' current searches count: not one of the account's old handle.
+  const current = withQueries(tabs, account?.handle ?? '');
+  return Object.values(unseenNewAccounts(current, results, seen)).reduce((sum, n) => sum + n, 0);
 }
 
 /** Shows `count` on the toolbar button, and says it in the button's name, which screen readers read. */
@@ -29,8 +35,9 @@ export async function showWatchBadge(count: number): Promise<void> {
   if (!action) return;
   await action.setBadgeText({ text: badgeText(count) });
   if (count) await action.setBadgeBackgroundColor({ color: BADGE_COLOR });
+  const name = title();
   await action.setTitle({
-    title: count ? `${TITLE}: ${String(count)} ${count === 1 ? 'post' : 'posts'} from new accounts in Watch` : TITLE,
+    title: count ? `${name}: ${String(count)} ${count === 1 ? 'post' : 'posts'} from new accounts in Watch` : name,
   });
 }
 

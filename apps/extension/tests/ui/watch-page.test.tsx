@@ -214,7 +214,7 @@ describe('Watch page: about you (#391)', () => {
     await saveWatchTabs(ME, [...initialTabs(), { id: 'mentions', query: '', ready: 'mentions' }]);
     await saveWatchResult(ME, 'mentions', {
       query: '@me -from:me',
-      checkedAt: now - 30_000,
+      checkedAt: now,
       error: '',
       posts: [
         { id: '1', handle: 'new_one', name: 'New', text: 'about you', time: now, accountCreatedAt: now - 6 * DAY },
@@ -245,5 +245,81 @@ describe('Watch page: about you (#391)', () => {
     await waitFor(() =>
       expect(screen.getByRole('tab', { name: /^Mentions of you/ })).not.toHaveAccessibleName(/new account/),
     );
+  });
+});
+
+describe('Watch page: about you, while nobody is looking (#391)', () => {
+  const DAY = 86_400_000;
+
+  beforeEach(async () => {
+    stubChrome();
+    await resetDb();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  /** Makes the dashboard's tab look hidden (`hidden`) or in front (`visible`) to the page, and says so. */
+  function showTab(state: 'hidden' | 'visible') {
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue(state);
+    document.dispatchEvent(new Event('visibilitychange'));
+  }
+
+  it('leaves a new account’s post counted while the dashboard is in the background, and sees it on return', async () => {
+    const now = Date.now();
+    showTab('hidden');
+    await saveWatchTabs(ME, [...initialTabs(), { id: 'replies', query: '', ready: 'replies' }]);
+    await saveWatchResult(ME, 'replies', {
+      query: 'to:me',
+      checkedAt: now,
+      error: '',
+      posts: [{ id: '1', handle: 'new_one', name: '', text: 'hi', time: now, accountCreatedAt: now - 2 * DAY }],
+    });
+    await renderPage();
+    // The ready tab is the one shown, as right after turning it on, but the person is elsewhere.
+    await userEvent.click(screen.getByRole('tab', { name: /^Replies to you/ }));
+    expect(await screen.findByText('account made 2 days ago')).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(await watchSeen(ME)).toEqual({});
+
+    showTab('visible');
+    await waitFor(async () => expect(await watchSeen(ME)).toEqual({ replies: ['1'] }));
+  });
+
+  it('says an author’s age at the check that read it, the age the badge was judged by', async () => {
+    const checkedAt = Date.now() - 5 * DAY;
+    await saveWatchTabs(ME, [...initialTabs(), { id: 'mentions', query: '', ready: 'mentions' }]);
+    await saveWatchResult(ME, 'mentions', {
+      query: '@me -from:me',
+      checkedAt,
+      error: '',
+      posts: [
+        { id: '2', handle: 'new_one', name: '', text: 'hi', time: checkedAt, accountCreatedAt: checkedAt - 29 * DAY },
+      ],
+    });
+    await renderPage();
+    await userEvent.click(screen.getByRole('tab', { name: /^Mentions of you/ }));
+    // 29 days old when read, though 34 by now: the badge says what it was judged by.
+    expect(await screen.findByText('account made 29 days ago')).toBeInTheDocument();
+    expect(screen.queryByText('account made 34 days ago')).not.toBeInTheDocument();
+  });
+
+  it('stops saying all five tabs are in use once one is removed', async () => {
+    await saveWatchTabs(ME, [
+      { id: 'tab-1', query: 'a' },
+      { id: 'tab-2', query: 'b' },
+      { id: 'tab-3', query: 'c' },
+      { id: 'tab-4', query: 'd' },
+      { id: 'mentions', query: '', ready: 'mentions' },
+    ]);
+    await renderPage();
+    const note = 'All 5 tabs are in use: remove a tab of your own to turn on another.';
+    expect(screen.getByText(note)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /^c/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove tab' }));
+    await waitFor(() => expect(screen.queryByText(note)).not.toBeInTheDocument());
+    expect(screen.getByRole('switch', { name: 'Replies to you' })).toBeEnabled();
   });
 });

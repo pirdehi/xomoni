@@ -39,6 +39,11 @@ export async function runWatch(ctx: JobContext) {
  * posts and says so.
  */
 async function check(ctx: JobContext, tabId: string, query: string) {
+  // X's session is shared by every x.com tab, so a switch of account anywhere switches the X window too. Its page
+  // says who is signed in, from X's cookie, without asking X anything: a search, a ready tab's above all, is never
+  // loaded for another account than the job's. The job waits for the person instead, as after a page load (#391).
+  const page = await ctx.xTab.ping();
+  if (page && page.viewerId !== ctx.job.accountId) ctx.assertPage(page);
   const since = Date.now();
   const content = await ctx.navigate(searchUrl(query));
   let result: WatchResult;

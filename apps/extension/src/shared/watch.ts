@@ -179,7 +179,8 @@ export type WatchSeen = Readonly<Record<string, readonly string[]>>;
 /**
  * The posts from new accounts (`isNewAccount` when they were read) in the last check of each ready tab that is on, and
  * that the person hasn't seen on the Watch page yet: what the toolbar's badge counts, and what marks a tab (#391).
- * By tab id; a tab without any is left out.
+ * `tabs` carry their queries (`withQueries`): a check of another query, such as the account's old handle, counts for
+ * nothing. By tab id; a tab without any is left out.
  */
 export function unseenNewAccounts(
   tabs: readonly WatchTab[],
@@ -189,7 +190,7 @@ export function unseenNewAccounts(
   const out: Record<string, number> = {};
   for (const tab of tabs) {
     const result = tab.ready ? results[tab.id] : undefined;
-    if (!result || result.error) continue;
+    if (!result || result.error || !tab.query || result.query !== tab.query) continue;
     const known = new Set(seen[tab.id] ?? []);
     const count = result.posts.filter(
       (post) => isNewAccount(post.accountCreatedAt, result.checkedAt) && !known.has(post.id),

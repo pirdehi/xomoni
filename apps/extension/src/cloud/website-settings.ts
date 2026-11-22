@@ -8,7 +8,7 @@ import {
   type SettingsMessage,
   type XomoniSettings,
 } from '@xomoni/bridge';
-import { addLog, getSettings, kvSet, setWatchQueries, watchTabs } from '../shared/db';
+import { addLog, getSettings, kvSet, setWatchQueries, watchSearchRoom, watchTabs } from '../shared/db';
 import { PRESETS, normalizeSettings } from '../shared/settings';
 import type { Settings } from '../shared/types';
 import { accessRefusal, activeAccount } from './website-access';
@@ -68,8 +68,10 @@ function applied(settings: Settings, change: SettingsChange): Settings {
 }
 
 /**
- * Answers `xomoni-settings` (ADR-0029): applies the change through Xomoni's own rules, logs it, and returns the
- * settings as stored. A running job keeps the settings it started with until it is paused and resumed.
+ * Answers `xomoni-settings` (ADR-0029): applies the change through Xomoni's own rules, logs what was stored, and returns
+ * the settings as stored. A running job keeps the settings it started with until it is paused and resumed.
+ * Watch searches that don't all fit beside the ready tabs that are on (#391) are refused whole, with the rest of the
+ * change: nothing is dropped without a word, and the answer, like any refusal, doesn't say which tabs are ready.
  */
 export async function answerSettings(message: SettingsMessage): Promise<SettingsAnswer> {
   const refused = await accessRefusal(message.deviceId);
@@ -77,9 +79,12 @@ export async function answerSettings(message: SettingsMessage): Promise<Settings
   const { change } = message;
   const account = await activeAccount();
   if (change.watch && !account) return { ok: false, reason: 'refused' };
+  if (change.watch && account && change.watch.length > (await watchSearchRoom(account.id)))
+    return { ok: false, reason: 'refused' };
   if (Object.keys(change).some((key) => key !== 'watch'))
     await kvSet('settings', normalizeSettings(applied(await getSettings(), change)));
-  if (change.watch && account) await setWatchQueries(account.id, change.watch);
+  const stored =
+    change.watch && account ? { ...change, watch: await setWatchQueries(account.id, change.watch) } : change;
   await addLog({
     accountId: account?.id ?? '',
     jobId: null,
@@ -87,7 +92,7 @@ export async function answerSettings(message: SettingsMessage): Promise<Settings
     action: 'system',
     targetId: null,
     outcome: null,
-    message: `Settings changed on xomoni.com: ${describeChange(change)}.`,
+    message: `Settings changed on xomoni.com: ${describeChange(stored)}.`,
   });
   return { ok: true, settings: await readSettings() };
 }

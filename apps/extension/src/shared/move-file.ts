@@ -90,11 +90,19 @@ export const LEFT_OUT_TABLES: Readonly<Record<string, string>> = {
 export const MOVED_VALUES = ['settings', 'activeAccount'] as const;
 
 /**
- * The `kv` values moved for each X account (`<name>:<account id>`): Watch's searches and their last results, when the
+ * The `kv` values moved for each X account (`<name>:<account id>`): Watch's searches, their last results and the posts
+ * from new accounts already seen in its ready tabs (#391), so they don't count on the toolbar again, when the
  * X archive was imported (so the Cleanup page knows, PLAYBOOK E2), the archive asked for on X, and the daily view cap
  * learned from X (PLAYBOOK A4).
  */
-export const MOVED_ACCOUNT_VALUES = ['watchTabs', 'watchResults', 'archive', 'archiveRequest', 'viewCap'] as const;
+export const MOVED_ACCOUNT_VALUES = [
+  'watchTabs',
+  'watchResults',
+  'watchSeen',
+  'archive',
+  'archiveRequest',
+  'viewCap',
+] as const;
 
 /**
  * Every other `kv` value stays behind, because it belongs to this browser's copy of Xomoni, not to the person's data:
@@ -789,6 +797,19 @@ function watchResults(value: unknown, now: number): Record<string, WatchResult> 
   return results;
 }
 
+/** The posts from new accounts seen in each ready tab (#391): post ids by tab id, a few checks' worth each. */
+function watchSeen(value: unknown): Record<string, string[]> {
+  const record = asObject(value) ?? bad();
+  const entries = Object.entries(record);
+  if (entries.length > 20) bad();
+  const seen: Record<string, string[]> = {};
+  for (const [tabId, ids] of entries) {
+    if (tabId.length > 50) bad();
+    seen[tabId] = list(ids, 200, (id): id is string => typeof id === 'string' && isXId(id));
+  }
+  return seen;
+}
+
 function archiveRequest(value: unknown, now: number): ArchiveRequest | null {
   if (value === null) return null;
   return object(value, now, (f) => ({
@@ -812,6 +833,7 @@ const VALUE_CHECKS: Record<string, (value: unknown, now: number) => unknown> = {
   activeAccount: (v) => (isId(v) ? v : bad()),
   watchTabs,
   watchResults,
+  watchSeen,
   // When the archive was imported; imports before #185 kept no date, only that it happened.
   archive: (v, now) => (v === true || (isFinite(v) && v >= 0 && v <= now + FUTURE_SLACK_MS) ? v : bad()),
   archiveRequest,

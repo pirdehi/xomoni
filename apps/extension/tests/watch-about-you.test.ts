@@ -17,7 +17,7 @@ import {
 import { extractTweets } from '../src/shared/graphql';
 import { checkMoveText } from '../src/shared/move-file';
 import { exportData, importData } from '../src/shared/move';
-import type { ActionResult, ActorCommand, ContentState } from '../src/shared/messages';
+import type { ActionResult, ActorCommand, ContentState, PageInfo } from '../src/shared/messages';
 import {
   NEW_ACCOUNT_DAYS,
   type WatchPost,
@@ -192,6 +192,16 @@ describe('the heads-up (#391)', () => {
     expect(unseenNewAccounts(tabs, results, { mentions: ['2'], replies: ['5', '6'] })).toEqual({});
   });
 
+  it('counts only a check of the tab’s current search: not one of the account’s old handle', () => {
+    const results = {
+      replies: result('to:old_handle', [post('9', NOW - DAY)]),
+      mentions: result('@me -from:me', [post('10', NOW - DAY)]),
+    };
+    expect(unseenNewAccounts(tabs, results, {})).toEqual({ mentions: 1 });
+    // A ready tab without a search (no handle known yet) counts nothing either.
+    expect(unseenNewAccounts(withQueries(tabs, ''), results, {})).toEqual({});
+  });
+
   it('judges an account’s age at its check, and leaves out a check that failed', () => {
     const results = {
       // 31 days old at the check, though only a day before "now" it was 29: the check's time decides.
@@ -220,7 +230,10 @@ describe('the toolbar’s badge (#391)', () => {
       setBadgeBackgroundColor: vi.fn(() => Promise.resolve()),
       setTitle: vi.fn(() => Promise.resolve()),
     };
-    vi.stubGlobal('chrome', { action });
+    vi.stubGlobal('chrome', {
+      action,
+      runtime: { getManifest: () => ({ action: { default_title: 'Open Xomoni dashboard' } }) },
+    });
     await showWatchBadge(3);
     expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: '3' });
     expect(action.setTitle).toHaveBeenLastCalledWith({
@@ -297,6 +310,7 @@ describe('storage of the ready tabs (#391)', () => {
   });
 
   it('count for the toolbar for the account the dashboard shows, and nothing without one', async () => {
+    await upsertAccount({ id: ACCOUNT, handle: 'me' });
     await setReadyTab(ACCOUNT, 'mentions', true);
     await saveWatchResult(ACCOUNT, 'mentions', result('@me -from:me', [post('1', NOW - DAY), post('2', NOW - DAY)]));
     expect(await watchBadgeCount(ACCOUNT)).toBe(2);
@@ -304,12 +318,18 @@ describe('storage of the ready tabs (#391)', () => {
     expect(await watchBadgeCount(ACCOUNT)).toBe(1);
     expect(await watchBadgeCount('9000000000000000888')).toBe(0);
     expect(await watchBadgeCount(null)).toBe(0);
+
+    // After a change of handle, the old handle's check counts no more, until the new one's comes in.
+    await upsertAccount({ id: ACCOUNT, handle: 'renamed' });
+    expect(await watchBadgeCount(ACCOUNT)).toBe(0);
   });
 
   it('move to another Xomoni with the tab and each author’s account date (ADR-0032)', async () => {
     await upsertAccount({ id: ACCOUNT, handle: 'me' });
     await setReadyTab(ACCOUNT, 'replies', true);
     await saveWatchResult(ACCOUNT, 'replies', result('to:me', [post('1', NOW - 2 * DAY), post('2')]));
+    // Seen in this Xomoni: it mustn't count on the new one's toolbar again.
+    await markWatchSeen(ACCOUNT, 'replies', ['1']);
     const { text } = await exportData({ app: '0.5.2', now: NOW });
     const checked = await checkMoveText(text, NOW);
     if (!checked.ok) throw new Error(checked.message);
@@ -317,6 +337,7 @@ describe('storage of the ready tabs (#391)', () => {
     await db.kv.clear();
     await importData(checked.file, NOW);
     expect((await watchTabs(ACCOUNT)).some((t) => t.ready === 'replies')).toBe(true);
+    expect(await watchSeen(ACCOUNT)).toEqual({ replies: ['1'] });
     expect((await watchResults(ACCOUNT)).replies?.posts.map((p) => p.accountCreatedAt)).toEqual([
       NOW - 2 * DAY,
       undefined,
@@ -346,6 +367,7 @@ describe('runWatch with a ready tab (#391)', () => {
         return Promise.resolve({ kind: 'tweets', count: 2, http: 200, unavailable: false } satisfies ContentState);
       }),
       xTab: {
+        ping: vi.fn(() => Promise.resolve({ viewerId: ACCOUNT, loggedIn: true } as PageInfo)),
         send: vi.fn((command: ActorCommand) =>
           Promise.resolve((command.cmd === 'readPosts' ? found : null) as unknown as ActionResult),
         ),
@@ -357,5 +379,38 @@ describe('runWatch with a ready tab (#391)', () => {
     await expect(runWatch(ctx)).rejects.toThrow('stop');
     expect(urls).toEqual([searchUrl('to:renamed_99')]);
     expect((await watchResults(ACCOUNT)).replies).toMatchObject({ query: 'to:renamed_99', posts: found });
+  });
+});
+
+describe('a check for another account than the job’s (#391)', () => {
+  beforeEach(async () => {
+    await db.kv.clear();
+    await db.accounts.clear();
+  });
+
+  it('waits for the person before anything loads, when the X window has signed in to another account', async () => {
+    await upsertAccount({ id: ACCOUNT, handle: 'me' });
+    await saveWatchTabs(ACCOUNT, [{ id: 'mentions', query: '', ready: 'mentions' }]);
+    const navigate = vi.fn();
+    const assertPage = vi.fn(() => {
+      throw new Error('needs you: account');
+    });
+    const ctx = {
+      job: { id: 'w', accountId: ACCOUNT, stats: { done: 0, scanned: 0 } },
+      checkpoint: vi.fn(),
+      navigate,
+      assertPage,
+      xTab: {
+        // X's cookie in the X window names someone else: the page says so without asking X anything.
+        ping: vi.fn(() => Promise.resolve({ viewerId: '9000000000000000002', loggedIn: true } as PageInfo)),
+        send: vi.fn(),
+      },
+      limiter: { cooldown: vi.fn(() => Promise.resolve()) },
+      save: vi.fn(() => Promise.resolve()),
+    } as unknown as JobContext;
+
+    await expect(runWatch(ctx)).rejects.toThrow('needs you: account');
+    expect(assertPage).toHaveBeenCalledWith(expect.objectContaining({ viewerId: '9000000000000000002' }));
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

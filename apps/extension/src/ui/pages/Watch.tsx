@@ -125,7 +125,6 @@ export function WatchPage({ account }: PageProps) {
   const results = useLiveQuery(() => watchResults(account.id), [account.id]);
   const seen = useLiveQuery(() => watchSeen(account.id), [account.id]);
   const unseen = tabs && results && seen ? unseenNewAccounts(tabs, results, seen) : {};
-  const [full, setFull] = useState(false);
   const job = useLiveQuery(
     () =>
       db.jobs
@@ -152,9 +151,8 @@ export function WatchPage({ account }: PageProps) {
   };
   const start = async () => startJob((await watchJob(account.id)).id);
   const toggleReady = async (ready: ReadyTab, on: boolean) => {
-    const done = await setReadyTab(account.id, ready, on);
-    setFull(!done);
-    if (done && on) setSelected(ready);
+    // Refused only when five tabs are in use, which the page already says under the switches.
+    if ((await setReadyTab(account.id, ready, on)) && on) setSelected(ready);
   };
 
   return (
@@ -214,8 +212,7 @@ export function WatchPage({ account }: PageProps) {
             );
           })}
         </div>
-        {(full ||
-          (tabs && tabs.length >= WATCH_TABS.max && READY_TABS.some((r) => !tabs.some((t) => t.ready === r)))) && (
+        {tabs && tabs.length >= WATCH_TABS.max && READY_TABS.some((r) => !tabs.some((t) => t.ready === r)) && (
           <Caption1 as="p" className={styles.meta}>
             {`All ${String(WATCH_TABS.max)} tabs are in use: remove a tab of your own to turn on another.`}
           </Caption1>
@@ -300,10 +297,18 @@ function TabPanel({
   const fresh = result && result.query === tab.query ? result : undefined;
   const fromNew = fresh?.posts.filter((post) => isNewAccount(post.accountCreatedAt, fresh.checkedAt)) ?? [];
   const newIds = fromNew.map((post) => post.id).join(' ');
-  // A ready tab's posts from new accounts, once on screen, are seen: they leave the toolbar's count.
+  // A ready tab's posts from new accounts are seen once they are on screen, the dashboard's tab in front: then they
+  // leave the toolbar's count. A check that comes in while the person is in another tab leaves them counted until the
+  // person comes back to this one.
   const markSeen = useEffectEvent((ids: string[]) => onSeen(ids));
   useEffect(() => {
-    if (tab.ready && newIds) markSeen(newIds.split(' '));
+    if (!tab.ready || !newIds) return;
+    const look = () => {
+      if (document.visibilityState === 'visible') markSeen(newIds.split(' '));
+    };
+    look();
+    document.addEventListener('visibilitychange', look);
+    return () => document.removeEventListener('visibilitychange', look);
   }, [tab.ready, newIds]);
 
   const submit = (event: SyntheticEvent) => {
@@ -319,8 +324,8 @@ function TabPanel({
     >
       {tab.ready ? (
         <Caption1 as="p" className={styles.meta}>
-          Searches X for <span className={styles.code}>{tab.query}</span>: your account’s, whichever account the X
-          window is signed in to. Turn it off under About you.
+          Searches X for <span className={styles.code}>{tab.query}</span>, for the account this page shows. If the X
+          window signs in to another account, watching waits for you. Turn it off under About you.
         </Caption1>
       ) : (
         <>
@@ -386,7 +391,7 @@ function TabPanel({
                       {post.time != null && ` · ${fmtAgo(post.time, now)}`}
                     </Caption1>
                     {post.accountCreatedAt != null && isNewAccount(post.accountCreatedAt, fresh.checkedAt) && (
-                      <Badge tone="warn">{accountAge(post.accountCreatedAt, now)}</Badge>
+                      <Badge tone="warn">{accountAge(post.accountCreatedAt, fresh.checkedAt)}</Badge>
                     )}
                   </div>
                   <Body1 as="p" dir="auto" className={styles.text}>

@@ -279,7 +279,7 @@
       "status": "preview",
       "since": "0.5.1",
       "issues": [305],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/305-one-click-updates.md",
       "en": {
         "title": "Update in one click",
         "summary": "a Xomoni installed from the zip downloads the new version from GitHub, checks its signature and every file, and writes it into its own folder, never while a job runs. Your data stays. It starts once the maintainer has set up the signing key; until then, update by hand."

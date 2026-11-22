@@ -39,6 +39,11 @@ interface ExtensionFixtures {
   xSignedIn: boolean;
   /** How much of the fixture account's past X shows (`x-fixtures.ts`): its two posts unless a test asks for `long`. */
   xHistory: XHistory;
+  /**
+   * The folder of the built Xomoni each test installs: this run's build (`build-extension.ts`) unless a spec gives
+   * another, such as a build that trusts a test's release key (#305).
+   */
+  extensionBuild: string;
   /** The id the browser gave this copy of Xomoni. Installed unpacked without a `key`, it comes from the folder's path. */
   extensionId: string;
   /** Xomoni's service worker: its background, where what the content script sees is stored. */
@@ -52,8 +57,10 @@ export const test = base.extend<ExtensionFixtures>({
   xSignedIn: [true, { option: true }],
   xHistory: ['short', { option: true }],
 
-  context: async ({ xSignedIn, xHistory, colorScheme, channel }, provide) => {
-    const dir = process.env[EXTENSION_DIR_ENV];
+  // The global setup sets it before the workers start.
+  extensionBuild: [process.env[EXTENSION_DIR_ENV] ?? '', { option: true }],
+
+  context: async ({ xSignedIn, xHistory, colorScheme, channel, extensionBuild: dir }, provide) => {
     if (!dir) throw new Error(`${EXTENSION_DIR_ENV} is not set: run these tests with playwright.extension.config.ts`);
     const context = await chromium.launchPersistentContext('', {
       // In the new headless mode, which runs extensions.

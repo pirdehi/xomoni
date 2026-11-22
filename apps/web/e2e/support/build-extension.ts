@@ -9,7 +9,8 @@ import path from 'node:path';
  */
 export const EXTENSION_DIR_ENV = 'XOMONI_E2E_EXTENSION';
 
-const EXTENSION_ROOT = path.join(__dirname, '..', '..', '..', 'extension');
+/** The extension's folder in the repository, where its build runs. */
+export const EXTENSION_ROOT = path.join(__dirname, '..', '..', '..', 'extension');
 
 /** Runs one build step in apps/extension, failing the run with its output when it fails. */
 function run(command: string, args: string[]) {

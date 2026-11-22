@@ -1,6 +1,6 @@
 import type { BrowserContext, Locator, Page, Request } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from '../support/a11y';
-import { acceptRisks, browseProfile } from '../support/cleanup';
+import { acceptRisks, browseProfile, workAnyTime } from '../support/cleanup';
 import { expect, openXWindow, tabTo, test } from '../support/extension';
 import { FIXTURE_ACCOUNT, FRIEND_ACCOUNT, servePage, setXSession } from '../support/x-fixtures';
 
@@ -129,13 +129,14 @@ function xRequests(context: BrowserContext): string[] {
 }
 
 /**
- * The X window open, the fixture account's posts browsed so Xomoni knows the account, and the Watch page open. Returns
- * the X window.
+ * The X window open, the fixture account's posts browsed so Xomoni knows the account, active hours off in Settings,
+ * and the Watch page open. Returns the X window. With active hours on (8:00 to 23:00 by default), a watch started at
+ * night, as CI's runs often are in UTC, waits for the morning before its first search.
  */
 async function openWatch(dashboard: Page, page: Page): Promise<Page> {
   const x = await openXWindow(dashboard);
   await browseProfile(page, ['posts']);
-  await dashboard.bringToFront();
+  await workAnyTime(dashboard);
   await dashboard.getByRole('navigation').getByRole('button', { name: 'Watch', exact: true }).click();
   await expect(dashboard.getByRole('heading', { level: 1, name: 'Watch' })).toBeVisible();
   return x;
@@ -228,6 +229,8 @@ test.describe('Watch, about you', { tag: '@task-391' }, () => {
     page,
     context,
   }) => {
+    // Two tabs searched in turn: Replies to you comes second, a paced read after the first, as in S158-02.
+    test.setTimeout(330_000);
     await serveSearch(context, MIXED);
     await openWatch(dashboard, page);
     await repliesSwitch(dashboard).click();
@@ -238,7 +241,7 @@ test.describe('Watch, about you', { tag: '@task-391' }, () => {
     await startWatching(dashboard);
 
     await expect(dashboard.getByRole('tab', { name: /^Replies to you\s?, 1 new account/ })).toBeVisible({
-      timeout: 120_000,
+      timeout: 240_000,
     });
     await expect.poll(() => toolbarBadge(dashboard)).toBe('1');
 
@@ -450,6 +453,8 @@ test.describe('Watch, about you', { tag: '@task-391' }, () => {
       page,
       context,
     }) => {
+      // Two tabs searched in turn, Mentions of you second (S391-03).
+      test.setTimeout(330_000);
       await serveSearch(context, MIXED);
       await openWatch(dashboard, page);
       await mentionsSwitch(dashboard).click();
@@ -458,7 +463,7 @@ test.describe('Watch, about you', { tag: '@task-391' }, () => {
       await dashboard.getByRole('button', { name: 'Save' }).click();
       await startWatching(dashboard);
       await expect(dashboard.getByRole('tab', { name: /^Mentions of you\s?, 1 new account/ })).toBeVisible({
-        timeout: 120_000,
+        timeout: 240_000,
       });
       await expectNoSeriousA11yViolations(dashboard);
 

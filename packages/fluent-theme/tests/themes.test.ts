@@ -44,7 +44,14 @@ describe('Xomoni’s Fluent themes (ADR-0019)', () => {
     ];
     for (const color of text)
       for (const surface of surfaces) expect(contrast(color, surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(theme.colorNeutralForegroundOnBrand, theme.colorBrandBackground)).toBeGreaterThanOrEqual(4.5);
+    // A primary button's text, at rest, hovered, pressed and selected (#345: dark mode's hover was 4.4:1).
+    for (const background of [
+      theme.colorBrandBackground,
+      theme.colorBrandBackgroundHover,
+      theme.colorBrandBackgroundPressed,
+      theme.colorBrandBackgroundSelected,
+    ])
+      expect(contrast(theme.colorNeutralForegroundOnBrand, background)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('paint the page in the same color as the theme’s page background', () => {

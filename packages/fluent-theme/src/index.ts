@@ -69,12 +69,15 @@ export function xomoniLightTheme(fontFamily = XOMONI_FONT): Theme {
 
 /**
  * Xomoni in dark mode: Fluent's dark theme on near-black surfaces, with lighter brand text for contrast. The muted grey
- * is light enough for WCAG AA on the lightest surface, `colorNeutralBackground2` (#342).
+ * is light enough for WCAG AA on the lightest surface, `colorNeutralBackground2` (#342). A primary button lightens to
+ * `XOMONI_BRAND_AA.button` while hovered, where Fluent's dark theme takes Xomoni's blue itself, which carries its white
+ * text at 4.4:1 only (#345).
  */
 export function xomoniDarkTheme(fontFamily = XOMONI_FONT): Theme {
   return {
     ...createDarkTheme(XOMONI_BRAND),
     fontFamilyBase: fontFamily,
+    colorBrandBackgroundHover: XOMONI_BRAND_AA.button,
     colorBrandForeground1: XOMONI_BRAND[100],
     colorBrandForeground2: XOMONI_BRAND[110],
     colorNeutralBackground1: '#1a1a19',

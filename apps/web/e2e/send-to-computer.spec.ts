@@ -58,11 +58,15 @@ async function without(page: Page, { clipboard }: { clipboard: boolean }) {
   }, clipboard);
 }
 
-/** The requests the page makes to any server, other than for the site's own scripts and styles. */
+/**
+ * The requests the page makes to any server, other than for the site's own scripts and styles and the site's own pages
+ * that Next.js prefetches for the links in view (`?_rsc=`, in a production build), which carry nothing of a send.
+ */
 function requestsOf(page: Page): string[] {
   const seen: string[] = [];
   page.on('request', (request) => {
-    if (!new URL(request.url()).pathname.startsWith('/_next/')) seen.push(request.url());
+    const url = new URL(request.url());
+    if (!url.pathname.startsWith('/_next/') && !url.searchParams.has('_rsc')) seen.push(request.url());
   });
   return seen;
 }
@@ -299,8 +303,10 @@ test.describe('Send to my computer (#243)', { tag: '@task-243' }, () => {
       await context.grantPermissions(['clipboard-read', 'clipboard-write']);
       await without(page, { clipboard: true });
       await page.goto('/');
+      const send = hero(page).getByRole('button', { name: 'Send to my computer' });
+      await expect(send).toBeVisible();
       const requests = requestsOf(page);
-      await hero(page).getByRole('button', { name: 'Send to my computer' }).click();
+      await send.click();
       await expect(hero(page).getByRole('status')).toContainText('Link copied.');
       expect(requests).toEqual([]);
     });

@@ -107,6 +107,7 @@
 - **X mechanism:** Search and the post page have separate quotas. The search quota is low, on the order of a few dozen requests per 15 minutes.
 - **Scenario (implemented, #16):**
   - If a sweep page fails and X answered its requests with a 429 (or nothing remaining), Xomoni records the rate limit on the risk ladder, waits for X's reset plus 30–90 seconds, and loads **the same page** again, up to 3 times. After that it pauses the job; it never falls back to the deep clean for a quota error, because the deep clean opens each post separately and is much more expensive.
+  - A read (the Library's reads, a full history, a date range) does the same with every page it loads (`loadPage`, #392): it never passes over a page X refused for its quota. A scroll X refused, and a post page X refused during a sample check (C5), go on the risk ladder and wait for X's reset too; the check stays queued for the next page.
   - The risk ladder is stricter still: a second rate limit within an hour stops the job (§7).
   - A page that fails for another reason is tried again after 1–2 minutes. Only after 3 failed loads does Xomoni continue with the inventory (deep clean).
 

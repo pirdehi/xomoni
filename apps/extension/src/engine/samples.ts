@@ -38,11 +38,19 @@ export async function sampleAction(ctx: JobContext, action: ActionKind, postId: 
 /**
  * Whether X applied a sampled action, as its post page shows now: true when it did, false when it did not
  * (the deleted post is still there, the post still shows as liked or reposted), null when the page can't
- * tell. Loads the post page, so call it only where the run leaves the current page anyway.
+ * tell. Loads the post page, so call it only where the run leaves the current page anyway. A post page X refused for
+ * its quota tells nothing: it goes through `settle`, on the risk ladder and a wait for X's reset, and the answer is
+ * `refused`, so the check stays queued for the next look (#392).
  */
-async function applied(ctx: JobContext, check: SampleCheck): Promise<boolean | null> {
+async function applied(ctx: JobContext, check: SampleCheck): Promise<boolean | null | 'refused'> {
+  const since = Date.now();
   const content = await ctx.navigate(`https://x.com/i/web/status/${check.postId}`);
   if (content.kind !== 'tweets') {
+    const rateLimit = await ctx.pageRateLimit(since);
+    if (rateLimit) {
+      await ctx.settle('read', null, rateLimit);
+      return 'refused';
+    }
     // X shows its "not found" panel or nothing for a deleted post; a timeout says nothing.
     return check.action === 'delete' && content.kind !== 'timeout' ? true : null;
   }
@@ -67,6 +75,8 @@ export async function runDueChecks(ctx: JobContext) {
     ctx.checkpoint();
     ctx.status('Checking that X applied an earlier action…');
     const result = await applied(ctx, check);
+    // X refused the post page: the check stays due, and the rest wait for the next page the run loads anyway.
+    if (result === 'refused') return;
     if (check.seq !== undefined) await db.checks.delete(check.seq);
     const minutes = Math.round((Date.now() - check.at) / MINUTE);
     if (result === null) ctx.samples.unclear++;

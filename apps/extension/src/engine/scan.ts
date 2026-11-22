@@ -3,7 +3,7 @@
 import { db } from '../shared/db';
 import { DAY } from '../shared/time';
 import type { DateRange, ScanTarget } from '../shared/types';
-import { type JobContext, Stop } from './context';
+import { type JobContext, Stop, loadPage } from './context';
 
 const MAX_SCROLLS_PER_PAGE = 400;
 const MAX_IDLE_SCROLLS = 4;
@@ -75,7 +75,9 @@ export function scanUrls(target: ScanTarget, handle: string, createdAt: number |
 }
 
 /**
- * Runs a scan job: loads each page and scrolls until 4 scrolls in a row add nothing (at most 400 per page).
+ * Runs a scan job: loads each page and scrolls until 4 scrolls in a row add nothing (at most 400 per page). A page or
+ * scroll X refuses for its quota goes on the risk ladder and is waited out, the page loaded again (`loadPage`); after
+ * 3 such waits the job pauses, as a cleanup does (#392).
  * A `range` scan also stops scrolling a timeline once its lowest post has been older than the range for
  * `MAX_OLD_SCROLLS` scrolls: the timeline runs newest first, so nothing further down can be in it. It changes
  * nothing on X; the content script records what X returns. Resumes from the page in `phase`.
@@ -97,7 +99,9 @@ export async function runScan(ctx: JobContext) {
       ctx.job.stats.scanned = ctx.job.scannedAtPageStart;
     else ctx.job.scannedAtPageStart = ctx.job.stats.scanned;
     await ctx.setPhase(phase);
-    const content = await ctx.navigate(url);
+    // A page X refused for its quota is waited out and loaded again (`loadPage`, #392); one that shows no posts for
+    // another reason is passed over.
+    const content = await loadPage(ctx, url);
     if (content.kind !== 'tweets') continue;
     ctx.job.stats.scanned += content.count;
 

@@ -394,7 +394,7 @@ test.describe('X’s archive, requested and imported', { tag: '@task-184' }, () 
     await withAccount(dashboard, page);
     const sent: string[] = [];
     context.on('request', (request) => {
-      if (request.url().includes('evil.example')) sent.push(request.url());
+      if (new URL(request.url()).hostname === 'evil.example') sent.push(request.url());
     });
     const trap = '<img src="https://evil.example/x.png" onerror="document.title=\'pwned\'"> <b>bold</b>';
     const escaped = trap.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -459,7 +459,8 @@ test.describe('X’s archive, requested and imported', { tag: '@task-184' }, () 
     await folderPicker(dashboard, null);
     const asked: string[] = [];
     context.on('request', (request) => {
-      if (request.url().includes('/settings/download_your_data')) asked.push(request.url());
+      const url = new URL(request.url());
+      if (url.host === 'x.com' && url.pathname === '/settings/download_your_data') asked.push(request.url());
     });
     await archiveCard(dashboard).getByRole('button', { name: 'Get my archive' }).click();
     await risksDialog(dashboard).getByRole('button', { name: 'Not now' }).click();

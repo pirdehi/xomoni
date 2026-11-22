@@ -96,8 +96,8 @@ jobs:
   e2e:
     name: e2e
     runs-on: ubuntu-latest
-    # The website's tests and the extension's took about 20 minutes before the accessibility sweeps (#389) added
-    # about 5; a stuck test still ends the job well before GitHub's 6 hours.
+    # The website's tests and the extension's, side by side (#404), take about 14 minutes; the limit leaves room for the
+    # scenarios still to come (#345), and a stuck test still ends the job well before GitHub's 6 hours.
     timeout-minutes: 35
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
@@ -123,15 +123,13 @@ jobs:
       - name: Install Chromium
         working-directory: apps/web
         run: npx playwright install --with-deps chromium
-      - name: Auth end-to-end tests (sign-up, confirmation, sign-in, reset, account)
+      # The website's tests (sign-up, confirmation, sign-in, reset, account and the rest) and the built extension's in
+      # Chromium, on x.com pages served from synthetic fixtures with no network (#342, ADR-0040). The extension's need
+      # neither the site nor Supabase, so the two run side by side (#404): about 14 minutes instead of 25. The step
+      # fails if either fails; the extension's log follows the website's, and is in the report on a failure.
+      - name: Browser tests, the website's and the extension's side by side
         working-directory: apps/web
-        run: npx playwright test
-      # The built extension in Chromium, on x.com pages served from synthetic fixtures, with no network (#342,
-      # ADR-0040). It needs neither the site nor Supabase, and runs even when the site's tests failed.
-      - name: The extension in a real browser (dashboard, content script on X fixtures, axe)
-        if: ${{ !cancelled() }}
-        working-directory: apps/web
-        run: npx playwright test -c playwright.extension.config.ts
+        run: node ../../tooling/e2e-side-by-side.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
@@ -173,13 +171,10 @@ jobs:
         run: |
           if [ ! -x /opt/microsoft/msedge/msedge ]; then npx playwright install --with-deps msedge; fi
           /opt/microsoft/msedge/msedge --version
-      - name: The website's end-to-end tests in Edge
+      # As in e2e (#404), in Edge.
+      - name: Browser tests in Edge, the website's and the extension's side by side
         working-directory: apps/web
-        run: npx playwright test
-      - name: The extension in Edge (dashboard, content script on X fixtures, axe)
-        if: ${{ !cancelled() }}
-        working-directory: apps/web
-        run: npx playwright test -c playwright.extension.config.ts
+        run: node ../../tooling/e2e-side-by-side.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:

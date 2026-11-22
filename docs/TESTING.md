@@ -44,7 +44,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 | No remote code | `npm run remote-code:check` ([`tooling/check-remote-code.mjs`](../tooling/check-remote-code.mjs)), in `npm run verify` and the release workflow | The built extension builds code from a string or loads it from another site, which Manifest V3 and the stores forbid ([store listing](STORE-LISTING.md#6-no-remote-code)). |
 | No updater in the store build | `tooling/store-build.test.mjs`, in `npm run test:tooling` | The store build (`npm run build:store`) holds any of the one-click updater's code, or GitHub's access in its manifest ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). |
 | Database | CI job `database` | A pgTAP test fails, or the generated types drift from the migrations. |
-| End to end | CI job `e2e` | A flow fails, the browser reports a policy violation, or axe finds a serious or critical accessibility violation: the website's tests, then the extension's in a real browser. |
+| End to end | CI job `e2e` | A flow fails, the browser reports a policy violation, or axe finds a serious or critical accessibility violation: the website's tests and the extension's in a real browser, run side by side by [`tooling/e2e-side-by-side.mjs`](../tooling/e2e-side-by-side.mjs) (#404); either failing fails the job. |
 | End to end in Edge | CI job `e2e-edge`, a required check since 2026-11-21 | The same, in Microsoft Edge. |
 
 ## Writing tests

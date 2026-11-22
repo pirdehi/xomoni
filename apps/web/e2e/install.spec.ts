@@ -3,6 +3,7 @@ import { expectNoSeriousA11yViolations } from './support/a11y';
 import { createConfirmedUser } from './support/admin';
 import { AGENTS, asBrowser } from './support/browsers';
 import { PASSWORD, signIn, signOut, uniqueEmail } from './support/flows';
+import { hydrated } from './support/hydration';
 import { expect, test } from './support/test';
 
 // The install page's user scenarios are docs/scenarios/299-install-page.md (#338): each test named S299-NN proves the
@@ -91,6 +92,12 @@ const serveDownload = (page: Page) =>
     }),
   );
 
+/** /install's guide once React drives it: a click on *Next* before hydration is lost (#404). */
+async function guide(page: Page): Promise<Locator> {
+  const steps = page.getByRole('region', { name: 'Install steps' });
+  await hydrated(steps.getByRole('button', { name: 'Next' }));
+  return steps;
+}
 /** Presses Tab (or Shift+Tab, `back`) until `target` has the keyboard focus, as someone with only a keyboard would. */
 async function tabTo(page: Page, target: Locator, back = false) {
   for (let presses = 0; presses < 30; presses++) {
@@ -230,7 +237,7 @@ test.describe('the install guide (#299)', () => {
 
   test('S299-03 one step at a time, with its progress, or all at once', { tag: ['@task-299'] }, async ({ page }) => {
     await page.goto('/install');
-    const steps = page.getByRole('region', { name: 'Install steps' });
+    const steps = await guide(page);
     // The browser's name in step 4 depends on what this test browser says it is.
     const titles = [
       'Read what can go wrong',
@@ -301,7 +308,7 @@ test.describe('the install guide (#299)', () => {
       { tag: ['@task-299'] },
       async ({ page }) => {
         await page.goto('/install');
-        const steps = page.getByRole('region', { name: 'Install steps' });
+        const steps = await guide(page);
         for (let i = 0; i < 4; i++) {
           expect(await overflow(page)).toBeLessThanOrEqual(0);
           await steps.getByRole('button', { name: 'Next' }).click();
@@ -335,7 +342,7 @@ test.describe('the install questions (#306)', () => {
     { tag: ['@task-299'] },
     async ({ page }) => {
       await page.goto('/install');
-      const steps = page.getByRole('region', { name: 'Install steps' });
+      const steps = await guide(page);
       for (let i = 0; i < 3; i++) await steps.getByRole('button', { name: 'Next' }).click();
       await expect(steps.getByText('Step 4 of 5')).toBeVisible();
 
@@ -420,7 +427,7 @@ test.describe('the install guide’s edges (#299)', () => {
     async ({ page }) => {
       await serveDownload(page);
       await page.goto('/install');
-      const steps = page.getByRole('region', { name: 'Install steps' });
+      const steps = await guide(page);
       await steps.getByRole('button', { name: 'Next' }).click();
       await expect(steps.getByText('Step 2 of 5')).toBeVisible();
 
@@ -491,7 +498,7 @@ test.describe('when something fails (#299)', () => {
           });
         });
         await page.goto('/install');
-        const steps = page.getByRole('region', { name: 'Install steps' });
+        const steps = await guide(page);
         for (let i = 0; i < 3; i++) await steps.getByRole('button', { name: 'Next' }).click();
         await expect(steps.getByRole('heading', { name: 'Add it to Chrome' })).toBeVisible();
 
@@ -557,7 +564,7 @@ test.describe('what the install page keeps to itself (#299)', () => {
       await page.goto(`/install#ext=${EXT}`);
       await expect(page).toHaveURL(/\/install$/);
       expect(await rememberedId(page)).toBe(EXT);
-      await page.getByRole('region', { name: 'Install steps' }).getByRole('button', { name: 'Next' }).click();
+      await (await guide(page)).getByRole('button', { name: 'Next' }).click();
       expect(requests.length).toBeGreaterThan(0);
       expect(requests.filter((url) => url.includes(EXT))).toEqual([]);
     },
@@ -581,7 +588,7 @@ test.describe('what the install page keeps to itself (#299)', () => {
       const headers = response!.headers();
       expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
       expect(headers['x-frame-options']).toBe('DENY');
-      const steps = page.getByRole('region', { name: 'Install steps' });
+      const steps = await guide(page);
       for (let i = 0; i < 4; i++) await steps.getByRole('button', { name: 'Next' }).click();
       await steps.getByRole('button', { name: 'Show all steps' }).click();
       await expect(steps.getByRole('heading', { level: 2 })).toHaveCount(5);
@@ -635,7 +642,7 @@ test.describe('a first visit, and going back (#299)', () => {
     { tag: ['@task-299'] },
     async ({ page }) => {
       await page.goto('/install');
-      const steps = page.getByRole('region', { name: 'Install steps' });
+      const steps = await guide(page);
       await expect(steps.getByRole('button', { name: 'Back' })).toHaveCount(0);
       for (let i = 0; i < 2; i++) await steps.getByRole('button', { name: 'Next' }).click();
       await expect(steps.getByText('Step 3 of 5')).toBeVisible();
@@ -674,7 +681,7 @@ test.describe('by keyboard and for screen readers (#299)', () => {
     { tag: ['@task-299'] },
     async ({ page }) => {
       await page.goto('/install');
-      const steps = page.getByRole('region', { name: 'Install steps' });
+      const steps = await guide(page);
       await expect(steps.getByText('Step 1 of 5')).toBeVisible();
       const titles = steps.getByRole('heading', { level: 2 });
       for (let step = 2; step <= 5; step++) {

@@ -327,7 +327,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [173, 148],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/173-two-step-verification.md",
       "en": {
         "title": "Two-step verification",
         "summary": "turn it on in Account with an authenticator app, and every sign-in on xomoni.com asks for its 6-digit code before any private page opens. The website's server and the database both check it, so a password or a copied session alone reads and changes nothing. Changing your email or password, or resetting it by email, asks for a code too, and every app added or removed is emailed to you."

@@ -17,7 +17,8 @@ import { expect, test } from './support/test';
 import { msUntilNextStep, totp } from './support/totp';
 import { aalOf, apiEnroll, apiSignIn } from './support/two-factor';
 
-// Two-step verification on xomoni.com (#173, ADR-0036), against the local stack's real Supabase Auth: TOTP codes are
+// Two-step verification on xomoni.com (#173, ADR-0036) and its user scenarios (docs/scenarios/173-two-step-verification.md,
+// #345), against the local stack's real Supabase Auth: TOTP codes are
 // made in the test from the secret the page shows, as an authenticator app would.
 
 const section = (page: Page) => page.getByRole('region', { name: 'Two-step verification' });
@@ -52,8 +53,8 @@ async function enterCode(page: Page, code: string): Promise<void> {
   await page.getByRole('button', { name: 'Verify' }).click();
 }
 
-test.describe('two-step verification', () => {
-  test('turns on with a QR code and its first code, then sign-in asks for a code before the dashboard', async ({
+test.describe('two-step verification', { tag: '@task-173' }, () => {
+  test('S173-01 turns on with a QR code and its first code, then sign-in asks for a code before the dashboard', async ({
     page,
   }) => {
     const { email } = await signedIn(page, 'totp-enroll');
@@ -82,7 +83,7 @@ test.describe('two-step verification', () => {
     await expectDashboard(page);
   });
 
-  test('a session with the password alone reaches no private page, and the server sends it to the code page', async ({
+  test('S173-02 a session with the password alone reaches no private page, and the server sends it to the code page', async ({
     page,
   }) => {
     const email = uniqueEmail('totp-aal1');
@@ -108,7 +109,7 @@ test.describe('two-step verification', () => {
     await expect(page.getByRole('heading', { name: 'Account', level: 1 })).toHaveCount(0);
   });
 
-  test('the database and Supabase Auth refuse an aal1 session of an account with an app', async () => {
+  test('S173-03 the database and Supabase Auth refuse an aal1 session of an account with an app', async () => {
     const email = uniqueEmail('totp-api');
     const userId = await createConfirmedUser(email, PASSWORD);
     await addDevice(userId, 'Chrome on macOS');
@@ -141,7 +142,7 @@ test.describe('two-step verification', () => {
     expect((await owner.from('devices').select('name')).data).toEqual([{ name: 'Chrome on macOS' }]);
   });
 
-  test('a challenge works once: replaying it with its code is refused', async () => {
+  test('S173-04 a challenge works once: replaying it with its code is refused', async () => {
     const email = uniqueEmail('totp-replay');
     await createConfirmedUser(email, PASSWORD);
     const { factorId, secret } = await apiEnroll(await apiSignIn(email, PASSWORD));
@@ -159,7 +160,7 @@ test.describe('two-step verification', () => {
     expect(replay.error, 'a used challenge can’t be verified again').not.toBeNull();
   });
 
-  test('an enrollment left halfway changes nothing, and can be started again', async ({ page }) => {
+  test('S173-05 an enrollment left halfway changes nothing, and can be started again', async ({ page }) => {
     const { email } = await signedIn(page, 'totp-abandon');
 
     await page.goto('/account');
@@ -179,7 +180,9 @@ test.describe('two-step verification', () => {
     await expect(section(page).getByRole('listitem')).toHaveCount(1);
   });
 
-  test('removing the last app needs a code in this session, turns it off, and tells the account', async ({ page }) => {
+  test('S173-06 removing the last app needs a code in this session, turns it off, and tells the account', async ({
+    page,
+  }) => {
     const { email } = await signedIn(page, 'totp-remove');
     await turnOn(page);
 
@@ -196,7 +199,7 @@ test.describe('two-step verification', () => {
     await expectDashboard(page);
   });
 
-  test('a password reset by email asks an account with an app for its code before the new password', async ({
+  test('S173-07 a password reset by email asks an account with an app for its code before the new password', async ({
     page,
   }) => {
     const email = uniqueEmail('totp-reset');
@@ -217,7 +220,7 @@ test.describe('two-step verification', () => {
     await expect(page).toHaveURL(/\/account\?password=updated$/);
   });
 
-  test('changing the password asks an account with an app for a code too', async ({ page }) => {
+  test('S173-08 changing the password asks an account with an app for a code too', async ({ page }) => {
     const { email } = await signedIn(page, 'totp-password');
     const secret = await turnOn(page);
     const password = page.getByRole('region', { name: 'Password' });
@@ -236,6 +239,286 @@ test.describe('two-step verification', () => {
     await signIn(page, email, NEW_PASSWORD);
     await expect(page).toHaveURL(/\/login\/two-factor$/);
     await enterCode(page, totp(secret));
+    await expectDashboard(page);
+  });
+
+  test('S173-09 a code that isn’t six digits is refused on the spot, and the person stays on the code page', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('totp-shape');
+    await createConfirmedUser(email, PASSWORD);
+    await apiEnroll(await apiSignIn(email, PASSWORD));
+    await signIn(page, email, PASSWORD);
+    await expect(page).toHaveURL(/\/login\/two-factor$/);
+    for (const [code, says] of [
+      ['', 'Enter the 6-digit code from your app'],
+      ['12345', 'The code has 6 digits'],
+      ['12a456', 'The code has only numbers'],
+    ] as const) {
+      await enterCode(page, code);
+      await expect(page.getByLabel('6-digit code')).toHaveAccessibleDescription(says);
+      await expect(page).toHaveURL(/\/login\/two-factor$/);
+    }
+    await expect(page.getByRole('heading', { name: 'Account', level: 1 })).toHaveCount(0);
+  });
+
+  test('S173-10 a wrong first code leaves two-step verification off, and the right one turns it on', async ({
+    page,
+  }) => {
+    await signedIn(page, 'totp-first-wrong');
+    await page.goto('/account');
+    await section(page).getByRole('button', { name: 'Turn on two-step verification' }).click();
+    await section(page).getByRole('button', { name: 'Continue' }).click();
+    const secret = (await section(page).getByTestId('totp-secret').innerText()).replace(/\s+/g, '');
+    const wrong = totp(secret) === '000000' ? '111111' : '000000';
+    await section(page).getByLabel('6-digit code').fill(wrong);
+    await section(page).getByRole('button', { name: 'Turn on' }).click();
+    await expect(section(page).getByText('That code didn’t work')).toBeVisible();
+    await expect(section(page).getByRole('list', { name: 'Your authenticator apps' })).toHaveCount(0);
+    await section(page).getByLabel('6-digit code').fill(totp(secret));
+    await section(page).getByRole('button', { name: 'Turn on' }).click();
+    await expect(section(page).getByRole('status')).toContainText('Two-step verification is on.');
+  });
+
+  test('S173-11 a second app can’t take the first one’s name', async ({ page }) => {
+    await signedIn(page, 'totp-same-name');
+    await turnOn(page);
+    await section(page).getByRole('button', { name: 'Add another authenticator app' }).click();
+    await section(page).getByLabel('Name this app (optional)').fill('Authenticator app');
+    await section(page).getByRole('button', { name: 'Continue' }).click();
+    await expect(section(page).getByText('You already have an app with that name')).toBeVisible();
+    await expect(section(page).getByRole('img', { name: /QR code/ })).toHaveCount(0);
+  });
+
+  test('S173-12 a second app on another device: either app’s code signs in, and the account is told', async ({
+    page,
+  }) => {
+    const { email } = await signedIn(page, 'totp-second');
+    const first = await turnOn(page);
+    await section(page).getByRole('button', { name: 'Add another authenticator app' }).click();
+    await section(page).getByLabel('Name this app (optional)').fill('Tablet');
+    await section(page).getByRole('button', { name: 'Continue' }).click();
+    const second = (await section(page).getByTestId('totp-secret').innerText()).replace(/\s+/g, '');
+    await section(page).getByLabel('6-digit code').fill(totp(second));
+    await section(page).getByRole('button', { name: 'Add app' }).click();
+    await expect(section(page).getByRole('status')).toContainText('Either app’s code now works when you sign in.');
+    await expect(
+      section(page).getByRole('list', { name: 'Your authenticator apps' }).getByRole('listitem'),
+    ).toHaveCount(2);
+    await expect.poll(async () => (await emailsTo(email, 'An authenticator app was added')).length).toBe(2);
+
+    for (const secret of [second, first]) {
+      await signOut(page);
+      await signIn(page, email, PASSWORD);
+      await expect(page).toHaveURL(/\/login\/two-factor$/);
+      await enterCode(page, totp(secret));
+      await expectDashboard(page);
+    }
+  });
+
+  test('S173-13 Cancel in the dialog that removes an app keeps it, and two-step verification stays on', async ({
+    page,
+  }) => {
+    const { email } = await signedIn(page, 'totp-keep');
+    await turnOn(page);
+    await section(page).getByRole('button', { name: 'Remove Authenticator app' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Remove Authenticator app?' });
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(section(page).getByRole('list', { name: 'Your authenticator apps' })).toContainText(
+      'Authenticator app',
+    );
+    await expect(section(page)).toContainText('On. Signing in asks for a 6-digit code');
+    expect(await emailsTo(email, 'An authenticator app was removed')).toEqual([]);
+  });
+
+  test('S173-14 Cancel while adding the first app leaves two-step verification off', async ({ page }) => {
+    const { email } = await signedIn(page, 'totp-cancel');
+    await page.goto('/account');
+    await section(page).getByRole('button', { name: 'Turn on two-step verification' }).click();
+    await section(page).getByRole('button', { name: 'Continue' }).click();
+    await expect(section(page).getByRole('img', { name: /QR code/ })).toBeVisible();
+    await section(page).getByRole('button', { name: 'Cancel' }).click();
+    await expect(section(page).getByRole('button', { name: 'Turn on two-step verification' })).toBeEnabled();
+    await expect(section(page)).toContainText('Off.');
+    await signOut(page);
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+  });
+
+  test('S173-15 an old code is refused: only the app’s newest codes work', async ({ page }) => {
+    const email = uniqueEmail('totp-old');
+    await createConfirmedUser(email, PASSWORD);
+    const { secret } = await apiEnroll(await apiSignIn(email, PASSWORD));
+    await signIn(page, email, PASSWORD);
+    await enterCode(page, totp(secret, { step: -10 }));
+    await expect(formAlert(page)).toContainText('That code didn’t work');
+    await expect(page).toHaveURL(/\/login\/two-factor$/);
+    // The field is emptied, ready for the newest code.
+    await expect(page.getByLabel('6-digit code')).toHaveValue('');
+    await enterCode(page, totp(secret));
+    await expectDashboard(page);
+  });
+
+  test('S173-16 Sign out on the code page ends the half-done sign-in: the dashboard asks to sign in again', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('totp-leave');
+    await createConfirmedUser(email, PASSWORD);
+    await apiEnroll(await apiSignIn(email, PASSWORD));
+    await signIn(page, email, PASSWORD);
+    await expect(page).toHaveURL(/\/login\/two-factor$/);
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login(\?|$)/);
+    await expect(page.getByRole('heading', { name: 'Two-step verification' })).toHaveCount(0);
+  });
+
+  test('S173-17 an account with no app is off, offers to turn it on, and signs in with the password alone', async ({
+    page,
+  }) => {
+    const { email } = await signedIn(page, 'totp-none');
+    await page.goto('/account');
+    await expect(section(page)).toContainText('Off. Add an authenticator app');
+    await expect(section(page).getByRole('button', { name: 'Turn on two-step verification' })).toBeEnabled();
+    await expect(section(page).getByRole('list', { name: 'Your authenticator apps' })).toHaveCount(0);
+    await signOut(page);
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+  });
+
+  test('S173-18 keyboard only: the code page starts in its field, a code typed as the app shows it and Enter sign in', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('totp-keys');
+    await createConfirmedUser(email, PASSWORD);
+    const { secret } = await apiEnroll(await apiSignIn(email, PASSWORD));
+    await signIn(page, email, PASSWORD);
+    await expect(page.getByLabel('6-digit code')).toBeFocused();
+    const code = totp(secret);
+    // As an authenticator app shows it: two groups of three.
+    await page.keyboard.type(`${code.slice(0, 3)} ${code.slice(3)}`);
+    await page.keyboard.press('Enter');
+    await expectDashboard(page);
+  });
+
+  test('S173-19 adding an app and the code page have no serious accessibility violation, in light and dark', async ({
+    page,
+  }) => {
+    await signedIn(page, 'totp-axe');
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme });
+      await page.goto('/account');
+      await section(page).getByRole('button', { name: 'Turn on two-step verification' }).click();
+      await section(page).getByRole('button', { name: 'Continue' }).click();
+      await expect(section(page).getByRole('img', { name: /QR code/ })).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    }
+  });
+
+  test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test('S173-20 the QR code, the key and the code fit the screen, with nothing to scroll sideways', async ({
+      page,
+    }) => {
+      await signedIn(page, 'totp-phone');
+      await page.goto('/account');
+      await section(page).getByRole('button', { name: 'Turn on two-step verification' }).click();
+      await section(page).getByRole('button', { name: 'Continue' }).click();
+      await expect(section(page).getByRole('img', { name: /QR code/ })).toBeInViewport({ ratio: 0.5 });
+      await expect(section(page).getByTestId('totp-secret')).toBeVisible();
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      ).toBeLessThanOrEqual(0);
+    });
+  });
+
+  test('S173-21 once verified, the session keeps its code: reloads and other pages ask for none, a new browser does', async ({
+    page,
+    browser,
+  }) => {
+    const email = uniqueEmail('totp-keep-session');
+    await createConfirmedUser(email, PASSWORD);
+    const { secret } = await apiEnroll(await apiSignIn(email, PASSWORD));
+    await signIn(page, email, PASSWORD);
+    await enterCode(page, totp(secret));
+    await expectDashboard(page);
+    await page.reload();
+    await expectDashboard(page);
+    await page.goto('/account');
+    await expect(page.getByRole('heading', { name: 'Account', level: 1 })).toBeVisible();
+
+    const other = await browser.newContext();
+    const fresh = await other.newPage();
+    await signIn(fresh, email, PASSWORD);
+    await expect(fresh).toHaveURL(/\/login\/two-factor$/);
+    await other.close();
+  });
+
+  test('S173-22 the QR code is drawn in the page, so the key never goes to another site', async ({ page }) => {
+    await signedIn(page, 'totp-qr');
+    const sent: string[] = [];
+    page.on('request', (request) => sent.push(request.url()));
+    await page.goto('/account');
+    await section(page).getByRole('button', { name: 'Turn on two-step verification' }).click();
+    await section(page).getByRole('button', { name: 'Continue' }).click();
+    const qr = section(page).getByRole('img', { name: /QR code/ });
+    await expect(qr).toBeVisible();
+    expect(await qr.getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
+    const secret = (await section(page).getByTestId('totp-secret').innerText()).replace(/\s+/g, '');
+    const hosts = new Set(sent.map((url) => new URL(url).host));
+    for (const host of hosts) expect(['localhost:3000', new URL(process.env.SUPABASE_URL ?? '').host]).toContain(host);
+    expect(sent.some((url) => url.includes(secret))).toBe(false);
+  });
+
+  test('S173-23 without the app, the code page offers no way around the code: only the slow way through support', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('totp-lost');
+    await createConfirmedUser(email, PASSWORD);
+    await apiEnroll(await apiSignIn(email, PASSWORD));
+    await signIn(page, email, PASSWORD);
+    await page.getByText('Lost your authenticator app?').click();
+    await expect(
+      page.getByText(/We then remove your authenticator apps after \d+ days, and tell that address/),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/);
+    const buttons = await page.getByRole('main').getByRole('button').allInnerTexts();
+    expect(buttons.map((text) => text.trim())).toEqual(['Verify', 'Sign out']);
+  });
+
+  test('S173-24 the code page owes nothing to a session without an app: it goes on, or to sign in', async ({
+    page,
+    browser,
+  }) => {
+    await signedIn(page, 'totp-owes-nothing');
+    await page.goto(`/login/two-factor?next=${encodeURIComponent('/account')}`);
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByRole('heading', { name: 'Account', level: 1 })).toBeVisible();
+
+    const visitor = await browser.newContext();
+    const signedOut = await visitor.newPage();
+    await signedOut.goto('/login/two-factor');
+    await expect(signedOut).toHaveURL(/\/login(\?|$)/);
+    await expect(signedOut.getByLabel('6-digit code')).toHaveCount(0);
+    await visitor.close();
+  });
+
+  test('S173-25 a removed app’s codes stop working, while the other app’s still sign in', async ({ page }) => {
+    const email = uniqueEmail('totp-removed');
+    await createConfirmedUser(email, PASSWORD);
+    const owner = await apiSignIn(email, PASSWORD);
+    const lost = await apiEnroll(owner, 'Old phone');
+    const kept = await apiEnroll(owner, 'New phone');
+    const removal = await owner.auth.mfa.unenroll({ factorId: lost.factorId });
+    expect(removal.error).toBeNull();
+
+    await signIn(page, email, PASSWORD);
+    await expect(page).toHaveURL(/\/login\/two-factor$/);
+    await enterCode(page, totp(lost.secret));
+    await expect(formAlert(page)).toContainText('That code didn’t work');
+    await enterCode(page, totp(kept.secret));
     await expectDashboard(page);
   });
 });

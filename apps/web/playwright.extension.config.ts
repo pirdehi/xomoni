@@ -10,7 +10,7 @@ import { browsersToTest } from './e2e/support/projects';
 export default defineConfig({
   testDir: 'e2e/extension',
   globalSetup: './e2e/support/build-extension.ts',
-  // Inside the website's folders, which `npx playwright test` with the website's config empties on its own run.
+  // Beside the website's run's (`test-results/website`): CI runs both at once (#404), and each empties its own.
   outputDir: 'test-results/extension',
   timeout: 30_000,
   expect: { timeout: 10_000 },

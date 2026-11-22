@@ -71,12 +71,16 @@ export default defineConfig({
   testDir: 'e2e',
   // A project's own testIgnore replaces this one, so each of Edge and Chrome lists it again.
   testIgnore: EXTENSION,
+  // Folders of its own: CI runs the extension's tests at the same time (#404), and each run empties its own folders.
+  outputDir: 'test-results/website',
   // One worker: the flows share one Auth server and one inbox, and ordering keeps failures readable.
   workers: 1,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  reporter: process.env.CI
+    ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report/website' }]]
+    : 'list',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',

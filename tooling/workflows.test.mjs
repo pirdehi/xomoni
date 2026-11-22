@@ -138,23 +138,31 @@ describe('the browser tests, in parts behind the e2e and e2e-edge gates (#412)',
     }
   });
 
-  it("runs the website's tests and every shard of the extension's, each once, in both browsers", () => {
+  it("runs every shard of the website's tests and of the extension's, each once, in both browsers", () => {
     for (const parts of Object.values(gates)) {
       const job = block(ci, `  ${parts}:`);
       assert.match(job, /^ {6}fail-fast: false$/m, `${parts}: one failing part doesn't cancel the others`);
-      const names = [...job.matchAll(/^ {10}- part: (\S+)$/gm)].map((m) => m[1]);
-      const shards = [...job.matchAll(/^ {12}shard: (\d+)\/(\d+)$/gm)].map((m) => [Number(m[1]), Number(m[2])]);
-      assert.equal(names[0], 'website');
-      assert.equal(names.length, shards.length + 1, `${parts}: every extension part has a shard`);
-      const total = shards[0][1];
-      assert.deepEqual(
-        shards,
-        Array.from({ length: total }, (_, i) => [i + 1, total]),
-        `${parts}: shards 1/${total} to ${total}/${total}, each once`,
+      const rows = [...job.matchAll(/^ {10}- part: (\S+)\n {12}suite: (\S+)\n {12}shard: (\d+)\/(\d+)$/gm)];
+      assert.equal(
+        rows.length,
+        (job.match(/^ {10}- part: /gm) ?? []).length,
+        `${parts}: every part names its suite and shard`,
       );
-      assert.match(job, /npx playwright test -c playwright\.extension\.config\.ts --shard="\$SHARD"/);
-      // Only the website's part needs Supabase.
-      assert.equal((job.match(/^ {8}if: matrix\.part == 'website'$/gm) ?? []).length, 2);
+      for (const suite of ['website', 'extension']) {
+        const shards = rows.filter((r) => r[2] === suite).map((r) => [Number(r[3]), Number(r[4])]);
+        assert.ok(shards.length > 0, `${parts}: runs the ${suite}'s tests`);
+        const total = shards[0][1];
+        assert.deepEqual(
+          shards,
+          Array.from({ length: total }, (_, i) => [i + 1, total]),
+          `${parts}: the ${suite}'s shards 1/${total} to ${total}/${total}, each once`,
+        );
+        for (const [, part, , n] of rows.filter((r) => r[2] === suite)) assert.equal(part, `${suite}-${n}`);
+      }
+      assert.match(job, /if \[ "\$SUITE" = website \]; then npx playwright test --shard="\$SHARD"/);
+      assert.match(job, /else npx playwright test -c playwright\.extension\.config\.ts --shard="\$SHARD"; fi/);
+      // Each website shard starts a Supabase of its own; the extension's need none.
+      assert.equal((job.match(/^ {8}if: matrix\.suite == 'website'$/gm) ?? []).length, 2);
       assert.match(job, /name: playwright-report-(edge-)?\$\{\{ matrix\.part \}\}/);
     }
     assert.match(block(ci, '  e2e-edge-parts:'), /XOMONI_E2E_BROWSERS: msedge/);

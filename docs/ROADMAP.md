@@ -297,7 +297,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ✅ | 13 · Safety fix found by the scenarios: a read stops at X's rate limit as a cleanup does, on the risk ladder, waiting for X's reset and loading the same page again | [#392](https://github.com/pirdehi/xomoni/issues/392) | [#394](https://github.com/pirdehi/xomoni/pull/394) |
 | ✅ | 14 · Accessibility: axe on every page of the extension, light and dark, laptop and phone width, before and after an account, and on the dialogs, menus, errors, empty lists, toasts and job states of both the extension and xomoni.com | [#389](https://github.com/pirdehi/xomoni/issues/389) | [#393](https://github.com/pirdehi/xomoni/pull/393) |
 | ✅ | 16 · CI: the website's and the extension's browser tests side by side in `e2e` and `e2e-edge`, each job from about 25 minutes to about 14, gating the same tests; the `/install` tests wait for React before their first click | [#404](https://github.com/pirdehi/xomoni/issues/404) | [#406](https://github.com/pirdehi/xomoni/pull/406), [#411](https://github.com/pirdehi/xomoni/pull/411) |
-| ✅ | 17 · CI: each browser suite on a runner of its own, the extension's in two shards, behind the same `e2e` and `e2e-edge` gates | [#412](https://github.com/pirdehi/xomoni/issues/412) | |
+| ✅ | 17 · CI: the browser tests in shards on runners of their own, the website's two each with its own Supabase and the extension's two, behind the same `e2e` and `e2e-edge` gates | [#412](https://github.com/pirdehi/xomoni/issues/412) | |
 
 ## Dropped
 

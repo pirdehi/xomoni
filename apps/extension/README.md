@@ -28,6 +28,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - the keep rules at their edges: a like threshold, words in any case and inside words, every form of a post's link and links that aren't one, the person's own threads, and what the preview, the backup and the job leave out (`keep-rules.spec.ts`, #367);
 - the one-click update of a zip install, in a build that trusts a throwaway release key: the folder, the signed release from GitHub, and every release it refuses (`one-click-updates.spec.ts`, #305);
 - signing out of Xomoni: the dialog, removing the account's data, X's own sign-out page, the signed-out page and signing in again, and what is kept and stopped (`sign-out.spec.ts`, #226);
+- one sign-in with xomoni.com, played at the extension: signing in and out from either side, the messages Xomoni refuses and who may send them (`one-sign-in.spec.ts`, #232);
 - the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
 - Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.
 

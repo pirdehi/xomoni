@@ -94,8 +94,10 @@ async function installFakeExtension(page: Page) {
 /** The types of the messages received, without the hellos. */
 const actions = (received: { type: string }[]) => received.map((m) => m.type).filter((t) => t !== 'xomoni-hello');
 
-test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', () => {
-  test('signing in on xomoni.com signs Xomoni in; signing out there signs it out too', async ({ page }) => {
+// Two of one sign-in's scenarios, the website's side (docs/scenarios/232-one-sign-in.md); Xomoni's side is in
+// e2e/extension/one-sign-in.spec.ts.
+test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', { tag: '@task-232' }, () => {
+  test('S232-25 signing in on xomoni.com signs Xomoni in; signing out there signs it out too', async ({ page }) => {
     const email = uniqueEmail('one-sign-in');
     await createConfirmedUser(email, PASSWORD);
     const fake = await installFakeExtension(page);
@@ -128,7 +130,7 @@ test.describe('one sign-in for xomoni.com and the extension (#232, ADR-0025)', (
     await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
   });
 
-  test('signing out in Xomoni signs xomoni.com out once its page is back in view', async ({ page }) => {
+  test('S232-26 signing out in Xomoni signs xomoni.com out once its page is back in view', async ({ page }) => {
     const email = uniqueEmail('one-sign-out');
     await createConfirmedUser(email, PASSWORD);
     const fake = await installFakeExtension(page);

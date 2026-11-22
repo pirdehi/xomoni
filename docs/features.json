@@ -311,7 +311,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [228, 232],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/232-one-sign-in.md",
       "en": {
         "title": "One sign-in",
         "summary": "sign in on xomoni.com and Xomoni in the same browser signs in by itself, with no code to type; sign out on either side and the other follows. An account stays optional."

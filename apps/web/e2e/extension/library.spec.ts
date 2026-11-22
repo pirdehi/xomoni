@@ -532,8 +532,9 @@ test.describe('the Library', { tag: '@task-185' }, () => {
     const download = dashboard.waitForEvent('download');
     await card(dashboard, 'Browse').getByRole('button', { name: 'Export JSON' }).click();
     await download;
-    // The file is made in the page itself, from a blob: nothing is fetched to make it.
-    expect(sent.filter((r) => !/^GET blob:chrome-extension:/.test(r))).toEqual([]);
+    // The file is made in the page itself, from a blob: nothing is fetched to make it. Only the network counts, not
+    // the browser's own icon of the download (Edge's edge://fileicon).
+    expect(sent.filter((r) => /^\S+ (https?|wss?):/.test(r))).toEqual([]);
   });
 
   test('S185-16 a read only looks: what it sends X is page loads and reads, never a change', async ({

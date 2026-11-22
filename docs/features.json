@@ -247,7 +247,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [226],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/226-sign-out.md",
       "en": {
         "title": "Sign out of Xomoni",
         "summary": "one dialog names the account and says what happens: the running job pauses, the X window closes and nothing more is recorded. You can also remove the account's data from this browser, with a copy to download first, and sign out of X on X's own page."

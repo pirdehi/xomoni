@@ -16,6 +16,12 @@ let current = '';
 /** The release page the notice links to. */
 const RELEASES = 'https://github.com/pirdehi/xomoni/releases/latest';
 
+/** Whether a request goes to GitHub, where releases are published, or the host its downloads redirect to. */
+function fromGitHub(url: string): boolean {
+  const host = new URL(url).hostname;
+  return host === 'github.com' || host === 'release-assets.githubusercontent.com';
+}
+
 /** The notice above every page that `version` is out. */
 const notice = (dashboard: Page, version: string): Locator =>
   dashboard.locator('[data-tone]').filter({ hasText: new RegExp(`^Xomoni ${version.replaceAll('.', '\\.')} is out`) });
@@ -144,7 +150,7 @@ test.describe('hear about new versions: the extension', { tag: '@task-151' }, ()
     await expect(dashboard.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
     await expect(anyNotice(dashboard)).toHaveCount(0);
     expect(site.calls).toEqual([]);
-    expect(sent.filter((url) => url.startsWith('https://github.com') || url.startsWith(CLOUD_URL))).toEqual([]);
+    expect(sent.filter((url) => fromGitHub(url) || new URL(url).origin === CLOUD_URL)).toEqual([]);
   });
 
   test('S151-06 while xomoni.com can’t be reached, there is no notice and no error, and the next report brings it', async ({
@@ -196,7 +202,7 @@ test.describe('hear about new versions: the extension', { tag: '@task-151' }, ()
     await expect(link).toHaveAttribute('rel', /\bnoreferrer\b/);
     await expect(link).toHaveAttribute('rel', /\bnoopener\b/);
     // Nothing reached GitHub, nor anything else, until the person presses something.
-    expect(sent.filter((url) => /github/.test(url))).toEqual([]);
+    expect(sent.filter(fromGitHub)).toEqual([]);
   });
 
   test('S151-09 the version news comes from xomoni.com’s answer only: a status report says no more than before', async ({

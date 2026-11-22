@@ -115,7 +115,7 @@ test.describe('private by design: the extension', { tag: '@task-143' }, () => {
     await dashboard.reload();
     await expect(dashboard.getByRole('heading', { level: 1, name: 'Welcome to Xomoni' })).toBeVisible();
     // Only the extension's own files: no telemetry, no update check, not even x.com before the person opens it.
-    expect(sent.filter((r) => !r.includes(`chrome-extension://`))).toEqual([]);
+    expect(sent.filter((r) => /^\S+ (https?|wss?):/.test(r))).toEqual([]);
   });
 
   test('S143-04 Xomoni’s pages can’t reach another site, even if something tried', async ({ dashboard }) => {
@@ -365,6 +365,7 @@ test.describe('private by design: the extension', { tag: '@task-143' }, () => {
     const download = dashboard.waitForEvent('download');
     await dashboard.getByRole('button', { name: 'Export JSON' }).click();
     expect((await download).suggestedFilename()).toMatch(/^xomoni-posts-present-\d{4}-\d{2}-\d{2}\.json$/);
-    expect(sent.filter((r) => !/^GET (blob:)?chrome-extension:/.test(r))).toEqual([]);
+    // Only the network counts, not the browser's own icon of the download (Edge's edge://fileicon).
+    expect(sent.filter((r) => /^\S+ (https?|wss?):/.test(r))).toEqual([]);
   });
 });

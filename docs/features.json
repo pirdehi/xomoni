@@ -231,7 +231,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [249],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/249-daily-numbers.md",
       "en": {
         "title": "Daily numbers",
         "summary": "one row per X account per day, kept in this browser: followers, following, posts and likes, what you published and removed, and an estimate of what your posts received. Only pages X already showed count; nothing new is asked of X."

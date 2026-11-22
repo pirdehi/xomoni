@@ -423,7 +423,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [256],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/256-comments.md",
       "en": {
         "title": "Comments on xomoni.com",
         "summary": "find your replies by date, likes, who you replied to and words, see who you reply to most, and send the ones you pick to Xomoni's Cleanup to review. *Replies to you* counts the replies you get each day; Xomoni keeps them on your computer only, for 90 days."

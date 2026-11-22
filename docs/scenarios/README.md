@@ -129,3 +129,4 @@ The check reads the files; it doesn't run the tests. CI's `e2e` job does, the we
 - [`199-cleanup-by-date.md`](199-cleanup-by-date.md): cleanup by date, from the preview and the typed DELETE to the job's pace and its stops, in the extension (#199, #345).
 - [`367-keep-rules.md`](367-keep-rules.md): the keep rules of a cleanup, likes, words, pasted links and the person's own threads, at their edges and in what the preview, the backup and the job leave out, in the extension (#367, #345).
 - [`17-x-pacing.md`](17-x-pacing.md): within one fifth of X's limits, from the caps and the warm-up the dashboard shows to the waits for X's live limits and the risk ladder's stops, in the extension (#17, #345).
+- [`305-one-click-updates.md`](305-one-click-updates.md): updating a zip install in one click, from the folder and the signed release to everything it refuses to install, in the extension as it will run once the release key is set up (#305, #345).

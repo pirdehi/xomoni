@@ -229,6 +229,35 @@ describe('Settings › Updates (#305)', () => {
   });
 });
 
+describe('the notice and Settings together (#305, #345)', () => {
+  it('see the folder chosen or forgotten in either, at once, as it is stored', async () => {
+    // What each one looks up is what is stored, as in the dashboard.
+    vi.mocked(oneClickState).mockImplementation(async () => ({
+      ready: true,
+      folder: (await kvOwnFolderStore.get())?.name ?? null,
+    }));
+    render(
+      <>
+        <OneClickUpdate version="0.5.0" />
+        <UpdatesCard />
+      </>,
+    );
+    expect(await screen.findByRole('button', { name: 'Set up one-click updates' })).toBeInTheDocument();
+
+    // Chosen in Settings: the notice offers the update. IndexedDB keeps a handle as it is; this one is a plain copy of
+    // the folder's name, which is all the dashboard reads of it here.
+    await act(() => kvOwnFolderStore.set({ kind: 'directory', name: folder.name } as OwnFolderModule.OwnFolder));
+    expect(await screen.findByRole('button', { name: 'Update now' })).toBeEnabled();
+    expect(await screen.findByText(/Xomoni’s folder: “xomoni-extension”/)).toBeInTheDocument();
+
+    // Forgotten there, or in another tab: the notice asks for it again.
+    await act(() => kvOwnFolderStore.set(null));
+    expect(await screen.findByRole('button', { name: 'Set up one-click updates' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update now' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Choose Xomoni’s folder' })).toBeInTheDocument();
+  });
+});
+
 describe('after an update (#305)', () => {
   it('says once that the new version runs', async () => {
     vi.mocked(updateOutcome).mockResolvedValue({ took: true, version: '0.5.0' });

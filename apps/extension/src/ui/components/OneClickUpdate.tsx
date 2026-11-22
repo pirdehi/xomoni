@@ -54,13 +54,21 @@ export function stepText(step: UpdateStep, version: string): string {
   }
 }
 
-/** Whether one-click updates work here and which folder was chosen; `refresh` looks again after a change. */
+/**
+ * Whether one-click updates work here and which folder was chosen; `refresh` looks again after a change. It also looks
+ * again whenever the folder stored changes, so the notice and Settings' card agree at once, whichever of them, or
+ * another tab, chose or forgot it (#345).
+ */
 function useOneClick(): [OneClickState | undefined, () => void] {
   const [state, setState] = useState<OneClickState>();
+  const stored = useLiveQuery(async () => (await kvOwnFolderStore.get())?.name ?? null);
   const refresh = useCallback(() => {
     oneClickState().then(setState, () => setState({ ready: false, why: 'unsupported' }));
   }, []);
-  useEffect(refresh, [refresh]);
+  useEffect(() => {
+    // Once the stored folder is read, and each time it changes.
+    if (stored !== undefined) refresh();
+  }, [refresh, stored]);
   return [state, refresh];
 }
 

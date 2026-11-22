@@ -34,7 +34,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'daily-numbers',
   'sign-out',
   'move-your-data',
-  'one-click-updates',
   'private-by-design',
   'one-sign-in',
   'live-job-status',

@@ -14,6 +14,7 @@ import {
   removeBefore,
   risksDialog,
   waitLeft,
+  workAnyTime,
   xWindowOf,
 } from '../support/cleanup';
 import { expect, openXWindow, tabTo, test } from '../support/extension';
@@ -47,11 +48,15 @@ const tabs = (dashboard: Page): Locator => dashboard.getByRole('tablist', { name
 const newest = (dashboard: Page, query: string): Locator =>
   dashboard.getByRole('list', { name: `Newest posts for ${query}` }).getByRole('listitem');
 
-/** The person's start: the X window open and their profile's posts browsed, then the Watch page. */
+/**
+ * The person's start: the X window open and their profile's posts browsed, active hours off in Settings, then the Watch
+ * page. With active hours on (8:00 to 23:00 by default), a watch started at night, as CI's runs often are in UTC, waits
+ * for the morning before its first search, and no test would see one.
+ */
 async function openWatch(dashboard: Page, page: Page) {
   await openXWindow(dashboard);
   await browseProfile(page, ['posts']);
-  await dashboard.bringToFront();
+  await workAnyTime(dashboard);
   await dashboard.getByRole('navigation').getByRole('button', { name: 'Watch', exact: true }).click();
   await expect(dashboard.getByRole('heading', { level: 1, name: 'Watch' })).toBeVisible();
 }

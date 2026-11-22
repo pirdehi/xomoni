@@ -49,7 +49,8 @@ vi.mock('../../src/ui/format', async (importOriginal) => ({
 }));
 
 const bodyRows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1);
-const kindTab = (label: string) => screen.getByRole('button', { name: new RegExp(`^${label} \\d+$`) });
+// The kind's count shows once the counts are in, a moment after the list (#390): a tab is found with or without it.
+const kindTab = (label: string) => screen.getByRole('button', { name: new RegExp(`^${label}( \\d+)?$`) });
 const search = () => screen.getByPlaceholderText('Search text or @author');
 
 describe('ItemBrowser', () => {
@@ -75,7 +76,7 @@ describe('ItemBrowser', () => {
       expect(await screen.findByText('Nothing here')).toBeInTheDocument();
       expect(screen.getByText('Import your X archive or complete your copy to fill the library.')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Export JSON' })).toBeDisabled();
-      expect(screen.getByText('0 items · page 1 of 1')).toBeInTheDocument();
+      expect(await screen.findByText('0 items · page 1 of 1')).toBeInTheDocument();
     });
 
     it('lists posts newest first, with their likes, sources and links', async () => {
@@ -104,8 +105,9 @@ describe('ItemBrowser', () => {
       expect(within(oldest!).getByText('Scan')).toHaveAttribute('data-tone', 'accent');
       expect(within(oldest!).getByRole('link', { name: 'Open on X' })).toHaveAttribute('target', '_blank');
       expect(kindTab('Posts')).toHaveAttribute('aria-pressed', 'true');
-      expect(kindTab('Posts')).toHaveTextContent('Posts 2');
-      expect(screen.getByText('2 items · page 1 of 1')).toBeInTheDocument();
+      // The counts come in a moment after the list.
+      await waitFor(() => expect(kindTab('Posts')).toHaveTextContent('Posts 2'));
+      expect(await screen.findByText('2 items · page 1 of 1')).toBeInTheDocument();
     });
 
     it('shows likes with their author and estimated like time, and reposts linked to the original', async () => {
@@ -158,7 +160,7 @@ describe('ItemBrowser', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Removed' }));
       expect(await screen.findByText('Gone now')).toBeInTheDocument();
       expect(screen.queryByText('Still on X')).not.toBeInTheDocument();
-      expect(screen.getByText('1 items · page 1 of 1')).toBeInTheDocument();
+      expect(await screen.findByText('1 items · page 1 of 1')).toBeInTheDocument();
     });
 
     it('searches text and authors, case-insensitively', async () => {
@@ -218,7 +220,7 @@ describe('ItemBrowser', () => {
       expect(box).toHaveValue('');
       expect(await screen.findByText('Lunch')).toBeInTheDocument();
       expect(screen.getByText('Launch day!')).toBeInTheDocument();
-      expect(screen.getByText('2 items · page 1 of 1')).toBeInTheDocument();
+      expect(await screen.findByText('2 items · page 1 of 1')).toBeInTheDocument();
     });
 
     // Authors are stored without the "@" that rows show and the search box suggests.

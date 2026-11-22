@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCleanup } from '../src/engine/cleanup';
 import type { JobContext } from '../src/engine/context';
 import { unseenPosts, worthWarning } from '../src/shared/coverage';
-import { archiveImported, db, itemKey, markArchiveImported } from '../src/shared/db';
+import { archiveImported, db, itemKey, markArchiveImported, postTotals } from '../src/shared/db';
 import type { Account, Item, ItemStatus } from '../src/shared/types';
 
 const ACCOUNT = 'acct-1';
@@ -135,6 +135,24 @@ describe('Cleanup and what X search can’t show (#15, PLAYBOOK E2, C6)', () => 
     const ctx = fakeContext({ sweep: false, deep: false });
     await run(ctx);
     expect(ctx.note).not.toHaveBeenCalled();
+  });
+});
+
+describe('postTotals (#390)', () => {
+  it('counts what is on X less what is gone, the account’s own only, and what was removed since X’s count', async () => {
+    const other = `${ACCOUNT}0`;
+    await db.items.bulkAdd([
+      item('1'),
+      item('2'),
+      item('3', 'gone'),
+      item('4', 'deleted', NOW - HOUR),
+      item('5', 'deleted', NOW + HOUR),
+      { ...item('6'), key: itemKey(other, 'post', '6'), accountId: other },
+      { ...item('7', 'deleted', NOW + HOUR), key: itemKey(other, 'post', '7'), accountId: other },
+    ]);
+    expect(await postTotals(account({ profileAt: NOW }))).toEqual({ present: 2, removedSinceProfile: 1 });
+    // Before X's count was ever seen, nothing removed is in it.
+    expect(await postTotals(account({}))).toEqual({ present: 2, removedSinceProfile: 0 });
   });
 });
 

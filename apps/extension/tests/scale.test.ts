@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { archiveImported, dailyRows, db, postTotals } from '../src/shared/db';
 import { findCandidates } from '../src/shared/filter';
 import { exportData, importData } from '../src/shared/move';
@@ -226,6 +226,36 @@ describe(`a heavy X user's history, at ${String(SCALE)} of 100,000 posts and 100
     expect(likes.result.every((i) => (i.likedAt ?? i.createdAt) < filter.before)).toBe(true);
 
     await measure('Cleanup: the backup of the preview', 10_000, async () => JSON.stringify(kept.result, null, 2));
+  });
+
+  it('reads in bulk in one transaction, so live queries keep no copy and every count is one moment (#390)', async () => {
+    // Dexie's live queries keep the result of a bulk read for as long as a page subscribes, unless it was read in an
+    // explicit transaction: Cleanup's whole date range, a search's every read, the inventory without the marker.
+    const transaction = vi.spyOn(db, 'transaction');
+    const filter: CleanupFilter = {
+      target: 'like',
+      before: NOW,
+      after: null,
+      keepMinLikes: null,
+      keepKeywords: [],
+      keepIds: [],
+      skipSelfReplies: true,
+    };
+    const paths: [string, () => Promise<unknown>][] = [
+      ['Cleanup’s preview', () => findCandidates(id, filter)],
+      ['a search', () => libraryPage({ accountId: id, kind: 'like', status: 'present', query: 'zzz', page: 0 })],
+      ['the counts', () => kindCounts(id)],
+      ['the copy’s totals', () => postTotals(account)],
+    ];
+    await db.kv.delete(`archive:${id}`);
+    paths.push(['the archive without its marker', () => archiveImported(id)]);
+    for (const [path, read] of paths) {
+      transaction.mockClear();
+      await read();
+      expect(transaction, path).toHaveBeenCalledWith('r', db.items, expect.any(Function));
+    }
+    transaction.mockRestore();
+    await db.kv.put({ key: `archive:${id}`, value: NOW - 30 * DAY });
   });
 
   it('the daily numbers read the days asked for, not the whole history', async () => {

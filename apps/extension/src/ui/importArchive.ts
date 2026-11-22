@@ -127,6 +127,8 @@ export async function importArchive(
     const rows = parseYtd(await file.text());
     const drafts: ItemDraft[] =
       kind === 'tweets' ? archiveTweetDrafts(rows, account.id, account.handle) : archiveLikeDrafts(rows);
+    // Saying so before the first chunk: it takes a while at 20,000 rows.
+    onProgress(`Saving ${file.name}: 0 / ${drafts.length.toLocaleString()}`);
     for (let i = 0; i < drafts.length; i += ARCHIVE_IMPORT_CHUNK) {
       await upsertItems(account.id, drafts.slice(i, i + ARCHIVE_IMPORT_CHUNK), 'archive');
       onProgress(

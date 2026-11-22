@@ -549,7 +549,12 @@ export async function expectingArchive(now = Date.now()): Promise<boolean> {
  * was last seen, which that count still includes (PLAYBOOK E2). Counted without loading rows but the removed ones,
  * which are read in one bulk read rather than a cursor's row at a time (#390).
  */
-export async function postTotals(account: Account): Promise<{ present: number; removedSinceProfile: number }> {
+export function postTotals(account: Account): Promise<{ present: number; removedSinceProfile: number }> {
+  // One moment for every count, and no copy kept by Dexie's live queries of the rows read (#390).
+  return db.transaction('r', db.items, () => postTotalsNow(account));
+}
+
+async function postTotalsNow(account: Account): Promise<{ present: number; removedSinceProfile: number }> {
   let present = 0;
   let removedSinceProfile = 0;
   for (const kind of ['post', 'reply', 'repost'] as const) {
@@ -562,11 +567,15 @@ export async function postTotals(account: Account): Promise<{ present: number; r
       .where(':id')
       .between(itemKey(account.id, kind, ''), `${account.id}:${kind};`)
       .count();
-    const removed = await range('deleted').toArray();
-    present += all - removed.length - (await range('gone').count());
-    // Before X's count was ever seen, nothing removed is in it.
-    if (account.profileAt == null) continue;
+    const gone = await range('gone').count();
+    // Before X's count was ever seen, nothing removed is in it: counting them is enough.
+    if (account.profileAt == null) {
+      present += all - gone - (await range('deleted').count());
+      continue;
+    }
     const since = account.profileAt;
+    const removed = await range('deleted').toArray();
+    present += all - gone - removed.length;
     removedSinceProfile += removed.filter((item) => item.statusAt > since).length;
   }
   return { present, removedSinceProfile };
@@ -580,19 +589,22 @@ export async function postTotals(account: Account): Promise<{ present: number; r
 export async function archiveImported(accountId: string): Promise<boolean> {
   if (await kvGet<number | null>(archiveKey(accountId), null)) return true;
   // Keys are `<account id>:<kind>:<id>`, so the account's items are one range of keys, read in bulk a chunk at a
-  // time until one came from an archive (#390): a cursor walked a heavy X user's whole copy a row at a time.
-  let after = `${accountId}:`;
-  for (;;) {
-    const rows = await db.items
-      .where(':id')
-      .between(after, `${accountId};`, false, false)
-      .limit(ARCHIVE_CHUNK)
-      .toArray();
-    if (rows.some((item) => item.accountId === accountId && item.sources.includes('archive'))) return true;
-    const last = rows.at(-1);
-    if (rows.length < ARCHIVE_CHUNK || !last) return false;
-    after = last.key;
-  }
+  // time until one came from an archive (#390): a cursor walked a heavy X user's whole copy a row at a time. In an
+  // explicit transaction, so Dexie's live queries keep no copy of the inventory on the pages that ask.
+  return db.transaction('r', db.items, async () => {
+    let after = `${accountId}:`;
+    for (;;) {
+      const rows = await db.items
+        .where(':id')
+        .between(after, `${accountId};`, false, false)
+        .limit(ARCHIVE_CHUNK)
+        .toArray();
+      if (rows.some((item) => item.accountId === accountId && item.sources.includes('archive'))) return true;
+      const last = rows.at(-1);
+      if (rows.length < ARCHIVE_CHUNK || !last) return false;
+      after = last.key;
+    }
+  });
 }
 
 /** Items `archiveImported` reads at a time when no marker says an archive was imported. */

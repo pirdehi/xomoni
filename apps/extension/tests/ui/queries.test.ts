@@ -1,17 +1,19 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
 import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../src/shared/db';
 import {
   KINDS,
   LIBRARY_PAGE_SIZE,
+  kindCounts,
   libraryPage,
   useKindCounts,
   useYearHistogram,
   yearHistogram,
 } from '../../src/ui/queries';
 import { ME, resetDb } from '../support/fixtures';
+import { countReads, installReadCounter } from '../support/reads';
 import { item } from '../support/shell';
 
 describe('inventory queries', () => {
@@ -55,6 +57,25 @@ describe('inventory queries', () => {
     await waitFor(() => {
       expect(result.current?.repost).toEqual({ present: 1, deleted: 0 });
     });
+  });
+
+  it('counts only the account’s own, not those of an account whose id starts with its id (#390)', async () => {
+    const other = `${ME}0`;
+    await db.items.bulkAdd([
+      item('post', 'present'),
+      item('post', 'gone'),
+      item('like', 'deleted'),
+      item('post', 'present', { accountId: other, key: `${other}:post:a` }),
+      item('post', 'deleted', { accountId: other, key: `${other}:post:b` }),
+      item('like', 'present', { accountId: other, key: `${other}:like:c` }),
+    ]);
+    expect(await kindCounts(ME)).toEqual({
+      post: { present: 1, deleted: 0 },
+      reply: { present: 0, deleted: 0 },
+      repost: { present: 0, deleted: 0 },
+      like: { present: 0, deleted: 1 },
+    });
+    expect((await kindCounts(other)).post).toEqual({ present: 1, deleted: 1 });
   });
 
   it('has no counts without an account', async () => {
@@ -129,8 +150,41 @@ describe('inventory queries', () => {
 });
 
 describe('libraryPage (#390)', () => {
+  beforeAll(async () => {
+    await installReadCounter();
+  });
   beforeEach(async () => {
     await resetDb();
+  });
+
+  it('reads a large group of likes with one time once, not again for each bulk read', async () => {
+    // Likes from X's archive of posts older than X's ids with a time all have 0: 2,500 of them, and a few newer.
+    const likes = [
+      ...Array.from({ length: 2_500 }, (_, n) =>
+        item('like', 'present', { createdAt: 0, text: n % 500 ? `like ${String(n)}` : `like ${String(n)} launch` }),
+      ),
+      ...Array.from({ length: 30 }, (_, n) =>
+        item('like', 'present', { createdAt: Date.UTC(2020, 0, 1 + n), text: `recent ${String(n)}` }),
+      ),
+    ];
+    await db.items.bulkAdd(likes);
+    const { result, reads } = await countReads(() =>
+      libraryPage({ accountId: ME, kind: 'like', status: 'present', query: 'no such word', page: 0 }),
+    );
+    expect(result).toEqual([]);
+    // Every like once, but for the edge of the first bulk read, and no cursor: reading the group again for each read
+    // came to tens of thousands of rows.
+    expect(reads.rows.items).toBeLessThanOrEqual(likes.length + 1_000);
+    expect(reads.steps.items ?? 0).toBe(0);
+
+    const found = (await libraryPage({ accountId: ME, kind: 'like', status: 'present', query: 'launch', page: 0 })).map(
+      (i) => i.key,
+    );
+    const expected = likes
+      .filter((i) => i.text.includes('launch'))
+      .sort((a, b) => b.createdAt - a.createdAt || (a.key < b.key ? 1 : -1))
+      .map((i) => i.key);
+    expect(found).toEqual(expected);
   });
 
   it('pages a search newest first, as one walk down the list would, across bulk reads and equal times', async () => {

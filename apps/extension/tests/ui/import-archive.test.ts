@@ -230,6 +230,8 @@ describe('importArchive', () => {
     expect(await db.items.count()).toBe(total);
     expect(progress.mock.calls.map(([msg]) => msg)).toEqual([
       'Reading tweets.js…',
+      // Said before the first chunk, which takes a while.
+      `Saving tweets.js: 0 / ${total.toLocaleString()}`,
       `Saving tweets.js: ${(20_000).toLocaleString()} / ${total.toLocaleString()}`,
       `Saving tweets.js: ${total.toLocaleString()} / ${total.toLocaleString()}`,
     ]);

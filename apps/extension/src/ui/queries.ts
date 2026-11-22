@@ -29,15 +29,18 @@ function countStatus(accountId: string, kind: ItemKind, status: ItemStatus) {
  * items, the counts alone kept Home and the Library waiting two seconds. Every item has one of the three statuses.
  */
 export async function kindCounts(accountId: string): Promise<KindCounts> {
-  const entries = await Promise.all(
-    KINDS.map(async (k) => {
-      const [all, deleted, gone] = await Promise.all([
-        countKind(accountId, k),
-        countStatus(accountId, k, 'deleted'),
-        countStatus(accountId, k, 'gone'),
-      ]);
-      return [k, { present: all - deleted - gone, deleted }] as const;
-    }),
+  // One moment for every count: a write between them could otherwise show a count one off, even below 0.
+  const entries = await readInOne(() =>
+    Promise.all(
+      KINDS.map(async (k) => {
+        const [all, deleted, gone] = await Promise.all([
+          countKind(accountId, k),
+          countStatus(accountId, k, 'deleted'),
+          countStatus(accountId, k, 'gone'),
+        ]);
+        return [k, { present: all - deleted - gone, deleted }] as const;
+      }),
+    ),
   );
   return Object.fromEntries(entries) as KindCounts;
 }
@@ -70,9 +73,12 @@ export interface LibraryQuery {
 const SEARCH_CHUNK = 1_000;
 
 /**
- * The items of one list, newest first (by `createdAt`, then by key, as the index orders them), handed to `take` a
- * bulk read of `SEARCH_CHUNK` at a time until it returns true or the list ends. A cursor would hand them over one at a
- * time, which took seconds for a heavy X user's tens of thousands of posts (#390).
+ * The items of one list, newest first (by `createdAt`, then by key, as the index orders them), handed to `take` a bulk
+ * read at a time until it returns true or the list ends. A cursor would hand them over one at a time, which took
+ * seconds for a heavy X user's tens of thousands of posts (#390). Each read takes up to `SEARCH_CHUNK` rows; the items
+ * that share the last one's time are then read as one group, however many (archive likes of posts from before X's
+ * ids carried a time all have 0), and the next read starts below that time. So each item is read at most twice.
+ * Call it inside a transaction (`readInOne`).
  */
 async function newestFirst(
   accountId: string,
@@ -80,24 +86,37 @@ async function newestFirst(
   status: ItemStatus,
   take: (items: readonly Item[]) => boolean,
 ): Promise<void> {
+  const index = '[accountId+kind+status+createdAt]';
   let upper = Infinity;
-  // Items read already with `createdAt` equal to `upper`: the next read starts at that time again, so none is missed.
-  let seen = new Set<string>();
+  let below = false;
   for (;;) {
-    const limit = SEARCH_CHUNK + seen.size;
     const rows = await db.items
-      .where('[accountId+kind+status+createdAt]')
-      .between([accountId, kind, status, -Infinity], [accountId, kind, status, upper], true, true)
+      .where(index)
+      .between([accountId, kind, status, -Infinity], [accountId, kind, status, upper], true, !below)
       .reverse()
-      .limit(limit)
+      .limit(SEARCH_CHUNK)
       .toArray();
-    if (take(rows.filter((item) => !(item.createdAt === upper && seen.has(item.key))))) return;
     const last = rows.at(-1);
-    if (rows.length < limit || !last) return;
-    const tied = rows.filter((item) => item.createdAt === last.createdAt).map((item) => item.key);
-    seen = new Set(last.createdAt === upper ? [...seen, ...tied] : tied);
+    if (rows.length < SEARCH_CHUNK || !last) {
+      take(rows);
+      return;
+    }
+    // The rows newer than the last one's time, then everything at that time, in the index's order.
+    if (take(rows.filter((item) => item.createdAt !== last.createdAt))) return;
+    const group = await db.items.where(index).equals([accountId, kind, status, last.createdAt]).reverse().toArray();
+    if (take(group)) return;
     upper = last.createdAt;
+    below = true;
   }
+}
+
+/**
+ * Runs `read` in one read-only transaction of the inventory (#390): its reads are one consistent moment, and Dexie's
+ * live queries keep no copy of a read made in an explicit transaction, where they would keep every bulk read of a page
+ * that stays open (tens of megabytes for a heavy X user's copy). The live query still runs again on every change.
+ */
+export function readInOne<T>(read: () => Promise<T>): Promise<T> {
+  return db.transaction('r', db.items, read);
 }
 
 /**
@@ -120,12 +139,14 @@ export async function libraryPage({ accountId, kind, status, query, page }: Libr
   const author = q.replace(/^@/, '');
   const wanted = (page + 1) * LIBRARY_PAGE_SIZE;
   const found: Item[] = [];
-  await newestFirst(accountId, kind, status, (items) => {
-    for (const i of items) {
-      if (i.text.toLowerCase().includes(q) || i.author.toLowerCase().includes(author)) found.push(i);
-    }
-    return found.length >= wanted;
-  });
+  await readInOne(() =>
+    newestFirst(accountId, kind, status, (items) => {
+      for (const i of items) {
+        if (i.text.toLowerCase().includes(q) || i.author.toLowerCase().includes(author)) found.push(i);
+      }
+      return found.length >= wanted;
+    }),
+  );
   return found.slice(page * LIBRARY_PAGE_SIZE, wanted);
 }
 

@@ -263,7 +263,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [300],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/300-move-your-data.md",
       "en": {
         "title": "Move your data to a new Xomoni",
         "summary": "*Export everything* saves one file in Downloads with your accounts, your copy, jobs, the log and settings; *Import from a file* in the new Xomoni checks the whole file first, then adds it to what is there. The file never leaves your computer."

@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-22
+
+A security release: every version since 0.2.0 could miss X's notice of a limited or suspended account at the start of a job, and send requests to X before reading it. Update now.
+
 ### Fixed
 
 - **Safety: a job could miss X's notice that your account is limited or suspended, and go on** (#375). When a job started while the X window showed that notice, Xomoni could read X's page before X had drawn it, so it saw no notice. The job then went on at its pace: it loaded your profile or a search, which makes X's page ask X for your posts, and waited for its first delete. Now Xomoni reads the X window's page only once X has drawn it, so the notice stops the job before anything else reaches X. It also reads each page again once its posts show, so a notice that comes with them stops the job before it scrolls or removes anything. This is a safety fix: every release since 0.2.0, 0.5.1 included, had the gap.

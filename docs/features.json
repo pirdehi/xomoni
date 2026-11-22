@@ -455,7 +455,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [151],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/151-update-notice.md",
       "en": {
         "title": "Hear about new versions",
         "summary": "a browser connected to xomoni.com says when a newer Xomoni is out, and whether it fixes a security problem."

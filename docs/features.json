@@ -294,8 +294,8 @@
       "area": "both",
       "status": "shipped",
       "since": "0.1.0",
-      "issues": [],
-      "scenarios": null,
+      "issues": [143, 149, 233],
+      "scenarios": "docs/scenarios/143-private-by-design.md",
       "en": {
         "title": "Private by design",
         "summary": "no telemetry, and your posts, likes and copy stay in IndexedDB in your browser profile. If you sign in to xomoni.com, only job status goes there (titles, states and counts), and daily counts only if you turn them on. Post text, likes and post ids never reach a server."

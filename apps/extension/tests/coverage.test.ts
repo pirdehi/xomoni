@@ -148,4 +148,19 @@ describe('archiveImported', () => {
     await db.items.add({ ...item('9'), sources: ['archive'] });
     expect(await archiveImported(ACCOUNT)).toBe(true);
   });
+
+  it('without the marker, finds an archive item past thousands of others, and only the account’s own (#390)', async () => {
+    // 4,500 posts read from X, then one from the archive last in key order: past two of its bulk reads.
+    await db.items.bulkAdd(Array.from({ length: 4_500 }, (_, n) => item(`1${String(n).padStart(5, '0')}`)));
+    expect(await archiveImported(ACCOUNT)).toBe(false);
+    await db.items.add({ ...item('199999'), sources: ['scan', 'archive'] });
+    expect(await archiveImported(ACCOUNT)).toBe(true);
+
+    // An account whose id starts with this one's has its own items.
+    const longer = `${ACCOUNT}0`;
+    await db.items.add({ ...item('5'), key: itemKey(longer, 'post', '5'), accountId: longer, sources: ['archive'] });
+    expect(await archiveImported(longer)).toBe(true);
+    await db.items.delete(itemKey(ACCOUNT, 'post', '199999'));
+    expect(await archiveImported(ACCOUNT)).toBe(false);
+  });
 });

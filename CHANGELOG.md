@@ -4,6 +4,16 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Changed
+
+- **Faster with a large copy of your account** (#390). With 100,000 posts and 100,000 likes, as a heavy X user has:
+  - importing X's archive in the Library takes about a minute and a half instead of four to five: it saves 20,000 posts at a time, so the page counts your copy again ten times rather than a hundred;
+  - the Library opens in about a second instead of four or five, and Home's counts and its chart by year in under two seconds instead of five: Xomoni counts your posts the fast way, and no longer reads them one by one for the chart;
+  - Cleanup counts what a cleanup would remove in under two seconds instead of four or five, and with your keep rules in under one, and the Library's search reads your posts in large batches, about twice as fast;
+  - the Library's search starts once you pause typing, rather than at every key.
+
+  What each page shows and what a cleanup removes are the same as before.
+
 ### Fixed
 
 - **Safety: a read now stops at X's rate limit, as a cleanup does** (#392). When X refused a page of a read with its rate limit (a 429), the read passed the page over. A read of several pages, such as *Complete my copy*, a full history or a date range, went on to its next pages. The risk ladder never heard of X's warning, so X's second rate limit within an hour didn't stop Xomoni for 6 hours, and the read ended *Completed*, with *Healthy: no warnings from X*. A post page X refused while Xomoni checked an earlier delete counted that delete as done, and a scroll X refused counted as the end of the page. Now each of these puts X's warning on the risk ladder and waits for X's reset. The read then loads the same page again, up to 3 times, and pauses after that; the check waits for the next page. This is a safety fix.

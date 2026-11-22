@@ -9,7 +9,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:extension": "playwright test -c playwright.extension.config.ts"
+    "test:e2e:extension": "playwright test -c playwright.extension.config.ts",
+    "test:e2e:scale": "XOMONI_SCALE=1 playwright test -c playwright.extension.config.ts scale.spec.ts"
   },
   "dependencies": {
     "@fluentui/react-avatar": "^9.11.10",

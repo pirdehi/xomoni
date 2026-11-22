@@ -546,8 +546,8 @@ export async function expectingArchive(now = Date.now()): Promise<boolean> {
 
 /**
  * Posts, replies and reposts of an account still present in the inventory, and those Xomoni removed after X's count
- * was last seen, which that count still includes (PLAYBOOK E2). Counted on the index, without loading rows but the
- * removed ones.
+ * was last seen, which that count still includes (PLAYBOOK E2). Counted without loading rows but the removed ones,
+ * which are read in one bulk read rather than a cursor's row at a time (#390).
  */
 export async function postTotals(account: Account): Promise<{ present: number; removedSinceProfile: number }> {
   let present = 0;
@@ -557,10 +557,17 @@ export async function postTotals(account: Account): Promise<{ present: number; r
       db.items
         .where('[accountId+kind+status+createdAt]')
         .between([account.id, kind, status, -Infinity], [account.id, kind, status, Infinity]);
-    present += await range('present').count();
-    removedSinceProfile += await range('deleted')
-      .filter((item) => item.statusAt > (account.profileAt ?? Infinity))
+    // Present: all of the kind, counted on the primary key, less those removed or gone, the fast count (#390).
+    const all = await db.items
+      .where(':id')
+      .between(itemKey(account.id, kind, ''), `${account.id}:${kind};`)
       .count();
+    const removed = await range('deleted').toArray();
+    present += all - removed.length - (await range('gone').count());
+    // Before X's count was ever seen, nothing removed is in it.
+    if (account.profileAt == null) continue;
+    const since = account.profileAt;
+    removedSinceProfile += removed.filter((item) => item.statusAt > since).length;
   }
   return { present, removedSinceProfile };
 }
@@ -572,13 +579,24 @@ export async function postTotals(account: Account): Promise<{ present: number; r
  */
 export async function archiveImported(accountId: string): Promise<boolean> {
   if (await kvGet<number | null>(archiveKey(accountId), null)) return true;
-  const fromArchive = await db.items
-    .where('accountId')
-    .equals(accountId)
-    .filter((item) => item.sources.includes('archive'))
-    .first();
-  return !!fromArchive;
+  // Keys are `<account id>:<kind>:<id>`, so the account's items are one range of keys, read in bulk a chunk at a
+  // time until one came from an archive (#390): a cursor walked a heavy X user's whole copy a row at a time.
+  let after = `${accountId}:`;
+  for (;;) {
+    const rows = await db.items
+      .where(':id')
+      .between(after, `${accountId};`, false, false)
+      .limit(ARCHIVE_CHUNK)
+      .toArray();
+    if (rows.some((item) => item.accountId === accountId && item.sources.includes('archive'))) return true;
+    const last = rows.at(-1);
+    if (rows.length < ARCHIVE_CHUNK || !last) return false;
+    after = last.key;
+  }
 }
+
+/** Items `archiveImported` reads at a time when no marker says an archive was imported. */
+const ARCHIVE_CHUNK = 2_000;
 
 const viewCapKey = (accountId: string) => `viewCap:${accountId}`;
 

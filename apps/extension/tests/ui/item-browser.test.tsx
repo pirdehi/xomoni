@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerState } from '../../src/engine/runner';
 import { db } from '../../src/shared/db';
 import type { Item } from '../../src/shared/types';
@@ -13,6 +13,7 @@ import { ItemBrowser } from '../../src/ui/components/ItemBrowser';
 import { stubChrome } from '../support/chrome';
 import { DAY_MS, draft, seed } from '../support/cleanup-pages';
 import { ME, resetDb } from '../support/fixtures';
+import { countReads, installReadCounter } from '../support/reads';
 
 const mocks = vi.hoisted(() => {
   const runStatus: { current: RunnerState['status'] } = { current: 'idle' };
@@ -52,6 +53,9 @@ const kindTab = (label: string) => screen.getByRole('button', { name: new RegExp
 const search = () => screen.getByPlaceholderText('Search text or @author');
 
 describe('ItemBrowser', () => {
+  beforeAll(async () => {
+    await installReadCounter();
+  });
   beforeEach(async () => {
     stubChrome();
     mocks.runStatus.current = 'idle';
@@ -183,6 +187,21 @@ describe('ItemBrowser', () => {
       // Once the search result is in, bob's like is gone; until then the earlier rows are still shown.
       await waitFor(() => expect(screen.queryByText('Other')).not.toBeInTheDocument());
       expect(screen.getByText('Something')).toBeInTheDocument();
+    });
+
+    it('searches once typing pauses, not at every key (#390)', async () => {
+      await seed(
+        Array.from({ length: 40 }, (_, n) => draft({ id: String(1_000_000_100 + n), text: `Post ${String(n)}` })),
+      );
+      render(<ItemBrowser accountId={ME} handle="me" />);
+      await screen.findByText('Post 39');
+
+      // Six keys, read as one search of the 40 posts: a search at every key read them six times.
+      const { reads } = await countReads(async () => {
+        await userEvent.type(search(), 'launch');
+        expect(await screen.findByText('No items match your search.')).toBeInTheDocument();
+      });
+      expect(reads.rows.items ?? 0).toBeLessThanOrEqual(2 * 40);
     });
 
     it('clears the search with its clear button and lists every item again', async () => {

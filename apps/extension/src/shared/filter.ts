@@ -55,6 +55,8 @@ export function matchesFilter(filter: CleanupFilter, item: Item): boolean {
 /**
  * Inventory items of `accountId` that match the filter, newest effective time first. Reads IndexedDB only;
  * the `[accountId+kind+status+createdAt]` index narrows the range before `matchesFilter` runs.
+ * The range is read in one bulk read and filtered here (#390): Dexie's own filter walks it with a cursor, a row at a
+ * time, which took seconds for the tens of thousands of posts of a heavy X user. The rows are the same.
  */
 export async function findCandidates(accountId: string, filter: CleanupFilter): Promise<Item[]> {
   // A like happens after the post exists, so `before` bounds createdAt for likes
@@ -68,9 +70,8 @@ export async function findCandidates(accountId: string, filter: CleanupFilter): 
       true,
       false,
     )
-    .filter((item) => matchesFilter(filter, item))
     .toArray();
-  return rows.sort((a, b) => effectiveTime(b) - effectiveTime(a));
+  return rows.filter((item) => matchesFilter(filter, item)).sort((a, b) => effectiveTime(b) - effectiveTime(a));
 }
 
 /** The action that removes items of a cleanup target; likes use `relike` when `ghostLikes` is on. */

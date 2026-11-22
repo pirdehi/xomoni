@@ -9,7 +9,12 @@ import { addLog, markArchiveImported, upsertItems } from '../shared/db';
 import type { Account, ItemDraft } from '../shared/types';
 import { listZip, looksLikeZip, readZipEntry } from '../shared/zip';
 
-const CHUNK = 2000;
+/**
+ * Drafts merged into the inventory at a time. Every chunk is a write the open pages' live queries answer by counting
+ * the inventory again, so with a heavy X user's 200,000 items, chunks of 2,000 made the import spend minutes
+ * recounting (#390). Each chunk is still its own transaction: an import cut short keeps what it saved.
+ */
+export const ARCHIVE_IMPORT_CHUNK = 20_000;
 
 /**
  * The largest archive file Xomoni reads (#151). Each file is read whole, and a big account's `tweets.js` is a few
@@ -122,10 +127,10 @@ export async function importArchive(
     const rows = parseYtd(await file.text());
     const drafts: ItemDraft[] =
       kind === 'tweets' ? archiveTweetDrafts(rows, account.id, account.handle) : archiveLikeDrafts(rows);
-    for (let i = 0; i < drafts.length; i += CHUNK) {
-      await upsertItems(account.id, drafts.slice(i, i + CHUNK), 'archive');
+    for (let i = 0; i < drafts.length; i += ARCHIVE_IMPORT_CHUNK) {
+      await upsertItems(account.id, drafts.slice(i, i + ARCHIVE_IMPORT_CHUNK), 'archive');
       onProgress(
-        `Saving ${file.name}: ${Math.min(i + CHUNK, drafts.length).toLocaleString()} / ${drafts.length.toLocaleString()}`,
+        `Saving ${file.name}: ${Math.min(i + ARCHIVE_IMPORT_CHUNK, drafts.length).toLocaleString()} / ${drafts.length.toLocaleString()}`,
       );
     }
     if (kind === 'tweets') result.tweets += drafts.length;

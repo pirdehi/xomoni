@@ -471,7 +471,7 @@
       "status": "preview",
       "since": "0.5.1",
       "issues": [302, 304],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/304-store-install.md",
       "en": {
         "title": "Install from the Chrome Web Store and Edge Add-ons",
         "summary": "once a store lists Xomoni, xomoni.com/install shows one button for your browser, a zip install shows the steps to move to the store's Xomoni, and xomoni.com finds Xomoni by the stores' fixed ids."

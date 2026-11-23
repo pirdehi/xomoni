@@ -83,6 +83,14 @@ export function useConnection(): CloudConnection | null | undefined {
 }
 
 /**
+ * Whether the account shows its daily numbers on xomoni.com, as this browser last heard (#250, ADR-0026); undefined
+ * while it is read. This browser sends them only while it is true, so the words about what is sent follow it.
+ */
+export function useNumbersShown(): boolean | undefined {
+  return useLiveQuery(statsShown, []);
+}
+
+/**
  * Opens xomoni.com/connect to connect this browser with one click there (#228, ADR-0024); says why when Chrome
  * refuses to open the tab. Call it from a click.
  */
@@ -99,7 +107,8 @@ export async function connectOnWebsite(): Promise<void> {
  * shows the connection and disconnects it. Connecting is one click on xomoni.com (#228, ADR-0024): the card opens the
  * page and waits while it is finished there; a one-time code typed here (ADR-0018) stays as the fallback, folded. After pairing it names the account,
  * masked, and sends nothing until the person confirms it is theirs (#149). A `ConnectionMap` on top shows the link as
- * it stands, and moves while a code is being checked. It says what is sent: status only. Drawn
+ * it stands, and moves while a code is being checked. It says what is sent: status, and the daily numbers while
+ * they are on. Drawn
  * with Fluent UI (ADR-0019); a refused code is announced as an alert (`role="alert"`).
  */
 export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
@@ -110,6 +119,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const waiting = useLiveQuery(async () => pendingWebConnect(), []);
+  const numbers = useNumbersShown() === true;
 
   const onConnect = async () => {
     setBusy(true);
@@ -128,7 +138,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
     setBusy(true);
     try {
       await confirmConnection();
-      toast('Connected to xomoni.com: job status is sent from now on', 'good');
+      toast('Connected to xomoni.com: job status is sent from now on, and your daily numbers while they’re on', 'good');
     } finally {
       setBusy(false);
     }
@@ -165,6 +175,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
         <ConnectionMap
           x={x}
           cloud={busy || (connection && !connection.confirmed) ? 'pending' : connection ? 'connected' : 'off'}
+          numbers={numbers}
           size="large"
         />
       </div>
@@ -296,7 +307,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
  */
 function DailyNumbersSwitch({ token }: { token: string }) {
   const styles = useStyles();
-  const shown = useLiveQuery(statsShown, []);
+  const shown = useNumbersShown();
   const [busy, setBusy] = useState(false);
   // Set at once, so a second key or click before the page draws again asks nothing more.
   const asking = useRef(false);

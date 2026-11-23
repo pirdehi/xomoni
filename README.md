@@ -48,6 +48,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Your copy, in the Library:** shows how much of your account Xomoni has and where it came from, with a search. *Complete my copy* reads your posts, replies, likes and full history from X in one job.
 - **Archive a date range:** pick the dates, let Xomoni read them from X (read-only, at the same careful pace), and download your posts, replies and reposts from that range as a page you can open in any browser, or as JSON. It is saved on your computer only. Your official X archive stays the complete copy, with media.
 - **Watch X search:** follow up to five phrases or #hashtags in X's search. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads: nothing is liked, replied to or posted.
+- **Watch what is said about you** *(next release)*: two ready Watch searches for your own account, Mentions of you and Replies to you, off until you turn them on. A post from an account made in the last 30 days is marked with its age, from X's own search answer, and Xomoni's toolbar button counts the ones you haven't seen. Read only, and nothing leaves your computer.
 - **Dashboard:** *Home* says what runs and what X needs, with the one button that helps; *Activity* shows each job's progress, time remaining and a log you can read, and export as CSV or JSON; plus removal counts and a year-by-year chart. Light and dark themes.
 - **Daily numbers:** one row per X account per day, kept in this browser: followers, following, posts and likes, what you published and removed, and an estimate of what your posts received. Only pages X already showed count; nothing new is asked of X.
 - **Sign out of Xomoni:** one dialog names the account and says what happens: the running job pauses, the X window closes and nothing more is recorded. You can also remove the account's data from this browser, with a copy to download first, and sign out of X on X's own page.
@@ -58,7 +59,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 
 - **Private by design:** no telemetry, and your posts, likes and copy stay in IndexedDB in your browser profile. If you sign in to xomoni.com, only job status goes there (titles, states and counts), and daily counts only if you turn them on. Post text, likes and post ids never reach a server.
 - **One sign-in:** sign in on xomoni.com and Xomoni in the same browser signs in by itself, with no code to type; sign out on either side and the other follows. An account stays optional.
-- **Your jobs, live on xomoni.com:** follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent.
+- **Your jobs, live on xomoni.com:** follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent, and your daily numbers if you turn them on.
 - **Pause and cancel from xomoni.com:** job cards on xomoni.com pause or cancel a job of the same browser at once, and open Xomoni's pages. *Resume* asks you in Xomoni first: the website never starts or resumes work on X.
 - **Plan a cleanup on xomoni.com:** the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there.
 - **Library, Watch and account health on xomoni.com:** your posts, replies, reposts and likes with a search, each Watch search, and each X account's health and pace, read from Xomoni in the same browser and kept only while the page is open.
@@ -79,7 +80,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Send to my computer:** Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers.
 - **xomoni.com on a phone:** a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page.
 
-*(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
+*(next release)*: on `main`, and in Xomoni's next release; xomoni.com has its part already. *(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
 
 <!-- END GENERATED: features -->
 
@@ -240,7 +241,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3), 2026-11-23.** Xomoni has 37 [features](#features), all of them released.
+**Latest release: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3), 2026-11-23.** Xomoni has 38 [features](#features), 1 of them added since 0.5.3. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
 
 <!-- END GENERATED: status -->
 

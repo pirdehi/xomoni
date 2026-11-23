@@ -72,7 +72,12 @@ describe('Overview onboarding (no account yet)', () => {
     expect(isDone(detect!, 3)).toBe(false);
     expect([open!, login!, detect!].map(markerTone)).toEqual(['neutral', 'neutral', 'neutral']);
     expect(within(detect!).getByText('Your dashboard appears here as soon as you are signed in.')).toBeInTheDocument();
-    expect(screen.getByText('No servers. Your data stays in this browser.')).toBeInTheDocument();
+    // What leaves the browser, said exactly (ADR-0004, ADR-0026, #450): no "No servers" while an account can send.
+    expect(
+      screen.getByText(
+        'Your posts and likes stay in this browser. Signed in to xomoni.com, only job status goes there, and your daily numbers if you turn them on.',
+      ),
+    ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Open X window' }));
     await waitFor(() => {

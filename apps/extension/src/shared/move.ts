@@ -20,7 +20,7 @@ import {
 import { RUNNER_LOCK } from './runner-lock';
 import { normalizeSettings } from './settings';
 import type { Account, Item, Job, JobState, LogEntry, Settings } from './types';
-import { normalizeTabs } from './watch';
+import { WATCH_POSTS, normalizeTabs } from './watch';
 import type { ArchiveRequest } from './x-archive';
 import { type ViewCap, capReset } from './x-limits';
 
@@ -379,7 +379,8 @@ async function mergeIncoming(data: MoveData, result: MoveResult, now: number) {
  *   here stays as it is. Settings are brought inside the safety rules first (`normalizeSettings`, ADR-0012);
  * - when the archive was imported: the later time;
  * - the archive asked for on X: the later request;
- * - the daily view cap learned from X: the lower one, so a move never lets Xomoni read more.
+ * - the daily view cap learned from X: the lower one, so a move never lets Xomoni read more;
+ * - the posts from new accounts seen in Watch's ready tabs (#391): those seen in either.
  */
 function mergedValue(name: string, here: unknown, there: unknown, tabsHere: boolean): unknown {
   switch (name) {
@@ -389,6 +390,16 @@ function mergedValue(name: string, here: unknown, there: unknown, tabsHere: bool
       return here === undefined && !tabsHere ? normalizeTabs(there) : undefined;
     case 'watchResults':
       return here === undefined && !tabsHere ? there : undefined;
+    case 'watchSeen': {
+      // Seen in either Xomoni is seen (#391): both lists, each tab's a few checks' worth.
+      const mine = (here ?? {}) as Record<string, string[]>;
+      const theirs = there as Record<string, string[]>;
+      const merged: Record<string, string[]> = { ...mine };
+      for (const [tab, ids] of Object.entries(theirs)) {
+        merged[tab] = [...new Set([...(mine[tab] ?? []), ...ids])].slice(-WATCH_POSTS * 5);
+      }
+      return JSON.stringify(merged) === JSON.stringify(mine) ? undefined : merged;
+    }
     case 'archive': {
       if (here === undefined || (here === true && typeof there === 'number')) return there;
       return typeof here === 'number' && typeof there === 'number' && there > here ? there : undefined;

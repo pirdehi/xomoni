@@ -216,8 +216,10 @@ describe('StoreMoveCard (#304)', () => {
     const checked = await checkMoveText(await downloads[0]!.text(), NOW);
     expect(checked.ok && checked.summary.accounts.map((a) => a.id)).toEqual([MOVER]);
     expect(await within(region).findByRole('status')).toHaveTextContent(`Saved ${name} in Downloads.`);
-    // Ticked, and said so to screen readers.
-    expect(within(region).getByRole('heading', { name: /^Export everything ?: done$/ })).toBeInTheDocument();
+    // Ticked, and said so to screen readers, in one string: "Export everything: done", never "… : done" (#457).
+    const step = within(region).getByRole('heading', { level: 3, name: 'Export everything: done' });
+    expect(step).toHaveAttribute('aria-label', 'Export everything: done');
+    expect(step).toHaveTextContent(/^Export everything$/);
     expect(toasts.result.current.map((t) => t.text)).toContain(
       `Saved ${name}. It stays on your computer: Xomoni never sends it anywhere.`,
     );

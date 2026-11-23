@@ -107,7 +107,11 @@ test.describe('private by design: the extension', { tag: '@task-143' }, () => {
   }) => {
     const sent = requests(context);
     await expect(dashboard.getByRole('heading', { level: 1, name: 'Welcome to Xomoni' })).toBeVisible();
-    await expect(dashboard.getByText('No servers. Your data stays in this browser.')).toBeVisible();
+    await expect(
+      dashboard.getByText(
+        'Your posts and likes stay in this browser. Signed in to xomoni.com, only job status goes there, and your daily numbers if you turn them on.',
+      ),
+    ).toBeVisible();
     for (const item of PAGES) {
       await dashboard.getByRole('navigation').getByRole('button', { name: item, exact: true }).click();
       await expect(dashboard.getByRole('heading', { level: 1 })).toBeVisible();
@@ -226,7 +230,11 @@ test.describe('private by design: the extension', { tag: '@task-143' }, () => {
   test('S143-09 the first run promises privacy in words, and its page passes axe', async ({ dashboard }) => {
     const promise = dashboard.getByText('Private by design');
     await expect(promise).toBeVisible();
-    await expect(dashboard.getByText('No servers. Your data stays in this browser.')).toBeVisible();
+    await expect(
+      dashboard.getByText(
+        'Your posts and likes stay in this browser. Signed in to xomoni.com, only job status goes there, and your daily numbers if you turn them on.',
+      ),
+    ).toBeVisible();
     await expectNoSeriousA11yViolations(dashboard);
   });
 

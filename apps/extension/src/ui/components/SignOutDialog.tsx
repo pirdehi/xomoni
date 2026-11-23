@@ -18,7 +18,7 @@ import type { Account } from '../../shared/types';
 import { downloadFile, errorMessage, toDateInput } from '../format';
 import { toast } from '../hooks';
 import { type SignOutChoice, accountCopy, signOut } from '../sign-out';
-import { useConnection } from './CloudCard';
+import { useConnection, useNumbersShown } from './CloudCard';
 import { Button, Modal } from './ui';
 
 const useStyles = makeStyles({
@@ -84,6 +84,7 @@ export function SignOutDialog() {
 function SignOutForm({ account }: { account: Account }) {
   const s = useStyles();
   const connection = useConnection();
+  const numbers = useNumbersShown() === true;
   const job = useLiveQuery(
     async () =>
       db.jobs
@@ -169,7 +170,8 @@ function SignOutForm({ account }: { account: Account }) {
           {connection && (
             <Effect icon={<CloudOff16Regular />}>
               xomoni.com signs out in this browser too
-              {connection.account ? ` (${connection.account})` : ''}, and this browser stops sending job status.
+              {connection.account ? ` (${connection.account})` : ''}, and this browser stops sending job status
+              {numbers ? ' and your daily numbers' : ''}.
             </Effect>
           )}
           <Effect icon={<PlugDisconnected16Regular />}>

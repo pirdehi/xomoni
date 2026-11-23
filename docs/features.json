@@ -210,6 +210,22 @@
       }
     },
     {
+      "id": "watch-about-you",
+      "area": "extension",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [391],
+      "scenarios": "docs/scenarios/391-watch-about-you.md",
+      "en": {
+        "title": "Watch what is said about you",
+        "summary": "two ready Watch searches for your own account, Mentions of you and Replies to you, off until you turn them on. A post from an account made in the last 30 days is marked with its age, from X's own search answer, and Xomoni's toolbar button counts the ones you haven't seen. Read only, and nothing leaves your computer."
+      },
+      "fa": {
+        "title": "دیدن آنچه درباره‌ی شما گفته می‌شود",
+        "summary": "دو جستجوی آماده‌ی Watch برای حساب خودتان، «اشاره به شما» و «ریپلای به شما»، که تا روشنشان نکنید خاموش‌اند. پستی از حسابی که در ۳۰ روز گذشته ساخته شده با سن حساب علامت می‌خورد، از پاسخ جستجوی خود X، و دکمه‌ی Xomoni در نوار ابزار تعداد آن‌هایی را که ندیده‌اید نشان می‌دهد. فقط می‌خواند و چیزی از رایانه‌تان بیرون نمی‌رود."
+      }
+    },
+    {
       "id": "dashboard",
       "area": "extension",
       "status": "shipped",
@@ -346,11 +362,11 @@
       "scenarios": "docs/scenarios/39-live-job-status.md",
       "en": {
         "title": "Your jobs, live on xomoni.com",
-        "summary": "follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent."
+        "summary": "follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent, and your daily numbers if you turn them on."
       },
       "fa": {
         "title": "کارهای شما، زنده در xomoni.com",
-        "summary": "پیشرفت هر کار را از هر دستگاهی روی داشبورد xomoni.com دنبال کنید. فقط وضعیت کار فرستاده می‌شود."
+        "summary": "پیشرفت هر کار را از هر دستگاهی روی داشبورد xomoni.com دنبال کنید. فقط وضعیت کار فرستاده می‌شود، و اگر روشنشان کنید، عددهای روزانه‌تان."
       }
     },
     {
@@ -503,7 +519,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [245, 248],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/245-website-dashboard.md",
       "en": {
         "title": "The dashboard on xomoni.com",
         "summary": "Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings, each at its own address, with an account and period picker. A sidebar on a computer, a bottom bar on a phone."

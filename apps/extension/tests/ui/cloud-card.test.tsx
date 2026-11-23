@@ -4,6 +4,7 @@ import { cleanup, render, renderHook, screen, waitFor } from '@testing-library/r
 import userEvent from '@testing-library/user-event';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getConnection, saveConnection } from '../../src/cloud/connection';
+import { rememberStatsChoice } from '../../src/cloud/daily-report';
 import { kvGet } from '../../src/shared/db';
 import { suggestedDeviceName } from '../../src/cloud/device-name';
 import { pendingWebConnect } from '../../src/cloud/web-connect';
@@ -153,6 +154,32 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Yes, it’s mine' }));
     await waitFor(() => expect(map()).toHaveAttribute('data-cloud', 'connected'));
+  });
+
+  // The map and the toast say what is sent, numbers on or off (ADR-0004, ADR-0026, #450).
+  it('says job status is sent from now on, and the numbers while they are on', async () => {
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd1', token: 'secret', account: 'o•••@example.com' }]));
+    const toasts = renderHook(() => useToasts());
+    render(<CloudCard x="signed-in" />);
+    await openCodeForm();
+    await userEvent.type(await screen.findByLabelText('Code'), 'ab2cd-ef3gh');
+    await userEvent.click(screen.getByRole('button', { name: 'Connect' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, it’s mine' }));
+
+    await waitFor(() =>
+      expect(toasts.result.current.map((t) => t.text)).toContain(
+        'Connected to xomoni.com: job status is sent from now on, and your daily numbers while they’re on',
+      ),
+    );
+    const map = screen.getByRole('img');
+    await waitFor(() => expect(map).toHaveAccessibleName(/It sends job status, and only that, to xomoni\.com\.$/));
+
+    // The heartbeat hears the account shows its numbers: the map names them.
+    await rememberStatsChoice(true);
+    await waitFor(() =>
+      expect(map).toHaveAccessibleName(/It sends job status and your daily numbers, and only those, to xomoni\.com\.$/),
+    );
+    expect(map).toHaveTextContent('Status and numbers');
   });
 
   it('connects with one click on xomoni.com: opens its page with this extension’s id and a nonce (#228)', async () => {

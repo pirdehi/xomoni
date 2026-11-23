@@ -262,6 +262,25 @@ describe('Dashboard', () => {
       expect(toggle).not.toBeChecked();
     });
 
+    // A failed read is no answer: the numbers may still be on, so no switch says off (#450).
+    it('says it couldn’t tell when the choice can’t be read, instead of a switch that says off', async () => {
+      fake.services.numbers.get.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(true);
+      renderDashboard({ devices: [device()], jobs: [] });
+      const numbers = screen.getByRole('region', { name: 'Your account in numbers' });
+
+      expect(
+        await within(numbers).findByText(
+          'Couldn’t check whether your numbers are shown on xomoni.com, so they may still be on.',
+        ),
+      ).toBeInTheDocument();
+      expect(within(numbers).queryByRole('switch', { name: 'Show my numbers on xomoni.com' })).not.toBeInTheDocument();
+
+      await userEvent.click(within(numbers).getByRole('button', { name: 'Try again' }));
+      const toggle = await within(numbers).findByRole('switch', { name: 'Show my numbers on xomoni.com' });
+      await waitFor(() => expect(toggle).toBeChecked());
+      expect(numbers).not.toHaveTextContent('may still be on');
+    });
+
     it('keeps the switch usable while the choice is stored, so the keyboard focus stays on it, and asks once (#345)', async () => {
       let store!: (stored: boolean) => void;
       fake.services.numbers.set.mockImplementationOnce(() => new Promise<boolean>((resolve) => (store = resolve)));

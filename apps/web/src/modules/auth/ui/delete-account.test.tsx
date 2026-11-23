@@ -39,6 +39,10 @@ describe('DeleteAccountSection', () => {
 
     const section = screen.getByRole('region', { name: 'Delete account' });
     expect(section).toHaveTextContent('Your X account and everything stored in the extension stay as they are.');
+    // The daily numbers go with the account too (ADR-0026, #450).
+    expect(section).toHaveTextContent(
+      'Removes your Xomoni account, connected browsers, job history and daily numbers from our servers.',
+    );
     expect(await deleteButton()).toHaveAttribute('data-variant', 'danger');
   });
 

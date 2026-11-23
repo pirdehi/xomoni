@@ -102,14 +102,6 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     gap: tokens.spacingHorizontalM,
   },
-  screenReaderOnly: {
-    position: 'absolute',
-    width: '1px',
-    height: '1px',
-    overflow: 'hidden',
-    clipPath: 'inset(50%)',
-    whiteSpace: 'nowrap',
-  },
 });
 
 /** One step of the move: its number (a check once done), its title, what it says and what to press. */
@@ -121,9 +113,9 @@ function Step({ n, title, done = false, children }: { n: number; title: string; 
         {done ? <Checkmark16Regular /> : n}
       </span>
       <div className={styles.stepBody}>
-        <Body1Strong as="h3" className={styles.stepTitle}>
+        {/* Named in one string: a hidden ": done" placed apart was read "Export everything : done" (#457). */}
+        <Body1Strong as="h3" className={styles.stepTitle} aria-label={done ? `${title}: done` : undefined}>
           {title}
-          {done && <span className={styles.screenReaderOnly}>: done</span>}
         </Body1Strong>
         {children}
       </div>

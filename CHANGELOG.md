@@ -12,6 +12,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 - On a Xomoni installed from the zip, choosing or forgetting Xomoni's folder in *Settings › Updates* left the notice that a new version is out offering *Set up one-click updates* until the page was reloaded (#345). The notice and Settings now follow the folder at once, in every dashboard tab, so *Update now* shows as soon as the folder is chosen. One-click updates start once the release key is set up.
 - In dark mode, a primary button's white text while the pointer is over it was 4.4:1 on Xomoni's blue, below WCAG AA, in Xomoni's dashboard and on xomoni.com (#345). Hovered, the button now takes the same deeper blue as light mode's buttons, so its text meets 4.5:1, as at rest, pressed and selected.
 - When the Library refused an X archive (another account's, a ZIP that isn't X's archive, a file missing or damaged), the reason showed under the drop zone but a screen reader didn't say it (#345). It is now an alert, read out at once, as a refused move file's already was.
+- On xomoni.com, closing the dialog that says why Xomoni can't act from the page (not installed, on a phone, signed in elsewhere, or a job in another browser), with Escape or *Close*, left the keyboard focus nowhere, so someone using the keyboard started again from the top of the page (#345). The focus now goes back to the button that opened it.
 
 ## [0.5.2] - 2026-11-22
 

@@ -343,7 +343,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [39, 40],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/39-live-job-status.md",
       "en": {
         "title": "Your jobs, live on xomoni.com",
         "summary": "follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent."

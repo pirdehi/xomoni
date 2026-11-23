@@ -215,7 +215,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [34, 201, 202, 204],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/34-dashboard.md",
       "en": {
         "title": "Dashboard",
         "summary": "*Home* says what runs and what X needs, with the one button that helps; *Activity* shows each job's progress, time remaining and a log you can read, and export as CSV or JSON; plus removal counts and a year-by-year chart. Light and dark themes."

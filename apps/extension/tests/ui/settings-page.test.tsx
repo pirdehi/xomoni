@@ -450,11 +450,17 @@ describe('Settings page', () => {
   });
 
   describe('appearance and data', () => {
+    it('names each theme by its own word, in a group named Theme (#345)', async () => {
+      await renderPage();
+      // A <label> around the buttons named the first one "Theme Light Dark" for a screen reader.
+      const group = screen.getByRole('group', { name: 'Theme' });
+      for (const name of ['System', 'Light', 'Dark'])
+        expect(within(group).getByRole('button', { name })).toHaveAccessibleName(name);
+    });
+
     it('switches the theme', async () => {
       await renderPage();
-      // The Theme field's <label> wraps the whole button row and lends its text to the buttons' names, so the
-      // buttons are found by their own text.
-      const theme = (name: string) => screen.getByText(name, { selector: 'button' });
+      const theme = (name: string) => screen.getByRole('button', { name });
       expect(theme('System')).toHaveAttribute('aria-pressed', 'true');
 
       await userEvent.click(theme('Dark'));

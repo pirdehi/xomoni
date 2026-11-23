@@ -151,7 +151,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [184, 186, 187, 196],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/184-x-archive.md",
       "en": {
         "title": "Your X archive, requested and imported",
         "summary": "*Get my archive* asks X for your archive on X's own page and downloads it once X has made it. The ZIP is imported as it is, from Downloads › Xomoni or dropped on the Library, and only `account.js`, `tweets.js` and `like.js` are read."
@@ -167,7 +167,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [185, 203],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/185-library.md",
       "en": {
         "title": "Your copy, in the Library",
         "summary": "shows how much of your account Xomoni has and where it came from, with a search. *Complete my copy* reads your posts, replies, likes and full history from X in one job."
@@ -199,7 +199,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [158],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/158-watch.md",
       "en": {
         "title": "Watch X search",
         "summary": "follow up to five phrases or #hashtags in X's search. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads: nothing is liked, replied to or posted."
@@ -263,7 +263,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [300],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/300-move-your-data.md",
       "en": {
         "title": "Move your data to a new Xomoni",
         "summary": "*Export everything* saves one file in Downloads with your accounts, your copy, jobs, the log and settings; *Import from a file* in the new Xomoni checks the whole file first, then adds it to what is there. The file never leaves your computer."
@@ -343,7 +343,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [39, 40],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/39-live-job-status.md",
       "en": {
         "title": "Your jobs, live on xomoni.com",
         "summary": "follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent."

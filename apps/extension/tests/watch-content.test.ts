@@ -2,6 +2,7 @@
 // @vitest-environment-options {"url": "https://x.com/search?q=%23xomoni&src=typed_query&f=live"}
 import { afterEach, describe, expect, it } from 'vitest';
 import { runCommand } from '../src/content/actor';
+import { accountMadeAt, handleCapture } from '../src/content/net';
 import type { WatchPost } from '../src/shared/watch';
 
 /** Every click on the page, which reading posts must never make. */
@@ -25,6 +26,77 @@ const readPosts = (limit: number) => runCommand({ cmd: 'readPosts', limit }) as 
 afterEach(() => {
   document.body.innerHTML = '';
   clicks = 0;
+});
+
+/**
+ * X's answer to the page's search, as the interceptor captures it (#391): a post by each author, with the date their
+ * account was made where given (X's `core.created_at`).
+ */
+function searchAnswer(authors: [handle: string, created?: string][]) {
+  const entries = authors.map(([handle, created], i) => ({
+    entryId: `tweet-2${String(i)}`,
+    sortIndex: String(i),
+    content: {
+      itemContent: {
+        tweet_results: {
+          result: {
+            rest_id: `2${String(i)}`,
+            core: {
+              user_results: { result: { core: { screen_name: handle, ...(created && { created_at: created }) } } },
+            },
+            legacy: { id_str: `2${String(i)}`, full_text: 'a post' },
+          },
+        },
+      },
+    },
+  }));
+  handleCapture({
+    op: 'SearchTimeline',
+    url: 'https://x.com/i/api/graphql/q/SearchTimeline',
+    status: 200,
+    reqBody: null,
+    headers: {},
+    body: JSON.stringify({
+      data: { search_by_raw_query: { search_timeline: { timeline: { instructions: [{ entries }] } } } },
+    }),
+  });
+}
+
+describe('when each author made their account, from the search’s own answer (#391)', () => {
+  it('adds it to the posts read, where the answer said, and asks X for nothing', async () => {
+    searchAnswer([
+      ['new_one', 'Mon Nov 16 10:00:00 +0000 2026'],
+      ['old_one', 'Tue Mar 01 10:00:00 +0000 2011'],
+      ['no_date'],
+    ]);
+    document.body.innerHTML =
+      article('20', 'New_One', 'New', 'Hello') +
+      article('19', 'old_one', 'Old', 'Hi') +
+      article('18', 'no_date', 'No date', 'Hey');
+    const posts = await readPosts(10);
+    expect(posts.map((p) => p.accountCreatedAt)).toEqual([
+      Date.UTC(2026, 10, 16, 10),
+      Date.UTC(2011, 2, 1, 10),
+      undefined,
+    ]);
+    // Without a date, no field at all: never a guess.
+    expect(posts[2]).not.toHaveProperty('accountCreatedAt');
+    expect(clicks).toBe(0);
+  });
+
+  it('takes no date after now, and none from an answer X refused', () => {
+    searchAnswer([['from_the_future', 'Mon Nov 16 10:00:00 +0000 2099']]);
+    expect(accountMadeAt('from_the_future')).toBeNull();
+    handleCapture({
+      op: 'SearchTimeline',
+      url: 'https://x.com/i/api/graphql/q/SearchTimeline',
+      status: 429,
+      reqBody: null,
+      headers: {},
+      body: JSON.stringify({ data: {} }),
+    });
+    expect(accountMadeAt('nobody_seen')).toBeNull();
+  });
 });
 
 describe('reading the newest posts for Watch (#158)', () => {

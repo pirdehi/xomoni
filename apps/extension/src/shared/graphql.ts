@@ -14,6 +14,11 @@ export interface ParsedTweet {
   id: string;
   authorId: string;
   authorHandle: string;
+  /**
+   * When the author's account was made (epoch ms), from the user X sent with the post (`core.created_at`, or the
+   * older `legacy.created_at`); null when X left it out or sent something that isn't a date (#391).
+   */
+  authorCreatedAt: number | null;
   /** Epoch ms from `created_at`, else from the snowflake id, else 0. */
   createdAt: number;
   /**
@@ -122,6 +127,7 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
     id,
     authorId: asId(legacy.user_id_str) ?? asId(at(user, 'rest_id')) ?? '',
     authorHandle: asString(at(user, 'core', 'screen_name')) ?? asString(at(user, 'legacy', 'screen_name')) ?? '',
+    authorCreatedAt: parseTwitterDate(at(user, 'core', 'created_at') ?? at(user, 'legacy', 'created_at')),
     createdAt: parseTwitterDate(legacy.created_at) ?? snowflakeTime(id) ?? 0,
     text: decodeXText(
       asString(at(t, 'note_tweet', 'note_tweet_results', 'result', 'text')) ?? asString(legacy.full_text) ?? '',

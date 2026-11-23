@@ -22,14 +22,12 @@ import {
   Open16Regular,
 } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { db } from '../../shared/db';
 import type { ItemKind } from '../../shared/types';
 import { KIND_PLURAL, TARGET_PLURAL, downloadFile, fmtDate, fmtNumber, postUrl, toDateInput } from '../format';
-import { matchesSearch, useKindCounts } from '../queries';
+import { LIBRARY_PAGE_SIZE as PAGE_SIZE, libraryPage, matchesSearch, useKindCounts } from '../queries';
 import { Badge, Button, Card, EmptyState, Segmented } from './ui';
-
-const PAGE_SIZE = 25;
 
 const useStyles = makeStyles({
   toolbar: {
@@ -122,6 +120,19 @@ const useStyles = makeStyles({
   pager: { display: 'flex', gap: tokens.spacingHorizontalXS },
 });
 
+/** How long the search waits for typing to pause before it reads the list. */
+const SEARCH_PAUSE_MS = 250;
+
+/** `value` once it has stayed the same for `ms`; an empty value at once, so clearing the search lists everything. */
+function useSettled(value: string, ms: number): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), value ? ms : 0);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return value ? settled : value;
+}
+
 /**
  * Everything in the library, a page of 25 at a time: posts, replies, reposts or likes, still on X or removed, with a
  * search over text and authors, each row linked to X. *Export JSON* saves the list shown, whole: every page of it, and
@@ -131,7 +142,10 @@ export function ItemBrowser({ accountId, handle }: { accountId: string; handle: 
   const styles = useStyles();
   const [kind, setKind] = useState<ItemKind>('post');
   const [status, setStatus] = useState<'present' | 'deleted'>('present');
-  const [query, setQuery] = useState('');
+  const [typed, setQuery] = useState('');
+  // The search runs once typing pauses (#390): over a heavy X user's tens of thousands of posts, each keystroke read
+  // the whole list again, and the reads piled up while the person was still typing.
+  const query = useSettled(typed, SEARCH_PAUSE_MS);
   // The page number belongs to one filter; changing the kind, status or search starts again at page 1.
   const filterKey = `${kind}|${status}|${query}`;
   const [paging, setPaging] = useState({ filterKey, page: 0 });
@@ -143,17 +157,10 @@ export function ItemBrowser({ accountId, handle }: { accountId: string; handle: 
   const counts = useKindCounts(accountId);
   const total = counts?.[kind][status] ?? 0;
 
-  const rows = useLiveQuery(() => {
-    let coll = db.items
-      .where('[accountId+kind+status+createdAt]')
-      .between([accountId, kind, status, -Infinity], [accountId, kind, status, Infinity])
-      .reverse();
-    if (query.trim()) coll = coll.filter((i) => matchesSearch(i, query));
-    return coll
-      .offset(page * PAGE_SIZE)
-      .limit(PAGE_SIZE)
-      .toArray();
-  }, [accountId, kind, status, query, page]);
+  const rows = useLiveQuery(
+    async () => await libraryPage({ accountId, kind, status, query, page }),
+    [accountId, kind, status, query, page],
+  );
 
   // The list shown, every page of it: with a search, only what it finds, by the same rule as the rows (#440).
   const exportShown = async () => {
@@ -209,7 +216,7 @@ export function ItemBrowser({ accountId, handle }: { accountId: string; handle: 
           className={styles.search}
           placeholder="Search text or @author"
           aria-label="Search text or @author"
-          value={query}
+          value={typed}
           onChange={(_, data) => setQuery(data.value)}
           dismiss={{ 'aria-label': 'Clear search' }}
         />

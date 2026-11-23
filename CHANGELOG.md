@@ -4,6 +4,16 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Changed
+
+- **Faster with a large copy of your account** (#390). With 100,000 posts and 100,000 likes, as a heavy X user has:
+  - importing X's archive in the Library takes about a minute and a half instead of four to five: it saves 20,000 posts at a time, so the page counts your copy again ten times rather than a hundred;
+  - the Library opens in about a second instead of four or five, and Home's counts and its chart by year in under two seconds instead of five: Xomoni counts your posts the fast way, and no longer reads them one by one for the chart;
+  - Cleanup counts what a cleanup would remove in under two seconds instead of four or five, and with your keep rules in under one, and the Library's search reads your posts in large batches, about twice as fast;
+  - the Library's search starts once you pause typing, rather than at every key.
+
+  What each page shows and what a cleanup removes are the same as before.
+
 ### Added
 
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).

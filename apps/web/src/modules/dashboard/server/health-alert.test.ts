@@ -13,7 +13,7 @@ const post = (query: string, body = '', headers: Record<string, string> = {}) =>
 
 afterEach(() => vi.clearAllMocks());
 
-describe('stopping the health alert (#407, ADR-0042)', () => {
+describe('stopping the health alert (#407, ADR-0047)', () => {
   it('stops it from the stop page’s button and goes back to the page, saying so', async () => {
     const stop = vi.fn(() => Promise.resolve(true));
     const response = await handleStopHealthAlert(post(`?token=${TOKEN}`), stop);

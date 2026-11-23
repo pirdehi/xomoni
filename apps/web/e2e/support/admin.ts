@@ -121,7 +121,7 @@ export async function weeklyEmailOf(userId: string): Promise<{ enabled: boolean;
   return rows[0] ?? null;
 }
 
-/** The user's choice of the email when X warns an account (#407, ADR-0042), with its stop token, or null. */
+/** The user's choice of the email when X warns an account (#407, ADR-0047), with its stop token, or null. */
 export async function healthAlertOf(
   userId: string,
 ): Promise<{ enabled: boolean; stop_token: string; last_sent_at: string | null } | null> {

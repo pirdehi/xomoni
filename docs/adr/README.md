@@ -45,4 +45,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0039](0039-the-readme-comes-from-the-feature-registry.md) | The README's feature list and status come from one registry | Accepted |
 | [0040](0040-test-the-extension-against-recorded-x-fixtures.md) | Test the extension in a real browser against recorded X fixtures, never the real X | Accepted |
 | [0041](0041-docs-sorted-by-kind-with-one-map.md) | Docs sorted by kind, with one map: living documents at the root of `docs/` on a list, dated reports by month | Accepted |
-| [0042](0042-an-email-when-x-warns-an-account.md) | An email when X warns an account, only for those who ask, sent by the database | Accepted |
+| [0047](0047-an-email-when-x-warns-an-account.md) | An email when X warns an account, only for those who ask, sent by the database | Accepted |

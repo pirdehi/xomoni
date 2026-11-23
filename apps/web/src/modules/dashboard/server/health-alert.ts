@@ -1,5 +1,5 @@
 import 'server-only';
-// Stopping the email when X warns an account from its link (#407, ADR-0042), without signing in, as the weekly email's
+// Stopping the email when X warns an account from its link (#407, ADR-0047), without signing in, as the weekly email's
 // link does (ADR-0031): the random token in the link is what allows it, so neither a session nor the page's origin is
 // asked for. A mail app's one-click POST (RFC 8058) gets a plain answer; the stop page's own form is sent back to it.
 import { type NextRequest, NextResponse } from 'next/server';

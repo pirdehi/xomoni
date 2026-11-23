@@ -1,4 +1,4 @@
-# ADR-0042: An email when X warns an account, only for those who ask, sent by the database
+# ADR-0047: An email when X warns an account, only for those who ask, sent by the database
 
 - Status: Accepted
 - Date: 2026-11-23

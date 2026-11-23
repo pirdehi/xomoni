@@ -1,5 +1,5 @@
 'use client';
-// The email when X warns an account (#407, ADR-0042), in Settings: one switch, off until the person turns it on, and
+// The email when X warns an account (#407, ADR-0047), in Settings: one switch, off until the person turns it on, and
 // what each state means. It is the account's own choice, kept on xomoni.com, so it shows whether or not Xomoni is in
 // this browser. On Fluent UI (ADR-0019).
 import { MessageBar, MessageBarBody, Switch, makeStyles, tokens, typographyStyles } from '@fluentui/react-components';
@@ -22,7 +22,7 @@ const useStyles = makeStyles({
 });
 
 /**
- * *Email me when X warns my account* (#407, ADR-0042): the switch, its state in words, a note while sending isn't set
+ * *Email me when X warns my account* (#407, ADR-0047): the switch, its state in words, a note while sending isn't set
  * up on xomoni.com (the choice is kept, and nothing is sent until it is), and what went wrong when a change failed. The
  * email only tells: it never resumes, approves or starts anything (ADR-0006).
  */

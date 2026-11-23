@@ -6,7 +6,7 @@ import { HealthAlertCard } from './health-alert';
 
 const choice = () => screen.getByRole('switch', { name: 'Email me when X warns my account' });
 
-describe('HealthAlertCard (#407, ADR-0042)', () => {
+describe('HealthAlertCard (#407, ADR-0047)', () => {
   it('is off until the person turns it on, and turns on with the switch', async () => {
     const onSet = vi.fn(() => Promise.resolve(null));
     render(<HealthAlertCard status={{ enabled: false, canSend: true }} onSet={onSet} />);

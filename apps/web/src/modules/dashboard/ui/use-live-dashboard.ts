@@ -33,7 +33,7 @@ export interface LiveDashboard extends DashboardSnapshot {
   /** Turns the weekly email on or off; resolves to an error message on failure. */
   setWeeklyEmail: (enabled: boolean) => Promise<string | null>;
   /**
-   * The email when X warns one of the account's X accounts (#407, ADR-0042): the choice and whether xomoni.com can send
+   * The email when X warns one of the account's X accounts (#407, ADR-0047): the choice and whether xomoni.com can send
    * it; null while it is read, `error` when it couldn't be.
    */
   healthAlert: HealthAlertStatus | 'error' | null;

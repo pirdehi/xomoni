@@ -13,7 +13,7 @@ import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows'
 import { apiSignIn } from './support/two-factor';
 import { expect, test } from './support/test';
 
-// The email when X warns an account (docs/scenarios/407-health-alert.md, #407, ADR-0042): the choice in Settings, off
+// The email when X warns an account (docs/scenarios/407-health-alert.md, #407, ADR-0047): the choice in Settings, off
 // until the person turns it on; the alert the database queues when a job report's risk level rises to Retreat or
 // above; the email it would send, made of the handle and fixed words; and the stop link, which works without signing
 // in. Against the local stack, where the Resend key isn't in Vault, as until it is set up in production: the database

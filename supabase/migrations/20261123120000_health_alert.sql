@@ -1,4 +1,4 @@
--- An email when X warns an account, only for those who ask (#407, ADR-0042): the person's choice and its stop token,
+-- An email when X warns an account, only for those who ask (#407, ADR-0047): the person's choice and its stop token,
 -- each X account's last level and the last rise it was told of, the alerts waiting to be sent, and the send by the
 -- database's own scheduler through Resend, with the key in Vault, as the weekly email does (ADR-0031). The alert is
 -- made of what the server already has: the account's handle and the risk level (0–4) each job report carries

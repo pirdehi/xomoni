@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALERT_EVERY_HOURS, ALERT_FROM_LEVEL, healthAlertNote, healthAlertState } from './health-alert';
 
-describe('the health alert’s states (#407, ADR-0042)', () => {
+describe('the health alert’s states (#407, ADR-0047)', () => {
   it('reads, then shows off or on, and says when it couldn’t be read', () => {
     expect(healthAlertState(null)).toBe('reading');
     expect(healthAlertState('error')).toBe('error');

@@ -1,5 +1,5 @@
 'use client';
-// The stop page of the email when X warns an account (#407, ADR-0042): what the link in every alert opens. It asks
+// The stop page of the email when X warns an account (#407, ADR-0047): what the link in every alert opens. It asks
 // first, with one button, so a mail scanner that follows links can't stop the alert by accident; the button posts to
 // the stop route, which works without JavaScript. As the weekly email's (ADR-0031). On Fluent UI (ADR-0019).
 import { Button, makeStyles, tokens, typographyStyles } from '@fluentui/react-components';

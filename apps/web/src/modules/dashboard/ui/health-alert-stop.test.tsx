@@ -8,7 +8,7 @@ const TOKEN = '3f2a6c1e-9b7d-4e8a-a1c2-5d6e7f8091ab';
 
 beforeEach(() => resetNavigation());
 
-describe('HealthAlertStop (#407, ADR-0042)', () => {
+describe('HealthAlertStop (#407, ADR-0047)', () => {
   it('asks first, with one button that posts the link’s token', () => {
     setLocation('/health-alert/stop', `token=${TOKEN}`);
     const { container } = render(<HealthAlertStop />);

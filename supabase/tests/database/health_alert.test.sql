@@ -1,4 +1,4 @@
--- The email when X warns an account (#407, ADR-0042). Proves: it is off until the person turns it on; each person reads
+-- The email when X warns an account (#407, ADR-0047). Proves: it is off until the person turns it on; each person reads
 -- only their own choice and never the stop token, nor the levels or the alerts; a job report's rise to Retreat (2) or
 -- above queues one alert, Caution (1) none, a repeat of the same rise within a day none, a higher level another;
 -- turning it off, or the stop link, drops what waits; the link answers the same for any token; sending needs the Vault

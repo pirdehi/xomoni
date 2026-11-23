@@ -1,4 +1,4 @@
-// The email when X warns an account (#407, ADR-0042): the person's choice as the website shows it, and what each state
+// The email when X warns an account (#407, ADR-0047): the person's choice as the website shows it, and what each state
 // says. Pure.
 
 /** Whether the account gets the alert, and whether xomoni.com can send one at all (the Resend key is set up). */

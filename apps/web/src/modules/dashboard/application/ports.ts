@@ -52,7 +52,7 @@ export interface WeeklyEmailChoice {
 }
 
 /**
- * The email when X warns one of the signed-in account's X accounts (#407, ADR-0042): the choice, and whether xomoni.com
+ * The email when X warns one of the signed-in account's X accounts (#407, ADR-0047): the choice, and whether xomoni.com
  * can send it at all.
  */
 export interface HealthAlertChoice {

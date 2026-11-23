@@ -519,7 +519,7 @@ describe('createSupabaseWeeklyEmail (#257, ADR-0031)', () => {
   });
 });
 
-describe('createSupabaseHealthAlert (#407, ADR-0042)', () => {
+describe('createSupabaseHealthAlert (#407, ADR-0047)', () => {
   const clientWith = (...answers: unknown[]) => {
     const rpc = vi.fn();
     for (const answer of answers) rpc.mockResolvedValueOnce(answer);

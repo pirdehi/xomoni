@@ -32,7 +32,7 @@ export interface LiveDashboardServices {
   numbers: NumbersChoice;
   /** The account's weekly email (#257, ADR-0031). */
   weeklyEmail: WeeklyEmailChoice;
-  /** The account's email when X warns one of its X accounts (#407, ADR-0042). */
+  /** The account's email when X warns one of its X accounts (#407, ADR-0047). */
   healthAlert: HealthAlertChoice;
 }
 

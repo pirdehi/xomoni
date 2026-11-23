@@ -38,7 +38,7 @@ The CLI maps any environment variable named `SUPABASE_<SECTION>_<KEY>` onto `con
 
 ## The weekly email's and the health alert's key
 
-`send_weekly_emails()` ([ADR-0031](../docs/adr/0031-weekly-email-of-the-daily-numbers.md)) and `send_health_alerts()` ([ADR-0042](../docs/adr/0042-an-email-when-x-warns-an-account.md), every five minutes) read a Resend API key, limited to sending from xomoni.com, from Supabase Vault. Until it is there, they send nothing, and the website's Settings says the alert isn't set up yet. Set it once in production from the SQL editor, or with `psql`, never in a migration or a file in the repository:
+`send_weekly_emails()` ([ADR-0031](../docs/adr/0031-weekly-email-of-the-daily-numbers.md)) and `send_health_alerts()` ([ADR-0047](../docs/adr/0047-an-email-when-x-warns-an-account.md), every five minutes) read a Resend API key, limited to sending from xomoni.com, from Supabase Vault. Until it is there, they send nothing, and the website's Settings says the alert isn't set up yet. Set it once in production from the SQL editor, or with `psql`, never in a migration or a file in the repository:
 
 ```sql
 select vault.create_secret('<resend key>', 'resend_api_key');

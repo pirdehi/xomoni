@@ -37,7 +37,7 @@ select is(
   'device_report, device_report_stats, device_set_daily_stats, pair_device, stop_health_alert, stop_weekly_email, '
     || 'unpair_device',
   'anon calls only the extension''s functions: pairing, reports, and the daily numbers with their choice (#250), '
-    || 'and stopping the weekly email (ADR-0031) and the health alert (ADR-0042) from their links');
+    || 'and stopping the weekly email (ADR-0031) and the health alert (ADR-0047) from their links');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions
    where has_function_privilege('authenticated', oid, 'execute')),

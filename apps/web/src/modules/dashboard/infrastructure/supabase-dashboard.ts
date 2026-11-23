@@ -199,7 +199,7 @@ export function createSupabaseWeeklyEmail(supabase: Client): WeeklyEmailChoice {
 }
 
 /**
- * The account's email when X warns one of its X accounts (#407, ADR-0042): `health_alert_status` answers the choice and
+ * The account's email when X warns one of its X accounts (#407, ADR-0047): `health_alert_status` answers the choice and
  * whether the Resend key is set up (never the key, nor the stop token), and `set_health_alert` stores the choice.
  */
 export function createSupabaseHealthAlert(supabase: Client): HealthAlertChoice {

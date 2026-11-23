@@ -93,12 +93,32 @@ jobs:
           git diff --exit-code -- packages/db/src/database.types.ts \
             || (echo "::error::packages/db is out of date: run 'npm run gen -w @xomoni/db' and commit." && exit 1)
 
-  e2e:
-    name: e2e
+  # The browser tests (#342), in shards that each take a runner of their own (#412): the website's flows (sign-up,
+  # confirmation, sign-in, reset, account and the rest) against a local Supabase with emails read from Mailpit, each
+  # shard with its own Supabase, so its one worker shares an Auth server and an inbox with no other; and the built
+  # extension on x.com pages served from synthetic fixtures with no network (ADR-0040), which needs neither the site
+  # nor Supabase. Each part fails on a failed flow, a blocked policy or a serious accessibility violation (axe). The
+  # gate below, `e2e`, is what branch protection requires.
+  e2e-parts:
+    name: e2e (${{ matrix.part }})
     runs-on: ubuntu-latest
-    # The website's tests and the extension's, side by side (#404), take about 14 minutes; the limit leaves room for the
-    # scenarios still to come (#345), and a stuck test still ends the job well before GitHub's 6 hours.
-    timeout-minutes: 35
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: website-1
+            suite: website
+            shard: 1/2
+          - part: website-2
+            suite: website
+            shard: 2/2
+          - part: extension-1
+            suite: extension
+            shard: 1/2
+          - part: extension-2
+            suite: extension
+            shard: 2/2
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
@@ -116,35 +136,66 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
+        if: matrix.suite == 'website'
         with:
           version: 2.116.0
       - name: Start Supabase (Auth, Postgres, Realtime, Mailpit)
+        if: matrix.suite == 'website'
         run: supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,supavisor,postgres-meta
       - name: Install Chromium
         working-directory: apps/web
         run: npx playwright install --with-deps chromium
-      # The website's tests (sign-up, confirmation, sign-in, reset, account and the rest) and the built extension's in
-      # Chromium, on x.com pages served from synthetic fixtures with no network (#342, ADR-0040). The extension's need
-      # neither the site nor Supabase, so the two run side by side (#404): about 14 minutes instead of 25. The step
-      # fails if either fails; the extension's log follows the website's, and is in the report on a failure.
-      - name: Browser tests, the website's and the extension's side by side
+      - name: Browser tests (${{ matrix.part }})
         working-directory: apps/web
-        run: node ../../tooling/e2e-side-by-side.mjs
+        env:
+          SUITE: ${{ matrix.suite }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          if [ "$SUITE" = website ]; then npx playwright test --shard="$SHARD"
+          else npx playwright test -c playwright.extension.config.ts --shard="$SHARD"; fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.part }}
           path: apps/web/playwright-report
           retention-days: 7
 
-  # The same tests in Microsoft Edge (#342): the website's, and the extension's, which Edge installs the way its
-  # developer tools do. GitHub's Ubuntu runners come with Edge; it is installed only when one doesn't. The one job here
-  # that branch protection doesn't require yet: it will once the ruleset names it.
-  e2e-edge:
-    name: e2e-edge
+  # The merge gate of the browser tests: passes only when every part above passed. It runs even when one failed or was
+  # cancelled, so the check is never skipped, which branch protection would count as passed.
+  e2e:
+    name: e2e
+    needs: e2e-parts
+    if: ${{ always() }}
     runs-on: ubuntu-latest
-    # As e2e's (#389).
-    timeout-minutes: 35
+    timeout-minutes: 5
+    steps:
+      - name: Every part passed
+        env:
+          RESULT: ${{ needs.e2e-parts.result }}
+        run: test "$RESULT" = success
+
+  # The same tests in Microsoft Edge (#342): the website's, and the extension's, which Edge installs the way its
+  # developer tools do. GitHub's Ubuntu runners come with Edge; it is installed only when one doesn't.
+  e2e-edge-parts:
+    name: e2e-edge (${{ matrix.part }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: website-1
+            suite: website
+            shard: 1/2
+          - part: website-2
+            suite: website
+            shard: 2/2
+          - part: extension-1
+            suite: extension
+            shard: 1/2
+          - part: extension-2
+            suite: extension
+            shard: 2/2
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
@@ -162,22 +213,41 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
+        if: matrix.suite == 'website'
         with:
           version: 2.116.0
       - name: Start Supabase (Auth, Postgres, Realtime, Mailpit)
+        if: matrix.suite == 'website'
         run: supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,supavisor,postgres-meta
       - name: Microsoft Edge
         working-directory: apps/web
         run: |
           if [ ! -x /opt/microsoft/msedge/msedge ]; then npx playwright install --with-deps msedge; fi
           /opt/microsoft/msedge/msedge --version
-      # As in e2e (#404), in Edge.
-      - name: Browser tests in Edge, the website's and the extension's side by side
+      - name: Browser tests in Edge (${{ matrix.part }})
         working-directory: apps/web
-        run: node ../../tooling/e2e-side-by-side.mjs
+        env:
+          SUITE: ${{ matrix.suite }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          if [ "$SUITE" = website ]; then npx playwright test --shard="$SHARD"
+          else npx playwright test -c playwright.extension.config.ts --shard="$SHARD"; fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
-          name: playwright-report-edge
+          name: playwright-report-edge-${{ matrix.part }}
           path: apps/web/playwright-report
           retention-days: 7
+
+  # As `e2e`, for Edge.
+  e2e-edge:
+    name: e2e-edge
+    needs: e2e-edge-parts
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every part passed
+        env:
+          RESULT: ${{ needs.e2e-edge-parts.result }}
+        run: test "$RESULT" = success

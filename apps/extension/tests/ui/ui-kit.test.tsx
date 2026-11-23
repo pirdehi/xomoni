@@ -12,6 +12,7 @@ import {
   Disclosure,
   EmptyState,
   Field,
+  FieldGroup,
   Meter,
   Modal,
   OutsideModals,
@@ -220,6 +221,21 @@ describe('Field', () => {
       </Field>,
     );
     expect(container.querySelectorAll('label > span')).toHaveLength(1);
+  });
+});
+
+describe('FieldGroup', () => {
+  it('names a group of buttons by its label, and leaves each button its own name (#345)', () => {
+    render(
+      <FieldGroup label="Theme">
+        <button type="button">System</button>
+        <button type="button">Light</button>
+      </FieldGroup>,
+    );
+    const group = screen.getByRole('group', { name: 'Theme' });
+    expect(group.querySelector('label')).toBeNull();
+    expect(screen.getByRole('button', { name: 'System' })).toHaveAccessibleName('System');
+    expect(screen.getByRole('button', { name: 'Light' })).toHaveAccessibleName('Light');
   });
 });
 

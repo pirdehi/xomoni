@@ -89,6 +89,14 @@ export const TARGET_PLURAL: Record<CleanupTarget, string> = {
   like: 'likes',
 };
 
+/** Lower-case singular per cleanup target, for a sentence about one item, such as "1 reply you picked". */
+export const TARGET_SINGULAR: Record<CleanupTarget, string> = {
+  post: 'post',
+  reply: 'reply',
+  repost: 'repost',
+  like: 'like',
+};
+
 /** Badge label and tone per stored job state. `waiting` reads "Needs you"; `blocked` is a safety stop. */
 export const JOB_STATE: Record<JobState, { label: string; tone: Tone }> = {
   queued: { label: 'Ready', tone: 'neutral' },

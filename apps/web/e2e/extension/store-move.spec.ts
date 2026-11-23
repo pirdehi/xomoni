@@ -72,6 +72,16 @@ function requests(context: BrowserContext): string[] {
   return sent;
 }
 
+/**
+ * The browser's extensions page, once *Open the extensions page* opened it: found by its address, since Edge also
+ * opens pages of its own, such as for a download.
+ */
+async function extensionsPage(context: BrowserContext): Promise<Page> {
+  const isExtensions = (page: Page) => /^(chrome|edge):\/\/extensions/.test(page.url());
+  await expect.poll(() => context.pages().some(isExtensions), { message: 'the extensions page opens' }).toBe(true);
+  return context.pages().find(isExtensions)!;
+}
+
 /** Presses the card's *Export everything* and returns the file saved. */
 async function exportEverything(dashboard: Page) {
   const file = dashboard.waitForEvent('download');
@@ -137,10 +147,9 @@ test.describe('moving a zip install to its store', { tag: '@task-304' }, () => {
     serviceWorker,
   }) => {
     await homeInUse(dashboard);
-    const opened = context.waitForEvent('page');
     await step(dashboard, 'Remove this copy').getByRole('button', { name: 'Open the extensions page' }).click();
-    const extensions = await opened;
-    await expect.poll(() => extensions.url()).toMatch(new RegExp(`^(chrome|edge)://extensions/\\?id=${extensionId}$`));
+    const extensions = await extensionsPage(context);
+    expect(extensions.url()).toMatch(new RegExp(`^(chrome|edge)://extensions/\\?id=${extensionId}$`));
     // Still installed and running: its worker answers, and the dashboard still shows the card.
     const id = await serviceWorker.evaluate(() => {
       const { chrome } = globalThis as unknown as { chrome: { runtime: { id: string } } };
@@ -244,10 +253,9 @@ test.describe('moving a zip install to its store', { tag: '@task-304' }, () => {
   }) => {
     await homeInUse(dashboard);
     await exportEverything(dashboard);
-    const opened = context.waitForEvent('page');
     await step(dashboard, 'Remove this copy').getByRole('button', { name: 'Open the extensions page' }).click();
-    const extensions = await opened;
-    await extensions.close();
+    await extensionsPage(context);
+    // The person goes back to Xomoni's tab without pressing Remove.
     await dashboard.bringToFront();
     await expect(step(dashboard, 'Export everything').getByRole('heading', { level: 3 })).toHaveText(
       'Export everything: done',

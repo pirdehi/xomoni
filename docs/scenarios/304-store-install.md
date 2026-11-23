@@ -6,7 +6,7 @@ feature: store-install
 
 # Install from the stores
 
-What changes once a store lists Xomoni (#304, #302): xomoni.com/install becomes one button for the visitor's browser, with the zip's guide folded under *Advanced: install from a zip* and the answer *How do I move from the zip to the store?*; the home page's calls to action become that button; Xomoni loaded from a zip shows on Home the four steps to the store's Xomoni; and xomoni.com finds Xomoni by the stores' fixed ids, with no `#ext=` in an address. Each step of the move is the person's own: Xomoni never removes itself, and the data travels only in the file *Export everything* saves. Written for #345, the features shipped before the scenarios gate. The install page while no store lists Xomoni has its own scenarios ([`299-install-page.md`](299-install-page.md)).
+What changes once a store lists Xomoni (#304, #302): xomoni.com/install becomes one button for the visitor's browser, with the zip's guide folded under _Advanced: install from a zip_ and the answer _How do I move from the zip to the store?_; the home page's calls to action become that button; Xomoni loaded from a zip shows on Home the four steps to the store's Xomoni; and xomoni.com finds Xomoni by the stores' fixed ids, with no `#ext=` in an address. Each step of the move is the person's own: Xomoni never removes itself, and the data travels only in the file _Export everything_ saves. Written for #345, the features shipped before the scenarios gate. The install page while no store lists Xomoni has its own scenarios ([`299-install-page.md`](299-install-page.md)).
 
 No store lists Xomoni yet, so the listings in the code are empty, and the tests choose theirs:
 
@@ -265,7 +265,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 ## S304-32 · cancel
 
 - Given the card on Home, with everything exported
-- When the person opens the extensions page and closes it without removing Xomoni
+- When the person opens the extensions page and goes back to Xomoni's tab without removing it
 - Then the card is as it was: the first step still done, Open the extensions page there for later
 - Test: apps/web/e2e/extension/store-move.spec.ts
 

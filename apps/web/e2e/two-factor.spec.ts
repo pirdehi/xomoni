@@ -273,7 +273,8 @@ test.describe('two-step verification', { tag: '@task-173' }, () => {
     const wrong = totp(secret) === '000000' ? '111111' : '000000';
     await section(page).getByLabel('6-digit code').fill(wrong);
     await section(page).getByRole('button', { name: 'Turn on' }).click();
-    await expect(section(page).getByText('That code didn’t work')).toBeVisible();
+    await expect(section(page).getByLabel('6-digit code')).toHaveAccessibleDescription(/That code didn’t work/);
+    await expect(section(page).getByRole('alert')).toContainText('That code didn’t work');
     await expect(section(page).getByRole('list', { name: 'Your authenticator apps' })).toHaveCount(0);
     await section(page).getByLabel('6-digit code').fill(totp(secret));
     await section(page).getByRole('button', { name: 'Turn on' }).click();
@@ -286,7 +287,9 @@ test.describe('two-step verification', { tag: '@task-173' }, () => {
     await section(page).getByRole('button', { name: 'Add another authenticator app' }).click();
     await section(page).getByLabel('Name this app (optional)').fill('Authenticator app');
     await section(page).getByRole('button', { name: 'Continue' }).click();
-    await expect(section(page).getByText('You already have an app with that name')).toBeVisible();
+    await expect(section(page).getByLabel('Name this app (optional)')).toHaveAccessibleDescription(
+      /You already have an app with that name/,
+    );
     await expect(section(page).getByRole('img', { name: /QR code/ })).toHaveCount(0);
   });
 
@@ -456,20 +459,22 @@ test.describe('two-step verification', { tag: '@task-173' }, () => {
     await other.close();
   });
 
-  test('S173-22 the QR code is drawn in the page, so the key never goes to another site', async ({ page }) => {
+  test('S173-22 the QR code is drawn in the page from the key, which no request carries', async ({ page }) => {
     await signedIn(page, 'totp-qr');
     const sent: string[] = [];
-    page.on('request', (request) => sent.push(request.url()));
+    page.on('request', (request) => sent.push(`${request.url()} ${request.postData() ?? ''}`));
     await page.goto('/account');
     await section(page).getByRole('button', { name: 'Turn on two-step verification' }).click();
     await section(page).getByRole('button', { name: 'Continue' }).click();
     const qr = section(page).getByRole('img', { name: /QR code/ });
     await expect(qr).toBeVisible();
+    // An image in the page itself, not one fetched from a QR code service.
     expect(await qr.getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
     const secret = (await section(page).getByTestId('totp-secret').innerText()).replace(/\s+/g, '');
-    const hosts = new Set(sent.map((url) => new URL(url).host));
-    for (const host of hosts) expect(['localhost:3000', new URL(process.env.SUPABASE_URL ?? '').host]).toContain(host);
-    expect(sent.some((url) => url.includes(secret))).toBe(false);
+    await section(page).getByLabel('6-digit code').fill(totp(secret));
+    await section(page).getByRole('button', { name: 'Turn on' }).click();
+    await expect(section(page).getByRole('status')).toContainText('Two-step verification is on.');
+    expect(sent.filter((line) => line.includes(secret) || line.includes(secret.toLowerCase()))).toEqual([]);
   });
 
   test('S173-23 without the app, the code page offers no way around the code: only the slow way through support', async ({

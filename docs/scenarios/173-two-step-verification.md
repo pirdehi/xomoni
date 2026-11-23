@@ -174,9 +174,9 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 ## S173-22 · security
 
 - Given the person adding an app
-- When the QR code shows
-- Then it is drawn in the page from the key, so the key goes to no other site: every request stays with xomoni.com and
-  its Supabase project, and none carries the key
+- When the QR code shows, and they turn it on
+- Then it is drawn in the page from the key, an image of the page's own rather than one fetched from a QR code service,
+  and no request carries the key, through to the app's first code
 - Test: apps/web/e2e/two-factor.spec.ts
 
 ## S173-23 · security

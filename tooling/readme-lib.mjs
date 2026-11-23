@@ -35,7 +35,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'welcome',
   'website-dashboard',
   'website-analytics',
-  'phone-menu',
 ]);
 
 const REGISTRY = 'docs/features.json';

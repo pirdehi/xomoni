@@ -583,7 +583,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [242],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/242-phone-menu.md",
       "en": {
         "title": "xomoni.com on a phone",
         "summary": "a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page."

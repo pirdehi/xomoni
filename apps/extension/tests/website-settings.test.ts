@@ -9,6 +9,7 @@ import {
   getSettings,
   kvSet,
   saveWatchResult,
+  setReadyTab,
   updateSettings,
   upsertAccount,
   watchResults,
@@ -174,6 +175,38 @@ describe('answerSettings (ADR-0029, #234)', () => {
     // The two first tabs always stay, empty when cleared.
     await change({ watch: [] });
     expect((await watchTabs(ME)).map((t) => t.query)).toEqual(['', '']);
+  });
+
+  it('shows and changes only the person’s own searches: the ready tabs stay as Xomoni has them (#391)', async () => {
+    await setReadyTab(ME, 'mentions', true);
+    expect(await readSettings()).toMatchObject({ watch: ['', ''] });
+    const answer = await change({ watch: ['xomoni', '#rust', 'a', 'b'] });
+    // Four searches fit beside the one ready tab, which keeps its place.
+    expect(answer).toMatchObject({ ok: true, settings: { watch: ['xomoni', '#rust', 'a', 'b'] } });
+    expect((await watchTabs(ME)).map((t) => t.id)).toEqual(['tab-1', 'tab-2', 'mentions', 'tab-3', 'tab-4']);
+  });
+
+  it('refuses searches that don’t all fit beside the ready tabs, whole, and logs nothing (#391)', async () => {
+    await setReadyTab(ME, 'mentions', true);
+    await setReadyTab(ME, 'replies', true);
+    await change({ watch: ['xomoni', '#rust', 'chrome'] });
+    await db.logs.clear();
+    const before = await watchTabs(ME);
+
+    // Three fit beside the two ready tabs; a fourth would be dropped, so nothing is taken, the rest of the change neither.
+    const answer = await change({ watch: ['xomoni', '#rust', 'chrome', 'edge'], notifications: false });
+    // The same refusal as any other: it says nothing of which tabs are ready.
+    expect(answer).toEqual({ ok: false, reason: 'refused' });
+    expect(await watchTabs(ME)).toEqual(before);
+    expect((await getSettings()).notifications).toBe(true);
+    expect(await db.logs.count()).toBe(0);
+  });
+
+  it('logs the searches as stored (#391)', async () => {
+    await setReadyTab(ME, 'replies', true);
+    await change({ watch: ['  xomoni  ', '', '#rust'] });
+    const [entry] = await db.logs.toArray();
+    expect(entry?.message).toBe('Settings changed on xomoni.com: Watch searches: xomoni, #rust.');
   });
 
   it('writes every change to the activity log', async () => {

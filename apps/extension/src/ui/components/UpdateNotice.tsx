@@ -21,7 +21,9 @@ const useStyles = makeStyles({
  * Says that a newer version of the extension is out, as xomoni.com answered this browser's last status report
  * (#151), with a link to the release page and, for a zip install, the one-click update (#305, `OneClickUpdate`). A
  * release that fixes a vulnerability says so and can't be dismissed; any other can be, until a newer one is out.
- * Shows nothing for a browser that isn't connected, but what `UpdateRecovery` has to say after an update.
+ * Shows nothing for a browser that isn't connected, but what `UpdateRecovery` has to say after an update. The notice
+ * shows in a polite live region, there before it is, so a screen reader reads it out as it appears, once it has
+ * finished what it was saying (#457).
  */
 export function UpdateNotice() {
   const current = chrome.runtime.getManifest().version;
@@ -29,7 +31,9 @@ export function UpdateNotice() {
   return (
     <>
       <UpdateRecovery />
-      {notice && <NewVersion version={notice.version} security={notice.security} current={current} />}
+      <div aria-live="polite">
+        {notice && <NewVersion version={notice.version} security={notice.security} current={current} />}
+      </div>
     </>
   );
 }

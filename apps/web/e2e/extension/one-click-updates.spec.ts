@@ -806,4 +806,29 @@ test.describe('update in one click', { tag: '@task-305' }, () => {
     await expect(updatesCard(second)).toContainText(`Xomoni’s folder: “${FOLDER}”`);
     await expect(notice(second, trusted.next).getByRole('button', { name: 'Update now' })).toBeEnabled();
   });
+
+  test('S305-30 the notice is read out as it appears, politely, from a live region there before it', async ({
+    dashboard,
+    context,
+    extensionId,
+  }) => {
+    const site = await serveXomoniSite(context, { release: { latest: '99.0.0', security: false } });
+    await openXWindow(dashboard);
+    await dashboard.bringToFront();
+    await expect(dashboard.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+    // The polite live regions on the page before xomoni.com says anything, marked to be found again.
+    await dashboard
+      .locator('[aria-live="polite"]')
+      .evaluateAll((regions) => regions.forEach((region) => region.setAttribute('data-before', '')));
+    await expect(notice(dashboard, '99.0.0')).toHaveCount(0);
+
+    expect(await site.signIn(extensionId)).toMatchObject({ ok: true });
+    await dashboard.bringToFront();
+    const shown = notice(dashboard, '99.0.0');
+    await expect(shown).toBeVisible();
+    const region = shown.locator('xpath=ancestor::*[@aria-live][1]');
+    await expect(region).toHaveAttribute('aria-live', 'polite');
+    await expect(region).toHaveAttribute('data-before', '');
+    await expect(region).not.toHaveAttribute('role', 'alert');
+  });
 });

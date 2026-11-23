@@ -12,6 +12,7 @@ import {
   DialogSurface,
   DialogTitle,
   MessageBar,
+  MessageBarActions,
   MessageBarBody,
   ProgressBar,
   type ProgressBarProps,
@@ -419,10 +420,15 @@ export function Dashboard({
     disconnect,
     createPairingCode,
     numbersShown,
+    numbersUnknown,
+    readNumbersAgain,
     showNumbers,
     weeklyEmail,
     setWeeklyEmail,
   } = useLiveDashboard(viewer.id, initial);
+  const numbersChoice = (
+    <NumbersChoice shown={numbersShown} unknown={numbersUnknown} onShow={showNumbers} onRetry={readNumbersAgain} />
+  );
   const now = useNow(30_000);
   const justConnected = useJustConnected(devices);
   const [leaving, setLeaving] = useState<Device | null>(null);
@@ -460,7 +466,7 @@ export function Dashboard({
           scope={scope}
           now={now}
           shown={numbersShown}
-          onShow={showNumbers}
+          choice={numbersChoice}
         />
         <section aria-labelledby="recent-title">
           <div className={mergeClasses(s.row, s.center)}>
@@ -536,7 +542,7 @@ export function Dashboard({
   } else if (section.id === 'comments') {
     content = <CommentsPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'settings') {
-    content = <SettingsPlace xomoni={xomoni} numbers={<NumbersChoice shown={numbersShown} onShow={showNumbers} />} />;
+    content = <SettingsPlace xomoni={xomoni} numbers={numbersChoice} />;
   } else {
     // Browsers: the last place. A new place shows its preview above until it is ready and has its own branch.
     content =
@@ -658,15 +664,16 @@ function Numbers({
   scope,
   now,
   shown,
-  onShow,
+  choice,
 }: {
   removed: number;
   days: readonly DailyNumbers[];
   scope: Scope;
   now: number;
-  /** Whether the account shows its daily numbers; null while it is read. */
+  /** Whether the account shows its daily numbers; null while it is read, or when it couldn't be. */
   shown: boolean | null;
-  onShow: (enabled: boolean) => Promise<string | null>;
+  /** The switch that turns them on or off (`NumbersChoice`). */
+  choice: ReactNode;
 }) {
   const s = useStyles();
   const current = daysInScope(days, scope, now);
@@ -741,21 +748,26 @@ function Numbers({
           </p>
         </>
       )}
-      <NumbersChoice shown={shown} onShow={onShow} />
+      {choice}
     </section>
   );
 }
 
 /**
  * *Show my numbers on xomoni.com* (ADR-0026): the account's choice, kept in the cloud, so it works on any device.
- * On Overview and in Settings.
+ * On Overview and in Settings. When the choice couldn't be read, no switch says off: the numbers may still be on, so
+ * a warning says so, with a way to read it again (#450).
  */
 function NumbersChoice({
   shown,
+  unknown,
   onShow,
+  onRetry,
 }: {
   shown: boolean | null;
+  unknown: boolean;
   onShow: (enabled: boolean) => Promise<string | null>;
+  onRetry: () => void;
 }) {
   const s = useStyles();
   const [busy, setBusy] = useState(false);
@@ -772,14 +784,27 @@ function NumbersChoice({
   }
   return (
     <div className={mergeClasses(s.card, s.numbersChoice)}>
-      {/* Not disabled while the choice is stored: a disabled switch drops the keyboard focus. It says it is busy. */}
-      <Switch
-        label="Show my numbers on xomoni.com"
-        checked={shown === true}
-        disabled={shown === null}
-        aria-busy={busy}
-        onChange={(_, data) => void choose(data.checked)}
-      />
+      {unknown ? (
+        <MessageBar intent="warning">
+          <MessageBarBody>
+            Couldn’t check whether your numbers are shown on xomoni.com, so they may still be on.
+          </MessageBarBody>
+          <MessageBarActions>
+            <Button size="small" onClick={onRetry}>
+              Try again
+            </Button>
+          </MessageBarActions>
+        </MessageBar>
+      ) : (
+        // Not disabled while the choice is stored: a disabled switch drops the keyboard focus. It says it is busy.
+        <Switch
+          label="Show my numbers on xomoni.com"
+          checked={shown === true}
+          disabled={shown === null}
+          aria-busy={busy}
+          onChange={(_, data) => void choose(data.checked)}
+        />
+      )}
       <p className={s.meta}>
         Counts per day only, sent by Xomoni on your computer: followers, posts, what your posts received and what Xomoni
         removed. Never your posts, replies, likes or anyone’s name. Turning it off deletes them.{' '}

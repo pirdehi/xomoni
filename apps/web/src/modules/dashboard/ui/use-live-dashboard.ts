@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createLiveDashboardServices } from '../client/live';
 import { upsertNewestFirst } from '../domain/job-status';
 import { isoDay } from '../domain/insights';
@@ -23,8 +23,15 @@ export interface LiveDashboard extends DashboardSnapshot {
   disconnect: (device: Device) => Promise<string | null>;
   /** Makes a one-time code that connects a browser (ADR-0018). */
   createPairingCode: () => Promise<PairingResult>;
-  /** Whether the account shows its daily numbers (#250); null while it is read. */
+  /** Whether the account shows its daily numbers (#250); null while it is read, or when it couldn't be. */
   numbersShown: boolean | null;
+  /**
+   * The choice couldn't be read (#450): the numbers may be on or off, so nothing may show them as off. Cleared by a
+   * read that works (`readNumbersAgain`) or a change that is saved.
+   */
+  numbersUnknown: boolean;
+  /** Reads the choice of daily numbers again, after a read that failed. */
+  readNumbersAgain: () => void;
   /** Turns the daily numbers on or off (off deletes them); resolves to an error message on failure. */
   showNumbers: (enabled: boolean) => Promise<string | null>;
   /** Whether the account gets the weekly email (#257, ADR-0031); null while it is read. */
@@ -44,12 +51,29 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   const [days, setDays] = useState(initial.days ?? []);
   const [live, setLive] = useState(false);
   const [numbersShown, setNumbersShown] = useState<boolean | null>(null);
+  const [numbersUnknown, setNumbersUnknown] = useState(false);
   const [weeklyEmail, setWeeklyEmailState] = useState<boolean | null>(null);
 
+  // A failed read is no answer: the numbers may still be on, so it is never taken as off (#450).
+  const readNumbers = useCallback(
+    () =>
+      services.numbers.get().then(
+        (shown) => {
+          setNumbersShown(shown);
+          setNumbersUnknown(false);
+        },
+        () => {
+          setNumbersShown(null);
+          setNumbersUnknown(true);
+        },
+      ),
+    [services],
+  );
+
   useEffect(() => {
-    services.numbers.get().then(setNumbersShown, () => setNumbersShown(false));
+    void readNumbers();
     services.weeklyEmail.get().then(setWeeklyEmailState, () => setWeeklyEmailState(false));
-  }, [services]);
+  }, [services, readNumbers]);
 
   useEffect(() => {
     async function refetch() {
@@ -96,6 +120,7 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   async function showNumbers(enabled: boolean) {
     try {
       setNumbersShown(await services.numbers.set(enabled));
+      setNumbersUnknown(false);
       // Turning the numbers off turns the weekly email off too (ADR-0031).
       if (!enabled) setWeeklyEmailState(false);
       return null;
@@ -125,6 +150,11 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
     disconnect,
     createPairingCode: () => services.pairing.createCode(),
     numbersShown,
+    numbersUnknown,
+    readNumbersAgain: () => {
+      setNumbersUnknown(false);
+      void readNumbers();
+    },
     showNumbers,
     weeklyEmail,
     setWeeklyEmail,

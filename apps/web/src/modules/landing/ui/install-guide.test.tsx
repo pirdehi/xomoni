@@ -137,7 +137,10 @@ describe('InstallGuide, one step at a time (#299)', () => {
     expect(within(guide()).getByText('Step 5 of 5')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Follow it here (optional)' })).toBeInTheDocument();
     expect(screen.getByText(/Xomoni is installed in this browser\./)).toBeInTheDocument();
-    expect(screen.getByText(/Only job status is sent/)).toBeInTheDocument();
+    // What reaches xomoni.com, said for the numbers on and off (#450).
+    expect(screen.getByText(/Only job status is sent/)).toHaveTextContent(
+      'Only job status is sent, and your daily numbers if you turn them on; your posts and likes stay on your computer.',
+    );
     expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
     // The automatic move leaves the focus where the person had it.
     expect(document.body).toHaveFocus();

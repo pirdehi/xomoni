@@ -4,6 +4,7 @@ import { act, cleanup, render, renderHook, screen, waitFor, within } from '@test
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type CloudConnection, saveConnection } from '../../src/cloud/connection';
+import { rememberStatsChoice } from '../../src/cloud/daily-report';
 import { FORGOTTEN_HERE } from '../../src/cloud/sync';
 import { db, upsertAccount } from '../../src/shared/db';
 import type { Job } from '../../src/shared/types';
@@ -81,6 +82,28 @@ describe('the sign-out dialog (#226)', () => {
     await waitFor(() => expect(within(effects).getAllByRole('listitem')).toHaveLength(3));
     expect(effects).toHaveTextContent('“Old posts” pauses. It continues where it stopped when you sign in again.');
     expect(effects).toHaveTextContent('xomoni.com signs out in this browser too (o•••@example.com)');
+  });
+
+  // What stops reaching xomoni.com, said exactly with the daily numbers on and off (ADR-0026, #450).
+  it('says the daily numbers stop too only while they are on', async () => {
+    await saveConnection(CONNECTED);
+    const off = await open();
+    const offEffects = within(off).getByRole('list', { name: 'What signing out does' });
+    await waitFor(() =>
+      expect(offEffects).toHaveTextContent(
+        'xomoni.com signs out in this browser too (o•••@example.com), and this browser stops sending job status.',
+      ),
+    );
+    cleanup();
+
+    await rememberStatsChoice(true);
+    const on = await open();
+    const onEffects = within(on).getByRole('list', { name: 'What signing out does' });
+    await waitFor(() =>
+      expect(onEffects).toHaveTextContent(
+        'xomoni.com signs out in this browser too (o•••@example.com), and this browser stops sending job status and your daily numbers.',
+      ),
+    );
   });
 
   it('closes on Cancel, signing nothing out', async () => {

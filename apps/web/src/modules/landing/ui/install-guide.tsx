@@ -358,8 +358,8 @@ function useStepViews(platform: Platform, steps: InstallSteps): Record<InstallSt
           <InstallVisuals step="connect" platform={platform} />
           <p className={s.text}>
             In Xomoni’s account menu, press <strong>Sign in to xomoni.com</strong> and sign in here: Xomoni signs in
-            with you, and signing out on either side signs out both. Only job status is sent; your posts and likes stay
-            on your computer.
+            with you, and signing out on either side signs out both. Only job status is sent, and your daily numbers if
+            you turn them on; your posts and likes stay on your computer.
           </p>
           <TroubleLinks questions={['not-recognized']} />
         </>

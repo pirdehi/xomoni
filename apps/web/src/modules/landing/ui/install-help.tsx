@@ -341,7 +341,7 @@ function useAnswers(platform: Platform, listings: StoreListings): Record<Install
         <p className={text}>
           Xomoni keeps what it finds and does (your posts and likes, jobs, the activity log and settings) inside the
           browser, on your computer. Not in the xomoni-extension folder, and not on a server: xomoni.com only gets job
-          status, and only if you sign in.
+          status, and your daily numbers if you turn them on, and only if you sign in.
         </p>
         <p className={text}>
           Removing Xomoni from the browser deletes all of it, for good. Export it first: in Xomoni, open{' '}

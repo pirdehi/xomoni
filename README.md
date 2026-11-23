@@ -59,7 +59,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 
 - **Private by design:** no telemetry, and your posts, likes and copy stay in IndexedDB in your browser profile. If you sign in to xomoni.com, only job status goes there (titles, states and counts), and daily counts only if you turn them on. Post text, likes and post ids never reach a server.
 - **One sign-in:** sign in on xomoni.com and Xomoni in the same browser signs in by itself, with no code to type; sign out on either side and the other follows. An account stays optional.
-- **Your jobs, live on xomoni.com:** follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent.
+- **Your jobs, live on xomoni.com:** follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent, and your daily numbers if you turn them on.
 - **Pause and cancel from xomoni.com:** job cards on xomoni.com pause or cancel a job of the same browser at once, and open Xomoni's pages. *Resume* asks you in Xomoni first: the website never starts or resumes work on X.
 - **Plan a cleanup on xomoni.com:** the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there.
 - **Library, Watch and account health on xomoni.com:** your posts, replies, reposts and likes with a search, each Watch search, and each X account's health and pace, read from Xomoni in the same browser and kept only while the page is open.

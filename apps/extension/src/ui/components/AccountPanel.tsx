@@ -25,8 +25,8 @@ import { leaveWebsite, websiteLink } from '../../cloud/web-session';
 import type { Account } from '../../shared/types';
 import { type WorkerStatus, toast } from '../hooks';
 import type { PageId } from '../navigation';
-import { connectOnWebsite, useConnection } from './CloudCard';
-import { type CloudLink, ConnectionMap, xLinkOf } from './ConnectionMap';
+import { connectOnWebsite, useConnection, useNumbersShown } from './CloudCard';
+import { type CloudLink, ConnectionMap, sentToWebsite, xLinkOf } from './ConnectionMap';
 import { openSignOut } from './SignOutDialog';
 import { Badge, Button, Modal } from './ui';
 
@@ -121,7 +121,8 @@ const useStyles = makeStyles({
  * The account corner of the sidebar and the panel it opens. The panel shows how this browser links X and
  * xomoni.com (`ConnectionMap`), then one card for each, with its state and what can be done:
  * - X: the account Xomoni works on and its profile. Xomoni never handles X's password.
- * - xomoni.com: which account this browser reports to, its dashboard and *Sign out of xomoni.com*, which signs the
+ * - xomoni.com: which account this browser reports to, what it sends there (job status, and the daily numbers while
+ *   they are on: `sentToWebsite`), its dashboard and *Sign out of xomoni.com*, which signs the
  *   website out in this browser too (#232, after a confirmation); when not connected, *Sign in to xomoni.com* opens
  *   xomoni.com, and signing in there signs in here too (#228, #232); when not confirmed, the way to Settings.
  * At its foot, *Sign out of Xomoni* opens the sign-out dialog (`SignOutDialog`, #226).
@@ -142,6 +143,8 @@ export function AccountPanel({
   const name = account.name || account.handle;
   const x = xLinkOf(worker);
   const cloud: CloudLink = !connection ? 'off' : connection.confirmed ? 'connected' : 'pending';
+  // Sent only while connected and on (ADR-0026); the words follow what this browser really sends.
+  const numbers = useNumbersShown() === true && cloud === 'connected';
 
   const connectOnline = () => {
     setOpen(false);
@@ -199,7 +202,7 @@ export function AccountPanel({
             <Caption1 className={s.muted}>How this browser links X and xomoni.com.</Caption1>
           </div>
 
-          <ConnectionMap x={x} cloud={cloud} />
+          <ConnectionMap x={x} cloud={cloud} numbers={numbers} />
 
           <section className={s.section} aria-label="X account">
             <div className={s.row}>
@@ -269,7 +272,7 @@ export function AccountPanel({
                     Sign out of xomoni.com
                   </Button>
                 </div>
-                <Caption1 className={s.note}>Only job status is sent: titles, states and counts.</Caption1>
+                <Caption1 className={s.note}>{sentToWebsite(numbers)}</Caption1>
               </>
             )}
             {cloud === 'pending' && (
@@ -288,7 +291,8 @@ export function AccountPanel({
             {cloud === 'off' && (
               <>
                 <Caption1 className={s.note}>
-                  Sign in once on xomoni.com and Xomoni here signs in with you. Only job status is sent.
+                  Sign in once on xomoni.com and Xomoni here signs in with you. Only job status is sent, and your daily
+                  numbers if you turn them on.
                 </Caption1>
                 <div className={s.actions}>
                   <Button size="sm" variant="primary" icon={<Open16Regular />} onClick={connectOnline}>
@@ -324,7 +328,7 @@ export function AccountPanel({
           </>
         }
       >
-        This browser stops sending job status
+        This browser stops sending job status{numbers ? ' and your daily numbers' : ''}
         {connection?.account ? ` to ${connection.account}` : ''}, and xomoni.com signs out in this browser too. Xomoni
         keeps working here on @{account.handle}; sign in again here or on xomoni.com.
       </Modal>

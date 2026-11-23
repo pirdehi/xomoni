@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCleanup } from '../src/engine/cleanup';
 import type { JobContext } from '../src/engine/context';
 import { unseenPosts, worthWarning } from '../src/shared/coverage';
-import { archiveImported, db, itemKey, markArchiveImported } from '../src/shared/db';
+import { archiveImported, db, itemKey, markArchiveImported, postTotals } from '../src/shared/db';
 import type { Account, Item, ItemStatus } from '../src/shared/types';
 
 const ACCOUNT = 'acct-1';
@@ -138,6 +138,24 @@ describe('Cleanup and what X search can’t show (#15, PLAYBOOK E2, C6)', () => 
   });
 });
 
+describe('postTotals (#390)', () => {
+  it('counts what is on X less what is gone, the account’s own only, and what was removed since X’s count', async () => {
+    const other = `${ACCOUNT}0`;
+    await db.items.bulkAdd([
+      item('1'),
+      item('2'),
+      item('3', 'gone'),
+      item('4', 'deleted', NOW - HOUR),
+      item('5', 'deleted', NOW + HOUR),
+      { ...item('6'), key: itemKey(other, 'post', '6'), accountId: other },
+      { ...item('7', 'deleted', NOW + HOUR), key: itemKey(other, 'post', '7'), accountId: other },
+    ]);
+    expect(await postTotals(account({ profileAt: NOW }))).toEqual({ present: 2, removedSinceProfile: 1 });
+    // Before X's count was ever seen, nothing removed is in it.
+    expect(await postTotals(account({}))).toEqual({ present: 2, removedSinceProfile: 0 });
+  });
+});
+
 describe('archiveImported', () => {
   it('is false until an archive is imported, and finds imports from before the marker', async () => {
     expect(await archiveImported(ACCOUNT)).toBe(false);
@@ -147,5 +165,20 @@ describe('archiveImported', () => {
     await db.kv.clear();
     await db.items.add({ ...item('9'), sources: ['archive'] });
     expect(await archiveImported(ACCOUNT)).toBe(true);
+  });
+
+  it('without the marker, finds an archive item past thousands of others, and only the account’s own (#390)', async () => {
+    // 4,500 posts read from X, then one from the archive last in key order: past two of its bulk reads.
+    await db.items.bulkAdd(Array.from({ length: 4_500 }, (_, n) => item(`1${String(n).padStart(5, '0')}`)));
+    expect(await archiveImported(ACCOUNT)).toBe(false);
+    await db.items.add({ ...item('199999'), sources: ['scan', 'archive'] });
+    expect(await archiveImported(ACCOUNT)).toBe(true);
+
+    // An account whose id starts with this one's has its own items.
+    const longer = `${ACCOUNT}0`;
+    await db.items.add({ ...item('5'), key: itemKey(longer, 'post', '5'), accountId: longer, sources: ['archive'] });
+    expect(await archiveImported(longer)).toBe(true);
+    await db.items.delete(itemKey(ACCOUNT, 'post', '199999'));
+    expect(await archiveImported(ACCOUNT)).toBe(false);
   });
 });

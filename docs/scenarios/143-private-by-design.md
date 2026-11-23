@@ -42,7 +42,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Given a fresh install, with no account
 - When the person goes through every page of the dashboard and reloads it
 - Then nothing is sent anywhere, not even to x.com: no telemetry and no update check, only the extension's own files
-- And the first run says No servers. Your data stays in this browser.
+- And the first run says Your posts and likes stay in this browser. Signed in to xomoni.com, only job status goes
+  there, and your daily numbers if you turn them on. (#450)
 - Test: apps/web/e2e/extension/private-by-design.spec.ts
 
 ## S143-04 · security
@@ -87,8 +88,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given a fresh install
 - When the person reads the first run
-- Then Private by design says No servers. Your data stays in this browser., in words, and the page has no serious
-  accessibility violation
+- Then Private by design says Your posts and likes stay in this browser, and what reaches xomoni.com once signed in, in
+  words, and the page has no serious accessibility violation
 - Test: apps/web/e2e/extension/private-by-design.spec.ts
 
 ## S143-10 · persistence

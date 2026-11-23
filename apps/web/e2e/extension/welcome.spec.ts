@@ -155,7 +155,9 @@ test.describe('the welcome tab Xomoni opens (#244)', { tag: '@task-244' }, () =>
     await tab.reload();
     await expect(tab).toHaveURL(welcomeOf(extensionId));
     expect(asked.filter((url) => url.startsWith(`${SITE}/welcome`))).toEqual([`${SITE}/welcome`]);
-    expect(asked.filter((url) => url.includes(extensionId))).toEqual([]);
+    // No request over the network names the id. Edge also lists Xomoni loading its own icons, which never leave the
+    // browser, so only http(s) requests count.
+    expect(asked.filter((url) => /^https?:/.test(url) && url.includes(extensionId))).toEqual([]);
     // Installing asked nothing of xomoni.com's database, and no host but x.com was reached (the harness fails the test
     // on any other request).
     expect(site.calls).toEqual([]);

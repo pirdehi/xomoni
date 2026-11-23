@@ -373,3 +373,11 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Then axe finds no serious or critical violation on the held card with its locked Resume, in the dialog that asks for
   RESUME, or on the panel that shows Risk level 3: Defensive (#389)
 - Test: apps/web/e2e/extension/a11y-states.spec.ts
+
+## S17-38 · error
+
+- Given Settings with active hours on, from 08:00 until 23:00
+- When the person chooses From 10:00 and Until 18:00 so quickly that the page hasn't drawn the first change yet
+- Then both are kept: From shows 10:00 and Until 18:00, and still do after a reload, so a job works only in the hours
+  chosen. The second change used to be saved from the page's old copy and put From back to 08:00 (#427)
+- Test: apps/web/e2e/extension/x-pacing.spec.ts

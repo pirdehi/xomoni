@@ -817,6 +817,37 @@ test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
     await expect(caps(panel, 'Delete posts & replies')).toHaveText('0/2 hr · 0/6 day');
   });
 
+  test('S17-38 From and Until chosen in one go both stay, so the active hours are the ones chosen', async ({
+    dashboard,
+  }) => {
+    await openXWindow(dashboard);
+    await openPage(dashboard, 'Settings');
+    const hours = (name: 'From' | 'Until') => dashboard.getByRole('combobox', { name });
+    await expect(hours('From')).toHaveValue('8');
+    // Both changed in one task, before the page draws the first, as on a busy computer: the second used to be saved
+    // from the page's old copy and put From back to 08:00 (#427).
+    const from = await hours('From').elementHandle();
+    const until = await hours('Until').elementHandle();
+    await dashboard.evaluate(
+      ([fromSelect, untilSelect]) => {
+        for (const [select, value] of [
+          [fromSelect, '10'],
+          [untilSelect, '18'],
+        ] as const) {
+          (select as HTMLSelectElement).value = value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      },
+      [from, until] as const,
+    );
+    await expect(hours('From')).toHaveValue('10');
+    await expect(hours('Until')).toHaveValue('18');
+    await dashboard.reload();
+    await openPage(dashboard, 'Settings');
+    await expect(hours('From')).toHaveValue('10');
+    await expect(hours('Until')).toHaveValue('18');
+  });
+
   test('S17-35 X’s 429 on a read’s page puts the account on Caution, and the read waits for X’s reset', async ({
     dashboard,
     page,

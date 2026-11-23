@@ -8,7 +8,7 @@ import type { DailyNumbers, DashboardSnapshot, Device, JobSummary } from '../dom
 import { RISK_LEVEL } from '../domain/risk';
 import { SECTIONS, type SectionId } from '../domain/sections';
 import { Dashboard, type DashboardViewer, useJustConnected } from './dashboard';
-import { resetNavigation, router, setLocation } from '@test/fakes/navigation';
+import { resetNavigation, setLocation } from '@test/fakes/navigation';
 
 vi.mock('../client/live', () => ({ createLiveDashboardServices: vi.fn() }));
 // The extension in this browser, as the site last found it (#232); unknown unless a test says otherwise.
@@ -145,7 +145,10 @@ describe('Dashboard', () => {
 
   /** Renders one place of the dashboard (#245); Overview unless a test names another. */
   function renderDashboard(initial: DashboardSnapshot, section: SectionId = 'overview') {
-    setLocation(section === 'overview' ? '/dashboard' : `/dashboard/${section}`);
+    const path = section === 'overview' ? '/dashboard' : `/dashboard/${section}`;
+    setLocation(path);
+    // The address the browser holds, which the pickers read and write (#452).
+    window.history.replaceState(null, '', path);
     return render(<Dashboard viewer={VIEWER} initial={initial} section={place(section)} />);
   }
 
@@ -200,7 +203,7 @@ describe('Dashboard', () => {
           .map((o) => o.textContent),
       ).toEqual(['All accounts', '@ada', '@bob']);
       await userEvent.selectOptions(picker, '@bob');
-      expect(router.replace).toHaveBeenCalledWith('/dashboard/activity?account=bob', { scroll: false });
+      expect(`${window.location.pathname}${window.location.search}`).toBe('/dashboard/activity?account=bob');
     });
   });
 
@@ -261,6 +264,25 @@ describe('Dashboard', () => {
       await userEvent.click(toggle);
       expect(await screen.findByText('Couldn’t turn your numbers on. Try again in a moment.')).toBeInTheDocument();
       expect(toggle).not.toBeChecked();
+    });
+
+    it('keeps the switch usable while the choice is stored, so the keyboard focus stays on it, and asks once (#345)', async () => {
+      let store!: (stored: boolean) => void;
+      fake.services.numbers.set.mockImplementationOnce(() => new Promise<boolean>((resolve) => (store = resolve)));
+      renderDashboard({ devices: [device()], jobs: [] });
+      const toggle = screen.getByRole('switch', { name: 'Show my numbers on xomoni.com' });
+      await waitFor(() => expect(toggle).toBeEnabled());
+      toggle.focus();
+      await userEvent.keyboard(' ');
+      expect(fake.services.numbers.set).toHaveBeenCalledTimes(1);
+      // A disabled switch drops the focus in a browser; this one stays enabled, and says it is busy.
+      expect(toggle).toBeEnabled();
+      expect(toggle).toHaveAttribute('aria-busy', 'true');
+      await userEvent.keyboard(' ');
+      expect(fake.services.numbers.set).toHaveBeenCalledTimes(1);
+      store(true);
+      await waitFor(() => expect(toggle).toBeChecked());
+      expect(toggle).not.toHaveAttribute('aria-busy', 'true');
     });
 
     it('reads the stored choice when the page opens', async () => {

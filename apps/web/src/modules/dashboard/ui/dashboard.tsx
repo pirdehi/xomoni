@@ -768,18 +768,25 @@ function NumbersChoice({
 }) {
   const s = useStyles();
   const [busy, setBusy] = useState(false);
+  // Set at once, so a second key or click before the page draws again asks nothing more.
+  const asking = useRef(false);
   const [error, setError] = useState<string | null>(null);
   async function choose(enabled: boolean) {
+    if (asking.current) return;
+    asking.current = true;
     setBusy(true);
     setError(await onShow(enabled));
+    asking.current = false;
     setBusy(false);
   }
   return (
     <div className={mergeClasses(s.card, s.numbersChoice)}>
+      {/* Not disabled while the choice is stored: a disabled switch drops the keyboard focus. It says it is busy. */}
       <Switch
         label="Show my numbers on xomoni.com"
         checked={shown === true}
-        disabled={busy || shown === null}
+        disabled={shown === null}
+        aria-busy={busy}
         onChange={(_, data) => void choose(data.checked)}
       />
       <p className={s.meta}>

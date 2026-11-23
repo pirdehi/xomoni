@@ -356,6 +356,15 @@ function HealthNote({ health }: { health: JobHealth }) {
   );
 }
 
+/**
+ * Cancels a job that isn't running here, marking it changed (`updatedAt`): the status report sends xomoni.com the jobs
+ * changed since the last one (`cloud/sync.ts`), so without it the website kept showing the job as it was (#345).
+ */
+function cancelStopped(jobId: string) {
+  const now = Date.now();
+  return db.jobs.update(jobId, { state: 'cancelled', finishedAt: now, updatedAt: now });
+}
+
 function JobControls({ job, active }: { job: Job; active: boolean }) {
   const styles = useStyles();
   const run = useRunner();
@@ -433,7 +442,7 @@ function JobControls({ job, active }: { job: Job; active: boolean }) {
           size="small"
           appearance="subtle"
           icon={<Prohibited16Regular />}
-          onClick={() => void db.jobs.update(job.id, { state: 'cancelled', finishedAt: Date.now() })}
+          onClick={() => void cancelStopped(job.id)}
         >
           Cancel
         </Button>

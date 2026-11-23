@@ -45,4 +45,9 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0039](0039-the-readme-comes-from-the-feature-registry.md) | The README's feature list and status come from one registry | Accepted |
 | [0040](0040-test-the-extension-against-recorded-x-fixtures.md) | Test the extension in a real browser against recorded X fixtures, never the real X | Accepted |
 | [0041](0041-docs-sorted-by-kind-with-one-map.md) | Docs sorted by kind, with one map: living documents at the root of `docs/` on a list, dated reports by month | Accepted |
+| [0042](0042-payments-and-entitlements-with-polar.md) | Payments and entitlements: Polar as merchant of record, only the plan in the cloud, and a paywall a fork can remove | Accepted |
+| [0043](0043-the-vault-x-files-kept-on-the-computer.md) | The vault: X's official files read and kept on the computer, with an import ledger | Accepted |
+| [0044](0044-an-open-export-of-the-vault.md) | An open export of the vault that needs no Xomoni to read | Accepted |
+| [0045](0045-reach-diagnosis-guesses-labelled-as-guesses.md) | Reach diagnosis from X's own files: numbers on the computer, guesses labelled as guesses | Accepted |
+| [0046](0046-a-public-digest-of-xs-open-ranking-code.md) | A public digest of X's open ranking code, made from public code only | Accepted |
 | [0047](0047-an-email-when-x-warns-an-account.md) | An email when X warns an account, only for those who ask, sent by the database | Accepted |

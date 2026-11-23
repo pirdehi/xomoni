@@ -76,24 +76,38 @@ export async function updateJob(deviceId: string, localId: string, changes: Part
   });
 }
 
-/** One day of daily numbers to seed, as the extension sends it (#250); the counts left out are 0. */
+/**
+ * One day of daily numbers to seed, as the extension sends it (#250, ADR-0026); the counts left out are 0, and the
+ * profile's counts (`followers`, `following`) null, as on a day Xomoni saw no profile.
+ */
 export interface SeedDay {
   x_handle: string;
   day: string;
   followers?: number | null;
+  following?: number | null;
   posted_posts?: number;
   posted_replies?: number;
+  posted_reposts?: number;
+  posted_quotes?: number;
   received_likes?: number;
+  received_replies?: number;
+  received_reposts?: number;
+  received_quotes?: number;
   received_views?: number;
   observed_posts?: number;
+  posts_with_likes?: number;
+  replies_with_likes?: number;
 }
 
-/** Turns the account's daily numbers on and stores days for it, as Xomoni would after the person chose so (#252). */
+/**
+ * Turns the account's daily numbers on and stores days for it, as Xomoni would after the person chose so (#252).
+ * Called again, it stores more days, or a day again with its new counts, as Xomoni's next report does.
+ */
 export async function addDailyNumbers(userId: string, days: SeedDay[]): Promise<void> {
   await call('/rest/v1/daily_stats_choices', {
     method: 'POST',
     body: { user_id: userId, enabled: true },
-    prefer: 'return=minimal',
+    prefer: 'resolution=merge-duplicates,return=minimal',
   });
   await call('/rest/v1/daily_stats', {
     method: 'POST',
@@ -101,14 +115,22 @@ export async function addDailyNumbers(userId: string, days: SeedDay[]): Promise<
     body: days.map((d) => ({
       user_id: userId,
       followers: null,
+      following: null,
       posted_posts: 0,
       posted_replies: 0,
+      posted_reposts: 0,
+      posted_quotes: 0,
       received_likes: 0,
+      received_replies: 0,
+      received_reposts: 0,
+      received_quotes: 0,
       received_views: 0,
       observed_posts: 0,
+      posts_with_likes: 0,
+      replies_with_likes: 0,
       ...d,
     })),
-    prefer: 'return=minimal',
+    prefer: 'resolution=merge-duplicates,return=minimal',
   });
 }
 

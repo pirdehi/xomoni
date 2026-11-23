@@ -26,30 +26,7 @@ export const LEGACY_FEATURES = Object.freeze([
   'login-handoff',
   'resumable-jobs',
   'keeps-going',
-  'library',
-  'archive-date-range',
-  'watch',
-  'dashboard',
-  'daily-numbers',
-  'private-by-design',
-  'live-job-status',
-  'website-actions',
-  'website-cleanup-plan',
-  'website-library',
-  'website-settings',
-  'comments',
-  'numbers-on-website',
-  'update-notice',
-  'store-install',
-  'welcome',
   'website-dashboard',
-  'website-analytics',
-  'reports',
-  'send-to-computer',
-  'phone-menu',
-  // Grandfathered once: #335 was opened before the scenarios cut-over of 2026-11-22 (ADR-0038) and merged as this
-  // registry landed. It gets its file in #345 like the others.
-  'two-step-verification',
 ]);
 
 const REGISTRY = 'docs/features.json';

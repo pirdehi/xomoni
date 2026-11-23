@@ -142,7 +142,8 @@ describe('HealthPlace (#233)', () => {
           level: 2,
           reason: 'X asked to prove you are human',
           pace: 0.5,
-          reducedUntil: Date.UTC(2026, 10, 27),
+          // Noon on Nov 27 by this computer's calendar: that day in every time zone (#414).
+          reducedUntil: new Date(2026, 10, 27, 12).getTime(),
           resumeAt: NOW + 3_600_000,
           fullStop: false,
         },
@@ -214,6 +215,28 @@ describe('WatchPlace (#233)', () => {
     );
     expect(await screen.findByText('No searches yet.')).toBeInTheDocument();
     unmount();
+    render(<WatchPlace xomoni={controls(() => null, { kind: 'signed-out' }).xomoni} now={NOW} />);
+    expect(screen.getByRole('region', { name: 'Watch: in Xomoni' })).toBeInTheDocument();
+  });
+
+  it('leaves out the empty tabs Xomoni always keeps: they are no search (#345)', async () => {
+    // A new Watch page in Xomoni has two tabs with no search typed in yet, and Xomoni answers them as they are.
+    const empty = { query: '', checkedAt: null, error: '', posts: [] };
+    const { unmount } = render(
+      <WatchPlace xomoni={controls(() => ({ ok: true, what: 'watch', tabs: [empty, empty] })).xomoni} now={NOW} />,
+    );
+    expect(await screen.findByText('No searches yet.')).toBeInTheDocument();
+    expect(screen.queryByText('Not looked yet')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /^Watch:/ })).not.toBeInTheDocument();
+    unmount();
+    const tabs = [empty, { query: '#rust', checkedAt: null, error: '', posts: [] }];
+    render(<WatchPlace xomoni={controls(() => ({ ok: true, what: 'watch', tabs })).xomoni} now={NOW} />);
+    expect(await screen.findByRole('region', { name: 'Watch: #rust' })).toBeInTheDocument();
+    expect(screen.getAllByRole('region', { name: /^Watch:/ })).toHaveLength(1);
+    expect(screen.queryByText('No searches yet.')).not.toBeInTheDocument();
+  });
+
+  it('points to Xomoni while it isn’t here', () => {
     render(<WatchPlace xomoni={controls(() => null, { kind: 'signed-out' }).xomoni} now={NOW} />);
     expect(screen.getByRole('region', { name: 'Watch: in Xomoni' })).toBeInTheDocument();
   });

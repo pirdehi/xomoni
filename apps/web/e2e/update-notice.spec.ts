@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { createConfirmedUser } from './support/admin';
 import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows';
@@ -5,12 +7,23 @@ import { expect, test } from './support/test';
 
 // Hear about new versions (docs/scenarios/151-update-notice.md, #151, #345), on xomoni.com's side: what its database
 // answers a browser's status report about the newest release, from the releases it keeps (`extension_releases`).
-// The local Supabase stack, whose migrations hold the releases up to 0.5.2, a security release. A browser connects with
+// The local Supabase stack holds the releases its migrations record, the newest a security release. A browser connects with
 // a one-time code from Browsers and reports with `device_report`, as Xomoni does. What the dashboard then shows is in
 // e2e/extension/update-notice.spec.ts.
 
-/** The newest release in the migrations, a security fix (`20261122060000_release_0_5_2.sql`). */
-const NEWEST = '0.5.2';
+/** The release migrations, which record each published version in `extension_releases`. */
+const MIGRATIONS = path.join(__dirname, '..', '..', '..', 'supabase', 'migrations');
+
+/**
+ * The newest release the migrations record (`*_release_X_Y_Z.sql`), which the local stack holds: read from the files,
+ * so a new release's migration doesn't break these tests. Each release since 0.5.2 is a security fix.
+ */
+const NEWEST = readdirSync(MIGRATIONS)
+  .filter((name) => /_release_\d+_\d+_\d+\.sql$/.test(name))
+  .map((name) => /values \('(\d+\.\d+\.\d+)'/.exec(readFileSync(path.join(MIGRATIONS, name), 'utf8'))?.[1] ?? '')
+  .filter(Boolean)
+  .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
+  .at(-1)!;
 
 /** Calls one of the extension's functions the way the extension does: no session, the publishable key only. */
 async function asExtension(fn: string, body: Record<string, unknown>) {

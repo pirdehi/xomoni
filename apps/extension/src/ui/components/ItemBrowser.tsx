@@ -26,7 +26,7 @@ import { useState } from 'react';
 import { db } from '../../shared/db';
 import type { ItemKind } from '../../shared/types';
 import { KIND_PLURAL, TARGET_PLURAL, downloadFile, fmtDate, fmtNumber, postUrl, toDateInput } from '../format';
-import { useKindCounts } from '../queries';
+import { matchesSearch, useKindCounts } from '../queries';
 import { Badge, Button, Card, EmptyState, Segmented } from './ui';
 
 const PAGE_SIZE = 25;
@@ -124,7 +124,8 @@ const useStyles = makeStyles({
 
 /**
  * Everything in the library, a page of 25 at a time: posts, replies, reposts or likes, still on X or removed, with a
- * search over text and authors, each row linked to X. *Export JSON* saves the list shown, whole.
+ * search over text and authors, each row linked to X. *Export JSON* saves the list shown, whole: every page of it, and
+ * with a search, only what the search finds (#440). It is off while the list shows nothing.
  */
 export function ItemBrowser({ accountId, handle }: { accountId: string; handle: string }) {
   const styles = useStyles();
@@ -147,26 +148,27 @@ export function ItemBrowser({ accountId, handle }: { accountId: string; handle: 
       .where('[accountId+kind+status+createdAt]')
       .between([accountId, kind, status, -Infinity], [accountId, kind, status, Infinity])
       .reverse();
-    const q = query.trim().toLowerCase();
-    // Authors are stored without the "@" the rows show and the search box suggests.
-    const author = q.replace(/^@/, '');
-    if (q) coll = coll.filter((i) => i.text.toLowerCase().includes(q) || i.author.toLowerCase().includes(author));
+    if (query.trim()) coll = coll.filter((i) => matchesSearch(i, query));
     return coll
       .offset(page * PAGE_SIZE)
       .limit(PAGE_SIZE)
       .toArray();
   }, [accountId, kind, status, query, page]);
 
-  const exportAll = async () => {
-    const all = await db.items
+  // The list shown, every page of it: with a search, only what it finds, by the same rule as the rows (#440).
+  const exportShown = async () => {
+    const shown = await db.items
       .where('[accountId+kind+status+createdAt]')
       .between([accountId, kind, status, -Infinity], [accountId, kind, status, Infinity])
+      .filter((i) => matchesSearch(i, query))
       .toArray();
     downloadFile(
       `xomoni-${TARGET_PLURAL[kind]}-${status}-${toDateInput(Date.now())}.json`,
-      JSON.stringify(all, null, 2),
+      JSON.stringify(shown, null, 2),
     );
   };
+  // Nothing to save: an empty list, or a search that finds nothing (its first page is empty).
+  const nothingShown = !total || (page === 0 && rows?.length === 0);
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const cell = (...extra: (string | false)[]) => mergeClasses(styles.cell, ...extra);
@@ -179,8 +181,8 @@ export function ItemBrowser({ accountId, handle }: { accountId: string; handle: 
           size="sm"
           variant="ghost"
           icon={<ArrowDownload16Regular />}
-          onClick={() => void exportAll()}
-          disabled={!total}
+          onClick={() => void exportShown()}
+          disabled={nothingShown}
         >
           Export JSON
         </Button>

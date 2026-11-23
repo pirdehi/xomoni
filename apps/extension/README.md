@@ -35,6 +35,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - moving the data to a new Xomoni, installed fresh in a browser of its own: *Export everything*, the checked import, the files it refuses, and that a file never leaves the computer, starts a job, speeds Xomoni up or lifts a stop (`move-your-data.spec.ts`, #300);
 - Watch: searches on X's own Latest page, read-only and within the read limits, with X's empty, failing and limited answers (`watch.spec.ts`, #158);
 - X's archive: *Get my archive* on X's archive page, and the ZIP dropped, chosen or from Downloads › Xomoni, with every archive it refuses (`x-archive.spec.ts`, #184);
+- the Library's *Export JSON* of what a search shows, a read left Ready by *Not now* on the risks, and one read at a time (`library-reads.spec.ts`, #440, #441, #442);
 - the Library: X's count against the copy, browsing and searching it a page at a time, and the reads from X that complete it, which only look (`library.spec.ts`, #185);
 - the daily numbers kept in this browser: the profile's counts, the posts seen and the likes received between two looks, counts only, and their deletion (`daily-numbers.spec.ts`, #249);
 - the notice that a newer version is out, from xomoni.com's answer: a security fix that can't be dismissed, and versions it ignores (`update-notice.spec.ts`, #151);

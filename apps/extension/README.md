@@ -33,6 +33,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - moving the data to a new Xomoni, installed fresh in a browser of its own: *Export everything*, the checked import, the files it refuses, and that a file never leaves the computer, starts a job, speeds Xomoni up or lifts a stop (`move-your-data.spec.ts`, #300);
 - Watch: searches on X's own Latest page, read-only and within the read limits, with X's empty, failing and limited answers (`watch.spec.ts`, #158);
 - X's archive: *Get my archive* on X's archive page, and the ZIP dropped, chosen or from Downloads › Xomoni, with every archive it refuses (`x-archive.spec.ts`, #184);
+- the Library: X's count against the copy, browsing and searching it a page at a time, and the reads from X that complete it, which only look (`library.spec.ts`, #185);
 - the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
 - Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.
 

@@ -347,7 +347,37 @@ export async function createCleanupJob(
   return job;
 }
 
-/** Stores a new queued scan job and returns it; it does not start it. A `range` scan needs its `range`. */
+/** States of a job that hasn't ended: Ready, running, waiting for the person, paused or stopped for safety. */
+const OPEN_STATES: ReadonlySet<JobState> = new Set(['queued', 'running', 'waiting', 'paused', 'blocked']);
+
+/**
+ * Whether `job` is one of the Library's reads from X (*Complete my copy* or *Read one part*, #185) that hasn't ended:
+ * Ready, running, waiting for the person, paused or stopped for safety. An account has at most one (#442). A scan of
+ * a date range isn't one of them.
+ */
+export function isOpenRead(job: Job): boolean {
+  return job.kind === 'scan' && job.scan !== 'range' && OPEN_STATES.has(job.state);
+}
+
+/** What the person is told when `createScanJob` refuses a second read (#442). */
+export const READ_ALREADY_OPEN = 'A read from X is already open: start, resume or cancel it under Activity first.';
+
+/** Thrown by `createScanJob` when the account already has a read that hasn't ended (#442); `job` is that read. */
+export class ReadAlreadyOpen extends Error {
+  constructor(public readonly job: Job) {
+    super(READ_ALREADY_OPEN);
+    this.name = 'ReadAlreadyOpen';
+  }
+}
+
+/**
+ * Stores a new queued scan job and returns it; it does not start it. A `range` scan needs its `range`.
+ *
+ * One read per account (#442): a read of the Library (any target but `range`) is refused with `ReadAlreadyOpen` while
+ * the account has one that hasn't ended (`isOpenRead`). The check and the write are one transaction, so two dashboard
+ * tabs can't both pass it. The runner would run two reads one after the other anyway, each within the same pacing,
+ * caps and risk ladder; this keeps a forgotten Ready or paused read from waiting behind a new one.
+ */
 export async function createScanJob(accountId: string, title: string, scan: ScanTarget, range?: DateRange) {
   const now = Date.now();
   const job: Job = {
@@ -368,8 +398,34 @@ export async function createScanJob(accountId: string, title: string, scan: Scan
     finishedAt: null,
     updatedAt: now,
   };
-  await db.jobs.put(job);
+  await db.transaction('rw', db.jobs, async () => {
+    if (scan !== 'range') {
+      const open = (await db.jobs.where('accountId').equals(accountId).toArray()).find(isOpenRead);
+      if (open) throw new ReadAlreadyOpen(open);
+    }
+    await db.jobs.put(job);
+  });
   return job;
+}
+
+/**
+ * Cancels a job that was never started (Ready), as its card's *Cancel* does, and returns whether it did (#441). A job
+ * that started meanwhile, in this dashboard tab or another, is left alone: only its runner may stop it. `updatedAt`
+ * moves, so xomoni.com hears of the cancel.
+ */
+export async function cancelReady(jobId: string): Promise<boolean> {
+  return db.transaction('rw', db.jobs, async () => {
+    const job = await db.jobs.get(jobId);
+    if (job?.state !== 'queued') return false;
+    const now = Date.now();
+    await db.jobs.update(jobId, {
+      state: 'cancelled',
+      stateReason: 'Cancelled by you.',
+      finishedAt: now,
+      updatedAt: now,
+    });
+    return true;
+  });
 }
 
 /** The title of an account's watch job. */

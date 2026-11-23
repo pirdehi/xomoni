@@ -460,6 +460,20 @@ export async function getSettings(): Promise<Settings> {
 }
 
 /**
+ * Changes the stored settings: `change` is applied to the settings as stored at that moment, inside one read-write
+ * transaction, and the result is brought back inside the safety rules (`normalizeSettings`) before it is stored. Two
+ * changes made in quick succession, such as *From* then *Until*, therefore both land; a change built from a page's last
+ * render would put the older copy back over the first (#427). Resolves to the settings as stored.
+ */
+export function updateSettings(change: (current: Settings) => Settings): Promise<Settings> {
+  return db.transaction('rw', db.kv, async () => {
+    const next = normalizeSettings(change(await getSettings()));
+    await kvSet('settings', next);
+    return next;
+  });
+}
+
+/**
  * Appends an activity log entry stamped with the current time. Entries with `outcome: 'done'` count toward
  * the limiter's caps when the next run starts.
  */

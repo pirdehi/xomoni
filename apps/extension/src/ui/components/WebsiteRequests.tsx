@@ -38,21 +38,21 @@ const useStyles = makeStyles({
  */
 export function WebsiteRequests() {
   const run = useRunner();
-  const stop = useLiveQuery(() => pendingStop());
+  const stop = useLiveQuery(async () => pendingStop());
   useEffect(() => {
     if (!stop || run.jobId !== stop.jobId || run.status === 'idle' || run.status === 'stopping') return;
     void clearStop(stop.jobId);
     if (stop.state === 'paused') runner.pause(PAUSED_FROM_WEBSITE);
     else runner.cancel(CANCELLED_FROM_WEBSITE);
   }, [stop, run.jobId, run.status]);
-  const ask = useLiveQuery(() => pendingAsk());
+  const ask = useLiveQuery(async () => pendingAsk());
   return ask ? <ResumeAsked key={ask.jobId} jobId={ask.jobId} /> : null;
 }
 
 function ResumeAsked({ jobId }: { jobId: string }) {
   const s = useStyles();
   const run = useRunner();
-  const job = useLiveQuery(() => db.jobs.get(jobId), [jobId]);
+  const job = useLiveQuery(async () => db.jobs.get(jobId), [jobId]);
   const account = useLiveQuery(async () => (job ? db.accounts.get(job.accountId) : undefined), [job?.accountId]);
   const risk = useRisk(job?.accountId);
   const [busy, setBusy] = useState(false);

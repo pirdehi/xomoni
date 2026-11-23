@@ -85,7 +85,7 @@ function SignOutForm({ account }: { account: Account }) {
   const s = useStyles();
   const connection = useConnection();
   const job = useLiveQuery(
-    () =>
+    async () =>
       db.jobs
         .where('accountId')
         .equals(account.id)

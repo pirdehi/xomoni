@@ -358,7 +358,7 @@ export function slowerNote(pace: Pace): string {
  * only those, found one by one, until the person goes back to the form.
  */
 export function CleanupPage(props: PageProps) {
-  const waiting = useLiveQuery(() => plannedCleanup(), []);
+  const waiting = useLiveQuery(async () => plannedCleanup(), []);
   const [taken, setTaken] = useState<PlannedCleanup | null>(null);
   const mine = waiting && waiting.accountId === props.account.id ? waiting : null;
   useEffect(() => {
@@ -398,7 +398,7 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
   const [picked, setPicked] = useState(pickedIds);
   const [options, setOptions] = useState<CleanupOptions>({ sweep: !picked, deep: true, ghostLikes: false });
   const [confirming, setConfirming] = useState(false);
-  const hasArchive = useLiveQuery(() => archiveImported(account.id), [account.id]);
+  const hasArchive = useLiveQuery(async () => archiveImported(account.id), [account.id]);
   const [missAcknowledged, setMissAcknowledged] = useState(false);
 
   // A date the person cleared or mistyped never falls back to "today", which would match everything: it matches
@@ -430,7 +430,7 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
     [target, before, pickedAfter, minLikes, keywords, ids, skipSelfReplies, picked],
   );
   const filterKey = JSON.stringify(filter);
-  const candidates = useLiveQuery(() => findCandidates(account.id, filter), [account.id, filterKey]);
+  const candidates = useLiveQuery(async () => findCandidates(account.id, filter), [account.id, filterKey]);
 
   const action = actionFor(target, options.ghostLikes);
   const stored = settings?.pacing[action];

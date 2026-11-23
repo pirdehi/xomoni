@@ -238,11 +238,11 @@ function Dashboard({ account, navigate }: { account: Account; navigate: (p: Page
   const archive = useArchiveStatus(account.id);
   const now = useNow(30_000);
   const jobs = useLiveQuery(
-    () => db.jobs.where('accountId').equals(account.id).reverse().sortBy('updatedAt'),
+    async () => db.jobs.where('accountId').equals(account.id).reverse().sortBy('updatedAt'),
     [account.id],
   );
   const logs = useLiveQuery(
-    () =>
+    async () =>
       db.logs.where('[accountId+ts]').between([account.id, 0], [account.id, Infinity]).reverse().limit(60).toArray(),
     [account.id],
   );

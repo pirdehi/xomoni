@@ -72,10 +72,10 @@ const tabLabel = (tab: WatchTab, index: number) => tab.query || `Tab ${index + 1
 export function WatchPage({ account }: PageProps) {
   const styles = useStyles();
   const run = useRunner();
-  const tabs = useLiveQuery(() => watchTabs(account.id), [account.id]);
-  const results = useLiveQuery(() => watchResults(account.id), [account.id]);
+  const tabs = useLiveQuery(async () => watchTabs(account.id), [account.id]);
+  const results = useLiveQuery(async () => watchResults(account.id), [account.id]);
   const job = useLiveQuery(
-    () =>
+    async () =>
       db.jobs
         .where('accountId')
         .equals(account.id)

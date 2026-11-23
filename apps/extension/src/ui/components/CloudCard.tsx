@@ -109,7 +109,7 @@ export function CloudCard({ x = 'unknown' }: { x?: XLink }) {
   const [name, setName] = useState(() => suggestedDeviceName());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const waiting = useLiveQuery(() => pendingWebConnect(), []);
+  const waiting = useLiveQuery(async () => pendingWebConnect(), []);
 
   const onConnect = async () => {
     setBusy(true);

@@ -143,7 +143,7 @@ export function ItemBrowser({ accountId, handle }: { accountId: string; handle: 
   const counts = useKindCounts(accountId);
   const total = counts?.[kind][status] ?? 0;
 
-  const rows = useLiveQuery(() => {
+  const rows = useLiveQuery(async () => {
     let coll = db.items
       .where('[accountId+kind+status+createdAt]')
       .between([accountId, kind, status, -Infinity], [accountId, kind, status, Infinity])

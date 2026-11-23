@@ -152,7 +152,7 @@ export function StoreMoveCard({ listings = STORE_LISTINGS }: { listings?: StoreL
   const hasStore = store !== null;
   const [unpacked, setUnpacked] = useState(false);
   // Nothing is read while no store lists Xomoni for this browser, as today.
-  const wanted = useLiveQuery(() => (hasStore ? storeMoveWanted() : false), [hasStore]);
+  const wanted = useLiveQuery(async () => (hasStore ? storeMoveWanted() : false), [hasStore]);
   const [saved, setSaved] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {

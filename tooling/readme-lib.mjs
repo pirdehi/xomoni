@@ -26,7 +26,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'login-handoff',
   'resumable-jobs',
   'keeps-going',
-  'website-library',
   'numbers-on-website',
   'welcome',
   'website-dashboard',

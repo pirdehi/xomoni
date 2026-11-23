@@ -391,7 +391,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [233],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/233-website-library.md",
       "en": {
         "title": "Library, Watch and account health on xomoni.com",
         "summary": "your posts, replies, reposts and likes with a search, each Watch search, and each X account's health and pace, read from Xomoni in the same browser and kept only while the page is open."

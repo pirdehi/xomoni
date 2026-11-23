@@ -10,6 +10,7 @@ import {
   kvSet,
   saveWatchResult,
   setReadyTab,
+  updateSettings,
   upsertAccount,
   watchResults,
   watchTabs,
@@ -106,6 +107,20 @@ describe('answerSettings (ADR-0029, #234)', () => {
       notifications: false,
       whileAway: false,
       maxConsecutiveFailures: 1,
+    });
+  });
+
+  it('keeps a change made on the Settings page at the same moment: each applies to what is stored (#427)', async () => {
+    const [answer] = await Promise.all([
+      change({ notifications: false }),
+      updateSettings((s) => ({ ...s, whileAway: false })),
+      updateSettings((s) => ({ ...s, activeHours: { ...s.activeHours, start: 11 } })),
+    ]);
+    expect(answer).toMatchObject({ ok: true });
+    expect(await getSettings()).toMatchObject({
+      notifications: false,
+      whileAway: false,
+      activeHours: { enabled: true, start: 11 },
     });
   });
 

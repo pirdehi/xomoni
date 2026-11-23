@@ -8,8 +8,8 @@ import {
   type SettingsMessage,
   type XomoniSettings,
 } from '@xomoni/bridge';
-import { addLog, getSettings, kvSet, setWatchQueries, watchSearchRoom, watchTabs } from '../shared/db';
-import { PRESETS, normalizeSettings } from '../shared/settings';
+import { addLog, getSettings, setWatchQueries, updateSettings, watchSearchRoom, watchTabs } from '../shared/db';
+import { PRESETS } from '../shared/settings';
 import type { Settings } from '../shared/types';
 import { accessRefusal, activeAccount } from './website-access';
 
@@ -81,8 +81,7 @@ export async function answerSettings(message: SettingsMessage): Promise<Settings
   if (change.watch && !account) return { ok: false, reason: 'refused' };
   if (change.watch && account && change.watch.length > (await watchSearchRoom(account.id)))
     return { ok: false, reason: 'refused' };
-  if (Object.keys(change).some((key) => key !== 'watch'))
-    await kvSet('settings', normalizeSettings(applied(await getSettings(), change)));
+  if (Object.keys(change).some((key) => key !== 'watch')) await updateSettings((current) => applied(current, change));
   const stored =
     change.watch && account ? { ...change, watch: await setWatchQueries(account.id, change.watch) } : change;
   await addLog({

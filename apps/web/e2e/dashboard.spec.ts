@@ -110,6 +110,58 @@ test.describe('dashboard (#41)', () => {
     await expect(page).toHaveURL(/\/dashboard\/reports$/);
   });
 
+  test('two quick changes of the account and the period both land, however slowly the server answers (#452)', async ({
+    page,
+  }) => {
+    const email = uniqueEmail('pickers');
+    const userId = await createConfirmedUser(email, PASSWORD);
+    const device = await addDevice(userId, 'Chrome on macOS');
+    await addJobs(userId, device, [
+      { local_id: 'a', x_handle: 'ada_x', kind: 'scan', title: 'Scan ada', state: 'completed' },
+      { local_id: 'b', x_handle: 'bob_x', kind: 'scan', title: 'Scan bob', state: 'completed' },
+    ]);
+    await signIn(page, email, PASSWORD);
+    await expectDashboard(page);
+    await page.goto('/dashboard/activity');
+    const account = page.getByRole('combobox', { name: 'X account' });
+    const period = page.getByRole('combobox', { name: 'Period' });
+    await expect(account.locator('option')).toHaveCount(3);
+
+    // A busy server or network: anything the page asks the server for takes a second and a half.
+    await page.route(
+      () => true,
+      async (route) => {
+        if (route.request().headers()['rsc'] === '1') await new Promise((done) => setTimeout(done, 1_500));
+        await route.fallback();
+      },
+    );
+    await account.selectOption('ada_x');
+    await period.selectOption('7d');
+
+    await expect(page).toHaveURL(/\/dashboard\/activity\?account=ada_x&period=7d$/);
+    await expect(account).toHaveValue('ada_x');
+    await expect(period).toHaveValue('7d');
+    await expect(page.getByText('Scan ada')).toBeVisible();
+    await expect(page.getByText('Scan bob')).toBeHidden();
+    // Long after any answer the server could still send, both stay.
+    await page.waitForTimeout(2_000);
+    await expect(page).toHaveURL(/\?account=ada_x&period=7d$/);
+    await expect(account).toHaveValue('ada_x');
+
+    // In Cleanup, a plan's answer right after a pick keeps the pick, and the pick keeps the answer (#235, #452).
+    await page.goto('/dashboard/cleanup');
+    await account.selectOption('bob_x');
+    await page.getByRole('radio', { name: 'Replies' }).check();
+    await period.selectOption('90d');
+    const answers = () => Object.fromEntries(new URL(page.url()).searchParams);
+    const plan = { account: 'bob_x', what: 'reply', period: '90d' };
+    await expect.poll(answers).toEqual(plan);
+    await page.waitForTimeout(2_000);
+    expect(answers()).toEqual(plan);
+    await expect(account).toHaveValue('bob_x');
+    await expect(page.getByRole('radio', { name: 'Replies' })).toBeChecked();
+  });
+
   test('Overview shows the daily numbers the person chose to show, with followers over time (#252)', async ({
     page,
   }) => {

@@ -9,7 +9,10 @@ import { DashboardFrame } from './dashboard-frame';
 const place = (id: SectionId) => SECTIONS.find((section) => section.id === id)!;
 
 function renderFrame(id: SectionId, query = '', accounts = ['ada', 'bob'], live = true) {
-  setLocation(id === 'overview' ? '/dashboard' : `/dashboard/${id}`, query);
+  const path = id === 'overview' ? '/dashboard' : `/dashboard/${id}`;
+  setLocation(path, query);
+  // The address the browser holds, which a change reads and writes (#452).
+  window.history.replaceState(null, '', query ? `${path}?${query}` : path);
   return render(
     <DashboardFrame section={place(id)} accounts={accounts} live={live}>
       <p>Page content</p>
@@ -54,15 +57,43 @@ describe('DashboardFrame (#245)', () => {
     );
   });
 
+  /** The address as the browser holds it now: path and query. */
+  const address = () => `${window.location.pathname}${window.location.search}`;
+
   it('changes the period in the address, in place, leaving out the default', async () => {
     renderFrame('activity', 'period=7d');
 
     const period = screen.getByRole('combobox', { name: 'Period' });
     expect(period).toHaveValue('7d');
     await userEvent.selectOptions(period, 'Last 30 days');
-    expect(router.replace).toHaveBeenLastCalledWith('/dashboard/activity', { scroll: false });
+    expect(address()).toBe('/dashboard/activity');
     await userEvent.selectOptions(period, 'All time');
-    expect(router.replace).toHaveBeenLastCalledWith('/dashboard/activity?period=all', { scroll: false });
+    expect(address()).toBe('/dashboard/activity?period=all');
+    // In place: no navigation, so nothing is asked of the server and the page isn't scrolled.
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  // Two quick changes, the second before the page draws the first, both land (#452). The old code built each change
+  // from the scope the page last drew, so the period put the account back to All accounts.
+  it('keeps the first of two quick changes, made before the page draws it', async () => {
+    renderFrame('activity');
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'X account' }), '@ada');
+    // The page hasn't drawn the account yet: what it draws still says All accounts.
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Period' }), 'Last 7 days');
+
+    expect(address()).toBe('/dashboard/activity?account=ada&period=7d');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'X account' }), 'All accounts');
+    expect(address()).toBe('/dashboard/activity?period=7d');
+  });
+
+  it('keeps a place’s own answers in the address when the scope changes', async () => {
+    renderFrame('cleanup', 'what=posts&before=2021-01-01');
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'X account' }), '@bob');
+
+    expect(address()).toBe('/dashboard/cleanup?what=posts&before=2021-01-01&account=bob');
   });
 
   it('shows the other places of the group as links on a phone, and a bottom bar with More', async () => {

@@ -226,6 +226,17 @@ describe('JobCard', () => {
       expect(fake.runner.cancel).not.toHaveBeenCalled();
     });
 
+    it('marks a job it cancels as changed, so xomoni.com hears of the cancel (#345)', async () => {
+      const before = Date.now() - HOUR;
+      await show(job({ state: 'paused', updatedAt: before }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+      await waitFor(async () => expect((await db.jobs.get('job-1'))?.state).toBe('cancelled'));
+      // The status report sends the jobs updated since the last one (`cloud/sync.ts`).
+      const cancelled = (await db.jobs.get('job-1'))!;
+      expect(cancelled.updatedAt).toBeGreaterThan(before);
+      expect(cancelled.updatedAt).toBe(cancelled.finishedAt);
+    });
+
     it('removes a finished job from the list, without Start or Cancel', async () => {
       await show(job({ state: 'completed', stats: { matched: 3, done: 3, skipped: 0, failed: 0, scanned: 9 } }));
       expect(await badge('Completed')).toBeInTheDocument();

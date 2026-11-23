@@ -30,6 +30,13 @@ import { type CloudLink, ConnectionMap, xLinkOf } from './ConnectionMap';
 import { openSignOut } from './SignOutDialog';
 import { Badge, Button, Modal } from './ui';
 
+/**
+ * The trigger's quieter parts, the handle and the chevron. Muted grey (`colorNeutralForeground3`) falls below WCAG AA on
+ * the background the trigger takes while hovered or open, in dark mode at 3.5:1, and open in light mode at 4.4:1
+ * (#389); there they take Fluent's muted grey for a hovered or selected control, which keeps 4.5:1.
+ */
+const HINT = 'xomoni-account-hint';
+
 const useStyles = makeStyles({
   trigger: {
     display: 'flex',
@@ -45,10 +52,20 @@ const useStyles = makeStyles({
     font: 'inherit',
     textAlign: 'start',
     cursor: 'pointer',
-    ':hover': { backgroundColor: tokens.colorSubtleBackgroundHover },
+    ':hover': {
+      backgroundColor: tokens.colorSubtleBackgroundHover,
+      [`& .${HINT}`]: { color: tokens.colorNeutralForeground3Hover },
+    },
+    ':active': {
+      backgroundColor: tokens.colorSubtleBackgroundPressed,
+      [`& .${HINT}`]: { color: tokens.colorNeutralForeground3Pressed },
+    },
     ':focus-visible': { outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}` },
   },
-  open: { backgroundColor: tokens.colorSubtleBackgroundSelected },
+  open: {
+    backgroundColor: tokens.colorSubtleBackgroundSelected,
+    [`& .${HINT}`]: { color: tokens.colorNeutralForeground3Selected },
+  },
   text: { display: 'flex', flexDirection: 'column', minWidth: 0, flexGrow: 1 },
   truncate: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   muted: { color: tokens.colorNeutralForeground3 },
@@ -171,9 +188,9 @@ export function AccountPanel({
             />
             <span className={s.text}>
               <Body1Strong className={s.truncate}>{name}</Body1Strong>{' '}
-              <Caption1 className={mergeClasses(s.truncate, s.muted)}>@{account.handle}</Caption1>
+              <Caption1 className={mergeClasses(HINT, s.truncate, s.muted)}>@{account.handle}</Caption1>
             </span>
-            <ChevronUpDown16Regular className={s.chevron} aria-hidden />
+            <ChevronUpDown16Regular className={mergeClasses(HINT, s.chevron)} aria-hidden />
           </button>
         </PopoverTrigger>
         <PopoverSurface className={s.surface} aria-label="Connections">

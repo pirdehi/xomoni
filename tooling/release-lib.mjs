@@ -171,3 +171,19 @@ export function reproducibleZip(dir, zipFile, epoch) {
     env: { ...process.env, TZ: 'UTC' },
   });
 }
+
+/**
+ * The entries of a zip that would land outside the folder it is unpacked into, or nowhere: an absolute path, a drive
+ * letter, a `..` step, a backslash (a separator on Windows) or an empty name. Empty for a zip `release.mjs package`
+ * made. The release smoke test's download (`tooling/release-download.mjs`, #419) unpacks only a zip without any.
+ */
+export function unsafeZipEntries(names) {
+  return names.filter(
+    (name) =>
+      !name ||
+      name.startsWith('/') ||
+      /^[A-Za-z]:/.test(name) ||
+      name.includes('\\') ||
+      name.split('/').some((step) => step === '..'),
+  );
+}

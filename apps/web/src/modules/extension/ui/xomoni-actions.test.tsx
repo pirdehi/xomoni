@@ -135,6 +135,24 @@ describe('useXomoni: the dialog when Xomoni isn’t here', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
+  it('gives the focus back to the button that opened it, closed with Escape or Close (WCAG 2.4.3)', async () => {
+    link.current = { status: 'none' };
+    render(<Page />);
+    const open = screen.getByRole('button', { name: 'Open in Xomoni' });
+    await userEvent.click(open);
+    await screen.findByRole('dialog', { name: 'You haven’t installed Xomoni yet' });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(open).toHaveFocus());
+
+    const pause = screen.getByRole('button', { name: 'Pause' });
+    await userEvent.click(pause);
+    const dialog = await screen.findByRole('dialog', { name: 'You haven’t installed Xomoni yet' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(pause).toHaveFocus());
+  });
+
   it('on a phone: Xomoni runs on a computer, and Send to my computer copies the link', async () => {
     userAgent(IPHONE);
     const writeText = vi.fn(() => Promise.resolve());

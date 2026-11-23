@@ -151,7 +151,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [184, 186, 187, 196],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/184-x-archive.md",
       "en": {
         "title": "Your X archive, requested and imported",
         "summary": "*Get my archive* asks X for your archive on X's own page and downloads it once X has made it. The ZIP is imported as it is, from Downloads › Xomoni or dropped on the Library, and only `account.js`, `tweets.js` and `like.js` are read."

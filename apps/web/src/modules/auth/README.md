@@ -45,7 +45,7 @@ Everything about who someone is on xomoni.com: creating an account with a confir
 ## Tests
 
 - Unit (`npm test -w @xomoni/web`): domain rules and every use case against an in-memory gateway, including the failure and enumeration cases.
-- End to end (`npm run test:e2e -w @xomoni/web`, needs `supabase start`): every flow above in Chromium against local Supabase Auth, reading the real emails from Mailpit.
+- End to end (`npm run test:e2e -w @xomoni/web`, needs `supabase start`): every flow above in Chromium against local Supabase Auth, reading the real emails from Mailpit. Two-step verification's user scenarios ([`docs/scenarios/173-two-step-verification.md`](../../../../../docs/scenarios/173-two-step-verification.md)) are `e2e/two-factor.spec.ts`, each test named by its id and tagged `@task-173`.
 
 ## Used by
 

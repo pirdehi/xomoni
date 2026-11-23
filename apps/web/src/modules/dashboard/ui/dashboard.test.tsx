@@ -262,6 +262,25 @@ describe('Dashboard', () => {
       expect(toggle).not.toBeChecked();
     });
 
+    it('keeps the switch usable while the choice is stored, so the keyboard focus stays on it, and asks once (#345)', async () => {
+      let store!: (stored: boolean) => void;
+      fake.services.numbers.set.mockImplementationOnce(() => new Promise<boolean>((resolve) => (store = resolve)));
+      renderDashboard({ devices: [device()], jobs: [] });
+      const toggle = screen.getByRole('switch', { name: 'Show my numbers on xomoni.com' });
+      await waitFor(() => expect(toggle).toBeEnabled());
+      toggle.focus();
+      await userEvent.keyboard(' ');
+      expect(fake.services.numbers.set).toHaveBeenCalledTimes(1);
+      // A disabled switch drops the focus in a browser; this one stays enabled, and says it is busy.
+      expect(toggle).toBeEnabled();
+      expect(toggle).toHaveAttribute('aria-busy', 'true');
+      await userEvent.keyboard(' ');
+      expect(fake.services.numbers.set).toHaveBeenCalledTimes(1);
+      store(true);
+      await waitFor(() => expect(toggle).toBeChecked());
+      expect(toggle).not.toHaveAttribute('aria-busy', 'true');
+    });
+
     it('reads the stored choice when the page opens', async () => {
       fake.services.numbers.get.mockResolvedValueOnce(true);
       renderDashboard({ devices: [device()], jobs: [] });

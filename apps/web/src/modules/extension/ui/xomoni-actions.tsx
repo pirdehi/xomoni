@@ -135,7 +135,8 @@ export const CHECK_WAIT_MS = 5_000;
  * Xomoni's actions for a page of the signed-in account (ADR-0027). `accountDevices` are the account's own browsers:
  * Xomoni counts as here only when it reports one of them. A job's action goes to Xomoni only for a job of this browser;
  * a job in another browser says so instead. A request made while the page is still looking for Xomoni waits for it,
- * with the button busy, up to `checkWaitMs`, then goes ahead or opens the dialog. `services` is for tests.
+ * with the button busy, up to `checkWaitMs`, then goes ahead or opens the dialog, which gives the focus back to the
+ * control that opened it once it closes. `services` is for tests.
  */
 export function useXomoni(
   accountDevices: readonly string[],
@@ -155,11 +156,21 @@ export function useXomoni(
     latest.current = presence;
   });
   const get = () => (made.current ??= services());
+  // The control that opened the dialog, which gets the focus back once it closes (WCAG 2.4.3): the dialog is opened
+  // from code, with no Fluent trigger to restore the focus to.
+  const opener = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (dialog !== null) return;
+    const control = opener.current;
+    opener.current = null;
+    if (control?.isConnected) control.focus();
+  }, [dialog]);
 
   // A function, so each look reads the presence as it is now.
   const checking = () => latest.current.kind === 'checking';
 
   async function request(want: XomoniWant) {
+    const pressed = document.activeElement;
     if (checking()) {
       setBusy(keyOf(want));
       for (let waited = 0; checking() && waited < checkWaitMs; waited += 100) {
@@ -169,11 +180,13 @@ export function useXomoni(
     const here = latest.current;
     if (here.kind !== 'here') {
       setBusy(null);
+      opener.current = pressed instanceof HTMLElement ? pressed : null;
       setDialog({ kind: 'away' });
       return;
     }
     if (want.kind === 'job' && want.deviceId.toLowerCase() !== here.deviceId.toLowerCase()) {
       setBusy(null);
+      opener.current = pressed instanceof HTMLElement ? pressed : null;
       setDialog({ kind: 'elsewhere', deviceName: want.deviceName });
       return;
     }

@@ -8,6 +8,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 - **Safety: two quick changes in Settings no longer lose the first** (#427). Each change on the Settings page was saved as the settings the page last drew, with that one field changed. A second change made before the page drew the first, such as *From* then *Until* on a busy computer, put the old value back: the active hours could end up other than the ones chosen, and a job could then work in hours you had excluded. A change from xomoni.com could race one made on the page in the same way. Now each change applies to the settings as stored at that moment, in one step, so both land. This is a safety fix.
 - On xomoni.com's dashboard, picking an X account and then a period quickly kept only the period: the account went back to *All accounts* (#452). Each pick was built from what the page last showed, and the address changed only once the server answered, so a second pick before that put the first one back. Cleanup's answers, kept in the same address, raced the pickers the same way. Now each pick and each answer changes the address at once, from the address as it is, so all of them land, and none asks the server for anything.
+- *Show my numbers on xomoni.com* turned itself off for a moment while the choice was stored, on xomoni.com and in Xomoni's Settings, so someone using the keyboard lost their place after each press: the focus fell back to the top of the page (#345). The switch now stays usable, says it is busy, and takes the next press once the choice is stored.
+- On xomoni.com, Watch showed the two tabs a new Xomoni keeps before a search is typed in them as two blank searches, each *Not looked yet* and *Nothing found yet*, and never said *No searches yet* (#345). It now leaves out a tab with no search, so a new Xomoni's Watch says *No searches yet.*, and only real searches show.
 
 ## [0.5.3] - 2026-11-23
 
@@ -24,6 +26,7 @@ A security release: a Library read (*Complete my copy*, *Read one part*, a date 
 - When you picked a single reply on xomoni.com's Comments page and sent it to Xomoni, Cleanup said *1 replies you picked. Only these are removed* (#345). It now says *1 reply you picked. Only that one is removed*, and the same for one post, repost or like.
 - In *Settings*, a screen reader read the theme's first choice, *System*, as "Theme Light Dark" (#345). The three choices sat inside the theme's label, which lent them its whole text. Now they are a group named *Theme*, and each is read by its own name: System, Light or Dark.
 - When the Library refused an X archive (another account's, a ZIP that isn't X's archive, a file missing or damaged), the reason showed under the drop zone but a screen reader didn't say it (#345). It is now an alert, read out at once, as a refused move file's already was.
+- On xomoni.com, closing the dialog that says why Xomoni can't act from the page (not installed, on a phone, signed in elsewhere, or a job in another browser), with Escape or *Close*, left the keyboard focus nowhere, so someone using the keyboard started again from the top of the page (#345). The focus now goes back to the button that opened it.
 
 ## [0.5.2] - 2026-11-22
 

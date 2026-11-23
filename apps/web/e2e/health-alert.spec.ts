@@ -5,6 +5,7 @@ import {
   addJobs,
   asDatabase,
   createConfirmedUser,
+  healthAlertLevelsOf,
   healthAlertOf,
   healthAlertQueueOf,
   updateJob,
@@ -115,17 +116,21 @@ test.describe('the email when X warns an account', { tag: '@task-407' }, () => {
     expect(links).toHaveLength(2);
   });
 
-  test('S407-04 turning it off keeps it off, and drops an alert still waiting', async ({ page }) => {
+  test('S407-04 turning it off keeps it off, drops an alert still waiting, and deletes what was kept for it', async ({
+    page,
+  }) => {
     const { userId } = await signedIn(page, 'alert-off');
     const device = await withJob(userId);
     await turnOn(page, userId);
     await report(device, 2);
     expect(await waiting(userId)).toHaveLength(1);
+    expect(await healthAlertLevelsOf(userId)).toEqual([{ x_handle: 'ada_x', level: 2 }]);
     await choice(page).click();
     await expect(choice(page)).not.toBeChecked();
     await expect.poll(async () => (await healthAlertOf(userId))?.enabled).toBe(false);
     expect(await waiting(userId)).toEqual([]);
     expect(await emailOf(userId)).toBeNull();
+    expect(await healthAlertLevelsOf(userId)).toEqual([]);
   });
 
   test('S407-05 the link in the email asks first, then stops the alerts, without signing in', async ({
@@ -281,13 +286,16 @@ test.describe('the email when X warns an account', { tag: '@task-407' }, () => {
     }
   });
 
-  test('S407-16 off by default: a rise queues nothing for someone who didn’t ask', async ({ page }) => {
+  test('S407-16 off by default: a rise queues nothing, and nothing is kept, for someone who didn’t ask', async ({
+    page,
+  }) => {
     const { userId } = await signedIn(page, 'alert-default');
     const device = await withJob(userId);
     await openSettings(page);
     await expect(choice(page)).not.toBeChecked();
     await report(device, 3);
     expect(await healthAlertQueueOf(userId)).toEqual([]);
+    expect(await healthAlertLevelsOf(userId)).toEqual([]);
   });
 
   test('S407-17 with no browser connected yet, Settings still offers the alert', async ({ page }) => {

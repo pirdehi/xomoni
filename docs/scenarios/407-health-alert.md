@@ -6,7 +6,7 @@ feature: health-alert
 
 # An email when X warns an account
 
-An email, only for those who ask, when an X account's risk level rises to Retreat (2) or above (#407, [ADR-0047](../adr/0047-an-email-when-x-warns-an-account.md)). It says that X warned @handle, that Xomoni stopped, and when Xomoni may go on, and that the person should rest the account. It is made only of what the server already has: the handle and the level each job report carries (0–4, ADR-0013), never X's notice or a post. It never asks for anything: its only links open the dashboard and stop the alerts. It is turned on and off in xomoni.com's Settings, and stopped from a link in the email without signing in. The database sends it, as the weekly email (ADR-0031): one per rise, at most one every six hours, never without the Resend key in Vault.
+An email, only for those who ask, when an X account's risk level rises to Retreat (2) or above (#407, [ADR-0047](../adr/0047-an-email-when-x-warns-an-account.md)). It says that X warned @handle, that Xomoni stopped, and when Xomoni may go on, and that the person should rest the account. It is made only of what the server already has: the handle and the level each job report carries (0–4, ADR-0013), never X's notice or a post. Only while it is on, the database keeps each account's level and the alerts, for a week after each was sent or dropped; turning it off deletes the levels. It never asks for anything: its only links open the dashboard and stop the alerts. It is turned on and off in xomoni.com's Settings, and stopped from a link in the email without signing in. The database sends it, as the weekly email (ADR-0031): one per rise, at most one every six hours, never without the Resend key in Vault.
 
 The tests run the website against the local stack. A job report is made as Xomoni's would land, by writing the job's `risk_level` with the admin key. The local stack has no Resend key, as production until it is set up, so the database sends nothing. The tests read what it queued, and the email it would send, with the admin key, as its scheduler would. The email itself is checked word by word in the database's own tests (`supabase/tests/database/health_alert.test.sql`). Run them with:
 
@@ -45,7 +45,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given the alert on, and an alert waiting
 - When the person turns it off in Settings
-- Then it stays off, the waiting alert is dropped, and no email is left to send
+- Then it stays off, the waiting alert is dropped, no email is left to send, and the account's level kept for the
+  alert is deleted
 - Test: apps/web/e2e/health-alert.spec.ts
 
 ## S407-05 · happy
@@ -133,7 +134,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given a person who never turned the alert on
 - When a report raises their account to Defensive
-- Then nothing is queued: the alert is off by default
+- Then nothing is queued and nothing of the account is kept: the alert is off by default
 - Test: apps/web/e2e/health-alert.spec.ts
 
 ## S407-17 · empty

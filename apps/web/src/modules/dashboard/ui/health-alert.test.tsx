@@ -53,11 +53,12 @@ describe('HealthAlertCard (#407, ADR-0047)', () => {
     await waitFor(() => expect(choice()).toBeEnabled());
   });
 
-  it('says what the email holds: the @handle and what Xomoni does next, and a link to the dashboard only', () => {
+  it('says what the email holds: the @handle and what Xomoni does next, with links to the dashboard and to stop it', () => {
     render(<HealthAlertCard status={{ enabled: true, canSend: true }} onSet={vi.fn()} />);
     expect(
       screen.getByText(/the account’s @handle and what Xomoni does next, nothing X showed or you posted/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Its links open your dashboard and stop the alerts, nothing else\./)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /resume|approve|start/i })).not.toBeInTheDocument();
   });
 });

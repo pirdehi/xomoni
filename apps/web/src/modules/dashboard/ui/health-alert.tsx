@@ -71,8 +71,8 @@ export function HealthAlertCard({
         </p>
       )}
       <p className={s.meta}>
-        The email holds the account’s @handle and what Xomoni does next, nothing X showed or you posted. It links only
-        to your dashboard.
+        The email holds the account’s @handle and what Xomoni does next, nothing X showed or you posted. Its links open
+        your dashboard and stop the alerts, nothing else.
       </p>
       {error && (
         <p className={s.text} role="alert">

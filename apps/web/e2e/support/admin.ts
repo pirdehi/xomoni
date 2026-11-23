@@ -155,3 +155,11 @@ export async function healthAlertQueueOf(userId: string): Promise<QueuedAlert[]>
 export async function asDatabase<T>(fn: string, body: Record<string, unknown> = {}): Promise<T> {
   return call<T>(`/rest/v1/rpc/${fn}`, { method: 'POST', body });
 }
+
+/** The X accounts whose level the database keeps for the user's alert (#407): only while it is on. */
+export async function healthAlertLevelsOf(userId: string): Promise<{ x_handle: string; level: number }[]> {
+  return call<{ x_handle: string; level: number }[]>(
+    `/rest/v1/health_alert_levels?user_id=eq.${userId}&select=x_handle,level&order=x_handle`,
+    { method: 'GET' },
+  );
+}

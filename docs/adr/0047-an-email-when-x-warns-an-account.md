@@ -17,8 +17,9 @@ The server already has what such an alert needs. Each job report carries its X a
 2. **When.**
    - An alert is queued when a report raises an account's level to Retreat (2) or above.
    - Caution (1, a single rate limit) never queues one.
+   - An account's level is the highest its jobs reported in the last day. Two browsers on one X account can report different levels; the higher one counts, the more careful choice, so one browser's Normal can't undo the other's rest.
    - The same rise is told once. A report at the same level or lower queues nothing, and 3 → 2 → 3 within a day queues nothing more. A higher level (2 → 3, 3 → 4) queues another, and so does the same rise a day later.
-   - The trigger on `public.jobs` keeps each account's last level and the last level it was told of. Nothing is queued while the person hasn't asked.
+   - An alert counts as told only once it is sent: one dropped before the send silences nothing.
 3. **What it says.**
    - The email holds the account's @handle and fixed words for its level: when Xomoni may resume at the earliest, in UTC (6 hours after Retreat, 12 after Defensive), or that only the person can resume after a full stop. Then: rest the account.
    - It holds nothing X showed and nothing the person posted.
@@ -28,13 +29,19 @@ The server already has what such an alert needs. Each job report carries its X a
    - It hands each email to Resend's API with `pg_net`. The key is `resend_api_key` in Vault, the weekly email's.
    - Without that key nothing is sent, and the website's Settings says so: the choice is kept for when it is.
 5. **Rare.**
-   - One email per person at a time, however many accounts rose, at most one every six hours. An alert that comes sooner waits for the next send after that.
+   - One email per person at a time, however many accounts rose, at most one every six hours. An alert that comes sooner waits for the next send after that. An email names ten accounts at most, then says how many more.
    - An alert is dropped instead of sent when the person turned the alert off, when the account rested back below Retreat before the send, or when it waited a day.
+   - A send claims the alerts it sends before it builds the email, and skips a person another send is handling: an alert is never sent twice, and one queued meanwhile waits for the next email. Each sent alert keeps the id of its `pg_net` request, to find a failed send in `net._http_response`.
 6. **Stopping.**
    - Every email has a link with the person's own random token. It opens a page with one button, so a mail scanner that follows links can't stop it by accident.
    - Every email also has the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058), for the mail app's own button.
    - Stopping drops what waits. The token stops that person's alerts and nothing else, and the stop answers the same for any token.
-7. **Who reads what.**
+7. **What is kept, and for how long.**
+   - For someone who hasn't turned the alert on, nothing: the trigger stops before it keeps anything.
+   - For someone who has: each X account's level and the last level an email told (`health_alert_levels`), and each alert (`health_alert_queue`: the handle, the level, when, and the request's id).
+   - Turning the alert off, or its stop link, deletes the levels and drops what waits. An account with no job left loses its level at the next run. An alert is deleted a week after it was sent or dropped. Deleting the account deletes everything.
+   - The privacy page says so.
+8. **Who reads what.**
    - The person reads their own choice and whether xomoni.com can send (`health_alert_status`), never the token.
    - Nobody reads the levels or the queue through the Data API.
    - Accounts with an authenticator app need `aal2` for the choice, as for every private row ([ADR-0036](0036-two-step-verification-with-an-authenticator-app.md)).

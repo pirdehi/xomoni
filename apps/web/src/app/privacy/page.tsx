@@ -140,7 +140,10 @@ export default function PrivacyPage() {
       <p>
         If you ask for it in Settings, we also email you when X warns one of your X accounts and Xomoni stops there: the
         account’s @handle and when Xomoni may go on, nothing X showed and nothing you posted. At most one every six
-        hours, and every one has a link that stops it without signing in.
+        hours, and every one has a link that stops it without signing in. While it is on, and only then, we keep for
+        each of your X accounts the highest risk level Xomoni reported in the last day, and each alert we queue, for a
+        week after it was sent or dropped. Turning the alert off deletes the levels at once, and an X account with no
+        job left loses its level within minutes.
       </p>
       <h2>Cookies</h2>
       <p>
@@ -179,8 +182,9 @@ export default function PrivacyPage() {
       <p>
         We keep account data until you delete it. Disconnecting a browser in the dashboard removes that browser and its
         job summaries. <strong>Delete my Xomoni account</strong> on your account page removes your account, browsers and
-        job summaries immediately; copies may remain in our providers’ backups for a short period before they expire.
-        Removing the extension deletes the data it stored in your browser.
+        job summaries immediately, with everything kept for the alert when X warns your account; copies may remain in
+        our providers’ backups for a short period before they expire. Removing the extension deletes the data it stored
+        in your browser.
       </p>
 
       <h2>Your rights</h2>

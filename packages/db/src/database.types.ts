@@ -220,6 +220,7 @@ export type Database = {
           dropped_at: string | null;
           id: number;
           level: number;
+          request_id: number | null;
           risen_at: string;
           sent_at: string | null;
           user_id: string;
@@ -229,6 +230,7 @@ export type Database = {
           dropped_at?: string | null;
           id?: never;
           level: number;
+          request_id?: number | null;
           risen_at: string;
           sent_at?: string | null;
           user_id: string;
@@ -238,6 +240,7 @@ export type Database = {
           dropped_at?: string | null;
           id?: never;
           level?: number;
+          request_id?: number | null;
           risen_at?: string;
           sent_at?: string | null;
           user_id?: string;
@@ -417,11 +420,20 @@ export type Database = {
         Args: { enabled: boolean; token: string };
         Returns: boolean;
       };
-      health_alert_content: { Args: { owner: string }; Returns: Json };
+      forget_health_alert: { Args: { owner: string }; Returns: undefined };
+      health_account_level: {
+        Args: { at_time: string; handle: string; owner: string };
+        Returns: number;
+      };
+      health_alert_content: {
+        Args: { alerts?: Json; owner: string };
+        Returns: Json;
+      };
       health_alert_line: {
         Args: { handle: string; level: number; risen_at: string };
         Returns: string;
       };
+      health_alert_most: { Args: never; Returns: number };
       health_alert_status: {
         Args: never;
         Returns: {

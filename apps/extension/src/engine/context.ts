@@ -3,7 +3,7 @@ import { type Need, needMessage, pageNeed } from '../shared/attention';
 import { addLog, db, getSettings, hasConsent, recordRisk, riskEvents } from '../shared/db';
 import { isHandle } from '../shared/ids';
 import { type JobHealth, type SampleTally, healthReport } from '../shared/health';
-import type { ActionResult, PageInfo } from '../shared/messages';
+import type { ActionResult, ContentState, PageInfo } from '../shared/messages';
 import { RISK_LABELS, type RiskAssessment, type RiskEventKind, assessRisk } from '../shared/risk';
 import { DEFAULT_SETTINGS } from '../shared/settings';
 import { DAY, HOUR } from '../shared/time';
@@ -73,6 +73,34 @@ export function riskBlock(risk: RiskAssessment): string | null {
     return `Risk level ${risk.level} (${RISK_LABELS[risk.level]}): ${risk.reason}. Resume is locked until ${timeOf(risk.resumeAt)}. Use X normally meanwhile.`;
   }
   return null;
+}
+
+/** Loads of the same page after X refused it for its quota, each after X's reset, before the job pauses (PLAYBOOK A5). */
+export const MAX_QUOTA_RETRIES = 3;
+
+/** Why a job pauses when X refused the same page for its quota after `MAX_QUOTA_RETRIES` waits for its reset. */
+export const KEPT_RATE_LIMITING = `X kept rate-limiting this page after ${MAX_QUOTA_RETRIES} waits for its reset. Rest the account for a few hours, then resume.`;
+
+/**
+ * Loads a page of posts (`ctx.navigate`) and returns what it shows once X answered it, whatever that is, unless X
+ * refused it for its quota (a 429, or nothing remaining: `pageRateLimit`). Then the refusal goes through `settle`,
+ * which puts it on the risk ladder (Caution; a second within an hour stops the job) and waits for X's reset plus
+ * 30–90 s, and the same page is loaded again, up to `MAX_QUOTA_RETRIES` times, after which the job pauses (PLAYBOOK
+ * A2, A5). Every job that reads pages of posts loads them through here, so none goes on past X's refusal (#392).
+ */
+export async function loadPage(
+  ctx: Pick<JobContext, 'navigate' | 'pageRateLimit' | 'settle'>,
+  url: string,
+): Promise<ContentState> {
+  for (let refused = 0; ; refused++) {
+    const since = Date.now();
+    const content = await ctx.navigate(url);
+    if (content.kind === 'tweets' || content.kind === 'empty') return content;
+    const rateLimit = await ctx.pageRateLimit(since);
+    if (!rateLimit) return content;
+    if (refused >= MAX_QUOTA_RETRIES) throw new Stop('paused', KEPT_RATE_LIMITING);
+    await ctx.settle('read', null, rateLimit);
+  }
 }
 
 /** What interrupted a run: the connection or X's servers. A worker page that stops answering is `NotReady`. */
@@ -550,13 +578,22 @@ export class JobContext {
     return null;
   }
 
-  /** Paced scroll in the worker page; it loads more of the current page, so it spends that page's read budget. */
+  /**
+   * Paced scroll in the worker page; it loads more of the current page, so it spends that page's read budget. A
+   * scroll that showed nothing new because X refused it for its quota goes through `settle` like a refused page: on
+   * the risk ladder, and a wait for X's reset (#392).
+   */
   async scroll() {
     this.checkpoint();
     await this.limiter.before('read', this.readBudget);
+    const since = Date.now();
     const result = await this.xTab.send({ cmd: 'scroll' });
     this.limiter.after('read', 'done', this.readBudget);
     this.limiter.seen(result.added);
+    if (result.added === 0) {
+      const rateLimit = await this.pageRateLimit(since);
+      if (rateLimit) await this.settle('read', null, rateLimit);
+    }
     return result;
   }
 

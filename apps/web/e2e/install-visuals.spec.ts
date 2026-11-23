@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { AGENTS, CHROME_STORE, EDGE_STORE, asBrowser, listIn } from './support/browsers';
+import { hydrated } from './support/hydration';
 import { expect, test } from './support/test';
 
 // The install guide's illustrations (#299, task 1.7), under *Advanced: install from a zip* once a store lists Xomoni:
@@ -12,6 +13,8 @@ const steps = (page: Page) => zip(page).getByRole('region', { name: 'Install ste
 async function toAddStep(page: Page, title: string) {
   await page.goto('/install#install-from-a-zip');
   await expect(steps(page).getByText('Step 1 of 5')).toBeVisible();
+  // The server's HTML shows the guide before React drives it, and a click in between is lost (#404).
+  await hydrated(steps(page));
   for (let i = 0; i < 3; i++) await steps(page).getByRole('button', { name: 'Next' }).click();
   await expect(steps(page).getByRole('heading', { name: title })).toBeVisible();
 }

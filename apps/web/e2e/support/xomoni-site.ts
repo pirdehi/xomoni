@@ -1,4 +1,4 @@
-import type { BrowserContext } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
 // xomoni.com and its database as Xomoni's browser tests see them (#345): played at the extension, as the website's
 // tests play the extension at the page. Pages of https://xomoni.com are served from here, and send the extension the
@@ -38,10 +38,16 @@ export interface XomoniSite {
    * one-time code, sent as `xomoni-sign-in`. Returns the extension's answer.
    */
   signIn(extensionId: string): Promise<unknown>;
+  /**
+   * Sends `message` to Xomoni from `page`, a page of xomoni.com, as the website does (`@xomoni/bridge`), and returns its
+   * answer: undefined when Xomoni gives none.
+   */
+  send(page: Page, extensionId: string, message: unknown): Promise<unknown>;
 }
 
 /** The one-time code xomoni.com's page hands the extension. Made up, in the shape of the website's codes. */
-const CODE = 'ABCDE-23456';
+export const SITE_CODE = 'ABCDE-23456';
+const CODE = SITE_CODE;
 
 /** The token `pair_device` gives for the code: made up, never a real one. */
 const TOKEN = 'e2e-device-token-not-a-secret';
@@ -61,19 +67,21 @@ export async function serveXomoniSite(
     signIn: async (extensionId) => {
       const page = await context.newPage();
       await page.goto(`${SITE}/dashboard`);
-      const answer: unknown = await page.evaluate(
-        ({ id, code }) => {
+      const answer = await site.send(page, extensionId, { type: 'xomoni-sign-in', code: CODE });
+      await page.close();
+      return answer;
+    },
+    send: (page, extensionId, message) =>
+      page.evaluate(
+        ({ id, message }) => {
           // Chrome's own channel, there on xomoni.com because Xomoni lists it in `externally_connectable`.
           const { chrome } = window as unknown as {
             chrome: { runtime: { sendMessage(id: string, message: unknown): Promise<unknown> } };
           };
-          return chrome.runtime.sendMessage(id, { type: 'xomoni-sign-in', code });
+          return chrome.runtime.sendMessage(id, message);
         },
-        { id: extensionId, code: CODE },
-      );
-      await page.close();
-      return answer;
-    },
+        { id: extensionId, message },
+      ),
   };
   let paired = false;
 

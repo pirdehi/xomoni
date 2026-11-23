@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  x.com/settings/download_your_data as Xomoni's browser tests serve it (#345), once X has made the archive: X's
+  "Download archive" button. Synthetic, and only what Xomoni reads (apps/extension/src/content/dom.ts). Pressing it
+  starts nothing here: on X, it starts the browser's own download of the ZIP.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Download an archive of your data / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link">Home</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1>Download an archive of your data</h1>
+          <p>Your archive is ready.</p>
+          <button type="button" id="download">Download archive</button>
+        </div>
+      </main>
+    </div>
+    <script>
+      document.getElementById('download').addEventListener('click', () => {
+        document.body.dataset.pressed = 'download';
+      });
+    </script>
+  </body>
+</html>

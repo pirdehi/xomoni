@@ -1,6 +1,7 @@
 import type { BrowserContext, Locator, Page, Request } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from '../support/a11y';
 import {
+  acceptRisks,
   browseProfile,
   confirmCleanup,
   continueWithoutArchive,
@@ -110,6 +111,20 @@ async function stoppedByRestriction(dashboard: Page, page: Page, context: Browse
 
 /** X's headers saying `used` of the 150 requests of a 15-minute window are used, resetting `resetIn` ms after each answer. */
 const used = (count: number, resetIn = 12 * MINUTE * 1000): XRate => ({ limit: 150, remaining: 150 - count, resetIn });
+
+/** The job the Library's *Read one part › Posts and reposts* starts: a read of the profile, which changes nothing. */
+const READ_POSTS = 'Read: Posts and reposts (about the newest 3,200)';
+
+/** Starts *Read one part › Posts and reposts* from the Library, and accepts the risks, as before an account's first job. */
+async function readPosts(dashboard: Page) {
+  await dashboard.bringToFront();
+  await dashboard.getByRole('navigation').getByRole('button', { name: 'Library', exact: true }).click();
+  await dashboard.getByRole('button', { name: 'Other ways: read from X' }).click();
+  await dashboard.getByRole('button', { name: 'Read one part' }).click();
+  await dashboard.getByRole('menuitem', { name: 'Posts and reposts (about the newest 3,200)' }).click();
+  await acceptRisks(dashboard);
+  await expect(jobCard(dashboard, READ_POSTS)).toBeVisible();
+}
 
 test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
   test('S17-01 Careful’s caps are one fifth of what X publishes, with X’s sources', async ({ dashboard }) => {
@@ -800,5 +815,54 @@ test.describe('within one fifth of X’s limits', { tag: '@task-17' }, () => {
     await expect(panel.getByRole('status')).toContainText('Risk level 3: Defensive');
     // A quarter of the warm-up's quarter of the custom 100 a day.
     await expect(caps(panel, 'Delete posts & replies')).toHaveText('0/2 hr · 0/6 day');
+  });
+
+  test('S17-35 X’s 429 on a read’s page puts the account on Caution, and the read waits for X’s reset', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    // Home, then the profile, each at the warm-up's pace: up to 2 minutes with one of the pace's long pauses.
+    test.setTimeout(180_000);
+    await browseProfile(page, ['posts']);
+    await workAnyTime(dashboard);
+    await answerWithRate(context, 'UserTweets', { status: 429, resetAt: Date.now() + 15 * MINUTE * 1000 });
+    await readPosts(dashboard);
+
+    const card = jobCard(dashboard, READ_POSTS);
+    await expect.poll(() => waitLeft(card, RATE_WAIT), { timeout: 150_000 }).toBeGreaterThanOrEqual(10 * MINUTE);
+    await expect(card).toContainText('Waiting');
+    await dashboard.getByRole('button', { name: 'Show log' }).click();
+    await expect(dashboard.getByText(/^X rate limit hit; resuming at /)).toBeVisible();
+    await expect(dashboard.getByText(/^Finished “Read: Posts/)).toHaveCount(0);
+
+    const panel = await openLimits(dashboard);
+    const risk = panel.getByRole('status');
+    await expect(risk).toContainText('Risk level 1: Caution');
+    await expect(risk).toContainText('X rate-limited Xomoni in the last hour.');
+    await expect(observedValue(panel, 'Profile timeline')).toHaveAttribute('data-tone', 'critical');
+  });
+
+  test('S17-36 a read started while X’s Home shows its notice of a limited account stops there, as a cleanup does', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    test.setTimeout(180_000);
+    await browseProfile(page, ['posts']);
+    await workAnyTime(dashboard);
+    await servePage(context, '/home', 'home-limited.html');
+    const loads = xRequests(dashboard, graphql);
+    await readPosts(dashboard);
+
+    const card = jobCard(dashboard, READ_POSTS);
+    // Home is a page load like any other: it waits for the pace first, up to 2 minutes with a long pause.
+    await expect(card).toContainText('Stopped for safety', { timeout: 150_000 });
+    await expect(card).toContainText(
+      'X shows a restriction on this account: “Your account is temporarily limited”. The account may be limited or read-only.',
+    );
+    await expect(card).toContainText(/0\s*posts looked at/);
+    await expect(card.getByRole('button', { name: /^Resume in 1[12]h \d+m$/ })).toBeDisabled();
+    expect(loads, 'pages of posts the read loaded').toEqual([]);
   });
 });

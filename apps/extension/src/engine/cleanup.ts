@@ -18,7 +18,7 @@ import type { ActionResult, ActorCommand, ContentState, VisibleTweet } from '../
 import { DAY, searchDate, timeMatchesId } from '../shared/time';
 import type { ActionKind, CleanupFilter, CleanupOptions, Item, ItemKind } from '../shared/types';
 import { readBudgetFor } from '../shared/x-limits';
-import { Interrupted, type JobContext, NeedsYou, Stop } from './context';
+import { Interrupted, type JobContext, NeedsYou, Stop, loadPage } from './context';
 import { runDueChecks, sampleAction } from './samples';
 import { randomBetween, sleep } from './timers';
 import { NotReady } from './ports';
@@ -28,8 +28,6 @@ const MAX_PASSES = 500;
 const MAX_IDLE_SCROLLS = 4;
 const MAX_ATTEMPTS = 4;
 const LOOKUP_ROUNDS = 3;
-/** Loads of the same sweep page after X refused it for its quota, each after X's reset. */
-const MAX_QUOTA_RETRIES = 3;
 /** Loads of a sweep page that fails for another reason before handing over to the inventory. */
 const MAX_PAGE_LOADS = 3;
 
@@ -130,33 +128,16 @@ export function sweepUrls(f: CleanupFilter, handle: string, postsCount: number |
 const needsLiveData = (f: CleanupFilter) => f.keepMinLikes != null && (f.target === 'post' || f.target === 'reply');
 
 /**
- * Loads a sweep page. When X refused it for its quota, waits for X's reset and loads the same page again, up
- * to `MAX_QUOTA_RETRIES` times, then pauses the job: the deep clean would open every post on its own and
- * spend far more (PLAYBOOK A5). Returns null, handing over to the inventory, only when the page keeps failing
- * for another reason.
+ * Loads a sweep page. When X refused it for its quota, `loadPage` waits for X's reset and loads the same page again,
+ * up to `MAX_QUOTA_RETRIES` times, then pauses the job: the deep clean would open every post on its own and spend far
+ * more (PLAYBOOK A5). Returns null, handing over to the inventory, only when the page keeps failing for another
+ * reason.
  */
 async function loadSweepPage(ctx: JobContext, url: string): Promise<ContentState | null> {
-  let limited = 0;
-  let failed = 0;
-  for (;;) {
-    const since = Date.now();
-    const content = await ctx.navigate(url);
+  for (let failed = 1; ; failed++) {
+    const content = await loadPage(ctx, url);
     if (content.kind === 'tweets' || content.kind === 'empty') return content;
-
-    const rateLimit = await ctx.pageRateLimit(since);
-    if (rateLimit) {
-      if (++limited > MAX_QUOTA_RETRIES) {
-        throw new Stop(
-          'paused',
-          `X kept rate-limiting this page after ${MAX_QUOTA_RETRIES} waits for its reset. Rest the account for a few hours, then resume.`,
-        );
-      }
-      // Records the rate limit for the risk ladder (a second within an hour stops the job), then waits for the reset.
-      await ctx.settle('read', null, rateLimit);
-      continue;
-    }
-
-    if (++failed >= MAX_PAGE_LOADS) {
+    if (failed >= MAX_PAGE_LOADS) {
       await ctx.log(
         'warn',
         'system',

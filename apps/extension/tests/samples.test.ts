@@ -33,6 +33,9 @@ function fakeContext(page: ContentState['kind'] = 'tweets', visible: VisibleTwee
   return {
     job: { id: 'j', accountId: ACCOUNT, stats: { matched: 0, done: 0, skipped: 0, failed: 0, scanned: 0 } },
     navigate: vi.fn(async (_url: string) => ({ kind: page, count: visible.length, http: 200 })),
+    // X answered every post page: none was refused for its quota (#392).
+    pageRateLimit: vi.fn(async (_since: number) => null),
+    settle: vi.fn(async () => false),
     checkpoint: vi.fn(),
     status: vi.fn(),
     log: vi.fn(async (_level: string, _action: string, _message: string) => 0),

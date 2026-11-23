@@ -243,6 +243,9 @@ test.describe('private by design: xomoni.com', { tag: '@task-143' }, () => {
     const sent: string[] = [];
     page.on('request', (request) => sent.push(`${request.url()} ${request.postData() ?? ''}`));
     await page.goto(`/#ext=${EXT}`);
+    // A page the extension opened: once the site has kept the id, it clears it from the address. Signing in before
+    // that leaves the site without the id, so it never signs Xomoni in (slower browsers, such as Edge on CI).
+    await expect(page).toHaveURL(/\/$/);
     await signIn(page, email, PASSWORD);
     await page.waitForURL(/\/dashboard/);
     await expect.poll(() => fake.state.deviceId).toBeTruthy();
@@ -347,6 +350,9 @@ test.describe('private by design: xomoni.com', { tag: '@task-143' }, () => {
     await createConfirmedUser(email, PASSWORD);
     const fake = await installFakeXomoni(page);
     await page.goto(`/#ext=${EXT}`);
+    // A page the extension opened: once the site has kept the id, it clears it from the address. Signing in before
+    // that leaves the site without the id, so it never signs Xomoni in (slower browsers, such as Edge on CI).
+    await expect(page).toHaveURL(/\/$/);
     await signIn(page, email, PASSWORD);
     await page.waitForURL(/\/dashboard/);
     await expect.poll(() => fake.state.deviceId).toBeTruthy();

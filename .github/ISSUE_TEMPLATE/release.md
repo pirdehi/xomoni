@@ -34,7 +34,7 @@ Previous version: vX.Y.Z
 - [ ] Frontend: the website's and the extension's component tests are green
 - [ ] End to end: green in a real browser
 - [ ] Every user-facing task in this release has its scenarios file, at least 20, all green
-- [ ] Data moves from the previous version: exported there, imported into this one ([ADR-0032](https://github.com/pirdehi/xomoni/blob/main/docs/adr/0032-move-data-between-xomoni-versions.md))
+- [ ] Data moves from the previous version: exported there, imported into this one ([ADR-0032](https://github.com/pirdehi/xomoni/blob/main/docs/adr/0032-move-data-between-xomoni-versions.md)), the smoke test's *move*
 
 **Security**
 
@@ -44,7 +44,7 @@ Previous version: vX.Y.Z
 
 **The package**
 
-- [ ] Smoke test of the built zip: a clean install, and an update from the previous version (notes: )
+- [ ] Smoke test of the built zip against the previous release's, `npm run test:e2e:release -w @xomoni/web` ([how](https://github.com/pirdehi/xomoni/blob/main/docs/RELEASING.md#the-smoke-test-of-the-zips)): a clean install, an update in place and a rollback (notes: )
 - [ ] The rollback below is written
 
 **Go**

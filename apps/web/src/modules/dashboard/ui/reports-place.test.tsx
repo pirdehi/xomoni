@@ -6,6 +6,9 @@ import type { DailyNumbers, JobSummary } from '../domain/model';
 import { ReportsPlace } from './reports-place';
 
 const NOW = Date.parse('2026-11-20T12:00:00Z');
+/** A time's day as the page shows it, by this computer's calendar (#414). */
+const shownDay = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 function day(d: string, over: Partial<DailyNumbers> = {}): DailyNumbers {
   return {
@@ -128,8 +131,8 @@ describe('ReportsPlace (#257)', () => {
     expect(screen.getByText('Removed in this period: 2 posts, 0 replies, 0 reposts and 0 likes.')).toBeInTheDocument();
     expect(rowsOf(screen.getByRole('table'))).toEqual([
       ['Job', 'Account', 'Removed', 'Skipped', 'Failed', 'Updated'],
-      ['Unlike likes', '@ada', '40', '1', '1', 'Nov 20, 2026'],
-      ['Delete posts before Jan 1, 2024', '@ada', '8', '1', '1', 'Nov 19, 2026'],
+      ['Unlike likes', '@ada', '40', '1', '1', shownDay('2026-11-20T08:00:00Z')],
+      ['Delete posts before Jan 1, 2024', '@ada', '8', '1', '1', shownDay('2026-11-19T10:00:00Z')],
     ]);
     unmount();
 

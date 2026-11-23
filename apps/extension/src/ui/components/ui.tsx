@@ -383,6 +383,24 @@ export function Field({ label, hint, children }: { label: ReactNode; hint?: Reac
 }
 
 /**
+ * A label over a row of controls, such as a `Segmented`'s buttons, as a `group` named by the label (#345). A `Field`
+ * is a `<label>`, which would lend its whole text to every button inside it, so a screen reader heard the first one
+ * as "Theme Light Dark"; here each control keeps its own name.
+ */
+export function FieldGroup({ label, children }: { label: string; children: ReactNode }) {
+  const styles = useStyles();
+  const id = useId();
+  return (
+    <div role="group" aria-labelledby={id} className={styles.field}>
+      <span id={id} className={styles.fieldLabel}>
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/**
  * An on/off switch (Fluent `Switch`, `role="switch"`) with a label and an optional description, which is the
  * switch's accessible description (`aria-describedby`).
  */

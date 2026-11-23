@@ -24,7 +24,18 @@ import { DAY } from '../../shared/time';
 import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/types';
 import { X_PUBLISHED_LIMITS, capCeilings, share } from '../../shared/x-limits';
 import type { PageProps } from '../navigation';
-import { Button, Callout, Card, Disclosure, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
+import {
+  Button,
+  Callout,
+  Card,
+  Disclosure,
+  Field,
+  FieldGroup,
+  Modal,
+  PageHeader,
+  Segmented,
+  Toggle,
+} from '../components/ui';
 import { errorMessage } from '../format';
 import { toast, useRunner } from '../hooks';
 import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
@@ -361,7 +372,7 @@ export function SettingsPage({ account, worker }: PageProps) {
           <CloudCard x={xLinkOf(worker)} />
 
           <Card title="Appearance & data">
-            <Field label="Theme">
+            <FieldGroup label="Theme">
               <Segmented
                 value={theme}
                 onChange={(t) => {
@@ -374,7 +385,7 @@ export function SettingsPage({ account, worker }: PageProps) {
                   { value: 'dark', label: 'Dark' },
                 ]}
               />
-            </Field>
+            </FieldGroup>
             <div className={styles.data}>
               <Caption1 as="p" block className={styles.dataNote}>
                 Your copy, jobs and log live only in this browser. To keep them, or to take them to a new Xomoni, use

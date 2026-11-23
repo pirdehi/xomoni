@@ -343,7 +343,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [173, 148],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/173-two-step-verification.md",
       "en": {
         "title": "Two-step verification",
         "summary": "turn it on in Account with an authenticator app, and every sign-in on xomoni.com asks for its 6-digit code before any private page opens. The website's server and the database both check it, so a password or a copied session alone reads and changes nothing. Changing your email or password, or resetting it by email, asks for a code too, and every app added or removed is emailed to you."
@@ -375,7 +375,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [251],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/251-website-actions.md",
       "en": {
         "title": "Pause and cancel from xomoni.com",
         "summary": "job cards on xomoni.com pause or cancel a job of the same browser at once, and open Xomoni's pages. *Resume* asks you in Xomoni first: the website never starts or resumes work on X."
@@ -391,7 +391,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [235],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/235-website-cleanup-plan.md",
       "en": {
         "title": "Plan a cleanup on xomoni.com",
         "summary": "the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there."
@@ -423,7 +423,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [234],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/234-website-settings.md",
       "en": {
         "title": "Settings from xomoni.com",
         "summary": "change Xomoni's active hours, the failures in a row before a pause, notifications and Watch searches, or set pacing back to Careful. Xomoni applies its own rules, so nothing goes faster than Careful."
@@ -439,7 +439,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [256],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/256-comments.md",
       "en": {
         "title": "Comments on xomoni.com",
         "summary": "find your replies by date, likes, who you replied to and words, see who you reply to most, and send the ones you pick to Xomoni's Cleanup to review. *Replies to you* counts the replies you get each day; Xomoni keeps them on your computer only, for 90 days."
@@ -471,7 +471,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [151],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/151-update-notice.md",
       "en": {
         "title": "Hear about new versions",
         "summary": "a browser connected to xomoni.com says when a newer Xomoni is out, and whether it fixes a security problem."
@@ -487,7 +487,7 @@
       "status": "preview",
       "since": "0.5.1",
       "issues": [302, 304],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/304-store-install.md",
       "en": {
         "title": "Install from the Chrome Web Store and Edge Add-ons",
         "summary": "once a store lists Xomoni, xomoni.com/install shows one button for your browser, a zip install shows the steps to move to the store's Xomoni, and xomoni.com finds Xomoni by the stores' fixed ids."
@@ -583,7 +583,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [243],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/243-send-to-computer.md",
       "en": {
         "title": "Send to my computer",
         "summary": "Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers."

@@ -1,7 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import type { Page } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from './support/a11y';
 import { createConfirmedUser } from './support/admin';
-import { PASSWORD, signIn, signOut, uniqueEmail } from './support/flows';
+import { PASSWORD, signIn, signOut } from './support/flows';
 import { expect, test } from './support/test';
 import { apiSignIn } from './support/two-factor';
 
@@ -60,9 +61,15 @@ const row = (ago: number, counts: Record<string, unknown> = {}) => ({
   ...counts,
 });
 
+/**
+ * A fresh address per test. Its account signs in through the API and pairs a browser here, so the address is made
+ * from a secure random id rather than `Math.random`, as the shared helper does, which code scanning flags on that path.
+ */
+const freshEmail = (label: string) => `e2e-${label}-${randomUUID()}@xomoni.test`;
+
 /** A new account, signed in, on Overview; returns its email and id. */
 async function newAccount(page: Page) {
-  const email = uniqueEmail('numbers');
+  const email = freshEmail('numbers');
   const userId = await createConfirmedUser(email, PASSWORD);
   await signIn(page, email, PASSWORD);
   await page.waitForURL(/\/dashboard/);
@@ -272,7 +279,7 @@ test.describe('show my numbers on xomoni.com', { tag: '@task-250' }, () => {
     await expect(toggle(page)).toBeChecked();
     await report(await pairedBrowser(email), [row(0, { followers: 4242 })]);
 
-    const otherEmail = uniqueEmail('numbers-other');
+    const otherEmail = freshEmail('numbers-other');
     await createConfirmedUser(otherEmail, PASSWORD);
     const other = await apiSignIn(otherEmail, PASSWORD);
     expect((await other.from('daily_stats').select('*')).data).toEqual([]);

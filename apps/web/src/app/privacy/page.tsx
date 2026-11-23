@@ -137,6 +137,11 @@ export default function PrivacyPage() {
         numbers from the week before: counts only, never your posts or anyone’s names. Every one has a link that stops
         it without signing in, and turning your daily numbers off stops it too.
       </p>
+      <p>
+        If you ask for it in Settings, we also email you when X warns one of your X accounts and Xomoni stops there: the
+        account’s @handle and when Xomoni may go on, nothing X showed and nothing you posted. At most one every six
+        hours, and every one has a link that stops it without signing in.
+      </p>
       <h2>Cookies</h2>
       <p>
         This website sets only the cookies it needs to keep you signed in. There are no advertising, analytics or
@@ -156,8 +161,8 @@ export default function PrivacyPage() {
           <strong>Google</strong> handles “Sign in with Google”. Xomoni requests only your basic profile and email.
         </li>
         <li>
-          <strong>Resend</strong> delivers our account emails, and the weekly email if you asked for it (servers in the
-          United States). It receives your email address and the message.
+          <strong>Resend</strong> delivers our account emails, and the weekly email and the alert when X warns your
+          account if you asked for them (servers in the United States). It receives your email address and the message.
         </li>
         <li>
           <strong>Cloudflare</strong> runs Turnstile on the sign-in, sign-up and password forms, and hosts our domain’s

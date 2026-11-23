@@ -1,5 +1,6 @@
 import type { DailyNumbers, Device, JobSummary } from '../domain/model';
 import type { PairMessage } from '../domain/connect';
+import type { HealthAlertStatus } from '../domain/health-alert';
 import type { PairingResult } from '../domain/pairing';
 
 /** Reads the signed-in person's devices and recent jobs. Row Level Security scopes every read. */
@@ -47,6 +48,17 @@ export interface WeeklyEmailChoice {
   /** The stored choice; false until the person turns it on. */
   get(): Promise<boolean>;
   /** Turns it on (only while the daily numbers are on) or off. Resolves with the stored choice. */
+  set(enabled: boolean): Promise<boolean>;
+}
+
+/**
+ * The email when X warns one of the signed-in account's X accounts (#407, ADR-0042): the choice, and whether xomoni.com
+ * can send it at all.
+ */
+export interface HealthAlertChoice {
+  /** The stored choice, and whether sending is set up; off until the person turns it on. */
+  get(): Promise<HealthAlertStatus>;
+  /** Turns it on or off (off drops an alert still waiting). Resolves with the stored choice. */
   set(enabled: boolean): Promise<boolean>;
 }
 

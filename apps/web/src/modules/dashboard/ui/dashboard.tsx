@@ -70,6 +70,7 @@ import { PendingConnectNotice } from './connect-panel';
 import { DashboardFrame, useScope } from './dashboard-frame';
 import { PairingPanel } from './pairing-panel';
 import { SectionPreview } from './section-preview';
+import { HealthAlertCard } from './health-alert';
 import { useLiveDashboard } from './use-live-dashboard';
 
 /** Who is signed in, as the dashboard header shows them. */
@@ -422,6 +423,8 @@ export function Dashboard({
     showNumbers,
     weeklyEmail,
     setWeeklyEmail,
+    healthAlert,
+    setHealthAlert,
   } = useLiveDashboard(viewer.id, initial);
   const now = useNow(30_000);
   const justConnected = useJustConnected(devices);
@@ -536,7 +539,13 @@ export function Dashboard({
   } else if (section.id === 'comments') {
     content = <CommentsPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'settings') {
-    content = <SettingsPlace xomoni={xomoni} numbers={<NumbersChoice shown={numbersShown} onShow={showNumbers} />} />;
+    content = (
+      <SettingsPlace
+        xomoni={xomoni}
+        numbers={<NumbersChoice shown={numbersShown} onShow={showNumbers} />}
+        alert={<HealthAlertCard status={healthAlert} onSet={setHealthAlert} />}
+      />
+    );
   } else {
     // Browsers: the last place. A new place shows its preview above until it is ready and has its own branch.
     content =

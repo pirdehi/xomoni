@@ -8,6 +8,7 @@ import type {
   DeviceRegistry,
   LiveFeed,
   NumbersChoice,
+  HealthAlertChoice,
   WeeklyEmailChoice,
 } from '../application/ports';
 
@@ -192,6 +193,26 @@ export function createSupabaseWeeklyEmail(supabase: Client): WeeklyEmailChoice {
     async set(enabled) {
       const { data, error } = await supabase.rpc('set_weekly_email', { enabled });
       if (error) throw new Error(`set_weekly_email: ${error.message}`);
+      return data;
+    },
+  };
+}
+
+/**
+ * The account's email when X warns one of its X accounts (#407, ADR-0042): `health_alert_status` answers the choice and
+ * whether the Resend key is set up (never the key, nor the stop token), and `set_health_alert` stores the choice.
+ */
+export function createSupabaseHealthAlert(supabase: Client): HealthAlertChoice {
+  return {
+    async get() {
+      const { data, error } = await supabase.rpc('health_alert_status');
+      if (error) throw new Error(`health_alert_status: ${error.message}`);
+      const [row] = data;
+      return { enabled: row?.enabled === true, canSend: row?.can_send === true };
+    },
+    async set(enabled) {
+      const { data, error } = await supabase.rpc('set_health_alert', { enabled });
+      if (error) throw new Error(`set_health_alert: ${error.message}`);
       return data;
     },
   };

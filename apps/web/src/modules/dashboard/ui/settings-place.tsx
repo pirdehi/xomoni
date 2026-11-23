@@ -97,10 +97,18 @@ function refusalText(reason: string): string {
 
 /**
  * Settings (#234): Xomoni's pace, active hours, safety, notifications and the active account's Watch searches, read
- * from Xomoni in this browser and changed there within its rules (ADR-0029), and the choice of daily numbers
- * (`numbers`), which works anywhere.
+ * from Xomoni in this browser and changed there within its rules (ADR-0029), and the account's own choices kept on
+ * xomoni.com, which work anywhere: the daily numbers (`numbers`) and the email when X warns an account (`alert`, #407).
  */
-export function SettingsPlace({ xomoni, numbers }: { xomoni: XomoniControls; numbers: ReactNode }) {
+export function SettingsPlace({
+  xomoni,
+  numbers,
+  alert,
+}: {
+  xomoni: XomoniControls;
+  numbers: ReactNode;
+  alert?: ReactNode;
+}) {
   const s = useStyles();
   const { answer, loading, reload } = useXomoniRead(xomoni, { what: 'settings' });
   // What Xomoni last answered to a change here: newer than the read, until the page reads again.
@@ -118,6 +126,7 @@ export function SettingsPlace({ xomoni, numbers }: { xomoni: XomoniControls; num
           says="Xomoni’s settings live in Xomoni on your computer, and change only there. Open this page in the browser where Xomoni runs, signed in to this account, to see and change them here."
         />
         {numbers}
+        {alert}
       </div>
     );
   }
@@ -160,6 +169,7 @@ export function SettingsPlace({ xomoni, numbers }: { xomoni: XomoniControls; num
         </>
       )}
       {numbers}
+      {alert}
       <div>
         <Button appearance="subtle" size="small" icon={<ArrowClockwise16Regular />} onClick={reload}>
           Read again

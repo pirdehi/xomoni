@@ -48,7 +48,8 @@ select ok(not has_function_privilege('authenticated', 'public.require_second_fac
 select is(
   (select count(*)::int from pg_policies
    where policyname = 'Accounts with an authenticator app need aal2' and permissive = 'RESTRICTIVE'),
-  6, 'devices, jobs, daily numbers, their choice, the weekly email and the dashboard channel each have the rule');
+  7, 'devices, jobs, daily numbers, their choice, the weekly email, the health alert (#407) and the dashboard channel '
+    || 'each have the rule');
 
 set local role authenticated;
 

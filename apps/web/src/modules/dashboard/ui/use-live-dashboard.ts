@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createLiveDashboardServices } from '../client/live';
+import type { HealthAlertStatus } from '../domain/health-alert';
 import { upsertNewestFirst } from '../domain/job-status';
 import { isoDay } from '../domain/insights';
 import {
@@ -31,6 +32,13 @@ export interface LiveDashboard extends DashboardSnapshot {
   weeklyEmail: boolean | null;
   /** Turns the weekly email on or off; resolves to an error message on failure. */
   setWeeklyEmail: (enabled: boolean) => Promise<string | null>;
+  /**
+   * The email when X warns one of the account's X accounts (#407, ADR-0042): the choice and whether xomoni.com can send
+   * it; null while it is read, `error` when it couldn't be.
+   */
+  healthAlert: HealthAlertStatus | 'error' | null;
+  /** Turns that email on or off; resolves to an error message on failure. */
+  setHealthAlert: (enabled: boolean) => Promise<string | null>;
 }
 
 /**
@@ -45,10 +53,12 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
   const [live, setLive] = useState(false);
   const [numbersShown, setNumbersShown] = useState<boolean | null>(null);
   const [weeklyEmail, setWeeklyEmailState] = useState<boolean | null>(null);
+  const [healthAlert, setHealthAlertState] = useState<HealthAlertStatus | 'error' | null>(null);
 
   useEffect(() => {
     services.numbers.get().then(setNumbersShown, () => setNumbersShown(false));
     services.weeklyEmail.get().then(setWeeklyEmailState, () => setWeeklyEmailState(false));
+    services.healthAlert.get().then(setHealthAlertState, () => setHealthAlertState('error'));
   }, [services]);
 
   useEffect(() => {
@@ -117,6 +127,21 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
     }
   }
 
+  async function setHealthAlert(enabled: boolean) {
+    try {
+      const stored = await services.healthAlert.set(enabled);
+      setHealthAlertState((status) => ({
+        canSend: status !== null && status !== 'error' && status.canSend,
+        enabled: stored,
+      }));
+      return null;
+    } catch {
+      return enabled
+        ? 'Couldn’t turn the alert on. Try again in a moment.'
+        : 'Couldn’t turn the alert off. Try again in a moment.';
+    }
+  }
+
   return {
     devices,
     jobs,
@@ -128,5 +153,7 @@ export function useLiveDashboard(viewerId: string, initial: DashboardSnapshot): 
     showNumbers,
     weeklyEmail,
     setWeeklyEmail,
+    healthAlert,
+    setHealthAlert,
   };
 }

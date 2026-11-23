@@ -3,6 +3,7 @@ import type {
   DashboardReader,
   DevicePairing,
   DeviceRegistry,
+  HealthAlertChoice,
   LiveFeed,
   NumbersChoice,
   WeeklyEmailChoice,
@@ -11,6 +12,7 @@ import {
   createSupabaseDashboardReader,
   createSupabaseDevicePairing,
   createSupabaseDeviceRegistry,
+  createSupabaseHealthAlert,
   createSupabaseLiveFeed,
   createSupabaseNumbersChoice,
   createSupabaseWeeklyEmail,
@@ -30,6 +32,8 @@ export interface LiveDashboardServices {
   numbers: NumbersChoice;
   /** The account's weekly email (#257, ADR-0031). */
   weeklyEmail: WeeklyEmailChoice;
+  /** The account's email when X warns one of its X accounts (#407, ADR-0042). */
+  healthAlert: HealthAlertChoice;
 }
 
 /** Composition root for the browser: wires the dashboard ports to the browser Supabase client. */
@@ -42,5 +46,6 @@ export function createLiveDashboardServices(): LiveDashboardServices {
     pairing: createSupabaseDevicePairing(supabase),
     numbers: createSupabaseNumbersChoice(supabase),
     weeklyEmail: createSupabaseWeeklyEmail(supabase),
+    healthAlert: createSupabaseHealthAlert(supabase),
   };
 }

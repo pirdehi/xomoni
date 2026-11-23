@@ -191,6 +191,84 @@ export type Database = {
         };
         Relationships: [];
       };
+      health_alert_levels: {
+        Row: {
+          alerted_at: string | null;
+          alerted_level: number | null;
+          level: number;
+          user_id: string;
+          x_handle: string;
+        };
+        Insert: {
+          alerted_at?: string | null;
+          alerted_level?: number | null;
+          level: number;
+          user_id: string;
+          x_handle: string;
+        };
+        Update: {
+          alerted_at?: string | null;
+          alerted_level?: number | null;
+          level?: number;
+          user_id?: string;
+          x_handle?: string;
+        };
+        Relationships: [];
+      };
+      health_alert_queue: {
+        Row: {
+          dropped_at: string | null;
+          id: number;
+          level: number;
+          risen_at: string;
+          sent_at: string | null;
+          user_id: string;
+          x_handle: string;
+        };
+        Insert: {
+          dropped_at?: string | null;
+          id?: never;
+          level: number;
+          risen_at: string;
+          sent_at?: string | null;
+          user_id: string;
+          x_handle: string;
+        };
+        Update: {
+          dropped_at?: string | null;
+          id?: never;
+          level?: number;
+          risen_at?: string;
+          sent_at?: string | null;
+          user_id?: string;
+          x_handle?: string;
+        };
+        Relationships: [];
+      };
+      health_alerts: {
+        Row: {
+          changed_at: string;
+          enabled: boolean;
+          last_sent_at: string | null;
+          stop_token: string;
+          user_id: string;
+        };
+        Insert: {
+          changed_at?: string;
+          enabled?: boolean;
+          last_sent_at?: string | null;
+          stop_token?: string;
+          user_id: string;
+        };
+        Update: {
+          changed_at?: string;
+          enabled?: boolean;
+          last_sent_at?: string | null;
+          stop_token?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       jobs: {
         Row: {
           created_at: string;
@@ -339,6 +417,19 @@ export type Database = {
         Args: { enabled: boolean; token: string };
         Returns: boolean;
       };
+      health_alert_content: { Args: { owner: string }; Returns: Json };
+      health_alert_line: {
+        Args: { handle: string; level: number; risen_at: string };
+        Returns: string;
+      };
+      health_alert_status: {
+        Args: never;
+        Returns: {
+          can_send: boolean;
+          enabled: boolean;
+        }[];
+      };
+      health_alert_time: { Args: { at_time: string }; Returns: string };
       mask_email: { Args: { email: string }; Returns: string };
       mfa_satisfied: { Args: never; Returns: boolean };
       normalize_pairing_code: { Args: { code: string }; Returns: string };
@@ -352,9 +443,12 @@ export type Database = {
       };
       release_rank: { Args: { version: string }; Returns: number[] };
       require_second_factor: { Args: never; Returns: undefined };
+      send_health_alerts: { Args: { at_time?: string }; Returns: number };
       send_weekly_emails: { Args: { at_time?: string }; Returns: number };
       set_daily_stats: { Args: { enabled: boolean }; Returns: boolean };
+      set_health_alert: { Args: { enabled: boolean }; Returns: boolean };
       set_weekly_email: { Args: { enabled: boolean }; Returns: boolean };
+      stop_health_alert: { Args: { token: string }; Returns: boolean };
       stop_weekly_email: { Args: { token: string }; Returns: boolean };
       unpair_device: { Args: { token: string }; Returns: undefined };
       weekly_change: {

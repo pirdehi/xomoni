@@ -1,4 +1,5 @@
 import {
+  type Browser,
   type BrowserContext,
   type Locator,
   type Page,
@@ -30,8 +31,75 @@ const WELCOME = /^https:\/\/xomoni\.com\/welcome([#?]|$)/;
 /** Whether a request would leave for a host other than the fixtures' x.com. */
 const leaves = (url: URL) => /^(https?|wss?):$/.test(url.protocol) && url.host !== 'x.com';
 
-/** The id the browser gave Xomoni in each test's browser. */
-const installed = new WeakMap<BrowserContext, string>();
+/** The id the browser gave Xomoni in each test's browser, and the errors it showed. */
+const installed = new WeakMap<BrowserContext, { extensionId: string; errors: string[] }>();
+
+/**
+ * Collects the errors `context` shows from now on into the list returned: console errors, of its pages and of service
+ * workers, and its pages' uncaught exceptions.
+ */
+function errorsOf(context: BrowserContext): string[] {
+  const errors: string[] = [];
+  context.on('console', (message) => {
+    if (message.type() !== 'error') return;
+    const where = message.worker()?.url() ?? message.page()?.url() ?? message.location().url;
+    errors.push(`${where}: ${message.text()}`);
+  });
+  context.on('weberror', (error) => errors.push(`${error.page()?.url() ?? 'a page'}: ${String(error.error())}`));
+  return errors;
+}
+
+/** What a service worker's DevTools session sends that `watchServiceWorkers` reads. */
+interface WorkerMessage {
+  method?: string;
+  params?: {
+    exceptionDetails?: { text?: string; exception?: { description?: string } };
+    entry?: { level?: string; text?: string };
+  };
+}
+
+/** A failure to watch a worker that only says it ended first, or the browser did. */
+const GONE = /no target|target closed|has been closed|detached/i;
+
+/**
+ * Adds to `errors` what every service worker `browser` starts from now on shows that Playwright doesn't report: its
+ * uncaught exceptions and its browser-logged errors, such as a refused script, as `url: what`. Those from before the
+ * watch reached a worker count too: DevTools replays them. It has a DevTools session of its own, attached to each
+ * worker without flattening, so its messages come to it rather than to Playwright's sessions.
+ */
+async function watchServiceWorkers(browser: Browser, errors: string[]): Promise<void> {
+  const devtools = await browser.newBrowserCDPSession();
+  const workers = new Map<string, string>();
+  let sent = 0;
+  devtools.on('Target.targetCreated', ({ targetInfo }) => {
+    if (targetInfo.type !== 'service_worker') return;
+    void (async () => {
+      const { sessionId } = await devtools.send('Target.attachToTarget', {
+        targetId: targetInfo.targetId,
+        flatten: false,
+      });
+      workers.set(sessionId, targetInfo.url);
+      for (const method of ['Runtime.enable', 'Log.enable'])
+        await devtools.send('Target.sendMessageToTarget', {
+          sessionId,
+          message: JSON.stringify({ id: ++sent, method }),
+        });
+    })().catch((error: unknown) => {
+      if (!GONE.test(String(error))) errors.push(`${targetInfo.url}: not watched for errors: ${String(error)}`);
+    });
+  });
+  devtools.on('Target.receivedMessageFromTarget', ({ sessionId, message }) => {
+    const { method, params } = JSON.parse(message) as WorkerMessage;
+    const where = workers.get(sessionId) ?? 'a service worker';
+    if (method === 'Runtime.exceptionThrown') {
+      const details = params?.exceptionDetails;
+      errors.push(`${where}: ${details?.exception?.description?.split('\n')[0] ?? details?.text ?? 'an exception'}`);
+    } else if (method === 'Log.entryAdded' && params?.entry?.level === 'error') {
+      errors.push(`${where}: ${params.entry.text ?? 'an error'}`);
+    }
+  });
+  await devtools.send('Target.setDiscoverTargets', { discover: true });
+}
 
 /** The extension's fixtures, beside Playwright's own. */
 interface ExtensionFixtures {
@@ -51,25 +119,37 @@ interface ExtensionFixtures {
   /** Xomoni's dashboard, the tab it opens by itself on install, brought to the front. */
   dashboard: Page;
   /**
-   * Installs another Xomoni, fresh, in a browser of its own, as the new Xomoni a person moves their data to (#300, #345),
-   * with x.com served as in this test's. Each call installs one more; each is checked, as this test's is, for requests
-   * to a host other than x.com, and closed when the test ends.
+   * The errors this test's browser showed so far, from its launch on: console errors and uncaught exceptions of its
+   * pages and of Xomoni's service worker, each as `where: what`. Tests that need none say so (the release smoke test,
+   * #419); others may ignore them.
    */
-  newXomoni: () => Promise<OtherXomoni>;
+  browserErrors: string[];
+  /**
+   * Installs another Xomoni, fresh, in a browser of its own, as the new Xomoni a person moves their data to (#300, #345),
+   * with x.com served as in this test's: this test's build, or the one in `build`, such as the release smoke test's
+   * candidate (#419). Each call installs one more; each is checked, as this test's is, for requests to a host other
+   * than x.com, and closed when the test ends.
+   */
+  newXomoni: (build?: string) => Promise<OtherXomoni>;
 }
 
-/** Another copy of Xomoni, in a browser of its own: its browser, its id, and the dashboard it opened on install. */
+/**
+ * Another copy of Xomoni, in a browser of its own: its browser, its id, the dashboard it opened on install, and the
+ * errors that browser showed (as `browserErrors`).
+ */
 export interface OtherXomoni {
   context: BrowserContext;
   extensionId: string;
   dashboard: Page;
+  errors: string[];
 }
 
-/** A browser with Xomoni installed, and the requests its pages tried to send to a host other than x.com. */
+/** A browser with Xomoni installed, the requests its pages tried to send to a host other than x.com, and its errors. */
 interface Installed {
   context: BrowserContext;
   extensionId: string;
   left: string[];
+  errors: string[];
 }
 
 /** What a browser with Xomoni is launched with: the test's options, and the folder of the build to install. */
@@ -98,6 +178,7 @@ async function install({ dir, xSignedIn, xHistory, colorScheme, channel }: Insta
     ignoreDefaultArgs: ['--disable-extensions'],
     args: ['--enable-unsafe-extension-debugging', NO_NETWORK, '--screen-info={1440x900}', '--window-size=1280,800'],
   });
+  const errors = errorsOf(context);
   const left: string[] = [];
   await context.route(leaves, (route) => {
     const request = route.request();
@@ -109,10 +190,11 @@ async function install({ dir, xSignedIn, xHistory, colorScheme, channel }: Insta
 
   const browser = context.browser();
   if (!browser) throw new Error('The extension tests need a browser Playwright launched');
+  await watchServiceWorkers(browser, errors);
   const devtools = await browser.newBrowserCDPSession();
   const { id } = await devtools.send('Extensions.loadUnpacked', { path: dir });
   await devtools.detach();
-  return { context, extensionId: id, left };
+  return { context, extensionId: id, left, errors };
 }
 
 /** The dashboard Xomoni `extensionId` opens by itself on install in `context`, once it shows, brought to the front. */
@@ -144,13 +226,17 @@ export const test = base.extend<ExtensionFixtures>({
 
   context: async ({ xSignedIn, xHistory, colorScheme, channel, extensionBuild: dir }, provide) => {
     const browser = await install({ dir, xSignedIn, xHistory, colorScheme, channel });
-    installed.set(browser.context, browser.extensionId);
+    installed.set(browser.context, browser);
     await provide(browser.context);
     await uninstall(browser);
   },
 
   extensionId: async ({ context }, provide) => {
-    await provide(installed.get(context)!);
+    await provide(installed.get(context)!.extensionId);
+  },
+
+  browserErrors: async ({ context }, provide) => {
+    await provide(installed.get(context)!.errors);
   },
 
   serviceWorker: async ({ context, extensionId }, provide) => {
@@ -166,13 +252,14 @@ export const test = base.extend<ExtensionFixtures>({
 
   newXomoni: async ({ xSignedIn, xHistory, colorScheme, channel, extensionBuild: dir }, provide) => {
     const others: Installed[] = [];
-    await provide(async () => {
-      const other = await install({ dir, xSignedIn, xHistory, colorScheme, channel });
+    await provide(async (build = dir) => {
+      const other = await install({ dir: build, xSignedIn, xHistory, colorScheme, channel });
       others.push(other);
       return {
         context: other.context,
         extensionId: other.extensionId,
         dashboard: await dashboardOf(other.context, other.extensionId),
+        errors: other.errors,
       };
     });
     for (const other of others) await uninstall(other);

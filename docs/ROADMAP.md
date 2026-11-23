@@ -299,6 +299,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ✅ | 16 · CI: the website's and the extension's browser tests side by side in `e2e` and `e2e-edge`, each job from about 25 minutes to about 14, gating the same tests; the `/install` tests wait for React before their first click | [#404](https://github.com/pirdehi/xomoni/issues/404) | [#406](https://github.com/pirdehi/xomoni/pull/406), [#411](https://github.com/pirdehi/xomoni/pull/411) |
 | ✅ | 17 · CI: the browser tests in shards on runners of their own, the website's two each with its own Supabase and the extension's two, behind the same `e2e` and `e2e-edge` gates | [#412](https://github.com/pirdehi/xomoni/issues/412) | |
 | ✅ | 18 · Safety fix found by the time-of-day audit: two quick changes in Settings both land, so the active hours are the ones chosen | [#427](https://github.com/pirdehi/xomoni/issues/427) | |
+| ✅ | 20 · The release smoke test: the candidate's zip and the previous release's in a real browser, a clean install, an update in place, a rollback and a move, run by the maintainer before a tag; `tooling/release-download.mjs` fetches a release checked against its `SHA256SUMS` | [#419](https://github.com/pirdehi/xomoni/issues/419) | |
 
 ## Dropped
 

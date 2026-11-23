@@ -407,7 +407,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [234],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/234-website-settings.md",
       "en": {
         "title": "Settings from xomoni.com",
         "summary": "change Xomoni's active hours, the failures in a row before a pause, notifications and Watch searches, or set pacing back to Careful. Xomoni applies its own rules, so nothing goes faster than Careful."

@@ -28,7 +28,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'keeps-going',
   'private-by-design',
   'website-library',
-  'website-settings',
   'numbers-on-website',
   'update-notice',
   'store-install',

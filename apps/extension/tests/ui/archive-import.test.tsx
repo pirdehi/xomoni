@@ -189,9 +189,10 @@ describe('ArchiveImport (#184)', () => {
       const { folder } = fileInputs();
       await userEvent.upload(folder, [accountJs('acct-other', 'someone'), TWEETS(), LIKES()]);
 
-      expect(
-        await screen.findByText('This archive belongs to @someone, not @me. Nothing was imported.'),
-      ).toBeInTheDocument();
+      // An alert, so a screen reader says why at once, as for a refused move file (#345).
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'This archive belongs to @someone, not @me. Nothing was imported.',
+      );
       expect(await db.items.count()).toBe(0);
       expect(await archiveImported(ME)).toBe(false);
       expect(mocks.toast).not.toHaveBeenCalled();

@@ -41,9 +41,14 @@ export async function showWatchBadge(count: number): Promise<void> {
   });
 }
 
-/** Keeps the toolbar's badge at `watchBadgeCount` for the account the dashboard shows, as the checks come in. */
+/**
+ * Keeps the toolbar's badge at `watchBadgeCount` for the account the dashboard shows, as the checks come in. Its live
+ * query is declared `async`: Dexie follows an awaiting querier only when it is an async function, and a plain one that
+ * returned `watchBadgeCount`'s promise used up the budget the dashboard's other live queries keep their reads with, so
+ * the dashboard stopped following the account in the X window (S199-18).
+ */
 export function useWatchBadge(accountId: string | null): void {
-  const count = useLiveQuery(() => watchBadgeCount(accountId), [accountId]);
+  const count = useLiveQuery(async () => await watchBadgeCount(accountId), [accountId]);
   useEffect(() => {
     if (count !== undefined) void showWatchBadge(count).catch(() => undefined);
   }, [count]);

@@ -7,6 +7,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - **Safety: two quick changes in Settings no longer lose the first** (#427). Each change on the Settings page was saved as the settings the page last drew, with that one field changed. A second change made before the page drew the first, such as *From* then *Until* on a busy computer, put the old value back: the active hours could end up other than the ones chosen, and a job could then work in hours you had excluded. A change from xomoni.com could race one made on the page in the same way. Now each change applies to the settings as stored at that moment, in one step, so both land. This is a safety fix.
+- A screen reader didn't say when Xomoni's notice that a new version is out appeared on the dashboard (#457). The notice now shows in a polite live region, so it is read out as it appears, once the screen reader has finished what it was saying.
+- On Home's card that moves a zip install to its store, a screen reader read the first step, once done, as "Export everything : done", with a pause before the colon (#457). It now reads "Export everything: done".
 
 ## [0.5.3] - 2026-11-23
 

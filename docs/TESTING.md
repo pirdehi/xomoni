@@ -88,6 +88,45 @@ The helpers: `dashboard` (the tab Xomoni opened on install), `extensionId`, `ser
 
 A job waits as Xomoni's pace says, in a dedicated worker Playwright's clock doesn't reach. So a test waits for a job's first page load (12 to 24 seconds for a new Premium account, and up to 90 more one time in twenty) only where its scenario needs that page, and never for a delete, which comes minutes later.
 
+## Performance at scale
+
+A heavy X user has more than 100,000 posts and 100,000 likes. Two tests run Xomoni at that size (#390), with a history made in the test from a seeded generator, the same at every run and never anyone's real data:
+
+| Test | What it runs | The history |
+| --- | --- | --- |
+| `apps/extension/tests/scale.test.ts` | The queries behind Home, the Library, Cleanup, the daily numbers, the archive import, *Export everything* and the move-your-data import, on Dexie and `fake-indexeddb` | `tests/support/history.ts`: posts, replies (a third in the person's own threads) and reposts, likes, from X's archive, from X's pages or both, some removed by Xomoni with their lines in the log, the jobs, 400 days of daily numbers and others' replies |
+| `apps/web/e2e/extension/scale.spec.ts` | The built extension in Chromium: X's archive imported in the Library, the Library opened, paged, filtered and searched, Cleanup's count with keep rules, Home with its chart, *Export everything*, *Delete local data*, and the export imported into the emptied Xomoni | `e2e/support/scale.ts`: X's archive ZIP of the same mix, over 15 years |
+
+Both run at a fiftieth of the size in the normal suites (`npm test`, `npm run test:e2e:extension`). The browser's runs at the full size on demand; `XOMONI_SCALE` sets any share of it, for either:
+
+```bash
+npm run test:e2e:scale -w @xomoni/web        # the built extension, 100,000 posts and 100,000 likes, 4 to 7 minutes
+XOMONI_SCALE=0.2 npm run test:e2e:extension -w @xomoni/web -- scale.spec.ts   # a fifth of it
+XOMONI_SCALE=0.2 npx vitest run tests/scale.test.ts      # in apps/extension: the queries, a fifth of it
+```
+
+The unit test's budgets on what a query reads hold at any size, so the normal suite's fiftieth proves them; `fake-indexeddb` walks a cursor or skips rows (`offset`) in milliseconds per row, so beyond a fifth of the size it takes minutes for nothing more.
+
+Each path has budgets, wide enough for CI's runners: they catch a path that went from seconds to minutes, not a few percent.
+
+- **What a query reads** (the unit test, at any size): rows, cursor steps and entries counted on an index, through a Dexie middleware (`tests/support/reads.ts`). A browser's IndexedDB walks a cursor a row at a time and checks each entry an index count counts against its row, both far slower than a bulk read (`toArray()` of a range) or a count on the primary key. So: the Home counts and the chart count only what was removed on an index and nothing row by row; a Library page reads its 25 rows; a search, Cleanup's preview and the copy's status read in bulk, never with a cursor; the archive import saves 20,000 rows at a time, each save making the open pages count again.
+- **How long a path takes** (both tests). The times that matter are the browser's: `fake-indexeddb` takes milliseconds per cursor step, so its times only bound the unit test. The browser's budgets, at the full size:
+
+| Path | Budget | Before #390 | After |
+| --- | --- | --- | --- |
+| Archive import, 200,000 rows, on the Library | 240 s | 236 to 287 s | 78 to 104 s |
+| The Library opens (its counts and first page) | 10 s | 4.2 to 4.9 s | 1.1 s |
+| The Library: next page, likes, removed | 5 s each | 0.1 s | 0.1 to 0.2 s |
+| The Library: a search with no match, over 55,000 posts | 15 s | 1.9 to 4.2 s | 1.0 to 2.0 s, with its quarter-second pause |
+| Cleanup: the count of posts older than a year | 15 s | 3.9 to 5.1 s | 1.7 to 2.5 s |
+| Cleanup: the count with keep rules | 15 s | 3.0 to 4.1 s | 0.6 to 0.8 s |
+| Home: its counts and its chart by year | 10 s | 5.4 s | 1.7 s |
+| *Export everything* | 120 s | 3.5 to 5.0 s | 2.7 to 5.4 s |
+| *Delete local data* | 180 s | 29 to 38 s | 27 to 66 s (unchanged code) |
+| The move-your-data import into an emptied Xomoni | 240 s | 58 to 77 s | 56 to 118 s (unchanged code) |
+
+Measured on a laptop busy with other work, in Playwright's Chromium: each range is the runs seen, so read them as orders of magnitude. The import's floor is IndexedDB's own writes, about a quarter of a millisecond per row with the inventory's indexes: the move-your-data import, one transaction, takes as long. Reports on xomoni.com read at most 400 days of numbers per account from the cloud, which never holds the inventory (ADR-0004), so its size can't slow them; the extension's side of the daily numbers, `dailyRows`, reads only the days asked for, which the unit test checks.
+
 ## Accessibility
 
 `expectNoSeriousA11yViolations(page)` (`apps/web/e2e/support/a11y.ts`, `@axe-core/playwright`) fails a test on any serious or critical violation axe finds, with every rule axe runs by default (WCAG 2.0 to 2.2, A and AA, and best practices). It waits for the page to settle, looks again when it finds something, and attaches the full results to the report. Tabster's focus sentinels, which Fluent adds around dialogs and menus, are left out: they are empty and pass the focus on at once.

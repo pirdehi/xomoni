@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { archiveImported, db } from '../../src/shared/db';
 import {
+  ARCHIVE_IMPORT_CHUNK,
   MAX_ACCOUNT_FILE_BYTES,
   MAX_ARCHIVE_FILE_BYTES,
   archiveFiles,
@@ -212,9 +213,10 @@ describe('importArchive', () => {
     });
   });
 
-  it('saves a large file in chunks and reports each one', async () => {
+  it('saves a large file in chunks of 20,000 and reports each one (#390)', async () => {
+    const total = ARCHIVE_IMPORT_CHUNK + 1;
     const many = tweetsJs(
-      Array.from({ length: 2001 }, (_, i) => ({
+      Array.from({ length: total }, (_, i) => ({
         id: String(2_000_000_000 + i),
         text: `Post ${i}`,
         createdAt: 'Mon Jan 01 12:00:00 +0000 2018',
@@ -223,14 +225,17 @@ describe('importArchive', () => {
     const progress = vi.fn<(msg: string) => void>();
     const result = await importArchive([accountJs(ME, 'me'), many], ME_ACCOUNT, progress);
 
-    expect(result.tweets).toBe(2001);
-    expect(await db.items.count()).toBe(2001);
+    expect(ARCHIVE_IMPORT_CHUNK).toBe(20_000);
+    expect(result.tweets).toBe(total);
+    expect(await db.items.count()).toBe(total);
     expect(progress.mock.calls.map(([msg]) => msg)).toEqual([
       'Reading tweets.js…',
-      `Saving tweets.js: ${(2000).toLocaleString()} / ${(2001).toLocaleString()}`,
-      `Saving tweets.js: ${(2001).toLocaleString()} / ${(2001).toLocaleString()}`,
+      // Said before the first chunk, which takes a while.
+      `Saving tweets.js: 0 / ${total.toLocaleString()}`,
+      `Saving tweets.js: ${(20_000).toLocaleString()} / ${total.toLocaleString()}`,
+      `Saving tweets.js: ${total.toLocaleString()} / ${total.toLocaleString()}`,
     ]);
-  });
+  }, 60_000);
 
   it('sends nothing off this computer', async () => {
     const network = watchNetwork();

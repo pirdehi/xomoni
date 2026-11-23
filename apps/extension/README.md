@@ -28,6 +28,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - the keep rules at their edges: a like threshold, words in any case and inside words, every form of a post's link and links that aren't one, the person's own threads, and what the preview, the backup and the job leave out (`keep-rules.spec.ts`, #367);
 - the one-click update of a zip install, in a build that trusts a throwaway release key: the folder, the signed release from GitHub, and every release it refuses (`one-click-updates.spec.ts`, #305);
 - signing out of Xomoni: the dialog, removing the account's data, X's own sign-out page, the signed-out page and signing in again, and what is kept and stopped (`sign-out.spec.ts`, #226);
+- private by design: nothing sent on a fresh install, its pages unable to reach another site, the copy in its own database out of x.com's reach, and xomoni.com's messages it refuses (`private-by-design.spec.ts`, #143);
 - job status for xomoni.com: what is reported, when, and that nothing but status leaves, with xomoni.com unreachable or no longer knowing the browser (`live-job-status.spec.ts`, #39);
 - one sign-in with xomoni.com, played at the extension: signing in and out from either side, the messages Xomoni refuses and who may send them (`one-sign-in.spec.ts`, #232);
 - *Download a copy* of a date range: the dialog at its edges, the page opened as a file, which runs nothing, and JSON (`archive-date-range.spec.ts`, #97);
@@ -36,6 +37,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - X's archive: *Get my archive* on X's archive page, and the ZIP dropped, chosen or from Downloads › Xomoni, with every archive it refuses (`x-archive.spec.ts`, #184);
 - the Library: X's count against the copy, browsing and searching it a page at a time, and the reads from X that complete it, which only look (`library.spec.ts`, #185);
 - the daily numbers kept in this browser: the profile's counts, the posts seen and the likes received between two looks, counts only, and their deletion (`daily-numbers.spec.ts`, #249);
+- the notice that a newer version is out, from xomoni.com's answer: a security fix that can't be dismissed, and versions it ignores (`update-notice.spec.ts`, #151);
 - the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
 - the dashboard's Home, Activity and themes: the status and the one button that helps, the counts and the chart's table, the log and its exports, and the theme's choices named for screen readers (`dashboard-scenarios.spec.ts`, #34);
 - Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.

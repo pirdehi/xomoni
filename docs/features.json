@@ -567,7 +567,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [243],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/243-send-to-computer.md",
       "en": {
         "title": "Send to my computer",
         "summary": "Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers."

@@ -307,14 +307,14 @@ The first release with paid plans: the extension 0.6.0 and xomoni.com. Payments 
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| 🔄 | CB.1 · Payments: the decision, the billing tables with Row Level Security, `@xomoni/entitlements`, the terms of sale and a fake Polar for the tests. Done: the ADR ([ADR-0042](adr/0042-payments-and-entitlements-with-polar.md)) | [#420](https://github.com/pirdehi/xomoni/issues/420) | |
+| 🔄 | CB.1 · Payments: the decision, the billing tables with Row Level Security, `@xomoni/entitlements`, the terms of sale and a fake Polar for the tests. Done: the ADR ([ADR-0042](adr/0042-payments-and-entitlements-with-polar.md)) | [#420](https://github.com/pirdehi/xomoni/issues/420) | [#434](https://github.com/pirdehi/xomoni/pull/434) |
 | ⬜ | CB.2 · Payments: the signed, idempotent webhook, checkout, the customer portal and deleting an account with a subscription | [#421](https://github.com/pirdehi/xomoni/issues/421) | |
 | ⬜ | CB.3 · Payments: `/pricing`, `/account/billing` and the legal links, with their scenarios | [#422](https://github.com/pirdehi/xomoni/issues/422) | |
 | ⬜ | CB.4 · Payments: the plan in the extension with the offline grace, the Plus parts gated, and the sales launch | [#423](https://github.com/pirdehi/xomoni/issues/423) | |
-| 🔄 | CV.1 · The vault: the decisions, its tables, version 2 of the move file, and the importer with the archive on it. Done: the ADRs ([ADR-0043](adr/0043-the-vault-x-files-kept-on-the-computer.md), [ADR-0044](adr/0044-an-open-export-of-the-vault.md)) | [#424](https://github.com/pirdehi/xomoni/issues/424) | |
+| 🔄 | CV.1 · The vault: the decisions, its tables, version 2 of the move file, and the importer with the archive on it. Done: the ADRs ([ADR-0043](adr/0043-the-vault-x-files-kept-on-the-computer.md), [ADR-0044](adr/0044-an-open-export-of-the-vault.md)) | [#424](https://github.com/pirdehi/xomoni/issues/424) | [#434](https://github.com/pirdehi/xomoni/pull/434) |
 | ⬜ | CV.2 · The vault: the Vault page, X's analytics CSV, the account's timeline and a local reminder | [#425](https://github.com/pirdehi/xomoni/issues/425) | |
 | ⬜ | CV.4 · The vault: *Export my vault*, the *Your vault* card on xomoni.com, performance and accessibility | [#426](https://github.com/pirdehi/xomoni/issues/426) | |
-| 🔄 | P5.1 · Reach: the decisions, each post's links and media, the *Under the hood* import and the reach model. Done: the ADRs ([ADR-0045](adr/0045-reach-diagnosis-guesses-labelled-as-guesses.md), [ADR-0046](adr/0046-a-public-digest-of-xs-open-ranking-code.md)) | [#428](https://github.com/pirdehi/xomoni/issues/428) | |
+| 🔄 | P5.1 · Reach: the decisions, each post's links and media, the *Under the hood* import and the reach model. Done: the ADRs ([ADR-0045](adr/0045-reach-diagnosis-guesses-labelled-as-guesses.md), [ADR-0046](adr/0046-a-public-digest-of-xs-open-ranking-code.md)) | [#428](https://github.com/pirdehi/xomoni/issues/428) | [#434](https://github.com/pirdehi/xomoni/pull/434) |
 | ⬜ | P5.2 · Reach: the Reach page, with each post's reach, comparisons, X's labels and suspected posts as guesses | [#429](https://github.com/pirdehi/xomoni/issues/429) | |
 | ⬜ | P5.3 · Reach: the new-label alert, and the monthly digest of X's ranking code on xomoni.com/algorithm | [#430](https://github.com/pirdehi/xomoni/issues/430) | |
 | ⬜ | P5.4 · Reach on xomoni.com in the same browser, performance at 50,000 posts, accessibility and the release | [#431](https://github.com/pirdehi/xomoni/issues/431) | |

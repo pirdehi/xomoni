@@ -29,6 +29,8 @@ const PAGES = new Map([
   ['/xomoni_fixture', 'profile.html'],
   ['/xomoni_fixture/with_replies', 'profile.html'],
   ['/xomoni_fixture/likes', 'profile.html'],
+  // X's search, which Watch loads (#158, #345): its query is in the address.
+  ['/search', 'search.html'],
 ]);
 
 /** A GraphQL request of X's web app: `/i/api/graphql/<query id>/<Operation>`. */
@@ -309,4 +311,100 @@ export async function answerWithText(
   texts: Readonly<Record<string, string>>,
 ): Promise<void> {
   await answerWithPatches(context, op, fieldOf('full_text', texts));
+}
+
+/** A reply someone wrote to one of the fixture account's posts, as a test has X show it (#256). */
+export interface ReplyToAccount {
+  /** The reply's id, made up, in the fixtures' range. */
+  id: string;
+  /** Its text, as X sends it. */
+  text: string;
+  /** When it was posted, epoch ms. */
+  createdAt: number;
+  /** The id of the fixture account's post it answers. */
+  to: string;
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** `ms` as X's `created_at` writes a time, in UTC: `Mon Nov 02 12:00:00 +0000 2020`. */
+function xTime(ms: number): string {
+  const d = new Date(ms);
+  const two = (n: number) => String(n).padStart(2, '0');
+  const clock = `${two(d.getUTCHours())}:${two(d.getUTCMinutes())}:${two(d.getUTCSeconds())}`;
+  return `${WEEKDAYS[d.getUTCDay()] ?? ''} ${MONTHS[d.getUTCMonth()] ?? ''} ${two(d.getUTCDate())} ${clock} +0000 ${String(d.getUTCFullYear())}`;
+}
+
+/** The first `entries` array in an answer: a timeline's posts. */
+function entriesOf(node: unknown): unknown[] | null {
+  if (node === null || typeof node !== 'object') return null;
+  const { entries } = node as { entries?: unknown };
+  if (Array.isArray(entries)) return entries as unknown[];
+  for (const child of Object.values(node)) {
+    const found = entriesOf(child);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Makes X answer GraphQL operation `op` from now on with its usual answer and, first, `replies`: each written by
+ * `FRIEND_ACCOUNT` to a post of the fixture account, as X shows the replies people wrote in a conversation (#256).
+ * Xomoni keeps such replies for *Replies to you* (ADR-0030). The rest of the answer is X's usual one, from the history
+ * `context` is served with.
+ */
+export async function answerWithRepliesToAccount(
+  context: BrowserContext,
+  op: string,
+  replies: readonly ReplyToAccount[],
+): Promise<void> {
+  const file = answerFile(op, served.get(context) ?? 'short');
+  if (!file) throw new Error(`The fixtures have no answer for ${op}`);
+  const answer = JSON.parse(readFileSync(file, 'utf8')) as unknown;
+  const entries = entriesOf(answer);
+  if (!entries) throw new Error(`The fixtures' answer for ${op} has no timeline`);
+  entries.unshift(
+    ...replies.map((reply) => ({
+      entryId: `tweet-${reply.id}`,
+      sortIndex: reply.id,
+      content: {
+        itemContent: {
+          tweet_results: {
+            result: {
+              __typename: 'Tweet',
+              rest_id: reply.id,
+              core: {
+                user_results: {
+                  result: {
+                    rest_id: FRIEND_ACCOUNT.id,
+                    core: { screen_name: FRIEND_ACCOUNT.handle, name: FRIEND_ACCOUNT.name },
+                  },
+                },
+              },
+              legacy: {
+                id_str: reply.id,
+                user_id_str: FRIEND_ACCOUNT.id,
+                created_at: xTime(reply.createdAt),
+                full_text: reply.text,
+                favorite_count: 0,
+                retweet_count: 0,
+                reply_count: 0,
+                favorited: false,
+                retweeted: false,
+                in_reply_to_status_id_str: reply.to,
+                in_reply_to_user_id_str: FIXTURE_ACCOUNT.id,
+                in_reply_to_screen_name: FIXTURE_ACCOUNT.handle,
+              },
+            },
+          },
+        },
+      },
+    })),
+  );
+  const body = JSON.stringify(answer);
+  await context.route(
+    (url) => url.host === 'x.com' && GRAPHQL.exec(url.pathname)?.[1] === op,
+    (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: xRateHeaders(), body }),
+  );
 }

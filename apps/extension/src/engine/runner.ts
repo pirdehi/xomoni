@@ -301,14 +301,18 @@ export function jobRunning(): Promise<boolean> {
   return runnerLockHeld();
 }
 
-/** A job still marked running with no runner holding the lock was interrupted. */
+/**
+ * A job still marked running with no runner holding the lock was interrupted: it is paused, and marked changed
+ * (`updatedAt`), so the next status report tells xomoni.com it is paused rather than leaving it running there (#345).
+ */
 export async function recoverInterruptedJobs() {
   await navigator.locks.request(LOCK, { ifAvailable: true }, async (lock) => {
     if (!lock) return;
-    await db.jobs
-      .where('state')
-      .anyOf('running', 'waiting')
-      .modify({ state: 'paused', stateReason: 'Xomoni was closed while this job was running. Resume to continue.' });
+    await db.jobs.where('state').anyOf('running', 'waiting').modify({
+      state: 'paused',
+      stateReason: 'Xomoni was closed while this job was running. Resume to continue.',
+      updatedAt: Date.now(),
+    });
   });
 }
 

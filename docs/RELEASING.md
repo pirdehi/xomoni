@@ -14,6 +14,8 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
 
    Then, in [`docs/features.json`](features.json), set `"since"` to `"X.Y.Z"` on every feature still `"unreleased"` that this version ships, and run `npm run readme`. Both READMEs' status then names X.Y.Z, and their *next release* tags go (#337). `npm run readme:check` names each feature left to stamp.
 3. Run `node tooling/release.mjs check vX.Y.Z`, then open a pull request and merge it when CI is green. Besides the versions and the changelog, it fails while a feature this version ships is still `"unreleased"`, or while a README's status names another version.
+
+   On that pull request, run [the smoke test of the zips](#the-smoke-test-of-the-zips) and put its result in the release issue.
 4. Tag the merge commit on `main` and push the tag:
 
    ```bash
@@ -67,6 +69,29 @@ Every release passes [the four quality gates](QUALITY-GATES.md) ([ADR-0037](adr/
    1. In **Actions → Stores → Run workflow**, from `main`: the tag, the store (`both`, `chrome` or `edge`) and **upload**. Approve the run when the `stores` environment asks. The release's store build, `xomoni-extension-store-X.Y.Z.zip`, becomes each store's draft; nothing goes to review yet.
    2. Look at the drafts in the [Chrome Web Store dashboard](https://chrome.google.com/webstore/devconsole) and in [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview): the version, and the listing if it needs a change.
    3. Run it again with **publish**. Each draft goes to review and goes live once approved, with the visibility set in the store (unlisted at first).
+
+### The smoke test of the zips
+
+The release issue's *Smoke test* and *Data moves* boxes (#419): the candidate's zip and the previous release's, as people install them, in Playwright's Chromium with x.com served from the fixtures and no network ([`apps/web/e2e/release/release-smoke.spec.ts`](../apps/web/e2e/release/release-smoke.spec.ts)). It isn't one of CI's checks, which build the extension from the pull request instead. Run it on the release pull request, before the tag:
+
+```bash
+SMOKE="$(mktemp -d)"
+npm run build -w @xomoni/extension && node tooling/release.mjs package   # the candidate's zip, in apps/extension/release
+mkdir "$SMOKE/candidate" && unzip -q apps/extension/release/xomoni-extension-X.Y.Z.zip -d "$SMOKE/candidate"
+node tooling/release-download.mjs vP.Q.R "$SMOKE/previous"                 # the previous release, from GitHub
+XOMONI_E2E_EXTENSION="$SMOKE/candidate" XOMONI_E2E_PREVIOUS="$SMOKE/previous" npm run test:e2e:release -w @xomoni/web
+```
+
+[`tooling/release-download.mjs`](../tooling/release-download.mjs) downloads a release's zip and `SHA256SUMS` with `gh release download`, checks the one against the other, and unpacks the zip into a new or empty folder. It refuses a zip that doesn't match, an entry that would land outside the folder, a link, and a manifest of another version. To check two releases already out, download both: `node tooling/release-download.mjs vX.Y.Z "$SMOKE/candidate"`. The run refuses a candidate that isn't newer than the previous release.
+
+Four tests, each in a browser and a folder of its own:
+
+1. **A clean install** of the candidate: the dashboard opens, the manifest says the candidate's version, and no page nor the service worker shows an error.
+2. **An update in place:** the previous release installed from a folder, an X account added through the fixtures and active hours changed; then the candidate's files over it and the folder loaded again, as *Reload* in chrome://extensions does. The id stays the same; IndexedDB `xomoni` keeps its version, or the candidate raises it and the run says so; the account, its posts and the setting are there; no error.
+3. **A rollback:** the previous release's files back in the same folder, loaded again: the database is the one the update left, the data is still there, and no error. IndexedDB never takes a version back down, so when the candidate raised the database's version, the run says so, and the previous release has to open the newer database as it is. Dexie 4 opens a newer database as it finds it, so a table the candidate added is no problem; if the test fails, going back needs a fresh profile and *Export everything* first. Write either in the release issue's *Rollback*.
+4. **A move:** *Export everything* in the previous release, *Import* into a fresh candidate: it says "Imported from Xomoni <previous>", and the account, its posts and the setting are there.
+
+A request to any host but the fixtures' x.com fails a test, as in the extension's other browser tests. The spec drives the previous release's dashboard too, so it presses only what both versions show: when a release renames one of those, change the spec in the same pull request. Put the summary in the release issue: both versions, what passed, and what was skipped and why.
 
 ### The check after the release
 

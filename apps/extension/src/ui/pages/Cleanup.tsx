@@ -46,6 +46,7 @@ import type { PageProps } from '../navigation';
 import { Button, Callout, Card, Disclosure, Field, Modal, PageHeader, Segmented, Toggle } from '../components/ui';
 import {
   TARGET_PLURAL,
+  TARGET_SINGULAR,
   downloadFile,
   errorMessage,
   fmtDate,
@@ -518,8 +519,10 @@ function CleanupForm({ account, navigate, planned }: PageProps & { planned: Plan
           {picked ? (
             <Card title="1 · Picked on xomoni.com">
               <Body1 as="p">
-                {fmtNumber(picked.length)} {TARGET_PLURAL[target]} you picked. Only these are removed, and only while
-                the exceptions below allow it.
+                {picked.length === 1
+                  ? `1 ${TARGET_SINGULAR[target]} you picked. Only that one is removed,`
+                  : `${fmtNumber(picked.length)} ${TARGET_PLURAL[target]} you picked. Only these are removed,`}{' '}
+                and only while the exceptions below allow it.
               </Body1>
               <div className={styles.spaced}>
                 <Button

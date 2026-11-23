@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { DailyNumbers } from '../domain/model';
 import { Engagement } from './engagement';
@@ -81,6 +82,32 @@ describe('Engagement (#255)', () => {
     expect(screen.getByRole('region', { name: 'Your most-liked replies' })).toHaveTextContent(
       'which never leave your computer',
     );
+  });
+
+  it('keeps the decimal of each day’s rate, in its chart, its tooltip and its table (#345)', async () => {
+    render(
+      <Engagement
+        days={[
+          day('2026-11-15', { receivedLikes: 11, receivedViews: 1000 }),
+          day('2026-11-16', { receivedLikes: 17, receivedViews: 1000 }),
+        ]}
+        scope={MONTH}
+        now={NOW}
+        shown
+        inXomoni={inXomoni}
+      />,
+    );
+    const rate = within(screen.getByRole('region', { name: 'Engagement rate' }));
+    const chart = rate.getByRole('img', { name: 'Engagement rate, per 100 views: 1.7% on Nov 16' });
+    chart.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(rate.getByRole('status')).toHaveTextContent('1.1%Nov 15');
+    await userEvent.click(rate.getByRole('button', { name: 'Show as table' }));
+    expect(rate.getAllByRole('row').map((row) => row.textContent)).toEqual([
+      'DayEngagement rate, per 100 views',
+      'Nov 151.1%',
+      'Nov 161.7%',
+    ]);
   });
 
   it('says what is missing without views', () => {

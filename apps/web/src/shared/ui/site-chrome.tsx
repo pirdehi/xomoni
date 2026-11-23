@@ -14,9 +14,13 @@ import {
 import { Navigation24Regular } from '@fluentui/react-icons';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { GITHUB_URL, INSTALL_URL, ISSUES_URL, RELEASES_URL, SECURITY_URL } from '@/shared/config/site';
 import { HeaderAccount } from './header-account';
 import { ButtonLink } from './links';
+
+/** From this width the header's links fit beside the logo; below it they fold into the phone's menu (#242). */
+const WIDE_SCREEN = '(min-width: 768px)';
 
 const useStyles = makeStyles({
   logo: {
@@ -54,9 +58,9 @@ const useStyles = makeStyles({
   },
   nav: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
   // Section links only fit next to the logo on wider screens.
-  wide: { display: 'none', '@media (min-width: 768px)': { display: 'inline-flex' } },
+  wide: { display: 'none', [`@media ${WIDE_SCREEN}`]: { display: 'inline-flex' } },
   // The menu that holds them below 768 px.
-  phone: { display: 'inline-flex', '@media (min-width: 768px)': { display: 'none' } },
+  phone: { display: 'inline-flex', [`@media ${WIDE_SCREEN}`]: { display: 'none' } },
   account: { display: 'inline-flex', marginLeft: tokens.spacingHorizontalXS },
   footer: {
     marginTop: 'auto',
@@ -122,8 +126,8 @@ const SECTIONS = [
  * Sticky, translucent site header. Every page gets the account corner (`HeaderAccount`): "Sign in" for visitors,
  * the dashboard and an account menu with "Sign out" for signed-in people. Public pages also link the home page's
  * sections, GitHub and *Install*; below 768 px those fold into one menu, which Fluent's `Menu` opens and closes with
- * the keyboard, keeping focus inside and returning it to the button (#242). Pages of the signed-in app (`app`) show
- * only the account corner.
+ * the keyboard, keeping focus inside and returning it to the button (#242), and which closes once the screen is wide
+ * enough for the links. Pages of the signed-in app (`app`) show only the account corner.
  */
 export function SiteHeader({ app = false }: { app?: boolean }) {
   const s = useStyles();
@@ -146,22 +150,7 @@ export function SiteHeader({ app = false }: { app?: boolean }) {
                 Install
               </ButtonLink>
               <span className={s.phone}>
-                <Menu positioning="below-end">
-                  <MenuTrigger disableButtonEnhancement>
-                    <Button appearance="subtle" icon={<Navigation24Regular />} aria-label="Menu" />
-                  </MenuTrigger>
-                  <MenuPopover>
-                    <MenuList>
-                      {SECTIONS.map((section) => (
-                        <MenuItemLink key={section.href} href={section.href}>
-                          {section.label}
-                        </MenuItemLink>
-                      ))}
-                      <MenuItemLink href={INSTALL_URL}>Install</MenuItemLink>
-                      <MenuItemLink href={GITHUB_URL}>GitHub</MenuItemLink>
-                    </MenuList>
-                  </MenuPopover>
-                </Menu>
+                <PhoneMenu />
               </span>
             </>
           )}
@@ -171,6 +160,41 @@ export function SiteHeader({ app = false }: { app?: boolean }) {
         </nav>
       </div>
     </header>
+  );
+}
+
+/**
+ * The phone's menu: the home page's sections, *Install* and GitHub. A phone turned on its side, or a window made
+ * wider, hides its button from 768 px; the menu then closes, rather than float over the logo beside the header's own
+ * links (#345).
+ */
+function PhoneMenu() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const wide = window.matchMedia(WIDE_SCREEN);
+    const close = () => {
+      if (wide.matches) setOpen(false);
+    };
+    wide.addEventListener('change', close);
+    return () => wide.removeEventListener('change', close);
+  }, []);
+  return (
+    <Menu positioning="below-end" open={open} onOpenChange={(_, data) => setOpen(data.open)}>
+      <MenuTrigger disableButtonEnhancement>
+        <Button appearance="subtle" icon={<Navigation24Regular />} aria-label="Menu" />
+      </MenuTrigger>
+      <MenuPopover>
+        <MenuList>
+          {SECTIONS.map((section) => (
+            <MenuItemLink key={section.href} href={section.href}>
+              {section.label}
+            </MenuItemLink>
+          ))}
+          <MenuItemLink href={INSTALL_URL}>Install</MenuItemLink>
+          <MenuItemLink href={GITHUB_URL}>GitHub</MenuItemLink>
+        </MenuList>
+      </MenuPopover>
+    </Menu>
   );
 }
 

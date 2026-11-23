@@ -9,7 +9,7 @@ import {
   Open20Regular,
 } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CloudError } from '../../cloud/client';
 import { chooseStats, statsShown } from '../../cloud/daily-report';
 import { suggestedDeviceName } from '../../cloud/device-name';
@@ -298,8 +298,12 @@ function DailyNumbersSwitch({ token }: { token: string }) {
   const styles = useStyles();
   const shown = useLiveQuery(statsShown, []);
   const [busy, setBusy] = useState(false);
+  // Set at once, so a second key or click before the page draws again asks nothing more.
+  const asking = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const onChange = async (on: boolean) => {
+    if (asking.current) return;
+    asking.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -313,15 +317,18 @@ function DailyNumbersSwitch({ token }: { token: string }) {
     } catch (err) {
       setError(err instanceof CloudError ? err.message : errorMessage(err));
     } finally {
+      asking.current = false;
       setBusy(false);
     }
   };
   return (
     <div className={styles.numbers}>
+      {/* Not disabled while xomoni.com stores the choice: a disabled switch drops the keyboard focus. It says it is busy. */}
       <Switch
         label="Show my numbers on xomoni.com"
         checked={shown === true}
-        disabled={busy || shown === undefined}
+        disabled={shown === undefined}
+        aria-busy={busy}
         onChange={(_, data) => void onChange(data.checked)}
       />
       <Caption1 as="p" block className={styles.text}>

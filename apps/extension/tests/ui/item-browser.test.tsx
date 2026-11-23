@@ -287,5 +287,64 @@ describe('ItemBrowser', () => {
       expect(items).toHaveLength(30);
       expect(items.every((i) => i.accountId === ME && i.kind === 'post' && i.status === 'present')).toBe(true);
     });
+
+    // The list shown is the search's (#440): every page of what it finds, and nothing it leaves out.
+    it('exports what the search shows, every page of it, and nothing else', async () => {
+      await seed([
+        ...Array.from({ length: 27 }, (_, i) =>
+          draft({ id: String(1_000_000_100 + i), createdAt: Date.UTC(2018, 0, 1 + i), text: `Launch note ${i}` }),
+        ),
+        draft({ id: '1000000001', text: 'Lunch' }),
+        draft({ id: '1000000002', text: 'Thanks', author: 'launchpad' }),
+      ]);
+      await seed([draft({ id: '2001', kind: 'like', text: 'A launch I liked' })]);
+      render(<ItemBrowser accountId={ME} handle="me" />);
+      await screen.findByText('Lunch');
+
+      await userEvent.type(search(), '  LAUNCH ');
+      await waitFor(() => expect(screen.queryByText('Lunch')).not.toBeInTheDocument());
+      await userEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
+
+      await waitFor(() => expect(mocks.downloadFile).toHaveBeenCalledOnce());
+      const [name, content] = mocks.downloadFile.mock.calls[0] as [string, string];
+      expect(name).toBe(`xomoni-posts-present-${toDateInput(Date.now())}.json`);
+      const items = JSON.parse(content) as Item[];
+      // 27 by their text, over two pages, and one by its author; not the lunch, nor the like of another kind.
+      expect(items).toHaveLength(28);
+      expect(items.map((i) => i.id)).not.toContain('1000000001');
+      expect(items.map((i) => i.id)).toContain('1000000002');
+      expect(items.every((i) => i.kind === 'post' && i.status === 'present')).toBe(true);
+    });
+
+    it('exports the items of an @author search', async () => {
+      await seed([
+        draft({ id: '2001', kind: 'like', author: 'alice', text: 'Something' }),
+        draft({ id: '2002', kind: 'like', author: 'bob', text: 'Other' }),
+      ]);
+      render(<ItemBrowser accountId={ME} handle="me" />);
+      await userEvent.click(await screen.findByRole('button', { name: 'Likes 2' }));
+      await userEvent.type(search(), '@Alice');
+      await waitFor(() => expect(screen.queryByText('Other')).not.toBeInTheDocument());
+      await userEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
+
+      await waitFor(() => expect(mocks.downloadFile).toHaveBeenCalledOnce());
+      const [name, content] = mocks.downloadFile.mock.calls[0] as [string, string];
+      expect(name).toBe(`xomoni-likes-present-${toDateInput(Date.now())}.json`);
+      expect((JSON.parse(content) as Item[]).map((i) => i.id)).toEqual(['2001']);
+    });
+
+    it('offers nothing to export when the search finds nothing', async () => {
+      await seed([draft({ id: '1000000001', text: 'Launch day!' })]);
+      render(<ItemBrowser accountId={ME} handle="me" />);
+      const exportButton = screen.getByRole('button', { name: 'Export JSON' });
+      await waitFor(() => expect(exportButton).toBeEnabled());
+
+      await userEvent.type(search(), 'nothing like this');
+      expect(await screen.findByText('No items match your search.')).toBeInTheDocument();
+      expect(exportButton).toBeDisabled();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+      await waitFor(() => expect(exportButton).toBeEnabled());
+    });
   });
 });

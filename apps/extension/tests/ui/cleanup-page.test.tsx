@@ -197,6 +197,25 @@ describe('Cleanup page', () => {
         });
       });
 
+      it('names one picked post in the singular', async () => {
+        await savePlannedCleanup({ accountId: ME, filter: { ...picked(), onlyIds: ['1000000001'] }, at: Date.now() });
+        await renderWithArchive(1);
+        expect(
+          screen.getByText(
+            '1 post you picked. Only that one is removed, and only while the exceptions below allow it.',
+          ),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/1 posts/)).not.toBeInTheDocument();
+      });
+
+      it('says how many posts were picked, in the plural for more than one', async () => {
+        await savePlannedCleanup({ accountId: ME, filter: picked(), at: Date.now() });
+        await renderWithArchive(2);
+        expect(
+          screen.getByText('2 posts you picked. Only these are removed, and only while the exceptions below allow it.'),
+        ).toBeInTheDocument();
+      });
+
       it('goes back to the whole form, and its usual rules, on request', async () => {
         await savePlannedCleanup({ accountId: ME, filter: picked(), at: Date.now() });
         await renderWithArchive(2);

@@ -252,6 +252,8 @@ describe('Settings page', () => {
         expect(s.preset).toBe('custom');
         expect(s.pacing).toEqual(PRESETS.careful);
       });
+      // The setting is stored before the page draws the table it shows: wait for the table, as renderCustom does.
+      await screen.findByRole('spinbutton', { name: `${ACTION_LABELS.delete}, Per day` });
       fireEvent.change(cell('read', 'minDelay'), { target: { value: '30' } });
       await waitForStored((s) => {
         expect(s.pacing.read.minDelay).toBe(30);
@@ -356,6 +358,33 @@ describe('Settings page', () => {
       expect(await screen.findByRole('combobox', { name: 'From' })).toHaveValue('6');
     });
 
+    it('keeps both of two changes made before the page re-renders: From, then Until at once (#427)', async () => {
+      await renderPage();
+      // Both handlers run against the same render, as when a busy computer hasn't drawn the first change yet.
+      fireEvent.change(screen.getByRole('combobox', { name: 'From' }), { target: { value: '10' } });
+      fireEvent.change(screen.getByRole('combobox', { name: 'Until' }), { target: { value: '18' } });
+      await waitForStored((s) => {
+        expect(s.activeHours).toEqual({ enabled: true, start: 10, end: 18 });
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: 'From' })).toHaveValue('10');
+      });
+      expect(screen.getByRole('combobox', { name: 'Until' })).toHaveValue('18');
+    });
+
+    it('keeps a pacing change and a switch changed at once, each from the same render (#427)', async () => {
+      await renderCustom();
+      await waitForStored((s) => {
+        expect(s.preset).toBe('custom');
+      });
+      fireEvent.change(cell('delete', 'batchSize'), { target: { value: '5' } });
+      fireEvent.click(screen.getByRole('switch', { name: /Only work during active hours/ }));
+      await waitForStored((s) => {
+        expect(s.pacing.delete.batchSize).toBe(5);
+        expect(s.activeHours.enabled).toBe(false);
+      });
+    });
+
     it('sends a test notification and turns notifications off', async () => {
       await renderPage();
 
@@ -421,11 +450,17 @@ describe('Settings page', () => {
   });
 
   describe('appearance and data', () => {
+    it('names each theme by its own word, in a group named Theme (#345)', async () => {
+      await renderPage();
+      // A <label> around the buttons named the first one "Theme Light Dark" for a screen reader.
+      const group = screen.getByRole('group', { name: 'Theme' });
+      for (const name of ['System', 'Light', 'Dark'])
+        expect(within(group).getByRole('button', { name })).toHaveAccessibleName(name);
+    });
+
     it('switches the theme', async () => {
       await renderPage();
-      // The Theme field's <label> wraps the whole button row and lends its text to the buttons' names, so the
-      // buttons are found by their own text.
-      const theme = (name: string) => screen.getByText(name, { selector: 'button' });
+      const theme = (name: string) => screen.getByRole('button', { name });
       expect(theme('System')).toHaveAttribute('aria-pressed', 'true');
 
       await userEvent.click(theme('Dark'));

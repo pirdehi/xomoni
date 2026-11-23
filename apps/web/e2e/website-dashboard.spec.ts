@@ -101,7 +101,8 @@ test.describe('the dashboard on xomoni.com', { tag: '@task-245' }, () => {
     for (const [index, [name, address, summary]] of PLACES.entries()) {
       await expect(links.nth(index)).toHaveAccessibleName(name);
       await links.nth(index).click();
-      await expect(page).toHaveURL(new RegExp(`${address.replace(/\//g, '\\/')}$`));
+      // The address itself, compared as a path: no pattern built from it, so nothing in it needs escaping.
+      await expect(page).toHaveURL((url) => url.pathname === address);
       await expect(title(page, name)).toBeVisible();
       await expect(links.nth(index)).toHaveAttribute('aria-current', 'page');
       await expect(page).toHaveTitle(new RegExp(`^${index === 0 ? 'Dashboard|Overview' : name}`));

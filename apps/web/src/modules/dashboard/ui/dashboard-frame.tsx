@@ -263,6 +263,12 @@ export function DashboardFrame({
   const [scope, setScope] = useScope();
   const query = scopeQuery(scope);
   const siblings = SECTIONS.filter((other) => other.group === section.group);
+  // An account the address names but no job here ran on (an old link, another device's) is still what the page
+  // shows, so the picker names it rather than showing nothing.
+  const choices =
+    scope.account && !accounts.includes(scope.account)
+      ? [...accounts, scope.account].sort((a, b) => a.localeCompare(b))
+      : accounts;
 
   return (
     <div className={s.frame}>
@@ -333,7 +339,7 @@ export function DashboardFrame({
               onChange={(_, data) => setScope({ ...scope, account: data.value || null })}
             >
               <option value="">All accounts</option>
-              {accounts.map((handle) => (
+              {choices.map((handle) => (
                 <option key={handle} value={handle}>
                   @{handle}
                 </option>

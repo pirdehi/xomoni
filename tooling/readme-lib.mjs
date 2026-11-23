@@ -36,7 +36,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'update-notice',
   'store-install',
   'welcome',
-  'website-dashboard',
   'website-analytics',
   'phone-menu',
   // Grandfathered once: #335 was opened before the scenarios cut-over of 2026-11-22 (ADR-0038) and merged as this

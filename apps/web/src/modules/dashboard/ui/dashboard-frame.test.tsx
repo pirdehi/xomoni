@@ -89,6 +89,17 @@ describe('DashboardFrame (#245)', () => {
     expect(screen.queryByRole('navigation', { name: 'Overview' })).not.toBeInTheDocument();
   });
 
+  it('names the address’s account in the picker even when no job here ran on it (#345)', () => {
+    renderFrame('activity', 'account=cy');
+    const picker = screen.getByRole('combobox', { name: 'X account' });
+    expect(picker).toHaveValue('cy');
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['All accounts', '@ada', '@bob', '@cy']);
+  });
+
   it('says when the page isn’t live', () => {
     renderFrame('overview', '', [], false);
     expect(screen.getByRole('status')).toHaveTextContent('Connecting…');

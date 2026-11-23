@@ -503,7 +503,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [245, 248],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/245-website-dashboard.md",
       "en": {
         "title": "The dashboard on xomoni.com",
         "summary": "Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings, each at its own address, with an account and period picker. A sidebar on a computer, a bottom bar on a phone."

@@ -535,7 +535,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [257],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/257-reports.md",
       "en": {
         "title": "Reports and a weekly email",
         "summary": "weekly, monthly and the year in review, what Xomoni removed, and a report of your own, as CSV or PDF. If you ask for it, an email every Monday compares last week's numbers with the week before; one link stops it."

@@ -8,7 +8,7 @@ import type { DailyNumbers, DashboardSnapshot, Device, JobSummary } from '../dom
 import { RISK_LEVEL } from '../domain/risk';
 import { SECTIONS, type SectionId } from '../domain/sections';
 import { Dashboard, type DashboardViewer, useJustConnected } from './dashboard';
-import { resetNavigation, router, setLocation } from '@test/fakes/navigation';
+import { resetNavigation, setLocation } from '@test/fakes/navigation';
 
 vi.mock('../client/live', () => ({ createLiveDashboardServices: vi.fn() }));
 // The extension in this browser, as the site last found it (#232); unknown unless a test says otherwise.
@@ -141,7 +141,10 @@ describe('Dashboard', () => {
 
   /** Renders one place of the dashboard (#245); Overview unless a test names another. */
   function renderDashboard(initial: DashboardSnapshot, section: SectionId = 'overview') {
-    setLocation(section === 'overview' ? '/dashboard' : `/dashboard/${section}`);
+    const path = section === 'overview' ? '/dashboard' : `/dashboard/${section}`;
+    setLocation(path);
+    // The address the browser holds, which the pickers read and write (#452).
+    window.history.replaceState(null, '', path);
     return render(<Dashboard viewer={VIEWER} initial={initial} section={place(section)} />);
   }
 
@@ -196,7 +199,7 @@ describe('Dashboard', () => {
           .map((o) => o.textContent),
       ).toEqual(['All accounts', '@ada', '@bob']);
       await userEvent.selectOptions(picker, '@bob');
-      expect(router.replace).toHaveBeenCalledWith('/dashboard/activity?account=bob', { scroll: false });
+      expect(`${window.location.pathname}${window.location.search}`).toBe('/dashboard/activity?account=bob');
     });
   });
 

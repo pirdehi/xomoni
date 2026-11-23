@@ -38,6 +38,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - the daily numbers kept in this browser: the profile's counts, the posts seen and the likes received between two looks, counts only, and their deletion (`daily-numbers.spec.ts`, #249);
 - the notice that a newer version is out, from xomoni.com's answer: a security fix that can't be dismissed, and versions it ignores (`update-notice.spec.ts`, #151);
 - the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
+- the dashboard's Home, Activity and themes: the status and the one button that helps, the counts and the chart's table, the log and its exports, and the theme's choices named for screen readers (`dashboard-scenarios.spec.ts`, #34);
 - Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.
 
 An extension task's user scenarios are proven there ([user scenarios](../../docs/scenarios/README.md#the-extensions-scenarios)).

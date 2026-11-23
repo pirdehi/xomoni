@@ -375,7 +375,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [235],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/235-website-cleanup-plan.md",
       "en": {
         "title": "Plan a cleanup on xomoni.com",
         "summary": "the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there."

@@ -26,9 +26,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'login-handoff',
   'resumable-jobs',
   'keeps-going',
-  'welcome',
-  'website-analytics',
-  'phone-menu',
 ]);
 
 const REGISTRY = 'docs/features.json';

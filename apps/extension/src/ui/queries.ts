@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { isOpenRead } from '../engine/runner';
 import { unseenPosts } from '../shared/coverage';
 import { archiveImported, archiveImportedAt, archiveRequest, db, postTotals } from '../shared/db';
-import type { Account, ItemKind, ItemStatus, Job, ScanTarget } from '../shared/types';
+import type { Account, Item, ItemKind, ItemStatus, Job, ScanTarget } from '../shared/types';
 import type { ArchiveRequest } from '../shared/x-archive';
 
 /** All item kinds, in display order. */
@@ -9,6 +10,18 @@ export const KINDS: ItemKind[] = ['post', 'reply', 'repost', 'like'];
 
 /** Per item kind: items still on X (`present`) and items Xomoni removed (`deleted`). Items marked `gone` are not counted. */
 export type KindCounts = Record<ItemKind, { present: number; deleted: number }>;
+
+/**
+ * Whether an item matches the Library's search (#440): `query`, trimmed, in its text or its author, ignoring case. An
+ * author matches with or without the `@` the rows show and the search box suggests: authors are stored without it.
+ * An empty query matches everything. Browse lists exactly the items it matches, and *Export JSON* saves them.
+ */
+export function matchesSearch(item: Pick<Item, 'text' | 'author'>, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const author = q.replace(/^@/, '');
+  return item.text.toLowerCase().includes(q) || item.author.toLowerCase().includes(author);
+}
 
 function countStatus(accountId: string, kind: ItemKind, status: ItemStatus) {
   return db.items
@@ -66,7 +79,6 @@ export function useYearHistogram(accountId: string | undefined, kinds: ItemKind[
 /** Scan targets that read the recent timelines, and those that search the whole history (`range` is neither). */
 const READS_RECENT: readonly ScanTarget[] = ['posts', 'replies', 'likes', 'complete'];
 const READS_HISTORY: readonly ScanTarget[] = ['history', 'complete'];
-const UNFINISHED: readonly Job['state'][] = ['queued', 'running', 'waiting', 'paused', 'blocked'];
 
 /** How complete Xomoni's copy of an account is, for the Library (#185). */
 export interface CopyStatus {
@@ -82,7 +94,10 @@ export interface CopyStatus {
   recentAt: number | null;
   /** When a search of the whole history last finished; null if never. */
   historyAt: number | null;
-  /** A read that hasn't finished yet (running, waiting, paused, blocked or never started), newest first. */
+  /**
+   * The read that hasn't ended (`isOpenRead`: Ready, running, waiting for the person, paused or stopped for safety), or
+   * null. There is at most one (#442); of reads stored before that, the newest.
+   */
   openRead: Job | null;
 }
 
@@ -103,7 +118,7 @@ export function useCopyStatus(account: Account): CopyStatus | undefined {
       (job) => job.kind === 'scan' && job.scan !== 'range',
     );
     const totals = await postTotals(account);
-    const openRead = jobs.filter((job) => UNFINISHED.includes(job.state)).sort((a, b) => b.createdAt - a.createdAt)[0];
+    const openRead = jobs.filter(isOpenRead).sort((a, b) => b.createdAt - a.createdAt)[0];
     return {
       present: totals.present,
       postsCount: account.postsCount,

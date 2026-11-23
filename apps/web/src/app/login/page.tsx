@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { AuthCard, AuthLegalNote, AuthLink, FormSkeleton, NoScriptNote, OrDivider } from '@/modules/auth/ui/auth-card';
+import {
+  AuthCard,
+  AuthLegalNote,
+  AuthSwitchLink,
+  FormSkeleton,
+  NoScriptNote,
+  OrDivider,
+} from '@/modules/auth/ui/auth-card';
 import { CallbackError, GoogleButton } from '@/modules/auth/ui/google-button';
 import { SignInForm } from '@/modules/auth/ui/sign-in-form';
 
@@ -14,7 +21,7 @@ export default function LoginPage() {
       description="Follow your cleanups from any device."
       footer={
         <>
-          New to Xomoni? <AuthLink href="/signup">Create an account</AuthLink>
+          New to Xomoni? <AuthSwitchLink href="/signup">Create an account</AuthSwitchLink>
         </>
       }
     >

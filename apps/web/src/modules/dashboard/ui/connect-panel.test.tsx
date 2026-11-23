@@ -80,7 +80,10 @@ describe('ConnectPanel (#228)', () => {
     render(<ConnectPanel viewerEmail="omid@example.com" services={live} />);
 
     expect(await screen.findByText('omid@example.com')).toBeInTheDocument();
-    expect(screen.getByText(/Only the status of Xomoni’s jobs is sent/)).toBeInTheDocument();
+    // What reaches xomoni.com, said for the numbers on and off (#450).
+    expect(screen.getByText(/Only the status of Xomoni’s jobs is sent/)).toHaveTextContent(
+      'Only the status of Xomoni’s jobs is sent, and your daily numbers if you turn them on: titles, states and counts. Never what you posted or liked.',
+    );
     expect(screen.getByText('Signing in…')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     finish({ ok: true, account: 'o•••@example.com' });

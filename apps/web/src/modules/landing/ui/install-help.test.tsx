@@ -169,6 +169,10 @@ describe('InstallHelp (#306)', () => {
 
     const data = answer('your-data');
     expect(data).toHaveTextContent('inside the browser, on your computer');
+    // What reaches xomoni.com, said for the numbers on and off (#450).
+    expect(data).toHaveTextContent(
+      'xomoni.com only gets job status, and your daily numbers if you turn them on, and only if you sign in.',
+    );
     expect(data).toHaveTextContent('Removing Xomoni from the browser deletes all of it, for good.');
     expect(data).toHaveTextContent('Settings › Move your data › Export everything');
     expect(data).toHaveTextContent('Import from a file');

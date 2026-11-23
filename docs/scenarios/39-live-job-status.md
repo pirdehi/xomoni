@@ -6,11 +6,11 @@ feature: live-job-status
 
 # Your jobs, live on xomoni.com
 
-Follow each job from any device (#39, #40, ADR-0018): while its dashboard is open, Xomoni signed in to xomoni.com reports each job's status a few seconds after it changes, and at least every 5 minutes, and the website's dashboard shows it and updates by itself. Only status leaves the browser (ADR-0004): Xomoni's own title, state, phase and counts, the times and the account's risk level, never a post's text, an id, a keep word or X's notices. Watch, which never ends, and the archive job, which handles X's archive, are never reported. The website shows, and never starts or approves work (ADR-0006). Signing in to xomoni.com from Xomoni has its own scenarios (one sign-in, #232). Written for #345, the features shipped before the scenarios gate. Two fixes the scenarios found are in the same pull request: neither cancelling a job that wasn't running, nor pausing one Xomoni was closed while it ran, marked the job changed, so neither was reported, and xomoni.com went on showing it paused, ready or running (S39-03, S39-11).
+Follow each job from any device (#39, #40, ADR-0018): while its dashboard is open, Xomoni signed in to xomoni.com reports each job's status a few seconds after it changes, and at least every 5 minutes, and the website's dashboard shows it and updates by itself. Only status leaves the browser (ADR-0004): Xomoni's own title, state, phase and counts, the times and the account's risk level, never a post's text, an id, a keep word or X's notices. Watch, which never ends, and the archive job, which handles X's archive, are never reported. The website shows, and never starts or approves work (ADR-0006). Signing in to xomoni.com from Xomoni has its own scenarios (one sign-in, #232). Written for #345, the features shipped before the scenarios gate. Two fixes the scenarios found are in the same pull request: neither cancelling a job that wasn't running, nor pausing one Xomoni was closed while it ran, marked the job changed, so neither was reported, and xomoni.com went on showing it paused, ready or running (S39-03, S39-11). A later fix (#450) made Connections say what is sent with the daily numbers on as well as off: it said *Only job status is sent* while the numbers were sent too (S39-33, S39-34).
 
 The scenarios run in two places:
 
-- **What Xomoni sends** (S39-01 to S39-11): the built extension in a real browser on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), the made-up `@xomoni_fixture` with years behind it (`xHistory: 'long'`). xomoni.com and its database are played at the extension (`apps/web/e2e/support/xomoni-site.ts`), which keeps every call Xomoni makes. A job that starts loads X's Home first, at the warm-up's pace (12 to 24 seconds, and up to 90 more one time in twenty), so the scenarios that wait for a page take up to two minutes.
+- **What Xomoni sends** (S39-01 to S39-11, S39-33 and S39-34): the built extension in a real browser on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), the made-up `@xomoni_fixture` with years behind it (`xHistory: 'long'`). xomoni.com and its database are played at the extension (`apps/web/e2e/support/xomoni-site.ts`), which keeps every call Xomoni makes. A job that starts loads X's Home first, at the warm-up's pace (12 to 24 seconds, and up to 90 more one time in twenty), so the scenarios that wait for a page take up to two minutes.
 - **What the website shows** (S39-12 to S39-32): xomoni.com on the local Supabase stack, with its real Auth, database and Realtime. A browser connects with a one-time code from *Browsers* and reports through `device_report`, the same calls Xomoni makes.
 
 ```bash
@@ -262,3 +262,21 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
   Cancelled and Failed, never by color alone
 - And Live is a status, which a screen reader reads out when it changes
 - Test: apps/web/e2e/live-job-status.spec.ts
+
+## S39-33 · security
+
+- Given Xomoni signed in to xomoni.com, with the daily numbers off
+- When the person opens Connections from the account in the sidebar
+- Then it says only job status is sent: titles, states and counts, never posts or likes
+- And the map's line to xomoni.com says Status only, and tells a screen reader it sends job status and only that
+- And nothing but job status went to xomoni.com: no day of numbers
+- Test: apps/web/e2e/extension/live-job-status.spec.ts
+
+## S39-34 · security
+
+- Given the person's daily numbers on, turned on on xomoni.com, and Xomoni signed in to it
+- When Xomoni's report hears they are on, and the person opens Connections
+- Then it says only job status and the daily numbers are sent, never posts or likes, and the map says Status and
+  numbers
+- And once the person turns the numbers off in Settings, Connections says job status only again (#450)
+- Test: apps/web/e2e/extension/live-job-status.spec.ts

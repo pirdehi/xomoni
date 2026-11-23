@@ -34,6 +34,12 @@ export interface XomoniSite {
    */
   release: { latest: string; security: boolean } | null;
   /**
+   * The account's choice of daily numbers (ADR-0026), off unless a test turns it on, as the website or another browser
+   * would: `device_report` answers it, `device_set_daily_stats` sets it, and `device_report_stats` takes days only
+   * while it is on.
+   */
+  stats: boolean;
+  /**
    * Signs Xomoni in from a page of xomoni.com, as the website does once its page is signed in (#232, ADR-0025): a
    * one-time code, sent as `xomoni-sign-in`. Returns the extension's answer.
    */
@@ -64,6 +70,7 @@ export async function serveXomoniSite(
   const site: XomoniSite = {
     calls: [],
     release,
+    stats: false,
     signIn: async (extensionId) => {
       const page = await context.newPage();
       await page.goto(`${SITE}/dashboard`);
@@ -113,14 +120,15 @@ export async function serveXomoniSite(
       if (!paired || body.token !== TOKEN) return refuse('unknown_device');
       switch (fn) {
         case 'device_report':
-          return answer(200, { ...(site.release ?? {}), stats: false });
+          return answer(200, { ...(site.release ?? {}), stats: site.stats });
         case 'unpair_device':
           paired = false;
           return answer(200, null);
         case 'device_set_daily_stats':
-          return answer(200, false);
+          site.stats = body.enabled === true;
+          return answer(200, site.stats);
         case 'device_report_stats':
-          return refuse('stats_off');
+          return site.stats ? answer(200, Array.isArray(body.rows) ? body.rows.length : 0) : refuse('stats_off');
         default:
           return answer(404, { message: `xomoni.com has no function ${fn}` });
       }

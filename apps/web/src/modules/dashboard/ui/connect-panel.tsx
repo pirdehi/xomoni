@@ -219,8 +219,9 @@ export function ConnectPanel({
         <span className={s.email}>{viewerEmail}</span>
       </div>
       <p className={s.text}>
-        One sign-in for xomoni.com and Xomoni here. Only the status of Xomoni’s jobs is sent: titles, states and counts.
-        Never what you posted or liked. Nothing here can start or change work on X.
+        One sign-in for xomoni.com and Xomoni here. Only the status of Xomoni’s jobs is sent, and your daily numbers if
+        you turn them on: titles, states and counts. Never what you posted or liked. Nothing here can start or change
+        work on X.
       </p>
       <div className={s.actions}>
         {failed ? (

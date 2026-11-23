@@ -30,6 +30,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - signing out of Xomoni: the dialog, removing the account's data, X's own sign-out page, the signed-out page and signing in again, and what is kept and stopped (`sign-out.spec.ts`, #226);
 - job status for xomoni.com: what is reported, when, and that nothing but status leaves, with xomoni.com unreachable or no longer knowing the browser (`live-job-status.spec.ts`, #39);
 - one sign-in with xomoni.com, played at the extension: signing in and out from either side, the messages Xomoni refuses and who may send them (`one-sign-in.spec.ts`, #232);
+- *Download a copy* of a date range: the dialog at its edges, the page opened as a file, which runs nothing, and JSON (`archive-date-range.spec.ts`, #97);
 - moving the data to a new Xomoni, installed fresh in a browser of its own: *Export everything*, the checked import, the files it refuses, and that a file never leaves the computer, starts a job, speeds Xomoni up or lifts a stop (`move-your-data.spec.ts`, #300);
 - Watch: searches on X's own Latest page, read-only and within the read limits, with X's empty, failing and limited answers (`watch.spec.ts`, #158);
 - X's archive: *Get my archive* on X's archive page, and the ZIP dropped, chosen or from Downloads › Xomoni, with every archive it refuses (`x-archive.spec.ts`, #184);

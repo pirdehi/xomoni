@@ -34,6 +34,26 @@ export async function createConfirmedUser(email: string, password: string): Prom
   return user.id;
 }
 
+/** One of Polar's events, as the webhook route passes it to `apply_billing_event` (ADR-0042, #420). */
+export interface SeedBillingEvent {
+  webhook_id: string;
+  event_type: string;
+  event_at: string;
+  user_id: string;
+  tier: 'free' | 'plus' | 'pro';
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'revoked';
+  source: 'subscription' | 'pass';
+  valid_until: string | null;
+}
+
+/**
+ * Applies one of Polar's events to an account's plan with the service-role key, as the webhook route will (#421);
+ * returns the result: `applied`, `stale` or `ignored`.
+ */
+export async function applyBillingEvent(event: SeedBillingEvent): Promise<string> {
+  return call<string>('/rest/v1/rpc/apply_billing_event', { method: 'POST', body: event });
+}
+
 /** Adds a browser for the user, seen just now; returns its id. */
 export async function addDevice(userId: string, name: string): Promise<string> {
   const [device] = await call<{ id: string }[]>('/rest/v1/devices', {

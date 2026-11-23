@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-30
 - Amended: 2026-11-19, daily numbers by the person's choice ([ADR-0026](0026-daily-numbers-in-the-cloud.md), #248)
+- Amended: 2026-11-23, a paid plan is Xomoni account data, not X data: the cloud keeps the plan, and the extension only reads it ([ADR-0042](0042-payments-and-entitlements-with-polar.md), #420)
 
 ## Context
 

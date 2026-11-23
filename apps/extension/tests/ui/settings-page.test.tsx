@@ -252,6 +252,8 @@ describe('Settings page', () => {
         expect(s.preset).toBe('custom');
         expect(s.pacing).toEqual(PRESETS.careful);
       });
+      // The setting is stored before the page draws the table it shows: wait for the table, as renderCustom does.
+      await screen.findByRole('spinbutton', { name: `${ACTION_LABELS.delete}, Per day` });
       fireEvent.change(cell('read', 'minDelay'), { target: { value: '30' } });
       await waitForStored((s) => {
         expect(s.pacing.read.minDelay).toBe(30);

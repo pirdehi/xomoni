@@ -765,6 +765,20 @@ describe('recoverInterruptedJobs', () => {
     expect(await stored(ids.blocked)).toMatchObject({ state: 'blocked', stateReason: 'was blocked' });
   });
 
+  it('marks each job it pauses as changed, so xomoni.com hears it paused, not running (#345)', async () => {
+    const id = await jobIn('running');
+    const before = Date.now() - 60_000;
+    await db.jobs.update(id, { updatedAt: before });
+    const untouched = await jobIn('queued');
+    await db.jobs.update(untouched, { updatedAt: before });
+
+    await recoverInterruptedJobs();
+
+    // The status report sends the jobs updated since the last one (`cloud/sync.ts`).
+    expect((await stored(id)).updatedAt).toBeGreaterThan(before);
+    expect((await stored(untouched)).updatedAt).toBe(before);
+  });
+
   it('leaves the job alone while another dashboard tab runs it', async () => {
     const id = await jobIn('running');
     locks.holdElsewhere('xomoni-runner');

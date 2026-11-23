@@ -223,7 +223,8 @@ export async function readHealth(now = Date.now()): Promise<AccountHealth[]> {
 export async function readWatch(): Promise<WatchTabView[]> {
   const account = await activeAccount();
   if (!account) return [];
-  const tabs = normalizeTabs(await kvGet<unknown>(watchTabsKey(account.id), null));
+  // The ready tabs (#391) stay in Xomoni: what is said to and about the person, by whom, is not offered to the site.
+  const tabs = normalizeTabs(await kvGet<unknown>(watchTabsKey(account.id), null)).filter((tab) => !tab.ready);
   const results = await watchResults(account.id);
   return tabs.map((tab) => {
     const result = results[tab.id];

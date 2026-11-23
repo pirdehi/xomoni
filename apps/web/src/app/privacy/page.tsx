@@ -1,14 +1,25 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { billingPagesOn } from '@/shared/config/billing-pages';
 import { LegalPage } from '@/shared/ui/legal-page';
 import { CONTACT_EMAIL, GITHUB_URL } from '@/shared/config/site';
 
 export const metadata: Metadata = { title: 'Privacy Policy' };
 
-/** `/privacy`: the privacy policy. */
+/**
+ * `/privacy`: the privacy policy. While the server shows the pages for paid plans (`BILLING_PAGES=1`, #420), it also
+ * names Polar and what Xomoni keeps about a plan, as a draft until the maintainer approves it.
+ */
 export default function PrivacyPage() {
+  const billing = billingPagesOn();
   return (
-    <LegalPage title="Privacy Policy" updated="November 23, 2026">
+    <LegalPage
+      title="Privacy Policy"
+      updated="November 23, 2026"
+      draft={
+        billing ? 'The parts about paid plans wait for the maintainer’s approval, and aren’t in force yet.' : undefined
+      }
+    >
       <p>
         Xomoni is a free, open-source tool made by Omid Pirdehi that manages your digital footprint, starting with your
         own X account. It has two parts: a browser extension that does the work on your computer, and this website,
@@ -30,6 +41,12 @@ export default function PrivacyPage() {
           reaches us.
         </li>
         <li>No ads, no selling of data, no tracking or analytics cookies.</li>
+        {billing && (
+          <li>
+            If you buy a paid plan, Polar takes the payment as our merchant of record. We never see your card, and we
+            keep only your plan.
+          </li>
+        )}
         <li>You can delete your account and everything we hold at any time from your account page.</li>
         <li>
           Xomoni is a research project with no guarantee. You use it at your own risk, and what happens to your X
@@ -121,6 +138,16 @@ export default function PrivacyPage() {
           Turning it off deletes every day already sent, and deleting your account deletes them too. The extension
           collects them only from pages X already showed you: it never asks X for them.
         </li>
+        {billing && (
+          <li>
+            <strong>Your plan, only if you buy one:</strong> the plan (Free, Plus or Pro), its status, when it ends or
+            renews, whether you cancelled it, whether you have a founding price, and Polar’s ids for you as a customer
+            and for your subscription. We also keep a record of each payment notice Polar sends us: its id, its type,
+            when it arrived and what it changed, never its contents. Never your card, your billing address or anything
+            about your X account. The extension learns your plan from xomoni.com when it checks in. Deleting your
+            account deletes your plan.
+          </li>
+        )}
       </ul>
       <p>
         We use this data only to show you your dashboard. Job summaries and daily numbers contain counts, not the
@@ -172,6 +199,14 @@ export default function PrivacyPage() {
           <strong>Cloudflare</strong> runs Turnstile on the sign-in, sign-up and password forms, and hosts our domain’s
           DNS and email forwarding.
         </li>
+        {billing && (
+          <li>
+            <strong>Polar</strong> sells our paid plans as merchant of record: it takes the payment, keeps your card and
+            billing details, charges taxes, issues receipts and handles refunds. It receives what you enter at checkout,
+            such as your email address and card, and a random id for your Xomoni account, never anything about your X
+            account. Polar’s privacy policy covers what you give it.
+          </li>
+        )}
       </ul>
       <p>
         Xomoni’s use of information received from Google APIs adheres to the Google API Services User Data Policy,
@@ -188,6 +223,12 @@ export default function PrivacyPage() {
         our providers’ backups for a short period before they expire. Removing the extension deletes the data it stored
         in your browser.
       </p>
+      {billing && (
+        <p>
+          If you bought a plan, deleting your account cancels your subscription at Polar first. Polar keeps the payment
+          records the law requires it to keep, such as for taxes.
+        </p>
+      )}
 
       <h2>Your rights</h2>
       <p>

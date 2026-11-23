@@ -23,13 +23,23 @@ const MENU = [
   ['GitHub', REPOSITORY],
 ] as const;
 
-/** The footer's links, in order, with where each leads. */
+/**
+ * The footer's links, in order, with where each leads. The terms of sale and the refund policy are listed only while
+ * the site shows the pages for paid plans (`BILLING_PAGES=1`, #420), as playwright.config.ts has it for the browser
+ * tests; production keeps them off until the maintainer approves the texts.
+ */
 const FOOTER = [
   ['Install', '/install'],
   ['What’s new', `${REPOSITORY}/releases`],
   ['Risks', '/risks'],
   ['Privacy', '/privacy'],
   ['Terms', '/terms'],
+  ...(process.env.BILLING_PAGES === '1'
+    ? ([
+        ['Terms of sale', '/terms-of-sale'],
+        ['Refunds', '/refunds'],
+      ] as const)
+    : []),
   ['Security', `${REPOSITORY}/security/policy`],
   ['Support', `${REPOSITORY}/issues`],
   ['GitHub', REPOSITORY],
@@ -390,7 +400,10 @@ test.describe('xomoni.com on a phone', { tag: ['@task-242'] }, () => {
     const links = [...(await menuItems(page)), ...(await footerLinks(page))].map(([, href]) => href ?? '');
     expect(links).toHaveLength(MENU.length + FOOTER.length);
     for (const href of links) {
-      expect(href).toMatch(/^(\/(#how|#safety|#privacy|install|risks|privacy|terms)|https:\/\/github\.com\/pirdehi\/)/);
+      // /terms also covers /terms-of-sale, which the footer lists with /refunds while those pages are shown (#420).
+      expect(href).toMatch(
+        /^(\/(#how|#safety|#privacy|install|risks|privacy|terms|refunds)|https:\/\/github\.com\/pirdehi\/)/,
+      );
     }
     for (const name of ['Dashboard', 'Account', 'Sign out']) {
       await expect(menu(page).getByRole('menuitem', { name })).toHaveCount(0);

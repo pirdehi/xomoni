@@ -135,7 +135,8 @@ test.describe('the header and footer (#242)', () => {
     await expect(page).toHaveURL(/\/install$/);
     const footer = page.getByRole('navigation', { name: 'Site' });
     for (const name of ['Install', 'What’s new', 'Risks', 'Privacy', 'Terms', 'Security', 'Support', 'GitHub']) {
-      await expect(footer.getByRole('link', { name })).toBeVisible();
+      // Exact: Terms of sale follows Terms while the pages for paid plans are shown (#420).
+      await expect(footer.getByRole('link', { name, exact: true })).toBeVisible();
     }
   });
 

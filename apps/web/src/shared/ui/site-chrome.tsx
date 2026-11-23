@@ -16,6 +16,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { GITHUB_URL, INSTALL_URL, ISSUES_URL, RELEASES_URL, SECURITY_URL } from '@/shared/config/site';
+import { useBillingPages } from './billing-pages';
 import { HeaderAccount } from './header-account';
 import { ButtonLink } from './links';
 
@@ -198,9 +199,13 @@ function PhoneMenu() {
   );
 }
 
-/** Site footer: credits, and every page a visitor may look for (#242). */
+/**
+ * Site footer: credits, and every page a visitor may look for (#242). The terms of sale and the refund policy are
+ * listed only while the server shows them (`BILLING_PAGES`, #420).
+ */
 export function SiteFooter() {
   const s = useStyles();
+  const billing = useBillingPages();
   const link = (href: string, label: string) =>
     href.startsWith('/') ? (
       <Link href={href} className={s.footerLink}>
@@ -223,6 +228,8 @@ export function SiteFooter() {
           {link('/risks', 'Risks')}
           {link('/privacy', 'Privacy')}
           {link('/terms', 'Terms')}
+          {billing && link('/terms-of-sale', 'Terms of sale')}
+          {billing && link('/refunds', 'Refunds')}
           {link(SECURITY_URL, 'Security')}
           {link(ISSUES_URL, 'Support')}
           {link(GITHUB_URL, 'GitHub')}

@@ -217,6 +217,28 @@ describe('WatchPlace (#233)', () => {
     render(<WatchPlace xomoni={controls(() => null, { kind: 'signed-out' }).xomoni} now={NOW} />);
     expect(screen.getByRole('region', { name: 'Watch: in Xomoni' })).toBeInTheDocument();
   });
+
+  it('leaves out the empty tabs Xomoni always keeps: they are no search (#345)', async () => {
+    // A new Watch page in Xomoni has two tabs with no search typed in yet, and Xomoni answers them as they are.
+    const empty = { query: '', checkedAt: null, error: '', posts: [] };
+    const { unmount } = render(
+      <WatchPlace xomoni={controls(() => ({ ok: true, what: 'watch', tabs: [empty, empty] })).xomoni} now={NOW} />,
+    );
+    expect(await screen.findByText('No searches yet.')).toBeInTheDocument();
+    expect(screen.queryByText('Not looked yet')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /^Watch:/ })).not.toBeInTheDocument();
+    unmount();
+    const tabs = [empty, { query: '#rust', checkedAt: null, error: '', posts: [] }];
+    render(<WatchPlace xomoni={controls(() => ({ ok: true, what: 'watch', tabs })).xomoni} now={NOW} />);
+    expect(await screen.findByRole('region', { name: 'Watch: #rust' })).toBeInTheDocument();
+    expect(screen.getAllByRole('region', { name: /^Watch:/ })).toHaveLength(1);
+    expect(screen.queryByText('No searches yet.')).not.toBeInTheDocument();
+  });
+
+  it('points to Xomoni while it isn’t here', () => {
+    render(<WatchPlace xomoni={controls(() => null, { kind: 'signed-out' }).xomoni} now={NOW} />);
+    expect(screen.getByRole('region', { name: 'Watch: in Xomoni' })).toBeInTheDocument();
+  });
 });
 
 describe('useXomoniRead', () => {

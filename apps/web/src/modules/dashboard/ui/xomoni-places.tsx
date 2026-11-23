@@ -288,12 +288,13 @@ export function HealthPlace({ xomoni, now }: { xomoni: XomoniControls; now: numb
   );
 }
 
-/** Watch (#233): each search tab, when it last looked, and the newest posts it found. */
+/** Watch (#233): each search tab with a search, when it last looked, and the newest posts it found. */
 export function WatchPlace({ xomoni, now }: { xomoni: XomoniControls; now: number }) {
   const s = useStyles();
   const { answer, loading, reload } = useXomoniRead(xomoni, { what: 'watch' });
   if (xomoni.presence.kind !== 'here') return <NotHere xomoni={xomoni} page="watch" what="Watch" />;
-  const tabs = answer?.ok && answer.what === 'watch' ? answer.tabs : null;
+  // Xomoni keeps two tabs even before a search is typed in them: an empty one is no search, so it isn't shown.
+  const tabs = answer?.ok && answer.what === 'watch' ? answer.tabs.filter((tab) => tab.query.trim()) : null;
   return (
     <div className={s.root}>
       <Notice>

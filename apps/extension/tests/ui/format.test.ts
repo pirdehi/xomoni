@@ -5,6 +5,7 @@ import {
   KIND_PLURAL,
   OUTCOME_LABEL,
   TARGET_PLURAL,
+  TARGET_SINGULAR,
   downloadFile,
   errorMessage,
   fmtAgo,
@@ -110,6 +111,12 @@ describe('labels and links', () => {
   it('has a label for every kind, target, job state and outcome', () => {
     expect(KIND_PLURAL.repost).toBe('Reposts');
     expect(TARGET_PLURAL.reply).toBe('replies');
+    expect(Object.entries(TARGET_SINGULAR)).toEqual([
+      ['post', 'post'],
+      ['reply', 'reply'],
+      ['repost', 'repost'],
+      ['like', 'like'],
+    ]);
     expect(JOB_STATE.waiting).toEqual({ label: 'Needs you', tone: 'serious' });
     expect(JOB_STATE.blocked.label).toBe('Stopped for safety');
     expect(OUTCOME_LABEL.automation_flag).toBe('Flagged (226)');

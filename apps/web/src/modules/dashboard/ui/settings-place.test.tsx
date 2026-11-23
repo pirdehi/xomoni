@@ -162,6 +162,23 @@ describe('SettingsPlace (#234, ADR-0029)', () => {
     expect(await screen.findByText(/Xomoni didn’t answer, so nothing changed/)).toBeInTheDocument();
   });
 
+  it('says where to make room when Xomoni refuses searches that don’t fit beside its own (#391)', async () => {
+    const full = controls(settings(), () => ({ ok: false, reason: 'refused' }));
+    render(<SettingsPlace xomoni={full.xomoni} numbers={NUMBERS} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a search' }));
+    const fields = screen.getAllByRole('textbox', { name: /^Search \d/ });
+    await userEvent.type(fields.at(-1)!, 'one more');
+    await userEvent.click(screen.getByRole('button', { name: 'Save searches' }));
+    expect(
+      await screen.findByText(
+        /Xomoni didn’t take these searches, so nothing changed\. It may have fewer free Watch tabs/,
+      ),
+    ).toBeInTheDocument();
+    // Another change it refuses keeps the general words.
+    await userEvent.click(screen.getByRole('switch', { name: 'Desktop notifications' }));
+    expect(await screen.findByText('Xomoni didn’t take that change, so nothing changed.')).toBeInTheDocument();
+  });
+
   it('says to install the newest Xomoni when this one doesn’t know settings yet', async () => {
     const old = controls(settings(), () => ({ ok: false, reason: 'invalid' }));
     old.read.mockResolvedValue({ ok: false, reason: 'invalid' });

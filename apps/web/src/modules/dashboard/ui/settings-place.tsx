@@ -79,8 +79,13 @@ const KEPT_SEARCHES = 2;
 
 const hourText = (h: number) => `${String(h).padStart(2, '0')}:00`;
 
-/** Why Xomoni didn't take a change, in plain words. */
-function refusalText(reason: string): string {
+/**
+ * Why Xomoni didn't take a change, in plain words. Xomoni refuses Watch searches that don't all fit beside its own
+ * ready searches (#391), without saying which those are; for a change of searches, the words say where to make room.
+ */
+function refusalText(reason: string, searches = false): string {
+  if (reason === 'refused' && searches)
+    return 'Xomoni didn’t take these searches, so nothing changed. It may have fewer free Watch tabs than that: its own searches about you count too. Remove a search here, or turn one off in Xomoni, then save again.';
   switch (reason) {
     case 'signed_out':
     case 'not_connected':
@@ -146,7 +151,7 @@ export function SettingsPlace({
         text: 'Saved in Xomoni. A running job keeps its settings until it is paused and resumed.',
       });
     } else {
-      setMessage({ ok: false, text: refusalText(result ? result.reason : 'no_answer') });
+      setMessage({ ok: false, text: refusalText(result ? result.reason : 'no_answer', !!next.watch) });
     }
   }
 

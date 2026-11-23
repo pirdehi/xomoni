@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-11-23
+
+A security release: a Library read (*Complete my copy*, *Read one part*, a date range) passed over X's rate limit instead of stopping on the risk ladder, and a keep word with &, < or > kept nothing from an unlike or an undo-repost. Update now.
+
 ### Fixed
 
 - **Safety: a read now stops at X's rate limit, as a cleanup does** (#392). When X refused a page of a read with its rate limit (a 429), the read passed the page over. A read of several pages, such as *Complete my copy*, a full history or a date range, went on to its next pages. The risk ladder never heard of X's warning, so X's second rate limit within an hour didn't stop Xomoni for 6 hours, and the read ended *Completed*, with *Healthy: no warnings from X*. A post page X refused while Xomoni checked an earlier delete counted that delete as done, and a scroll X refused counted as the end of the page. Now each of these puts X's warning on the risk ladder and waits for X's reset. The read then loads the same page again, up to 3 times, and pauses after that; the check waits for the next page. This is a safety fix.

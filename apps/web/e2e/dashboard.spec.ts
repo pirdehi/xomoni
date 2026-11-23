@@ -82,7 +82,8 @@ test.describe('dashboard (#41)', () => {
     await expect(page.getByRole('region', { name: 'Connect Xomoni to see your account here' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Your account in numbers' })).toBeVisible();
 
-    const sidebar = page.getByRole('navigation', { name: 'Dashboard' });
+    // Exact: the phone's bar is named "Dashboard, on a phone", which a part match would find too.
+    const sidebar = page.getByRole('navigation', { name: 'Dashboard', exact: true });
     await sidebar.getByRole('link', { name: /^Reports/ }).click();
     await expect(page).toHaveURL(/\/dashboard\/reports$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Reports' })).toBeVisible();
@@ -211,7 +212,7 @@ test.describe('dashboard (#41)', () => {
 
     await page.emulateMedia({ media: 'print' });
     await expect(page.getByRole('heading', { name: /^Weekly report/ })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Dashboard' })).toBeHidden();
+    await expect(page.getByRole('navigation', { name: 'Dashboard', exact: true })).toBeHidden();
     await expect(page.getByRole('button', { name: 'Download CSV' })).toBeHidden();
     await expect(page.getByRole('combobox', { name: 'Period' })).toBeHidden();
   });

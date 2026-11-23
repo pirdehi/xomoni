@@ -11,6 +11,7 @@ import { useToasts } from '../../src/ui/hooks';
 import { MoveDataCard, MoveOffer, describeResult, exportFileName } from '../../src/ui/components/MoveData';
 import { stubChrome } from '../support/chrome';
 import { resetDb } from '../support/fixtures';
+import { fmtDate } from '../../src/ui/format';
 import { MOVER, NOW, THEN, holdRunnerLock, moverJob, moverLog, seedEverything } from '../support/move';
 import { captureDownloads, fakeRunner } from '../support/shell';
 
@@ -107,7 +108,8 @@ describe('Move your data in Settings (#300)', () => {
     await choose(file);
 
     const dialog = await screen.findByRole('dialog', { name: 'Import this data?' });
-    expect(dialog).toHaveTextContent('From Xomoni 0.4.1, exported Nov 20, 2026');
+    // The export's day on this computer's calendar: Nov 20, 2026 in most time zones (#414).
+    expect(dialog).toHaveTextContent(`From Xomoni 0.4.1, exported ${fmtDate(THEN)}`);
     expect(dialog).toHaveTextContent('its checksum matches');
     expect(within(dialog).getByRole('list', { name: 'Accounts in the file' })).toHaveTextContent(
       '@mover: 3 posts, replies and reposts · 1 likes · 3 jobs · 2 log entries',

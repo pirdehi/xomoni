@@ -312,3 +312,11 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
   restriction on this account (#377)
 - And nothing is removed, and Home is the only page the job asked X for
 - Test: apps/web/e2e/extension/cleanup-by-date.spec.ts
+
+## S199-35 · a11y
+
+- Given a cleanup of posts before 2021 on Cleanup, in light mode and in dark mode
+- When the person opens the confirmation, types DELETE, accepts the risks, and the job runs, is paused and is cancelled
+- Then axe finds no serious or critical violation in the confirmation, typed or not, in the risks dialog, in the running
+  job's banner and card, in the paused card with Resume and Cancel, or in the cancelled card under All with Remove (#389)
+- Test: apps/web/e2e/extension/a11y-states.spec.ts

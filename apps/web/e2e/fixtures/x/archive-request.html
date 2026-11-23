@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  x.com/settings/download_your_data as Xomoni's browser tests serve it (#345), X's page for asking for the archive of
+  the account, offering a new one. Synthetic, and only what Xomoni reads (apps/extension/src/content/dom.ts): the
+  sidebar's profile link, and in the main region X's "Request archive" button, which, once pressed, turns into X's
+  "Requesting archive" while X makes it.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Download an archive of your data / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link">Home</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Profile">Profile</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1>Download an archive of your data</h1>
+          <p>Get insights into the type of information stored for your account.</p>
+          <div id="archive"><button type="button" id="request">Request archive</button></div>
+        </div>
+      </main>
+    </div>
+    <script>
+      document.getElementById('request').addEventListener('click', () => {
+        document.getElementById('archive').innerHTML = '<button type="button" disabled>Requesting archive</button>';
+      });
+    </script>
+  </body>
+</html>

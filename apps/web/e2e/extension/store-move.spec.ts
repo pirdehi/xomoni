@@ -53,6 +53,16 @@ const step = (dashboard: Page, title: string): Locator =>
     .filter({ has: dashboard.getByRole('heading', { level: 3, name: new RegExp(`^${title}`) }) });
 
 /**
+ * Checks that a step is ticked: its title shows as it was, and a screen reader hears it done, in one string, with no
+ * space before the colon (#457).
+ */
+async function expectStepDone(item: Locator, title: string): Promise<void> {
+  const heading = item.getByRole('heading', { level: 3 });
+  await expect(heading).toHaveText(title);
+  await expect(heading).toHaveAccessibleName(`${title}: done`);
+}
+
+/**
  * Opens Home with the fixture's account, past a new install's offer to import data, which Home shows instead of the
  * card until the person answers it (*Not now*), so the two never compete.
  */
@@ -125,7 +135,7 @@ test.describe('moving a zip install to its store', { tag: '@task-304' }, () => {
     const saved = JSON.parse(readFileSync(await download.path(), 'utf8')) as Record<string, unknown>;
     expect(JSON.stringify(saved)).toContain(FIXTURE_ACCOUNT.handle);
     const first = step(dashboard, 'Export everything');
-    await expect(first.getByRole('heading', { level: 3 })).toHaveText('Export everything: done');
+    await expectStepDone(first, 'Export everything');
     await expect(first.getByRole('status')).toHaveText(`Saved ${download.suggestedFilename()} in Downloads.`);
   });
 
@@ -257,9 +267,7 @@ test.describe('moving a zip install to its store', { tag: '@task-304' }, () => {
     await extensionsPage(context);
     // The person goes back to Xomoni's tab without pressing Remove.
     await dashboard.bringToFront();
-    await expect(step(dashboard, 'Export everything').getByRole('heading', { level: 3 })).toHaveText(
-      'Export everything: done',
-    );
+    await expectStepDone(step(dashboard, 'Export everything'), 'Export everything');
     await expect(
       step(dashboard, 'Remove this copy').getByRole('button', { name: 'Open the extensions page' }),
     ).toBeVisible();
@@ -272,9 +280,13 @@ test.describe('moving a zip install to its store', { tag: '@task-304' }, () => {
     await expect(moveCard(dashboard).getByRole('list', { name: 'Steps to move to the store' })).toBeVisible();
     await expectNoSeriousA11yViolations(dashboard);
     await exportEverything(dashboard);
-    // The words a screen reader hears; the hidden ": done", placed apart, comes with a space before it.
+    // The words a screen reader hears, in one string: never "Export everything : done", with a space before the colon.
     await expect(
-      step(dashboard, 'Export everything').getByRole('heading', { level: 3, name: /^Export everything\s*: done$/ }),
+      step(dashboard, 'Export everything').getByRole('heading', {
+        level: 3,
+        name: 'Export everything: done',
+        exact: true,
+      }),
     ).toBeVisible();
     await expectNoSeriousA11yViolations(dashboard);
     await dashboard.emulateMedia({ colorScheme: 'dark' });
@@ -290,9 +302,7 @@ test.describe('moving a zip install to its store', { tag: '@task-304' }, () => {
     const file = dashboard.waitForEvent('download');
     await dashboard.keyboard.press('Enter');
     await file;
-    await expect(step(dashboard, 'Export everything').getByRole('heading', { level: 3 })).toHaveText(
-      'Export everything: done',
-    );
+    await expectStepDone(step(dashboard, 'Export everything'), 'Export everything');
     await tabTo(moveCard(dashboard).getByRole('button', { name: 'Not now' }));
     await dashboard.keyboard.press('Enter');
     await expect(moveCard(dashboard)).toHaveCount(0);

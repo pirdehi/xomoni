@@ -20,24 +20,42 @@ import {
   Warning20Regular,
 } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { type SyntheticEvent, useId, useState } from 'react';
+import { type SyntheticEvent, useEffect, useEffectEvent, useId, useState } from 'react';
 import { runner } from '../../engine/platform';
 import { watchJob } from '../../engine/runner';
-import { addWatchTab, db, removeWatchTab, setWatchQuery, watchResults, watchTabs } from '../../shared/db';
+import {
+  addWatchTab,
+  db,
+  markWatchSeen,
+  removeWatchTab,
+  setReadyTab,
+  setWatchQuery,
+  watchResults,
+  watchSeen,
+  watchTabs,
+} from '../../shared/db';
 import {
   MAX_QUERY_LENGTH,
+  READY_TABS,
+  READY_TAB_LABELS,
+  type ReadyTab,
   WATCH_EVERY_MS,
   WATCH_POSTS,
   WATCH_TABS,
   type WatchResult,
   type WatchTab,
+  accountAge,
   isInitialTab,
+  isNewAccount,
   normalizeQuery,
+  readyQuery,
+  unseenNewAccounts,
+  withQueries,
 } from '../../shared/watch';
 import { fmtAgo, postUrl } from '../format';
 import { startJob, useRunner } from '../hooks';
 import type { PageProps } from '../navigation';
-import { Button, Callout, Card, EmptyState, Field, PageHeader, useNow } from '../components/ui';
+import { Badge, Button, Callout, Card, EmptyState, Field, PageHeader, Toggle, useNow } from '../components/ui';
 
 const useStyles = makeStyles({
   tabs: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: tokens.spacingHorizontalS },
@@ -60,9 +78,38 @@ const useStyles = makeStyles({
   author: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: tokens.spacingHorizontalS },
   text: { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: 0 },
   open: { display: 'inline-flex', alignItems: 'center', columnGap: tokens.spacingHorizontalXXS },
+  ready: { display: 'flex', flexWrap: 'wrap', gap: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXXL}` },
+  readyToggle: { flexBasis: '18rem', flexGrow: 1, minWidth: 0 },
+  // The query a ready tab searches, as X's search gets it.
+  code: { fontFamily: tokens.fontFamilyMonospace, overflowWrap: 'anywhere' },
+  // The tab's mark: a dot in the warning color, with its count read out to assistive technology.
+  mark: {
+    display: 'inline-block',
+    width: '8px',
+    height: '8px',
+    marginInlineStart: tokens.spacingHorizontalXS,
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorStatusWarningForeground1,
+    verticalAlign: 'middle',
+  },
+  hidden: {
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap',
+  },
 });
 
-const tabLabel = (tab: WatchTab, index: number) => tab.query || `Tab ${index + 1}`;
+const tabLabel = (tab: WatchTab, index: number) =>
+  tab.ready ? READY_TAB_LABELS[tab.ready] : tab.query || `Tab ${index + 1}`;
+
+/** What each ready tab finds, in a sentence under its switch. */
+const READY_TAB_HINTS: Readonly<Record<ReadyTab, string>> = {
+  mentions: 'Posts by others that name you.',
+  replies: 'Replies to your posts.',
+};
 
 /**
  * Watch (#158, ADR-0021): up to five tabs, two by default, each following a phrase or #hashtag in X's search. The
@@ -72,8 +119,12 @@ const tabLabel = (tab: WatchTab, index: number) => tab.query || `Tab ${index + 1
 export function WatchPage({ account }: PageProps) {
   const styles = useStyles();
   const run = useRunner();
-  const tabs = useLiveQuery(() => watchTabs(account.id), [account.id]);
+  const stored = useLiveQuery(() => watchTabs(account.id), [account.id]);
+  // A ready tab's query is the account's own (#391), so it follows the account and its handle.
+  const tabs = stored && withQueries(stored, account.handle);
   const results = useLiveQuery(() => watchResults(account.id), [account.id]);
+  const seen = useLiveQuery(() => watchSeen(account.id), [account.id]);
+  const unseen = tabs && results && seen ? unseenNewAccounts(tabs, results, seen) : {};
   const job = useLiveQuery(
     () =>
       db.jobs
@@ -99,6 +150,10 @@ export function WatchPage({ account }: PageProps) {
     setSelected('tab-1');
   };
   const start = async () => startJob((await watchJob(account.id)).id);
+  const toggleReady = async (ready: ReadyTab, on: boolean) => {
+    // Refused only when five tabs are in use, which the page already says under the switches.
+    if ((await setReadyTab(account.id, ready, on)) && on) setSelected(ready);
+  };
 
   return (
     <>
@@ -132,6 +187,37 @@ export function WatchPage({ account }: PageProps) {
           ends.
         </Callout>
       )}
+      <Card
+        title="About you"
+        subtitle="Ready searches for what is said to and about you on X. Each counts as one of the five tabs. A post from an account made in the last 30 days is marked, from what X's search shows; the toolbar's badge counts the ones you haven't seen."
+      >
+        <div className={styles.ready}>
+          {READY_TABS.map((ready) => {
+            const on = !!tabs?.some((t) => t.ready === ready);
+            const query = readyQuery(ready, account.handle);
+            return (
+              <div key={ready} className={styles.readyToggle}>
+                <Toggle
+                  checked={on}
+                  onChange={(v) => void toggleReady(ready, v)}
+                  disabled={!tabs || !query || (!on && tabs.length >= WATCH_TABS.max)}
+                  label={READY_TAB_LABELS[ready]}
+                  description={
+                    <>
+                      {READY_TAB_HINTS[ready]} Searches X for <span className={styles.code}>{query}</span>
+                    </>
+                  }
+                />
+              </div>
+            );
+          })}
+        </div>
+        {tabs && tabs.length >= WATCH_TABS.max && READY_TABS.some((r) => !tabs.some((t) => t.ready === r)) && (
+          <Caption1 as="p" className={styles.meta}>
+            {`All ${String(WATCH_TABS.max)} tabs are in use: remove a tab of your own to turn on another.`}
+          </Caption1>
+        )}
+      </Card>
       <Card>
         <div className={styles.panel}>
           <div className={styles.tabs}>
@@ -144,6 +230,14 @@ export function WatchPage({ account }: PageProps) {
               {tabs?.map((tab, i) => (
                 <Tab key={tab.id} value={tab.id}>
                   {tabLabel(tab, i)}
+                  {unseen[tab.id] ? (
+                    <>
+                      <span className={styles.mark} aria-hidden />
+                      <span className={styles.hidden}>
+                        {`, ${String(unseen[tab.id])} new ${unseen[tab.id] === 1 ? 'account' : 'accounts'}`}
+                      </span>
+                    </>
+                  ) : null}
                 </Tab>
               ))}
             </TabList>
@@ -164,8 +258,9 @@ export function WatchPage({ account }: PageProps) {
               tab={current}
               result={results?.[current.id]}
               watching={watching}
+              onSeen={(ids) => void markWatchSeen(account.id, current.id, ids)}
               onQuery={(query) => void setWatchQuery(account.id, current.id, query)}
-              onRemove={isInitialTab(current) ? null : () => void removeTab(current)}
+              onRemove={isInitialTab(current) || current.ready ? null : () => void removeTab(current)}
             />
           )}
         </div>
@@ -183,12 +278,15 @@ function TabPanel({
   tab,
   result,
   watching,
+  onSeen,
   onQuery,
   onRemove,
 }: {
   tab: WatchTab;
   result: WatchResult | undefined;
   watching: boolean;
+  /** The posts from new accounts the person now sees, for the toolbar's badge (#391). */
+  onSeen: (ids: string[]) => void;
   onQuery: (query: string) => void;
   onRemove: (() => void) | null;
 }) {
@@ -197,6 +295,21 @@ function TabPanel({
   const [draft, setDraft] = useState(tab.query);
   const hintId = useId();
   const fresh = result && result.query === tab.query ? result : undefined;
+  const fromNew = fresh?.posts.filter((post) => isNewAccount(post.accountCreatedAt, fresh.checkedAt)) ?? [];
+  const newIds = fromNew.map((post) => post.id).join(' ');
+  // A ready tab's posts from new accounts are seen once they are on screen, the dashboard's tab in front: then they
+  // leave the toolbar's count. A check that comes in while the person is in another tab leaves them counted until the
+  // person comes back to this one.
+  const markSeen = useEffectEvent((ids: string[]) => onSeen(ids));
+  useEffect(() => {
+    if (!tab.ready || !newIds) return;
+    const look = () => {
+      if (document.visibilityState === 'visible') markSeen(newIds.split(' '));
+    };
+    look();
+    document.addEventListener('visibilitychange', look);
+    return () => document.removeEventListener('visibilitychange', look);
+  }, [tab.ready, newIds]);
 
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
@@ -204,33 +317,46 @@ function TabPanel({
   };
 
   return (
-    <div role="tabpanel" aria-label={tab.query || 'Empty tab'} className={styles.panel}>
-      <form className={styles.form} onSubmit={submit}>
-        <div className={styles.query}>
-          <Field label="Phrase or #hashtag">
-            <Input
-              className={styles.input}
-              dir="auto"
-              aria-describedby={hintId}
-              value={draft}
-              maxLength={MAX_QUERY_LENGTH}
-              placeholder="#hashtag"
-              onChange={(_, data) => setDraft(data.value)}
-            />
-          </Field>
-        </div>
-        <Button type="submit" disabled={normalizeQuery(draft) === tab.query}>
-          Save
-        </Button>
-        {onRemove && (
-          <Button variant="ghost" icon={<Delete16Regular />} onClick={onRemove}>
-            Remove tab
-          </Button>
-        )}
-      </form>
-      <Caption1 id={hintId} className={styles.hint}>
-        A word, #hashtag or "exact phrase". X’s search operators work too.
-      </Caption1>
+    <div
+      role="tabpanel"
+      aria-label={tab.ready ? READY_TAB_LABELS[tab.ready] : tab.query || 'Empty tab'}
+      className={styles.panel}
+    >
+      {tab.ready ? (
+        <Caption1 as="p" className={styles.meta}>
+          Searches X for <span className={styles.code}>{tab.query}</span>, for the account this page shows. If the X
+          window signs in to another account, watching waits for you. Turn it off under About you.
+        </Caption1>
+      ) : (
+        <>
+          <form className={styles.form} onSubmit={submit}>
+            <div className={styles.query}>
+              <Field label="Phrase or #hashtag">
+                <Input
+                  className={styles.input}
+                  dir="auto"
+                  aria-describedby={hintId}
+                  value={draft}
+                  maxLength={MAX_QUERY_LENGTH}
+                  placeholder="#hashtag"
+                  onChange={(_, data) => setDraft(data.value)}
+                />
+              </Field>
+            </div>
+            <Button type="submit" disabled={normalizeQuery(draft) === tab.query}>
+              Save
+            </Button>
+            {onRemove && (
+              <Button variant="ghost" icon={<Delete16Regular />} onClick={onRemove}>
+                Remove tab
+              </Button>
+            )}
+          </form>
+          <Caption1 id={hintId} className={styles.hint}>
+            A word, #hashtag or "exact phrase". X’s search operators work too.
+          </Caption1>
+        </>
+      )}
 
       {!tab.query ? (
         <EmptyState
@@ -264,6 +390,9 @@ function TabPanel({
                       @{post.handle}
                       {post.time != null && ` · ${fmtAgo(post.time, now)}`}
                     </Caption1>
+                    {post.accountCreatedAt != null && isNewAccount(post.accountCreatedAt, fresh.checkedAt) && (
+                      <Badge tone="warn">{accountAge(post.accountCreatedAt, fresh.checkedAt)}</Badge>
+                    )}
                   </div>
                   <Body1 as="p" dir="auto" className={styles.text}>
                     {post.text}

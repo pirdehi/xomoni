@@ -47,7 +47,7 @@ import {
   viewerIdFromCookie,
   waitFor,
 } from './dom';
-import { type NetEvent, isUnavailable, lastTimelineStatus, resetAtFrom, waitForNet } from './net';
+import { type NetEvent, accountMadeAt, isUnavailable, lastTimelineStatus, resetAtFrom, waitForNet } from './net';
 
 const bootId = Math.random().toString(36).slice(2);
 
@@ -164,7 +164,8 @@ function visibleTweets(): VisibleTweet[] {
 
 /**
  * The newest `limit` posts on the page, in its order, for Watch (#158): id, author, time and text, as X shows
- * them. Articles without a linked timestamp (ads, quoted posts' shells) are left out. Reads only; clicks nothing.
+ * them, and when the author's account was made where X's search answer for the page said (#391). Articles without a
+ * linked timestamp (ads, quoted posts' shells) are left out. Reads only; clicks nothing, and asks X for nothing.
  */
 function readPosts(limit: number): WatchPost[] {
   const posts: WatchPost[] = [];
@@ -172,12 +173,14 @@ function readPosts(limit: number): WatchPost[] {
     if (posts.length >= Math.max(0, Math.min(limit, 50))) break;
     const info = articleInfo(article);
     if (!info || posts.some((p) => p.id === info.id)) continue;
+    const made = accountMadeAt(info.handle);
     posts.push({
       id: info.id,
       handle: info.handle,
       name: authorName(article),
       text: ($(SEL.tweetText, article)?.innerText ?? '').trim().slice(0, 1000),
       time: info.time,
+      ...(made != null && { accountCreatedAt: made }),
     });
   }
   return posts;

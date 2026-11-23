@@ -23,7 +23,26 @@ describe('the update notice (#151)', () => {
     const { container } = render(<UpdateNotice />);
     await saveReleaseNews({ latest: '0.3.0', security: true });
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(container).toBeEmptyDOMElement();
+    // Only the live region the notice will show in, empty.
+    expect(container.textContent).toBe('');
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  // A screen reader hears the notice appear, politely, as it does other news (#457).
+  it('shows the notice in a polite live region that is there before it', async () => {
+    const { container } = render(<UpdateNotice />);
+    const region = container.querySelector('[aria-live="polite"]');
+    expect(region).not.toBeNull();
+    expect(region!.textContent).toBe('');
+
+    await saveReleaseNews({ latest: '0.4.0', security: false });
+
+    const title = await screen.findByText('Xomoni 0.4.0 is out');
+    expect(title.closest('[aria-live]')).toBe(region);
+    expect(region).toHaveTextContent('This browser runs 0.3.0.');
+    // Polite, never an interruption: not an alert, not assertive.
+    expect(region).not.toHaveAttribute('role', 'alert');
+    expect(container.querySelector('[aria-live="assertive"]')).toBeNull();
   });
 
   it('says a newer version is out, links to the release page, and goes away when dismissed', async () => {
@@ -38,7 +57,7 @@ describe('the update notice (#151)', () => {
     expect(link).toHaveAttribute('rel', 'noreferrer noopener');
 
     await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
+    await waitFor(() => expect(container.textContent).toBe(''));
   });
 
   it('marks a security release and offers no way to dismiss it', async () => {

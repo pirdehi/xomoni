@@ -273,3 +273,11 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When the person reloads the dashboard, and opens it in a second tab
 - Then both say Xomoni’s folder: “xomoni”, and both notices offer Update now
 - Test: apps/web/e2e/extension/one-click-updates.spec.ts
+
+## S305-30 · a11y
+
+- Given Xomoni signed in to xomoni.com, its dashboard open on Home
+- When xomoni.com's answer to a report says a newer version is out
+- Then the notice appears in a polite live region that was on the page before it, so a screen reader reads it out as
+  it shows, once it has finished what it was saying (#457)
+- Test: apps/web/e2e/extension/one-click-updates.spec.ts

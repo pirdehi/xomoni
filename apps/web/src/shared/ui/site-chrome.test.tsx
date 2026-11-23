@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GITHUB_URL, ISSUES_URL, RELEASES_URL, SECURITY_URL } from '@/shared/config/site';
 import { GithubMark, Logo, SiteFooter, SiteHeader } from './site-chrome';
 
@@ -12,6 +13,36 @@ vi.mock('@/shared/supabase/browser-session', () => ({
     return () => undefined;
   },
 }));
+
+/**
+ * A `matchMedia` whose answer to the header's width (768 px and up) the test sets, with listeners it can fire, as a
+ * screen turning; every other query, such as Fluent's reduced motion, doesn't match.
+ */
+function stubScreen(wide: boolean) {
+  type Listener = (event: { matches: boolean }) => void;
+  const listeners = new Set<Listener>();
+  vi.stubGlobal('matchMedia', (query: string) =>
+    query === '(min-width: 768px)'
+      ? {
+          get matches() {
+            return wide;
+          },
+          addEventListener: (_: string, l: Listener) => listeners.add(l),
+          removeEventListener: (_: string, l: Listener) => listeners.delete(l),
+        }
+      : { matches: false, addEventListener: () => undefined, removeEventListener: () => undefined },
+  );
+  return {
+    turn(next: boolean) {
+      wide = next;
+      act(() => listeners.forEach((l) => l({ matches: next })));
+    },
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('Logo', () => {
   it('links home with the name as its text, the image being decorative', () => {
@@ -79,6 +110,25 @@ describe('SiteHeader', () => {
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
     expect(button).toHaveFocus();
+  });
+
+  it('closes the menu once the screen is wide enough for the links, and only then (#345)', async () => {
+    const screenSize = stubScreen(false);
+    render(<SiteHeader />);
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    await screen.findByRole('menu');
+
+    // Still a phone's width, such as a phone made taller: the menu stays.
+    screenSize.turn(false);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    // A phone turned on its side, 844 px wide: the button is hidden, so the menu goes with it.
+    screenSize.turn(true);
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    // Back to a phone's width, it stays closed until opened again.
+    screenSize.turn(false);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
   });
 
   it('shows only the account corner on pages of the signed-in app', () => {

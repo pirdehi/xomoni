@@ -349,7 +349,12 @@ test.describe('xomoni.com on a phone', { tag: ['@task-242'] }, () => {
   });
 
   test('S242-15 a logo that fails to load still names Xomoni and leads home', async ({ page }) => {
-    await page.route(/\/_next\/image\?url=%2Flogo\.png|\/logo\.png$/, (route) => route.abort());
+    await page.route(
+      (url) =>
+        url.pathname === '/logo.png' ||
+        (url.pathname === '/_next/image' && url.searchParams.get('url') === '/logo.png'),
+      (route) => route.abort(),
+    );
     await page.goto('/install');
     const logo = header(page).getByRole('link', { name: 'Xomoni', exact: true });
     await expect(logo).toBeVisible();

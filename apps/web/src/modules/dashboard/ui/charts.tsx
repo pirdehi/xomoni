@@ -82,6 +82,14 @@ export function formatCount(n: number): string {
     : new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 }
 
+/**
+ * Formats a rate per 100 (the engagement rate) as a percentage with one decimal (1.7%): rates are small, and rounding
+ * them to whole numbers would read 1.1 and 1.4 alike.
+ */
+export function formatPercent(n: number): string {
+  return `${n.toFixed(1)}%`;
+}
+
 /** A day (`YYYY-MM-DD`) as "Nov 20", or "Nov 20, 2025" outside the current year of `today`. */
 export function formatDay(day: string, today: string): string {
   const date = new Date(`${day}T00:00:00Z`);
@@ -127,17 +135,50 @@ function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
   return [ref, width];
 }
 
-/** The table that carries every value of a chart, for screen readers and for reading exact numbers. */
-function ValuesTable({ points, label, today }: { points: readonly SeriesPoint[]; label: string; today: string }) {
+/**
+ * The box a chart's table scrolls in, named for the chart. It takes the focus, so a long table scrolls by keyboard too
+ * (WCAG 2.1.1), in every browser.
+ */
+function TableBox({ label, children }: { label: string; children: React.ReactNode }) {
+  const s = useStyles();
+  return (
+    <div
+      className={mergeClasses(s.tableBox, s.focusable)}
+      role="region"
+      aria-label={`${label}, as a table`}
+      tabIndex={0}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The table that carries every value of a chart, for screen readers and for reading exact numbers. A long period's
+ * rows are weeks, and its first column says so.
+ */
+function ValuesTable({
+  points,
+  label,
+  today,
+  format,
+  weekly,
+}: {
+  points: readonly SeriesPoint[];
+  label: string;
+  today: string;
+  format: (value: number) => string;
+  weekly: boolean;
+}) {
   const s = useStyles();
   const rows = points.filter((p) => p.value !== null);
   return (
-    <div className={s.tableBox}>
+    <TableBox label={label}>
       <table className={s.table}>
         <caption className={s.hidden}>{label}</caption>
         <thead>
           <tr>
-            <th scope="col">Day</th>
+            <th scope="col">{weekly ? 'Week of' : 'Day'}</th>
             <th scope="col">{label}</th>
           </tr>
         </thead>
@@ -145,12 +186,12 @@ function ValuesTable({ points, label, today }: { points: readonly SeriesPoint[];
           {rows.map((p) => (
             <tr key={p.day}>
               <td>{formatDay(p.day, today)}</td>
-              <td>{formatCount(p.value ?? 0)}</td>
+              <td>{format(p.value ?? 0)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </TableBox>
   );
 }
 
@@ -159,18 +200,22 @@ function WithTable({
   label,
   points,
   today,
+  format = formatCount,
+  weekly = false,
   children,
 }: {
   label: string;
   points: readonly SeriesPoint[];
   today: string;
+  format?: (value: number) => string;
+  weekly?: boolean;
   children: React.ReactNode;
 }) {
   const s = useStyles();
   const [table, setTable] = useState(false);
   return (
     <div className={s.stack}>
-      {table ? <ValuesTable points={points} label={label} today={today} /> : children}
+      {table ? <ValuesTable points={points} label={label} today={today} format={format} weekly={weekly} /> : children}
       <Button
         className={s.toggle}
         size="small"
@@ -204,9 +249,20 @@ function stepIndex(points: readonly SeriesPoint[], from: number | null, step: 1 
 
 /**
  * A line over days, such as followers (#252): 2px, a light wash under it, gaps where a day has no value, the last
- * value marked, and a crosshair with the day and value on hover or with the arrow keys.
+ * value marked, and a crosshair with the day and value on hover or with the arrow keys. `format` writes its values
+ * everywhere they show (counts by default; `formatPercent` for a rate).
  */
-export function LineChart({ points, label, today }: { points: readonly SeriesPoint[]; label: string; today: string }) {
+export function LineChart({
+  points,
+  label,
+  today,
+  format = formatCount,
+}: {
+  points: readonly SeriesPoint[];
+  label: string;
+  today: string;
+  format?: (value: number) => string;
+}) {
   const s = useStyles();
   const [ref, width] = useWidth();
   const [active, setActive] = useState<number | null>(null);
@@ -257,7 +313,7 @@ export function LineChart({ points, label, today }: { points: readonly SeriesPoi
   };
 
   return (
-    <WithTable label={label} points={points} today={today}>
+    <WithTable label={label} points={points} today={today} format={format}>
       <div ref={ref} className={s.wrap}>
         <svg
           className={mergeClasses(s.svg, s.focusable)}
@@ -272,13 +328,13 @@ export function LineChart({ points, label, today }: { points: readonly SeriesPoi
           onBlur={() => setActive(null)}
         >
           <title id={titleId}>
-            {last?.value != null ? `${label}: ${formatCount(last.value)} on ${formatDay(last.day, today)}` : label}
+            {last?.value != null ? `${label}: ${format(last.value)} on ${formatDay(last.day, today)}` : label}
           </title>
           {ticks.map((t) => (
             <g key={t}>
               <line className={s.grid} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} />
               <text className={s.tick} x={PAD.left - 8} y={y(t) + 4} textAnchor="end">
-                {formatCount(t)}
+                {format(t)}
               </text>
             </g>
           ))}
@@ -308,7 +364,7 @@ export function LineChart({ points, label, today }: { points: readonly SeriesPoi
         </svg>
         {shown?.value != null && active !== null && (
           <div className={s.tooltip} style={{ left: `${(x(active) / width) * 100}%` }} role="status">
-            <span className={s.tipValue}>{formatCount(shown.value)}</span>
+            <span className={s.tipValue}>{format(shown.value)}</span>
             <span className={s.tipLabel}>{formatDay(shown.day, today)}</span>
           </div>
         )}
@@ -395,7 +451,7 @@ export function ColumnChart({
   };
 
   return (
-    <WithTable label={label} points={cols} today={today}>
+    <WithTable label={label} points={cols} today={today} format={signedCount} weekly={weekly}>
       <div ref={ref} className={s.wrap}>
         <svg
           className={mergeClasses(s.svg, s.focusable)}
@@ -626,7 +682,7 @@ export function StackedColumnChart({
         ))}
       </ul>
       {table ? (
-        <div className={s.tableBox}>
+        <TableBox label={label}>
           <table className={s.table}>
             <caption className={s.hidden}>{label}</caption>
             <thead>
@@ -654,7 +710,7 @@ export function StackedColumnChart({
                 ))}
             </tbody>
           </table>
-        </div>
+        </TableBox>
       ) : (
         <div ref={ref} className={s.wrap}>
           <svg

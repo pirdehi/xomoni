@@ -28,7 +28,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'keeps-going',
   'welcome',
   'website-dashboard',
-  'website-analytics',
   'phone-menu',
 ]);
 

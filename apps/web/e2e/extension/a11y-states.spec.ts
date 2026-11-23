@@ -185,9 +185,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await risks.getByRole('textbox', { name: 'Type I UNDERSTAND to continue' }).fill('I UNDERSTAND');
         await risks.getByRole('button', { name: 'I understand, continue' }).click();
 
-        // The job stops at its first look at X's Home, which waits for Xomoni's pace first (12 to 24 s on a new account).
+        // The job stops at its first look at X's Home, which waits for Xomoni's pace first: 12 to 24 s on a new
+        // account, and up to 90 s more one time in twenty, as cleanup-by-date.spec.ts waits for the same page.
         const card = jobCard(dashboard, BEFORE_2021);
-        await expect(card.getByRole('button', { name: /^Resume in 1[12]h \d+m$/ })).toBeDisabled({ timeout: 90_000 });
+        await expect(card.getByRole('button', { name: /^Resume in 1[12]h \d+m$/ })).toBeDisabled({ timeout: 150_000 });
         await check(dashboard);
         await card.getByRole('button', { name: 'Resume anyway…' }).click();
         const resume = dashboard.getByRole('dialog', { name: 'Risk level 3: Defensive' });

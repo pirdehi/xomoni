@@ -92,11 +92,9 @@ const serveDownload = (page: Page) =>
     }),
   );
 
-/** /install's guide once React drives it: a click on *Next* before hydration is lost (#404). */
+/** /install's guide once React drives it: a click on one of its buttons or links before hydration is lost (#404). */
 async function guide(page: Page): Promise<Locator> {
-  const steps = page.getByRole('region', { name: 'Install steps' });
-  await hydrated(steps.getByRole('button', { name: 'Next' }));
-  return steps;
+  return hydrated(page.getByRole('region', { name: 'Install steps' }));
 }
 /** Presses Tab (or Shift+Tab, `back`) until `target` has the keyboard focus, as someone with only a keyboard would. */
 async function tabTo(page: Page, target: Locator, back = false) {
@@ -225,6 +223,7 @@ test.describe('the install guide (#299)', () => {
   test('S299-02 the download moves the guide on to unzipping', { tag: ['@task-299'] }, async ({ page }) => {
     await serveDownload(page);
     await page.goto('/install');
+    await guide(page);
     const download = page.waitForEvent('download');
     await page.getByRole('link', { name: 'Download the latest version' }).click();
     expect((await download).suggestedFilename()).toBe('xomoni-extension.zip');
@@ -283,7 +282,7 @@ test.describe('the install guide (#299)', () => {
           });
         });
         await page.goto('/install');
-        const steps = page.getByRole('region', { name: 'Install steps' });
+        const steps = await guide(page);
         await steps.getByRole('button', { name: 'Show all steps' }).click();
 
         await expect(steps.getByRole('heading', { name: 'Add it to Edge' })).toBeVisible();

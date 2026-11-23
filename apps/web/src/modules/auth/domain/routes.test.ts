@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isGuestOnly, requiresSession, ROUTES, safeNextPath, twoFactorPath } from './routes';
+import { isGuestOnly, requiresSession, ROUTES, safeNextPath, twoFactorPath, withNext } from './routes';
 
 describe('safeNextPath', () => {
   it('keeps same-site paths with query and hash', () => {
@@ -44,6 +44,29 @@ describe('route policy', () => {
     expect(isGuestOnly('/login')).toBe(true);
     expect(isGuestOnly('/dashboard')).toBe(false);
   });
+});
+
+describe('withNext (#244)', () => {
+  it('carries a same-site page from one auth page to the other, encoded as one parameter', () => {
+    expect(withNext('/login', '/welcome')).toBe('/login?next=%2Fwelcome');
+    expect(withNext('/signup', '/connect')).toBe('/signup?next=%2Fconnect');
+    expect(withNext('/login', '/dashboard/reports?week=1&x=2')).toBe(
+      '/login?next=%2Fdashboard%2Freports%3Fweek%3D1%26x%3D2',
+    );
+  });
+
+  it('leaves out the dashboard, where a sign-in lands anyway, and no next at all', () => {
+    expect(withNext('/signup', '/dashboard')).toBe('/signup');
+    expect(withNext('/signup', null)).toBe('/signup');
+    expect(withNext('/signup')).toBe('/signup');
+  });
+
+  it.each(['https://evil.example', '//evil.example', '/\\evil.example', '/.//evil.example', 'javascript:alert(1)'])(
+    'drops %s, which leaves the site',
+    (next) => {
+      expect(withNext('/login', next)).toBe('/login');
+    },
+  );
 });
 
 describe('twoFactorPath (#173)', () => {

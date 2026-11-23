@@ -33,9 +33,18 @@ function controls(
   return { xomoni, read, request };
 }
 
+/** Sets the address as `useSearchParams` gives it and as the browser holds it, which a change reads and writes (#452). */
+function at(query = '') {
+  setLocation('/dashboard/cleanup', query);
+  window.history.replaceState(null, '', query ? `/dashboard/cleanup?${query}` : '/dashboard/cleanup');
+}
+
+/** The address as the browser holds it now: path and query. */
+const address = () => `${window.location.pathname}${window.location.search}`;
+
 beforeEach(() => {
   resetNavigation();
-  setLocation('/dashboard/cleanup');
+  at();
 });
 
 describe('CleanupPlace (#235)', () => {
@@ -65,19 +74,30 @@ describe('CleanupPlace (#235)', () => {
   });
 
   it('keeps the answers in the address, beside the scope, so the link carries the plan', async () => {
-    setLocation('/dashboard/cleanup', 'period=7d');
+    at('period=7d');
     render(<CleanupPlace xomoni={controls().xomoni} now={NOW} />);
     await userEvent.click(screen.getByRole('radio', { name: 'Replies' }));
-    expect(router.replace).toHaveBeenLastCalledWith('/dashboard/cleanup?period=7d&what=reply', { scroll: false });
+    expect(address()).toBe('/dashboard/cleanup?period=7d&what=reply');
     expect(screen.getByRole('switch', { name: /Keep replies to your own posts/ })).toBeChecked();
     await userEvent.click(screen.getByRole('switch', { name: /Keep replies to your own posts/ }));
-    expect(router.replace).toHaveBeenLastCalledWith('/dashboard/cleanup?period=7d&what=reply&threads=no', {
-      scroll: false,
-    });
+    expect(address()).toBe('/dashboard/cleanup?period=7d&what=reply&threads=no');
+    // In place: no navigation, so nothing is asked of the server.
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  // The account picked a moment ago is in the address before the page draws it: an answer keeps it (#452). The old
+  // code built the address from what the page last drew, so the answer put All accounts back.
+  it('keeps a scope picked a moment before, which the page hasn’t drawn yet', async () => {
+    render(<CleanupPlace xomoni={controls().xomoni} now={NOW} />);
+    window.history.replaceState(null, '', '/dashboard/cleanup?account=ada');
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Likes' }));
+
+    expect(address()).toBe('/dashboard/cleanup?account=ada&what=like');
   });
 
   it('starts from the answers in the address', () => {
-    setLocation('/dashboard/cleanup', 'what=like&older=custom&before=2020-01-01&keep=launch');
+    at('what=like&older=custom&before=2020-01-01&keep=launch');
     render(<CleanupPlace xomoni={controls().xomoni} now={NOW} />);
     expect(screen.getByRole('radio', { name: 'Likes' })).toBeChecked();
     expect(screen.getByLabelText('Remove everything before')).toHaveValue('2020-01-01');

@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { AuthCard, AuthLegalNote, AuthLink, FormSkeleton, NoScriptNote, OrDivider } from '@/modules/auth/ui/auth-card';
+import {
+  AuthCard,
+  AuthLegalNote,
+  AuthSwitchLink,
+  FormSkeleton,
+  NoScriptNote,
+  OrDivider,
+} from '@/modules/auth/ui/auth-card';
 import { GoogleButton } from '@/modules/auth/ui/google-button';
 import { SignUpForm } from '@/modules/auth/ui/sign-up-form';
 
@@ -14,7 +21,7 @@ export default function SignUpPage() {
       description="An account lets you follow your cleanups from any device. The extension also works without one."
       footer={
         <>
-          Already have an account? <AuthLink href="/login">Sign in</AuthLink>
+          Already have an account? <AuthSwitchLink href="/login">Sign in</AuthSwitchLink>
         </>
       }
     >

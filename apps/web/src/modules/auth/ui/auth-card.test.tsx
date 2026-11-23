@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
+import { resetNavigation, setLocation } from '@test/fakes/navigation';
 import { render, screen, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
-import { AuthCard, AuthLegalNote, AuthLink, FormSkeleton, NoScriptNote, OrDivider } from './auth-card';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { AuthCard, AuthLegalNote, AuthLink, AuthSwitchLink, FormSkeleton, NoScriptNote, OrDivider } from './auth-card';
 
 describe('AuthCard', () => {
   it('shows the logo, title, description, content and footer', () => {
@@ -58,6 +59,30 @@ describe('AuthLink', () => {
 
     expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/signup');
   });
+});
+
+describe('AuthSwitchLink (#244)', () => {
+  beforeEach(() => resetNavigation());
+
+  it('keeps the page to come back to, from sign-up to sign-in and back', () => {
+    setLocation('/signup', 'next=/welcome');
+    const { unmount } = render(<AuthSwitchLink href="/login">Sign in</AuthSwitchLink>);
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login?next=%2Fwelcome');
+    unmount();
+
+    setLocation('/login', 'next=%2Fconnect');
+    render(<AuthSwitchLink href="/signup">Create an account</AuthSwitchLink>);
+    expect(screen.getByRole('link', { name: 'Create an account' })).toHaveAttribute('href', '/signup?next=%2Fconnect');
+  });
+
+  it.each(['', 'next=/dashboard', 'next=https%3A%2F%2Fevil.example%2F', 'next=//evil.example', 'other=/welcome'])(
+    'links to the page alone for ?%s',
+    (query) => {
+      setLocation('/signup', query);
+      render(<AuthSwitchLink href="/login">Sign in</AuthSwitchLink>);
+      expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    },
+  );
 });
 
 describe('FormSkeleton', () => {

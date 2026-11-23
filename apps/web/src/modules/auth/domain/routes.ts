@@ -30,12 +30,21 @@ export function isGuestOnly(path: string): boolean {
 }
 
 /**
+ * `path` with `?next=` added, for a page that sends the person on and then back (#244): kept only when `next` is a
+ * same-site path other than the dashboard, where a sign-in lands anyway; anything else gives `path` alone. The page that
+ * follows it checks `next` again.
+ */
+export function withNext(path: string, next?: string | null): string {
+  const target = safeNextPath(next);
+  return target === ROUTES.dashboard ? path : `${path}?next=${encodeURIComponent(target)}`;
+}
+
+/**
  * The page that asks for a code from an authenticator app (#173), returning to `next` afterwards. `next` is kept only
  * when it is a same-site path; the page checks it again before following it.
  */
 export function twoFactorPath(next?: string | null): string {
-  const target = safeNextPath(next);
-  return target === ROUTES.dashboard ? ROUTES.twoFactor : `${ROUTES.twoFactor}?next=${encodeURIComponent(target)}`;
+  return withNext(ROUTES.twoFactor, next);
 }
 
 /**

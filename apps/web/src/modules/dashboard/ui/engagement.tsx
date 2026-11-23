@@ -21,7 +21,7 @@ import {
 import type { DailyNumbers } from '../domain/model';
 import { PERIODS, type Scope, scopeQuery } from '../domain/scope';
 import { sectionHref } from '../domain/sections';
-import { ColumnChart, LineChart, StackedColumnChart, formatCount } from './charts';
+import { ColumnChart, LineChart, StackedColumnChart, formatCount, formatPercent } from './charts';
 import { Delta } from './delta';
 
 const useStyles = makeStyles({
@@ -168,7 +168,7 @@ export function Engagement({
         <Tile label="Views" value={count(f.views)} note={<Delta figure={f.views} period={versus} upIsGood />} />
         <Tile
           label="Engagement rate"
-          value={f.rate.value === null ? '—' : `${f.rate.value.toFixed(1)}%`}
+          value={f.rate.value === null ? '—' : formatPercent(f.rate.value)}
           note={
             f.rate.value === null ? 'No views seen yet' : <Delta figure={f.rate} period={versus} unit="%" upIsGood />
           }
@@ -203,7 +203,7 @@ export function Engagement({
             Engagement rate
           </h2>
           {rates.some((p) => p.value !== null) ? (
-            <LineChart points={rates} label="Engagement rate, per 100 views" today={today} />
+            <LineChart points={rates} label="Engagement rate, per 100 views" today={today} format={formatPercent} />
           ) : (
             <p className={s.meta}>No views seen in this period yet.</p>
           )}

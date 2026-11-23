@@ -20,8 +20,8 @@ import {
 } from '@fluentui/react-components';
 import { Open16Regular } from '@fluentui/react-icons';
 import type { CleanupPlan, LibraryKind } from '@xomoni/bridge';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { type XomoniControls, useXomoniRead } from '@/modules/extension/ui/xomoni-actions';
 import {
   PLAN_AGES,
@@ -79,22 +79,25 @@ export function useSettled(value: string, ms: number): string {
 export function CleanupPlace({ xomoni, now }: { xomoni: XomoniControls; now: number }) {
   const s = useStyles();
   const params = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
   const [form, setForm] = useState<PlanForm>(() => parsePlanForm(new URLSearchParams(params.toString())));
+  // The answers as last given, which the next answer builds on even before the page draws this one (#452).
+  const latest = useRef(form);
   const result = toPlan(form, now);
   const plan = 'plan' in result ? result.plan : null;
 
   function update(next: PlanForm) {
+    latest.current = next;
     setForm(next);
-    // The answers go into the address, beside the scope, so the link carries the plan.
-    const merged = new URLSearchParams(params.toString());
+    // The answers go into the address, beside the scope, so the link carries the plan. Written at once onto the
+    // address as it is, as the scope's pickers do (`useScope`), so neither undoes a change the other just made (#452).
+    const merged = new URLSearchParams(window.location.search);
     for (const key of PLAN_KEYS) merged.delete(key);
     for (const [key, value] of planFormQuery(next)) merged.set(key, value);
     const query = merged.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    const { pathname } = window.location;
+    window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname);
   }
-  const set = <K extends keyof PlanForm>(key: K, value: PlanForm[K]) => update({ ...form, [key]: value });
+  const set = <K extends keyof PlanForm>(key: K, value: PlanForm[K]) => update({ ...latest.current, [key]: value });
   const keepsLikes = form.target === 'post' || form.target === 'reply';
 
   return (

@@ -284,7 +284,7 @@ describe('scenarios files (#337, ADR-0038)', () => {
   });
 
   it('may be null only for a legacy feature', () => {
-    assert.ok(LEGACY_FEATURES.includes('phone-menu'));
+    assert.ok(LEGACY_FEATURES.includes('resumable-jobs'));
     assert.ok(!LEGACY_FEATURES.includes('brand-new'));
     assert.match(
       registryProblems(registry(), { changelog: CHANGELOG, exists: allExist, legacy: ['cleanup-by-date'] }).join('\n'),

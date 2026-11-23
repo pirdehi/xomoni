@@ -294,8 +294,8 @@
       "area": "both",
       "status": "shipped",
       "since": "0.1.0",
-      "issues": [],
-      "scenarios": null,
+      "issues": [143, 149, 233],
+      "scenarios": "docs/scenarios/143-private-by-design.md",
       "en": {
         "title": "Private by design",
         "summary": "no telemetry, and your posts, likes and copy stay in IndexedDB in your browser profile. If you sign in to xomoni.com, only job status goes there (titles, states and counts), and daily counts only if you turn them on. Post text, likes and post ids never reach a server."
@@ -327,7 +327,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [173, 148],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/173-two-step-verification.md",
       "en": {
         "title": "Two-step verification",
         "summary": "turn it on in Account with an authenticator app, and every sign-in on xomoni.com asks for its 6-digit code before any private page opens. The website's server and the database both check it, so a password or a copied session alone reads and changes nothing. Changing your email or password, or resetting it by email, asks for a code too, and every app added or removed is emailed to you."
@@ -359,7 +359,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [251],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/251-website-actions.md",
       "en": {
         "title": "Pause and cancel from xomoni.com",
         "summary": "job cards on xomoni.com pause or cancel a job of the same browser at once, and open Xomoni's pages. *Resume* asks you in Xomoni first: the website never starts or resumes work on X."
@@ -375,7 +375,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [235],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/235-website-cleanup-plan.md",
       "en": {
         "title": "Plan a cleanup on xomoni.com",
         "summary": "the same three questions as Xomoni, with how many items the plan matches and how many days it takes. *Review and start in Xomoni* opens Xomoni's Cleanup page with the plan filled in, and nothing starts until you confirm there."
@@ -391,7 +391,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [233],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/233-website-library.md",
       "en": {
         "title": "Library, Watch and account health on xomoni.com",
         "summary": "your posts, replies, reposts and likes with a search, each Watch search, and each X account's health and pace, read from Xomoni in the same browser and kept only while the page is open."
@@ -407,7 +407,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [234],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/234-website-settings.md",
       "en": {
         "title": "Settings from xomoni.com",
         "summary": "change Xomoni's active hours, the failures in a row before a pause, notifications and Watch searches, or set pacing back to Careful. Xomoni applies its own rules, so nothing goes faster than Careful."
@@ -439,7 +439,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [250],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/250-numbers-on-website.md",
       "en": {
         "title": "Show my numbers on xomoni.com",
         "summary": "a switch, off until you turn it on, that sends each day's counts (whole numbers only, no text or ids) for the last 400 days. Turning it off deletes every day already sent."
@@ -455,7 +455,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [151],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/151-update-notice.md",
       "en": {
         "title": "Hear about new versions",
         "summary": "a browser connected to xomoni.com says when a newer Xomoni is out, and whether it fixes a security problem."
@@ -471,7 +471,7 @@
       "status": "preview",
       "since": "0.5.1",
       "issues": [302, 304],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/304-store-install.md",
       "en": {
         "title": "Install from the Chrome Web Store and Edge Add-ons",
         "summary": "once a store lists Xomoni, xomoni.com/install shows one button for your browser, a zip install shows the steps to move to the store's Xomoni, and xomoni.com finds Xomoni by the stores' fixed ids."
@@ -487,7 +487,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [244],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/244-welcome.md",
       "en": {
         "title": "A checklist that ticks itself",
         "summary": "Xomoni opens xomoni.com/welcome when it is installed, and three steps tick from what the page sees: Xomoni installed, signed in to xomoni.com, and Xomoni signed in with you. Signing up from a page that asked you to brings you back to it."
@@ -519,7 +519,7 @@
       "status": "shipped",
       "since": "0.4.0",
       "issues": [252, 253, 254, 255],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/252-website-analytics.md",
       "en": {
         "title": "Overview, Audience, Content and Engagement",
         "summary": "your followers, what you published and what it received, each against the period before, in charts that answer on hover and by keyboard, with a table view. What was received is marked as an estimate."
@@ -583,7 +583,7 @@
       "status": "shipped",
       "since": "0.5.1",
       "issues": [242],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/242-phone-menu.md",
       "en": {
         "title": "xomoni.com on a phone",
         "summary": "a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page."

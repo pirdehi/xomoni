@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import { confirmLink, waitForEmail } from './mailpit';
 
@@ -8,7 +9,7 @@ export const NEW_PASSWORD = 'second password 2';
 
 /** A fresh address per test, so tests never share an account or an inbox. */
 export function uniqueEmail(label: string): string {
-  return `e2e-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@xomoni.test`;
+  return `e2e-${label}-${Date.now()}-${randomUUID().slice(0, 8)}@xomoni.test`;
 }
 
 /**

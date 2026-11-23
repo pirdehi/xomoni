@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../src/shared/db';
-import { KINDS, useKindCounts, useYearHistogram } from '../../src/ui/queries';
+import { KINDS, matchesSearch, useKindCounts, useYearHistogram } from '../../src/ui/queries';
 import { ME, resetDb } from '../support/fixtures';
 import { item } from '../support/shell';
 
@@ -105,5 +105,37 @@ describe('inventory queries', () => {
     await waitFor(() => {
       expect(result.current).toEqual([{ year: 2016, values: { post: 1, like: 1 } }]);
     });
+  });
+});
+
+// One rule for the rows Browse lists and the file *Export JSON* saves (#440).
+describe('matchesSearch', () => {
+  const post = { text: 'Our Launch went well', author: 'Alice_Smith' };
+
+  it('matches everything for an empty search, or one of spaces', () => {
+    expect(matchesSearch(post, '')).toBe(true);
+    expect(matchesSearch(post, '   ')).toBe(true);
+    expect(matchesSearch({ text: '', author: '' }, '')).toBe(true);
+  });
+
+  it('finds words in the text, in any case, with the spaces around the search left out', () => {
+    expect(matchesSearch(post, 'launch')).toBe(true);
+    expect(matchesSearch(post, '  LAUNCH WENT ')).toBe(true);
+    expect(matchesSearch(post, 'lunch')).toBe(false);
+  });
+
+  it('finds an author with or without the @, in any case', () => {
+    expect(matchesSearch(post, 'alice')).toBe(true);
+    expect(matchesSearch(post, '@ALICE_smith')).toBe(true);
+    expect(matchesSearch(post, '@bob')).toBe(false);
+  });
+
+  it('finds an @ written in the text', () => {
+    expect(matchesSearch({ text: 'thanks @bob!', author: 'me' }, '@bob')).toBe(true);
+  });
+
+  it('reads markup as text, not as a pattern', () => {
+    expect(matchesSearch({ text: 'a <b>bold</b> (claim)', author: 'me' }, '<b>bold')).toBe(true);
+    expect(matchesSearch({ text: 'plain', author: 'me' }, '.*')).toBe(false);
   });
 });

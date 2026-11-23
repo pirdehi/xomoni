@@ -248,6 +248,34 @@ describe('Settings: the xomoni.com card (ADR-0018)', () => {
     // Busy machines (the push hook, CI) have run this past the default five seconds.
   }, 15_000);
 
+  it('keeps the numbers switch usable while xomoni.com stores the choice, so the focus stays, and asks once (#345)', async () => {
+    await saveConnection({
+      deviceId: 'd1',
+      token: 'secret',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
+    render(<CloudCard />);
+    const toggle = await screen.findByRole('switch', { name: 'Show my numbers on xomoni.com' });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    let answer!: (response: Response) => void;
+    fetch.mockImplementationOnce(() => new Promise<Response>((resolve) => (answer = resolve)));
+    toggle.focus();
+    await userEvent.keyboard(' ');
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    // A disabled switch drops the focus in a browser; this one stays enabled, and says it is busy.
+    expect(toggle).toBeEnabled();
+    expect(toggle).toHaveAttribute('aria-busy', 'true');
+    await userEvent.keyboard(' ');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    answer(await json(200, true));
+    await waitFor(() => expect(toggle).toBeChecked(), { timeout: 8_000 });
+    expect(toggle).not.toHaveAttribute('aria-busy', 'true');
+  }, 15_000);
+
   it('says why the numbers couldn’t be turned on, and leaves them off', async () => {
     await saveConnection({
       deviceId: 'd1',

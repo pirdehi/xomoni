@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { isOpenRead } from '../engine/runner';
 import { unseenPosts } from '../shared/coverage';
 import { archiveImported, archiveImportedAt, archiveRequest, db, postTotals } from '../shared/db';
 import type { Account, Item, ItemKind, ItemStatus, Job, ScanTarget } from '../shared/types';
@@ -13,6 +14,18 @@ export type KindCounts = Record<ItemKind, { present: number; deleted: number }>;
 /** Every item of a kind of an account, counted on the primary key (`<account id>:<kind>:<id>`), whatever its status. */
 function countKind(accountId: string, kind: ItemKind) {
   return db.items.where(':id').between(`${accountId}:${kind}:`, `${accountId}:${kind};`).count();
+}
+
+/**
+ * Whether an item matches the Library's search (#440): `query`, trimmed, in its text or its author, ignoring case. An
+ * author matches with or without the `@` the rows show and the search box suggests: authors are stored without it.
+ * An empty query matches everything. Browse lists exactly the items it matches, and *Export JSON* saves them.
+ */
+export function matchesSearch(item: Pick<Item, 'text' | 'author'>, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const author = q.replace(/^@/, '');
+  return item.text.toLowerCase().includes(q) || item.author.toLowerCase().includes(author);
 }
 
 function countStatus(accountId: string, kind: ItemKind, status: ItemStatus) {
@@ -125,8 +138,7 @@ export function readInOne<T>(read: () => Promise<T>): Promise<T> {
  * first, until the page is full (#390).
  */
 export async function libraryPage({ accountId, kind, status, query, page }: LibraryQuery): Promise<Item[]> {
-  const q = query.trim().toLowerCase();
-  if (!q) {
+  if (!query.trim()) {
     return db.items
       .where('[accountId+kind+status+createdAt]')
       .between([accountId, kind, status, -Infinity], [accountId, kind, status, Infinity])
@@ -135,15 +147,12 @@ export async function libraryPage({ accountId, kind, status, query, page }: Libr
       .limit(LIBRARY_PAGE_SIZE)
       .toArray();
   }
-  // Authors are stored without the "@" the rows show and the search box suggests.
-  const author = q.replace(/^@/, '');
   const wanted = (page + 1) * LIBRARY_PAGE_SIZE;
   const found: Item[] = [];
   await readInOne(() =>
     newestFirst(accountId, kind, status, (items) => {
-      for (const i of items) {
-        if (i.text.toLowerCase().includes(q) || i.author.toLowerCase().includes(author)) found.push(i);
-      }
+      // The same rule as *Export JSON* (`matchesSearch`, #440), so the file holds what the pages list.
+      for (const i of items) if (matchesSearch(i, query)) found.push(i);
       return found.length >= wanted;
     }),
   );
@@ -198,7 +207,6 @@ export function useYearHistogram(accountId: string | undefined, kinds: ItemKind[
 /** Scan targets that read the recent timelines, and those that search the whole history (`range` is neither). */
 const READS_RECENT: readonly ScanTarget[] = ['posts', 'replies', 'likes', 'complete'];
 const READS_HISTORY: readonly ScanTarget[] = ['history', 'complete'];
-const UNFINISHED: readonly Job['state'][] = ['queued', 'running', 'waiting', 'paused', 'blocked'];
 
 /** How complete Xomoni's copy of an account is, for the Library (#185). */
 export interface CopyStatus {
@@ -214,7 +222,10 @@ export interface CopyStatus {
   recentAt: number | null;
   /** When a search of the whole history last finished; null if never. */
   historyAt: number | null;
-  /** A read that hasn't finished yet (running, waiting, paused, blocked or never started), newest first. */
+  /**
+   * The read that hasn't ended (`isOpenRead`: Ready, running, waiting for the person, paused or stopped for safety), or
+   * null. There is at most one (#442); of reads stored before that, the newest.
+   */
   openRead: Job | null;
 }
 
@@ -234,7 +245,7 @@ export async function copyStatus(account: Account): Promise<CopyStatus> {
     (job) => job.kind === 'scan' && job.scan !== 'range',
   );
   const totals = await postTotals(account);
-  const openRead = jobs.filter((job) => UNFINISHED.includes(job.state)).sort((a, b) => b.createdAt - a.createdAt)[0];
+  const openRead = jobs.filter(isOpenRead).sort((a, b) => b.createdAt - a.createdAt)[0];
   return {
     present: totals.present,
     postsCount: account.postsCount,

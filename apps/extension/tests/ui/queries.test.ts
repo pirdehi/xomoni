@@ -8,6 +8,7 @@ import {
   LIBRARY_PAGE_SIZE,
   kindCounts,
   libraryPage,
+  matchesSearch,
   useKindCounts,
   useYearHistogram,
   yearHistogram,
@@ -215,5 +216,37 @@ describe('libraryPage (#390)', () => {
     expect(await keys('nothing like it', 0)).toEqual([]);
     // Without a search, a page of the list as it is.
     expect(await keys('', 50)).toEqual(newestFirst.slice(50 * 25, 51 * 25).map((p) => p.key));
+  });
+});
+
+// One rule for the rows Browse lists and the file *Export JSON* saves (#440).
+describe('matchesSearch', () => {
+  const post = { text: 'Our Launch went well', author: 'Alice_Smith' };
+
+  it('matches everything for an empty search, or one of spaces', () => {
+    expect(matchesSearch(post, '')).toBe(true);
+    expect(matchesSearch(post, '   ')).toBe(true);
+    expect(matchesSearch({ text: '', author: '' }, '')).toBe(true);
+  });
+
+  it('finds words in the text, in any case, with the spaces around the search left out', () => {
+    expect(matchesSearch(post, 'launch')).toBe(true);
+    expect(matchesSearch(post, '  LAUNCH WENT ')).toBe(true);
+    expect(matchesSearch(post, 'lunch')).toBe(false);
+  });
+
+  it('finds an author with or without the @, in any case', () => {
+    expect(matchesSearch(post, 'alice')).toBe(true);
+    expect(matchesSearch(post, '@ALICE_smith')).toBe(true);
+    expect(matchesSearch(post, '@bob')).toBe(false);
+  });
+
+  it('finds an @ written in the text', () => {
+    expect(matchesSearch({ text: 'thanks @bob!', author: 'me' }, '@bob')).toBe(true);
+  });
+
+  it('reads markup as text, not as a pattern', () => {
+    expect(matchesSearch({ text: 'a <b>bold</b> (claim)', author: 'me' }, '<b>bold')).toBe(true);
+    expect(matchesSearch({ text: 'plain', author: 'me' }, '.*')).toBe(false);
   });
 });

@@ -3,8 +3,9 @@ import 'fake-indexeddb/auto';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type RunnerState, createScanJob } from '../../src/engine/runner';
+import { READ_ALREADY_OPEN, type RunnerState, createScanJob } from '../../src/engine/runner';
 import { db, markArchiveImported } from '../../src/shared/db';
+import type { JobState } from '../../src/shared/types';
 import type * as Format from '../../src/ui/format';
 import { fmtDate } from '../../src/ui/format';
 import type * as Hooks from '../../src/ui/hooks';
@@ -126,15 +127,126 @@ describe('Library page (#185)', () => {
       expect(screen.getByRole('button', { name: 'Read one part' })).toBeDisabled();
     });
 
-    it('shows a read under way instead of starting another', async () => {
-      await createScanJob(ME, COMPLETE_TITLE, 'complete');
+    /** A read of the account in `state`, as the Library's *Complete my copy* leaves it. */
+    async function openRead(state: JobState) {
+      const job = await createScanJob(ME, COMPLETE_TITLE, 'complete');
+      if (state !== 'queued') await db.jobs.update(job.id, { state });
+      return job;
+    }
+    /** *Read one part*, whose menu trigger is off, with its reason, while a read is open. */
+    const readOnePart = () => screen.getByRole('button', { name: 'Read one part' });
+    const ONE_AT_A_TIME = 'One read at a time: Read one part is off until this read finishes or you cancel it.';
+
+    it.each([
+      ['running', 'A read from X is under way.'],
+      ['waiting', 'A read from X is waiting for you.'],
+    ] as const)('shows a %s read under way instead of starting another', async (state, line) => {
+      await openRead(state);
       const props = await pageProps();
       render(<LibraryPage {...props} />);
-      expect(await screen.findByText('A read from X is under way.')).toBeInTheDocument();
+      expect(await screen.findByText(line)).toBeInTheDocument();
       await openOtherWays();
+      expect(screen.getByText(`${line} ${ONE_AT_A_TIME}`)).toBeInTheDocument();
       await userEvent.click(await screen.findByRole('button', { name: 'See the read under way' }));
       expect(props.navigate).toHaveBeenCalledWith('jobs');
       expect(screen.queryByRole('button', { name: 'Complete my copy' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Start the read' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Cancel the read' })).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['paused', 'A read from X is paused.'],
+      ['blocked', 'A read from X stopped for safety.'],
+    ] as const)('says a %s read is %s, not under way, and leads to it', async (state, line) => {
+      await openRead(state);
+      const props = await pageProps();
+      render(<LibraryPage {...props} />);
+      expect(await screen.findByText(line)).toBeInTheDocument();
+      expect(screen.queryByText('A read from X is under way.')).not.toBeInTheDocument();
+      await openOtherWays();
+      // Resuming goes through its card under Activity, with the risk ladder's locks.
+      await userEvent.click(await screen.findByRole('button', { name: 'See the read' }));
+      expect(props.navigate).toHaveBeenCalledWith('jobs');
+      expect(readOnePart()).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.queryByRole('button', { name: 'Start the read' })).not.toBeInTheDocument();
+    });
+
+    // “Not now” on the risks leaves the read Ready under Activity, as a cleanup's does (#441).
+    it('says a read left Ready hasn’t started, and starts it on request', async () => {
+      const job = await openRead('queued');
+      const props = await pageProps();
+      render(<LibraryPage {...props} />);
+      expect(await screen.findByText('A read from X is ready, but hasn’t started.')).toBeInTheDocument();
+      expect(screen.queryByText('A read from X is under way.')).not.toBeInTheDocument();
+      await openOtherWays();
+      expect(screen.queryByRole('button', { name: 'See the read under way' })).not.toBeInTheDocument();
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Start the read' }));
+      // Through `startJob`, so the risks are asked again before anything reaches X.
+      expect(mocks.startJob).toHaveBeenCalledExactlyOnceWith(job.id);
+      expect(props.navigate).toHaveBeenCalledWith('jobs');
+      expect(await db.jobs.count()).toBe(1);
+    });
+
+    it('cancels a read left Ready, and offers Complete my copy again', async () => {
+      const job = await openRead('queued');
+      render(<LibraryPage {...await pageProps()} />);
+      await openOtherWays();
+      await userEvent.click(await screen.findByRole('button', { name: 'Cancel the read' }));
+
+      expect(await screen.findByRole('button', { name: 'Complete my copy' })).toBeEnabled();
+      expect(await db.jobs.get(job.id)).toMatchObject({ state: 'cancelled', finishedAt: expect.any(Number) });
+      expect(readOnePart()).toBeEnabled();
+      expect(readOnePart()).not.toHaveAttribute('aria-disabled', 'true');
+      expect(mocks.startJob).not.toHaveBeenCalled();
+    });
+
+    it('doesn’t start a Ready read while another job is running', async () => {
+      await openRead('queued');
+      mocks.runStatus.current = 'running';
+      render(<LibraryPage {...await pageProps()} />);
+      await openOtherWays();
+      expect(await screen.findByRole('button', { name: 'Start the read' })).toBeDisabled();
+    });
+
+    // One read per account (#442): a second can't be queued beside one that hasn't ended.
+    it.each(['queued', 'running', 'paused', 'blocked'] as const)(
+      'keeps Read one part off, with its reason, while a read is %s',
+      async (state) => {
+        await openRead(state);
+        render(<LibraryPage {...await pageProps()} />);
+        await openOtherWays();
+        const trigger = readOnePart();
+        await waitFor(() => expect(trigger).toHaveAttribute('aria-disabled', 'true'));
+        expect(trigger).toHaveAccessibleDescription(expect.stringContaining(ONE_AT_A_TIME));
+
+        await userEvent.click(trigger);
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+        trigger.focus();
+        await userEvent.keyboard('{Enter}');
+        await userEvent.keyboard('{ArrowDown}');
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+        expect(await db.jobs.count()).toBe(1);
+        expect(mocks.startJob).not.toHaveBeenCalled();
+      },
+    );
+
+    it('refuses a read when another was queued meanwhile, as from another tab, and says why', async () => {
+      const props = await pageProps();
+      render(<LibraryPage {...props} />);
+      await openOtherWays();
+      await waitFor(() => expect(readOnePart()).toBeEnabled());
+      await userEvent.click(readOnePart());
+      const replies = await screen.findByRole('menuitem', { name: 'Replies' });
+      // Another dashboard tab queues a read while this one's menu is open.
+      const other = await createScanJob(ME, COMPLETE_TITLE, 'complete');
+      await waitFor(() => expect(readOnePart()).toHaveAttribute('aria-disabled', 'true'));
+      await userEvent.click(replies);
+
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(READ_ALREADY_OPEN, 'critical'));
+      expect(await db.jobs.toArray()).toEqual([expect.objectContaining({ id: other.id, state: 'queued' })]);
+      expect(mocks.startJob).not.toHaveBeenCalled();
+      expect(props.navigate).not.toHaveBeenCalled();
     });
 
     it('says which sources are in, and when, and offers to read again', async () => {

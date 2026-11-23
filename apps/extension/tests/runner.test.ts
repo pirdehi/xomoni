@@ -4,11 +4,16 @@ import { Interrupted, type JobContext, NeedsYou, Stop } from '../src/engine/cont
 import { ARCHIVE_PREPARING } from '../src/engine/archive';
 import {
   archiveJob,
+  cancelReady,
   createCleanupJob,
   createScanJob,
+  isOpenRead,
+  READ_ALREADY_OPEN,
+  ReadAlreadyOpen,
   recoverInterruptedJobs,
   Runner,
   type RunnerState,
+  watchJob,
 } from '../src/engine/runner';
 import { runner } from '../src/engine/platform';
 import { Aborted } from '../src/engine/timers';
@@ -843,6 +848,106 @@ describe('createCleanupJob and createScanJob', () => {
     expect(await stored(archive.id)).toMatchObject({ kind: 'scan', scan: 'range', range, title: 'Archive 2025' });
     expect(posts.id).not.toBe(archive.id);
     expect(runScan).not.toHaveBeenCalled();
+  });
+});
+
+// The runner already runs one job at a time, each within the same pacing, caps and risk ladder; this keeps a second
+// read from being queued beside one the person left Ready, paused or stopped (#442).
+describe('one read from X per account (#442)', () => {
+  const OPEN: JobState[] = ['queued', 'running', 'waiting', 'paused', 'blocked'];
+  const ENDED: JobState[] = ['completed', 'cancelled', 'failed'];
+
+  it.each(OPEN)('refuses a second read while the first is %s, and stores nothing', async (state) => {
+    const first = await createScanJob(ACCOUNT, 'Complete my copy', 'complete');
+    await db.jobs.update(first.id, { state });
+
+    for (const scan of ['posts', 'replies', 'likes', 'history', 'complete'] as const) {
+      const refused = createScanJob(ACCOUNT, `Read: ${scan}`, scan);
+      await expect(refused).rejects.toThrow(ReadAlreadyOpen);
+      await expect(refused).rejects.toThrow(READ_ALREADY_OPEN);
+      await expect(refused).rejects.toMatchObject({ job: expect.objectContaining({ id: first.id }) });
+    }
+    expect((await db.jobs.toArray()).map((j) => j.id)).toEqual([first.id]);
+    expect(runScan).not.toHaveBeenCalled();
+  });
+
+  it.each(ENDED)('reads again once the first read is %s', async (state) => {
+    const first = await createScanJob(ACCOUNT, 'Complete my copy', 'complete');
+    await db.jobs.update(first.id, { state, finishedAt: NOW });
+
+    const second = await createScanJob(ACCOUNT, 'Read: likes', 'likes');
+    expect(await stored(second.id)).toMatchObject({ scan: 'likes', state: 'queued' });
+  });
+
+  it('counts only the account’s own reads: not another account’s, a cleanup, a watch or a date range', async () => {
+    await createScanJob('other-account', 'Complete my copy', 'complete');
+    await newCleanup();
+    await createScanJob(ACCOUNT, 'Archive 2025', 'range', { after: NOW - 1000, before: NOW });
+
+    const read = await createScanJob(ACCOUNT, 'Read: posts', 'posts');
+    expect(await stored(read.id)).toMatchObject({ scan: 'posts', state: 'queued' });
+    // A date range isn't a Library read: it is stored beside an open read, as before.
+    const range = await createScanJob(ACCOUNT, 'Archive 2024', 'range', { after: NOW - 2000, before: NOW - 1000 });
+    expect(await stored(range.id)).toMatchObject({ scan: 'range', state: 'queued' });
+  });
+
+  it('lets only one of reads asked for at the same moment through, as from several dashboard tabs', async () => {
+    const results = await Promise.allSettled([
+      createScanJob(ACCOUNT, 'Complete my copy', 'complete'),
+      createScanJob(ACCOUNT, 'Read: likes', 'likes'),
+      createScanJob(ACCOUNT, 'Read: replies', 'replies'),
+    ]);
+
+    const stored = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+    const refused = results.flatMap((r): unknown[] => (r.status === 'rejected' ? [r.reason] : []));
+    expect(stored).toHaveLength(1);
+    expect(refused).toEqual([expect.any(ReadAlreadyOpen), expect.any(ReadAlreadyOpen)]);
+    expect((await db.jobs.toArray()).map((j) => j.id)).toEqual([stored[0]!.id]);
+  });
+
+  it('tells an open read from an ended one, and from other jobs', async () => {
+    const read = await createScanJob(ACCOUNT, 'Read: posts', 'posts');
+    const range = await createScanJob(ACCOUNT, 'Archive 2025', 'range', { after: 0, before: 1 });
+    const cleanup = await newCleanup();
+    for (const state of OPEN) expect(isOpenRead({ ...read, state })).toBe(true);
+    for (const state of ENDED) expect(isOpenRead({ ...read, state })).toBe(false);
+    expect(isOpenRead(range)).toBe(false);
+    expect(isOpenRead(cleanup)).toBe(false);
+    expect(isOpenRead(await watchJob(ACCOUNT))).toBe(false);
+  });
+});
+
+describe('cancelReady (#441)', () => {
+  it('cancels a read left Ready, so xomoni.com hears of it, and a new read may be asked for', async () => {
+    const read = await createScanJob(ACCOUNT, 'Complete my copy', 'complete');
+    vi.setSystemTime(NOW + 60_000);
+
+    expect(await cancelReady(read.id)).toBe(true);
+    expect(await stored(read.id)).toMatchObject({
+      state: 'cancelled',
+      stateReason: 'Cancelled by you.',
+      finishedAt: NOW + 60_000,
+      updatedAt: NOW + 60_000,
+    });
+    await expect(createScanJob(ACCOUNT, 'Read: likes', 'likes')).resolves.toMatchObject({ state: 'queued' });
+    expect(runScan).not.toHaveBeenCalled();
+  });
+
+  it.each(['running', 'waiting', 'paused', 'blocked', 'completed', 'failed'] as const)(
+    'leaves a job that is %s as it is',
+    async (state) => {
+      const job = await createScanJob(ACCOUNT, 'Complete my copy', 'complete');
+      await db.jobs.update(job.id, { state });
+      const before = await stored(job.id);
+
+      expect(await cancelReady(job.id)).toBe(false);
+      expect(await stored(job.id)).toEqual(before);
+    },
+  );
+
+  it('does nothing for a job that is gone', async () => {
+    expect(await cancelReady('no-such-job')).toBe(false);
+    expect(await db.jobs.count()).toBe(0);
   });
 });
 

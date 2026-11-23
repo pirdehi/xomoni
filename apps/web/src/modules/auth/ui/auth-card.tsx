@@ -2,8 +2,10 @@
 
 import { Divider, Skeleton, SkeletonItem, makeStyles, tokens, typographyStyles } from '@fluentui/react-components';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { type ReactNode, Suspense } from 'react';
 import { Logo } from '@/shared/ui/site-chrome';
+import { withNext } from '../domain/routes';
 
 const useStyles = makeStyles({
   main: {
@@ -126,6 +128,25 @@ export function AuthLink({ href, children }: { href: string; children: ReactNode
     <Link href={href} className={s.link}>
       {children}
     </Link>
+  );
+}
+
+/** `AuthLink` to `href`, with this page's `?next=` carried along. */
+function LinkKeepingNext({ href, children }: { href: string; children: ReactNode }) {
+  const next = useSearchParams().get('next');
+  return <AuthLink href={withNext(href, next)}>{children}</AuthLink>;
+}
+
+/**
+ * A link from one auth page to the other, such as *Sign in* under the sign-up form, that keeps the page's `?next=`
+ * (#244): someone sent to create an account from /welcome or /connect who has one after all still comes back there.
+ * Only a same-site path is kept (`withNext`). Before the query is read, it links to `href` alone.
+ */
+export function AuthSwitchLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Suspense fallback={<AuthLink href={href}>{children}</AuthLink>}>
+      <LinkKeepingNext href={href}>{children}</LinkKeepingNext>
+    </Suspense>
   );
 }
 

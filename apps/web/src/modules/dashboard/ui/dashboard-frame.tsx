@@ -35,7 +35,7 @@ import {
   Sparkle20Regular,
 } from '@fluentui/react-icons';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { PERIODS, type Period, type Scope, parseScope, scopeQuery } from '../domain/scope';
 import { GROUPS, SECTIONS, type Section, type SectionId, sectionHref } from '../domain/sections';
@@ -220,20 +220,25 @@ const useStyles = makeStyles({
   phoneCurrent: { color: tokens.colorBrandForeground1, fontWeight: tokens.fontWeightSemibold },
 });
 
-/** The scope in the address, and a function that changes it in place. */
-export function useScope(): [Scope, (next: Scope) => void] {
+/**
+ * The scope in the address, and a function that changes it in place. A change is given the scope as the address holds
+ * it at that moment, not as the page last drew it, and writes the address at once (#452): a second change made before
+ * the page draws the first builds on it, so both land. The scope lives only in the browser (the server never reads
+ * it), so the native history API is enough; Next.js's router follows it, and `useSearchParams` updates.
+ */
+export function useScope(): [Scope, (change: (current: Scope) => Scope) => void] {
   const params = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
   const scope = parseScope(new URLSearchParams(params.toString()));
-  const change = (next: Scope) => {
+  const change = (update: (current: Scope) => Scope) => {
     // A place's own answers in the address (such as Cleanup's plan, #235) stay; only the scope changes.
-    const merged = new URLSearchParams(params.toString());
+    const merged = new URLSearchParams(window.location.search);
+    const next = update(parseScope(merged));
     merged.delete('account');
     merged.delete('period');
     for (const [key, value] of new URLSearchParams(scopeQuery(next))) merged.set(key, value);
     const query = merged.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    const { pathname } = window.location;
+    window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname);
   };
   return [scope, change];
 }
@@ -330,7 +335,7 @@ export function DashboardFrame({
               className={s.picker}
               aria-label="X account"
               value={scope.account ?? ''}
-              onChange={(_, data) => setScope({ ...scope, account: data.value || null })}
+              onChange={(_, data) => setScope((current) => ({ ...current, account: data.value || null }))}
             >
               <option value="">All accounts</option>
               {accounts.map((handle) => (
@@ -343,7 +348,7 @@ export function DashboardFrame({
               className={s.picker}
               aria-label="Period"
               value={scope.period}
-              onChange={(_, data) => setScope({ ...scope, period: data.value as Period })}
+              onChange={(_, data) => setScope((current) => ({ ...current, period: data.value as Period }))}
             >
               {PERIODS.map((period) => (
                 <option key={period.id} value={period.id}>

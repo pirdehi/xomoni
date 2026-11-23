@@ -10,6 +10,7 @@ import {
   columnsOf,
   formatCount,
   formatDay,
+  formatPercent,
   niceTicks,
   stackedColumnsOf,
 } from './charts';
@@ -22,6 +23,11 @@ const points = (values: (number | null)[], start = '2026-11-14'): SeriesPoint[] 
   }));
 
 describe('formatting (#252)', () => {
+  it('writes a rate per 100 as a percentage with one decimal', () => {
+    expect(formatPercent(1.7000000000000002)).toBe('1.7%');
+    expect(formatPercent(0)).toBe('0.0%');
+  });
+
   it('writes counts in full under 10,000 and compact above', () => {
     expect(formatCount(1284)).toBe('1,284');
     expect(formatCount(12_900)).toBe('12.9K');
@@ -74,8 +80,22 @@ describe('LineChart', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
     const rows = screen.getAllByRole('row').map((row) => row.textContent);
     expect(rows).toEqual(['DayFollowers', 'Nov 1410', 'Nov 1612']);
+    // A long table scrolls in its box, which the keyboard reaches too (#345).
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole('region', { name: 'Followers, as a table' })).toHaveFocus();
     await userEvent.click(screen.getByRole('button', { name: 'Show as chart' }));
     expect(screen.getByRole('img', { name: /^Followers/ })).toBeInTheDocument();
+  });
+
+  it('writes its values, ticks, tooltip and table as it is told to, a rate with its decimal (#345)', async () => {
+    render(<LineChart points={points([1.1, 1.74])} label="Rate" today={TODAY} format={formatPercent} />);
+    const chart = screen.getByRole('img', { name: 'Rate: 1.7% on Nov 15' });
+    expect(chart).toHaveTextContent('1.5%');
+    chart.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('status')).toHaveTextContent('1.1%Nov 14');
+    await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
+    expect(screen.getAllByRole('row').map((row) => row.textContent)).toEqual(['DayRate', 'Nov 141.1%', 'Nov 151.7%']);
   });
 
   it('follows the pointer to the nearest day', () => {
@@ -109,6 +129,18 @@ describe('ColumnChart', () => {
     screen.getByRole('img', { name: 'Published: 60 in all' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('status')).toHaveTextContent('7Week of Sep 21');
+  });
+
+  it('heads its table Week of when a long period is counted by week (#345)', async () => {
+    const year = points(
+      Array.from({ length: 60 }, () => 1),
+      '2026-09-21',
+    );
+    render(<ColumnChart points={year} label="Published" today={TODAY} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
+    const rows = screen.getAllByRole('row').map((row) => row.textContent);
+    expect(rows[0]).toBe('Week ofPublished');
+    expect(rows[1]).toBe('Sep 217');
   });
 });
 
@@ -204,6 +236,17 @@ describe('ColumnChart with gains and losses (#253)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('−3Nov 15');
   });
 
+  it('signs every value in its table as the chart does (#345)', async () => {
+    render(<ColumnChart points={points([4, -3, null, 0])} label="Followers gained or lost" today={TODAY} signed />);
+    await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
+    expect(screen.getAllByRole('row').map((row) => row.textContent)).toEqual([
+      'DayFollowers gained or lost',
+      'Nov 14+4',
+      'Nov 15−3',
+      'Nov 170',
+    ]);
+  });
+
   it('keeps the minus sign without signing gains when not asked to', () => {
     render(<ColumnChart points={points([-2, 1])} label="Change" today={TODAY} />);
     expect(screen.getByRole('img', { name: 'Change: −1 in all' })).toBeInTheDocument();
@@ -285,5 +328,7 @@ describe('StackedColumnChart (#254)', () => {
     render(<StackedColumnChart points={days} series={series} label="Published" today={TODAY} />);
     await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
     expect(screen.getAllByRole('row')[0]).toHaveTextContent('Week of');
+    // Its box takes the focus, so the keyboard scrolls a long table (#345).
+    expect(screen.getByRole('region', { name: 'Published, as a table' })).toHaveAttribute('tabindex', '0');
   });
 });

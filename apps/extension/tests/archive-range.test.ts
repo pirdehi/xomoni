@@ -7,6 +7,8 @@ import type { DateRange, Item, Job } from '../src/shared/types';
 
 const DAY = 86_400_000;
 const utc = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);
+/** Noon on a day of this computer's calendar: the same month and day in every time zone (#414). */
+const noon = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).getTime();
 /** The `q` of a search URL, decoded. */
 const query = (url: string) => decodeURIComponent(new URL(url).searchParams.get('q') ?? '');
 
@@ -127,8 +129,9 @@ describe('the archive file for a date range', () => {
     ...over,
   });
   const ITEMS = [
-    item({ id: '3', createdAt: utc(2024, 8, 1), text: 'later' }),
-    item({ id: '2', kind: 'reply', createdAt: utc(2024, 2, 1), status: 'deleted' }),
+    // By the person's own months: at local noon, so the months are February and August in every time zone (#414).
+    item({ id: '3', createdAt: noon(2024, 8, 1), text: 'later' }),
+    item({ id: '2', kind: 'reply', createdAt: noon(2024, 2, 1), status: 'deleted' }),
     item({ id: '9', kind: 'repost', targetId: '900', author: 'friend', createdAt: utc(2024, 3, 1) }),
     item({ id: '4', kind: 'like', createdAt: utc(2024, 4, 1) }),
     item({ id: '5', createdAt: utc(2023, 12, 31) }),

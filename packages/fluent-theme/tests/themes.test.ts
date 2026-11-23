@@ -54,6 +54,37 @@ describe('Xomoni’s Fluent themes (ADR-0019)', () => {
       expect(contrast(theme.colorNeutralForegroundOnBrand, background)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it.each([
+    ['light', xomoniLightTheme()],
+    ['dark', xomoniDarkTheme()],
+  ])(
+    'keep muted text at WCAG AA in a quiet control while it is hovered, pressed or open, in %s mode (#389)',
+    (_, theme) => {
+      // A subtle button, a menu's trigger or a list row: its muted parts take the muted grey of the state it is in.
+      const states = [
+        [theme.colorNeutralForeground3Hover, [theme.colorSubtleBackgroundHover, theme.colorNeutralBackground1Hover]],
+        [
+          theme.colorNeutralForeground3Pressed,
+          [theme.colorSubtleBackgroundPressed, theme.colorNeutralBackground1Pressed],
+        ],
+        [
+          theme.colorNeutralForeground3Selected,
+          [theme.colorSubtleBackgroundSelected, theme.colorNeutralBackground1Selected],
+        ],
+      ] as const;
+      for (const [text, surfaces] of states)
+        for (const surface of surfaces) expect(contrast(text, surface)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
+  it('need those states’ own muted grey: the one at rest is too faint on a hovered or open control (#389)', () => {
+    const dark = xomoniDarkTheme();
+    const light = xomoniLightTheme();
+    // Why the extension's account button changes its handle's grey while hovered or open.
+    expect(contrast(dark.colorNeutralForeground3, dark.colorSubtleBackgroundHover)).toBeLessThan(4.5);
+    expect(contrast(light.colorNeutralForeground3, light.colorSubtleBackgroundSelected)).toBeLessThan(4.5);
+  });
+
   it('paint the page in the same color as the theme’s page background', () => {
     expect(xomoniLightTheme().colorNeutralBackground3).toBe(PAGE_BACKGROUND.light);
     expect(xomoniDarkTheme().colorNeutralBackground3).toBe(PAGE_BACKGROUND.dark);

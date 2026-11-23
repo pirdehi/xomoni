@@ -61,7 +61,7 @@ const useStyles = makeStyles({
 /**
  * Where X's archive comes in (#184): the ZIP X sends, dropped (even from Chrome's downloads) or chosen in a picker
  * that opens in Downloads, or the unzipped folder. Only `account.js`, `tweets.js` and `like.js` are read, on this
- * computer; a failure says why and imports nothing.
+ * computer; a failure says why in an alert and imports nothing.
  */
 export function ArchiveImport({ account }: { account: Account }) {
   const styles = useStyles();
@@ -139,8 +139,9 @@ export function ArchiveImport({ account }: { account: Account }) {
         data-testid="zip-input"
         onChange={(e) => void run(e.target.files)}
       />
+      {/* An alert, so a screen reader says at once why nothing came in (#345). */}
       {error && (
-        <div className={styles.error}>
+        <div role="alert" className={styles.error}>
           <Callout tone="critical" icon={<Archive16Regular />}>
             {error}
           </Callout>

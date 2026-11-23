@@ -178,6 +178,8 @@ function watchRun(pages: { content: ContentState; posts?: WatchPost[] }[], round
       return page!.content;
     }),
     xTab: {
+      // The X window signed in to the job's account.
+      ping: vi.fn(async () => ({ viewerId: ACCOUNT, loggedIn: true })),
       send: vi.fn(async (command: ActorCommand) => {
         if (command.cmd !== 'readPosts') throw new Error(`unexpected ${command.cmd}`);
         return (page?.posts ?? []).slice(0, command.limit);

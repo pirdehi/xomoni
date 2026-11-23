@@ -317,4 +317,20 @@ describe('readHealth and readWatch (#233)', () => {
     await db.kv.delete('activeAccount');
     expect(await readWatch()).toEqual([]);
   });
+
+  it('keeps the ready tabs, what is said to and about the person, out of what the site reads (#391)', async () => {
+    await saveWatchTabs(ME, [
+      { id: 'tab-1', query: 'xomoni' },
+      { id: 'replies', query: '', ready: 'replies' },
+    ]);
+    await saveWatchResult(ME, 'replies', {
+      query: 'to:me',
+      checkedAt: 5,
+      error: '',
+      posts: [{ id: '43', handle: 'new_one', name: '', text: 'to you', time: 4, accountCreatedAt: 3 }],
+    });
+    const tabs = await readWatch();
+    expect(tabs.map((t) => t.query)).toEqual(['xomoni', '']);
+    expect(JSON.stringify(tabs)).not.toContain('new_one');
+  });
 });

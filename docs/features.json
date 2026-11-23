@@ -210,6 +210,22 @@
       }
     },
     {
+      "id": "watch-about-you",
+      "area": "extension",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [391],
+      "scenarios": "docs/scenarios/391-watch-about-you.md",
+      "en": {
+        "title": "Watch what is said about you",
+        "summary": "two ready Watch searches for your own account, Mentions of you and Replies to you, off until you turn them on. A post from an account made in the last 30 days is marked with its age, from X's own search answer, and Xomoni's toolbar button counts the ones you haven't seen. Read only, and nothing leaves your computer."
+      },
+      "fa": {
+        "title": "دیدن آنچه درباره‌ی شما گفته می‌شود",
+        "summary": "دو جستجوی آماده‌ی Watch برای حساب خودتان، «اشاره به شما» و «ریپلای به شما»، که تا روشنشان نکنید خاموش‌اند. پستی از حسابی که در ۳۰ روز گذشته ساخته شده با سن حساب علامت می‌خورد، از پاسخ جستجوی خود X، و دکمه‌ی Xomoni در نوار ابزار تعداد آن‌هایی را که ندیده‌اید نشان می‌دهد. فقط می‌خواند و چیزی از رایانه‌تان بیرون نمی‌رود."
+      }
+    },
+    {
       "id": "dashboard",
       "area": "extension",
       "status": "shipped",

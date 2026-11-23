@@ -1,5 +1,10 @@
 import { defineConfig } from '@playwright/test';
 import { browsersToTest } from './e2e/support/projects';
+import { runAtNight } from './e2e/support/time-of-day';
+
+// At night, local time, in every run (#414): a test that starts a job without turning active hours off fails every time,
+// not only in the runs that fall outside them. The workers and the browsers inherit `TZ` from here.
+runAtNight();
 
 /**
  * The extension in a real browser (#342, ADR-0040): the built Xomoni, its dashboard and its content script on x.com
@@ -10,7 +15,7 @@ import { browsersToTest } from './e2e/support/projects';
 export default defineConfig({
   testDir: 'e2e/extension',
   globalSetup: './e2e/support/build-extension.ts',
-  // Inside the website's folders, which `npx playwright test` with the website's config empties on its own run.
+  // Beside the website's run's (`test-results/website`): CI runs both at once (#404), and each empties its own.
   outputDir: 'test-results/extension',
   timeout: 30_000,
   expect: { timeout: 10_000 },

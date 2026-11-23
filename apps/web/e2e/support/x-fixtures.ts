@@ -29,6 +29,8 @@ const PAGES = new Map([
   ['/xomoni_fixture', 'profile.html'],
   ['/xomoni_fixture/with_replies', 'profile.html'],
   ['/xomoni_fixture/likes', 'profile.html'],
+  // X's search, which Watch loads (#158, #345): its query is in the address.
+  ['/search', 'search.html'],
 ]);
 
 /** A GraphQL request of X's web app: `/i/api/graphql/<query id>/<Operation>`. */

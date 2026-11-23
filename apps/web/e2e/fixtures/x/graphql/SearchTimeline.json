@@ -1,0 +1,425 @@
+{
+  "data": {
+    "search_by_raw_query": {
+      "search_timeline": {
+        "timeline": {
+          "instructions": [
+            {
+              "type": "TimelineAddEntries",
+              "entries": [
+                {
+                  "entryId": "tweet-9000000000000000612",
+                  "sortIndex": "9000000000000000612",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000612",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000612",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 20 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 12 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000611",
+                  "sortIndex": "9000000000000000611",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000611",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000611",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 19 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 11 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000610",
+                  "sortIndex": "9000000000000000610",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000610",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000610",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 18 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 10 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000609",
+                  "sortIndex": "9000000000000000609",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000609",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000609",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 17 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 9 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000608",
+                  "sortIndex": "9000000000000000608",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000608",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000608",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 16 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 8 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000607",
+                  "sortIndex": "9000000000000000607",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000607",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000607",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 15 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 7 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000606",
+                  "sortIndex": "9000000000000000606",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000606",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000606",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 14 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 6 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000605",
+                  "sortIndex": "9000000000000000605",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000605",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000605",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 13 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 5 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000604",
+                  "sortIndex": "9000000000000000604",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000604",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000604",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 12 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 4 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000603",
+                  "sortIndex": "9000000000000000603",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000603",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000603",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 11 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 3 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000602",
+                  "sortIndex": "9000000000000000602",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000602",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000602",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 10 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 2 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "entryId": "tweet-9000000000000000601",
+                  "sortIndex": "9000000000000000601",
+                  "content": {
+                    "itemContent": {
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "9000000000000000601",
+                          "core": {
+                            "user_results": {
+                              "result": {
+                                "rest_id": "9000000000000000002",
+                                "core": {
+                                  "screen_name": "fixture_friend",
+                                  "name": "Fixture Friend"
+                                }
+                              }
+                            }
+                          },
+                          "legacy": {
+                            "id_str": "9000000000000000601",
+                            "user_id_str": "9000000000000000002",
+                            "created_at": "Fri Nov 09 09:00:00 +0000 2026",
+                            "full_text": "Made-up post 1 of 12 about #xomoni &amp; nothing else.",
+                            "favorite_count": 0,
+                            "retweet_count": 0,
+                            "reply_count": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

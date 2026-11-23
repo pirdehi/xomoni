@@ -17,9 +17,9 @@ import { Delete20Regular, ShieldCheckmark16Regular } from '@fluentui/react-icons
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { FORGOTTEN_HERE, disconnect } from '../../cloud/sync';
-import { getSettings, kvSet, wipeLocalData } from '../../shared/db';
+import { getSettings, updateSettings, wipeLocalData } from '../../shared/db';
 import { FINISHED_ID, notify } from '../../shared/notify';
-import { ACTION_LABELS, PRESETS, normalizeSettings } from '../../shared/settings';
+import { ACTION_LABELS, PRESETS } from '../../shared/settings';
 import { DAY } from '../../shared/time';
 import type { ActionKind, PacingRule, PresetName, Settings } from '../../shared/types';
 import { X_PUBLISHED_LIMITS, capCeilings, share } from '../../shared/x-limits';
@@ -148,9 +148,12 @@ const useStyles = makeStyles({
 });
 
 // Every save goes through the safety rules: custom values are clamped to one fifth of X's limits.
-/** Saves settings brought back inside the safety rules; a failed save shows a toast. */
-const save = (s: Settings) => {
-  kvSet('settings', normalizeSettings(s)).catch((err: unknown) => toast(errorMessage(err), 'critical'));
+/**
+ * Saves one change, applied to the settings as stored now rather than as last rendered, so a second change made before
+ * the page re-renders doesn't undo the first (#427). A failed save shows a toast.
+ */
+const save = (change: (current: Settings) => Settings) => {
+  updateSettings(change).catch((err: unknown) => toast(errorMessage(err), 'critical'));
 };
 
 /**
@@ -172,13 +175,13 @@ export function SettingsPage({ account, worker }: PageProps) {
   const custom = settings.preset === 'custom';
 
   const setPreset = (preset: PresetName) =>
-    save({ ...settings, preset, pacing: preset === 'custom' ? settings.pacing : PRESETS.careful });
+    save((s) => ({ ...s, preset, pacing: preset === 'custom' ? s.pacing : PRESETS.careful }));
   const setRule = (action: ActionKind, key: keyof PacingRule, value: number) =>
-    save({
-      ...settings,
+    save((s) => ({
+      ...s,
       preset: 'custom',
-      pacing: { ...settings.pacing, [action]: { ...settings.pacing[action], [key]: value } },
-    });
+      pacing: { ...s.pacing, [action]: { ...s.pacing[action], [key]: value } },
+    }));
 
   const wipe = async () => {
     // xomoni.com first: telling it needs the token the wipe deletes (#151).
@@ -283,7 +286,7 @@ export function SettingsPage({ account, worker }: PageProps) {
             <div className={styles.stack}>
               <Toggle
                 checked={settings.activeHours.enabled}
-                onChange={(enabled) => save({ ...settings, activeHours: { ...settings.activeHours, enabled } })}
+                onChange={(enabled) => save((s) => ({ ...s, activeHours: { ...s.activeHours, enabled } }))}
                 label="Only work during active hours"
                 description="Pauses outside these hours, so work is spread over the day and never runs all night."
               />
@@ -294,7 +297,7 @@ export function SettingsPage({ account, worker }: PageProps) {
                       <Select
                         value={String(settings.activeHours[k])}
                         onChange={(_, data) =>
-                          save({ ...settings, activeHours: { ...settings.activeHours, [k]: Number(data.value) } })
+                          save((s) => ({ ...s, activeHours: { ...s.activeHours, [k]: Number(data.value) } }))
                         }
                       >
                         {Array.from({ length: 24 }, (_, h) => (
@@ -310,7 +313,7 @@ export function SettingsPage({ account, worker }: PageProps) {
               <div className={styles.toggleRow}>
                 <Toggle
                   checked={settings.notifications}
-                  onChange={(notifications) => save({ ...settings, notifications })}
+                  onChange={(notifications) => save((s) => ({ ...s, notifications }))}
                   label="Desktop notifications"
                   description="When X needs you (login, 2FA, a check) and when a job ends."
                 />
@@ -332,7 +335,7 @@ export function SettingsPage({ account, worker }: PageProps) {
               </div>
               <Toggle
                 checked={settings.whileAway}
-                onChange={(whileAway) => save({ ...settings, whileAway })}
+                onChange={(whileAway) => save((s) => ({ ...s, whileAway }))}
                 label="Keep going while I’m away"
                 description="Keeps the display on while a job runs. After two minutes without keyboard or mouse, a covered X window comes forward and the job continues. On a locked screen it waits."
               />
@@ -349,7 +352,7 @@ export function SettingsPage({ account, worker }: PageProps) {
                     max={3}
                     value={String(settings.maxConsecutiveFailures)}
                     onChange={(_, data) =>
-                      save({ ...settings, maxConsecutiveFailures: Math.max(1, Number(data.value) || 1) })
+                      save((s) => ({ ...s, maxConsecutiveFailures: Math.max(1, Number(data.value) || 1) }))
                     }
                   />
                 </Field>

@@ -35,6 +35,7 @@ Besides its unit and component tests in happy-dom, the built extension runs in a
 - Watch: searches on X's own Latest page, read-only and within the read limits, with X's empty, failing and limited answers (`watch.spec.ts`, #158);
 - X's archive: *Get my archive* on X's archive page, and the ZIP dropped, chosen or from Downloads › Xomoni, with every archive it refuses (`x-archive.spec.ts`, #184);
 - the Library: X's count against the copy, browsing and searching it a page at a time, and the reads from X that complete it, which only look (`library.spec.ts`, #185);
+- the daily numbers kept in this browser: the profile's counts, the posts seen and the likes received between two looks, counts only, and their deletion (`daily-numbers.spec.ts`, #249);
 - the dashboard by keyboard alone, and axe on every page of its menu, in light and dark mode;
 - Playwright's Chromium in CI's `e2e` job, and Microsoft Edge in `e2e-edge`.
 

@@ -111,7 +111,7 @@ export const PRINCIPLES: Feature[] = [
   {
     icon: LockClosed24Regular,
     title: 'Your data stays with you',
-    body: 'Your posts and likes stay on your computer, and Xomoni never asks for your X password or cookies. Our servers hold your account and job status only.',
+    body: 'Your posts and likes stay on your computer, and Xomoni never asks for your X password or cookies. Our servers hold your account and job status, and your daily numbers only if you turn them on.',
   },
   {
     icon: History24Regular,

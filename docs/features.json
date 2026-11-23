@@ -346,11 +346,11 @@
       "scenarios": "docs/scenarios/39-live-job-status.md",
       "en": {
         "title": "Your jobs, live on xomoni.com",
-        "summary": "follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent."
+        "summary": "follow each job's progress from any device on xomoni.com's dashboard. Only job status is sent, and your daily numbers if you turn them on."
       },
       "fa": {
         "title": "کارهای شما، زنده در xomoni.com",
-        "summary": "پیشرفت هر کار را از هر دستگاهی روی داشبورد xomoni.com دنبال کنید. فقط وضعیت کار فرستاده می‌شود."
+        "summary": "پیشرفت هر کار را از هر دستگاهی روی داشبورد xomoni.com دنبال کنید. فقط وضعیت کار فرستاده می‌شود، و اگر روشنشان کنید، عددهای روزانه‌تان."
       }
     },
     {

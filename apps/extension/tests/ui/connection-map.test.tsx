@@ -2,7 +2,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PageInfo } from '../../src/shared/messages';
-import { ConnectionMap, describeConnections, xLinkOf } from '../../src/ui/components/ConnectionMap';
+import { ConnectionMap, describeConnections, sentToWebsite, xLinkOf } from '../../src/ui/components/ConnectionMap';
 
 afterEach(cleanup);
 
@@ -70,6 +70,38 @@ describe('the connection map (#182)', () => {
     ['unknown', 'off', /the X account this browser is signed in to\..*isn’t connected/],
   ] as const)('describes %s with xomoni.com %s', (x, cloud, words) => {
     expect(describeConnections(x, cloud)).toMatch(words);
+  });
+
+  // What reaches xomoni.com, said exactly in both states (ADR-0004, ADR-0026, #450).
+  it('says job status only while the daily numbers are off, and names the numbers while they are on', () => {
+    const off = render(<ConnectionMap x="signed-in" cloud="connected" />);
+    expect(off.container).toHaveTextContent('Status only');
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      'This browser is signed in to X; your posts are read and cleaned here and stay here. It sends job status, and only that, to xomoni.com.',
+    );
+    cleanup();
+
+    const on = render(<ConnectionMap x="signed-in" cloud="connected" numbers />);
+    expect(on.container).toHaveTextContent('Status and numbers');
+    expect(on.container).not.toHaveTextContent('Status only');
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      'This browser is signed in to X; your posts are read and cleaned here and stay here. It sends job status and your daily numbers, and only those, to xomoni.com.',
+    );
+  });
+
+  it('says nothing about numbers on a link that sends nothing', () => {
+    expect(describeConnections('signed-in', 'pending', true)).toMatch(/waiting for you\.$/);
+    expect(describeConnections('signed-in', 'off', true)).toMatch(/isn’t connected to xomoni\.com\.$/);
+    const { container } = render(<ConnectionMap x="signed-in" cloud="off" numbers />);
+    expect(container).toHaveTextContent('Not connected');
+    expect(container).not.toHaveTextContent(/numbers/);
+  });
+
+  it('words what is sent for the panel: job status, and the numbers only while on', () => {
+    expect(sentToWebsite(false)).toBe('Only job status is sent: titles, states and counts, never your posts or likes.');
+    expect(sentToWebsite(true)).toBe(
+      'Only job status and your daily numbers are sent: titles, states and counts, never your posts or likes.',
+    );
   });
 
   it('reads the X link from the worker’s last look at X', () => {

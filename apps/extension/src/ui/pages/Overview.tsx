@@ -568,7 +568,8 @@ function FirstRun({ worker }: { worker: WorkerStatus }) {
       </div>
       <div className={styles.assurances}>
         <Assurance icon={<LockClosed20Regular />} title="Private by design">
-          No servers. Your data stays in this browser.
+          Your posts and likes stay in this browser. Signed in to xomoni.com, only job status goes there, and your daily
+          numbers if you turn them on.
         </Assurance>
         <Assurance icon={<ShieldCheckmark20Regular />} title="Respects X limits">
           Human pacing, caps and automatic safety stops.

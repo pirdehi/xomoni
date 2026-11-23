@@ -7,6 +7,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - **Safety: two quick changes in Settings no longer lose the first** (#427). Each change on the Settings page was saved as the settings the page last drew, with that one field changed. A second change made before the page drew the first, such as *From* then *Until* on a busy computer, put the old value back: the active hours could end up other than the ones chosen, and a job could then work in hours you had excluded. A change from xomoni.com could race one made on the page in the same way. Now each change applies to the settings as stored at that moment, in one step, so both land. This is a safety fix.
+- Xomoni's *Connections* panel said *Only job status is sent* even while your daily numbers were sent to xomoni.com too (#450). It now says *Only job status and your daily numbers are sent* while they are on, and job status only while they are off, and so do its map, the sign-out dialogs and Settings. The privacy policy, the landing page, the install guide and xomoni.com's sign-in panel now name the daily numbers, sent only if you turn them on, as the only other thing that reaches xomoni.com. On xomoni.com's dashboard, when your numbers choice can't be read, it no longer shows a switch that says off while they may be on: it says it couldn't tell, with *Try again*.
 
 ## [0.5.3] - 2026-11-23
 

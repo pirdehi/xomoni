@@ -20,6 +20,7 @@ Local emails (confirmation, password reset) land in Mailpit at http://127.0.0.1:
 | `npm test -w @xomoni/web` | Unit and component tests with coverage: domain rules, use cases, adapters, server code and every UI component ([docs/TESTING.md](../../docs/TESTING.md)) |
 | `npm run test:e2e -w @xomoni/web` | End-to-end tests in Chromium against the local Supabase stack (run `supabase start` first); `XOMONI_E2E_BROWSERS=msedge` runs them in Edge |
 | `npm run test:e2e:extension -w @xomoni/web` | The built extension in a real browser, on x.com pages served from synthetic fixtures, with no network and no Supabase (ADR-0040) |
+| `npm run test:e2e:release -w @xomoni/web` | The release smoke test, before a tag: the candidate's zip and the previous release's (`XOMONI_E2E_EXTENSION`, `XOMONI_E2E_PREVIOUS`), a clean install, an update in place, a rollback and a move ([releasing](../../docs/RELEASING.md#the-smoke-test-of-the-zips)). Not part of CI |
 
 ## Structure
 
@@ -44,6 +45,8 @@ e2e/              Playwright tests for every auth flow (real Supabase Auth, emai
                   axe on every page; any test may call expectNoSeriousA11yViolations (e2e/support/a11y.ts, #342)
   extension/      the built extension in a real browser (playwright.extension.config.ts, ADR-0040): its dashboard,
                   and its content script on x.com pages from e2e/fixtures/x, synthetic and served with no network
+  release/        the release smoke test on two releases' zips (playwright.release.config.ts, #419), with the same
+                  harness as extension/
 ```
 
 Each module is split into `domain/`, `application/`, `infrastructure/`, `server/`, `client/` and `ui/` layers; the rules are in [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#4-website-appsweb) and are checked by `npm run arch`.

@@ -49,6 +49,8 @@ process.env.SUPABASE_PUBLISHABLE_KEY = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 /** The extension's own tests: they need neither the site nor Supabase (playwright.extension.config.ts, #342). */
 const EXTENSION = 'extension/**';
+/** The release smoke test, on two releases' zips (playwright.release.config.ts, #419). */
+const RELEASE = 'release/**';
 /** The test of the fixed id, which loads a test extension. */
 const FIXED_ID = 'fixed-id.spec.ts';
 
@@ -59,18 +61,22 @@ const FIXED_ID = 'fixed-id.spec.ts';
  */
 const PROJECTS: Record<BrowserName, Project> = {
   chromium: { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  msedge: { name: 'msedge', use: { ...devices['Desktop Edge'], channel: 'msedge' }, testIgnore: [EXTENSION, FIXED_ID] },
+  msedge: {
+    name: 'msedge',
+    use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    testIgnore: [EXTENSION, RELEASE, FIXED_ID],
+  },
   chrome: {
     name: 'chrome',
     use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    testIgnore: [EXTENSION, FIXED_ID],
+    testIgnore: [EXTENSION, RELEASE, FIXED_ID],
   },
 };
 
 export default defineConfig({
   testDir: 'e2e',
   // A project's own testIgnore replaces this one, so each of Edge and Chrome lists it again.
-  testIgnore: EXTENSION,
+  testIgnore: [EXTENSION, RELEASE],
   // Folders of its own: CI runs the extension's tests at the same time (#404), and each run empties its own folders.
   outputDir: 'test-results/website',
   // One worker: the flows share one Auth server and one inbox, and ordering keeps failures readable.

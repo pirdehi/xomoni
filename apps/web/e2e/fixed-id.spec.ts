@@ -49,8 +49,8 @@ const fake = (xomoni: Worker) =>
 /** The id the site remembers from a page Xomoni opened (`#ext=`), if any. */
 const rememberedId = (page: Page) => page.evaluate(() => window.localStorage.getItem('xomoni.extension'));
 
-test.describe('xomoni.com finds Xomoni by its fixed id (#302)', () => {
-  test('Chrome gives the extension the id its key makes, the one the site looks for', async ({ xomoni }) => {
+test.describe('xomoni.com finds Xomoni by its fixed id (#302)', { tag: '@task-304' }, () => {
+  test('S304-18 Chrome gives the extension the id its key makes, the one the site looks for', async ({ xomoni }) => {
     const manifest = JSON.parse(readFileSync(path.join(TEST_EXTENSION_DIR, 'manifest.json'), 'utf8')) as {
       key: string;
     };
@@ -60,7 +60,7 @@ test.describe('xomoni.com finds Xomoni by its fixed id (#302)', () => {
     expect(await readManifestKey(manifest.key)).toEqual({ ok: true, id: chromeId, bits: 2048 });
   });
 
-  test('the install guide ticks by itself, and /welcome says how to pin it, with no #ext= anywhere', async ({
+  test('S304-19 the install guide ticks by itself, and /welcome says how to pin it, with no #ext= anywhere', async ({
     page,
     xomoni,
   }) => {
@@ -79,7 +79,7 @@ test.describe('xomoni.com finds Xomoni by its fixed id (#302)', () => {
     expect(new Set(received.map((m) => m.type))).toEqual(new Set(['xomoni-hello']));
   });
 
-  test('an #ext= of a zip install that is gone doesn’t hide the copy at the fixed id', async ({ page }) => {
+  test('S304-20 an #ext= of a zip install that is gone doesn’t hide the copy at the fixed id', async ({ page }) => {
     await page.goto('/welcome#ext=abcdefghijklmnopabcdefghijklmnop');
 
     await expect(page.getByRole('region', { name: 'Pin Xomoni to the toolbar' })).toBeVisible();
@@ -88,7 +88,10 @@ test.describe('xomoni.com finds Xomoni by its fixed id (#302)', () => {
     expect(await rememberedId(page)).toBe('abcdefghijklmnopabcdefghijklmnop');
   });
 
-  test('signing in on xomoni.com signs it in at once; signing out there signs it out', async ({ page, xomoni }) => {
+  test('S304-21 signing in on xomoni.com signs it in at once; signing out there signs it out', async ({
+    page,
+    xomoni,
+  }) => {
     const email = uniqueEmail('fixed-id');
     await createConfirmedUser(email, PASSWORD);
 

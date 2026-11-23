@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  x.com/settings/download_your_data as Xomoni's browser tests serve it (#345), in a language Xomoni doesn't read:
+  X's button is there, under another name. Synthetic, and only what Xomoni reads (apps/extension/src/content/dom.ts).
+-->
+<html lang="es" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Descarga un archivo con tus datos / X</title>
+  </head>
+  <body>
+    <div id="react-root">
+      <header role="banner">
+        <nav aria-label="Primary">
+          <a href="/home" data-testid="AppTabBar_Home_Link">Inicio</a>
+          <a href="/xomoni_fixture" data-testid="AppTabBar_Profile_Link" aria-label="Perfil">Perfil</a>
+        </nav>
+      </header>
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1>Descarga un archivo con tus datos</h1>
+          <button type="button" id="request">Solicitar archivo</button>
+        </div>
+      </main>
+    </div>
+    <script>
+      document.getElementById('request').addEventListener('click', () => {
+        document.body.dataset.pressed = 'request';
+      });
+    </script>
+  </body>
+</html>

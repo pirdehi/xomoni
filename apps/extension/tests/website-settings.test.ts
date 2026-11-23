@@ -4,7 +4,16 @@ import { READ, SETTINGS, type SettingsChange } from '@xomoni/bridge';
 import { type CloudConnection, saveConnection } from '../src/cloud/connection';
 import { answerRead } from '../src/cloud/website-reads';
 import { answerSettings, describeChange, readSettings } from '../src/cloud/website-settings';
-import { db, getSettings, kvSet, saveWatchResult, upsertAccount, watchResults, watchTabs } from '../src/shared/db';
+import {
+  db,
+  getSettings,
+  kvSet,
+  saveWatchResult,
+  updateSettings,
+  upsertAccount,
+  watchResults,
+  watchTabs,
+} from '../src/shared/db';
 import { markSignedOut } from '../src/shared/session';
 import { PRESETS } from '../src/shared/settings';
 import { stubChrome } from './support/chrome';
@@ -97,6 +106,20 @@ describe('answerSettings (ADR-0029, #234)', () => {
       notifications: false,
       whileAway: false,
       maxConsecutiveFailures: 1,
+    });
+  });
+
+  it('keeps a change made on the Settings page at the same moment: each applies to what is stored (#427)', async () => {
+    const [answer] = await Promise.all([
+      change({ notifications: false }),
+      updateSettings((s) => ({ ...s, whileAway: false })),
+      updateSettings((s) => ({ ...s, activeHours: { ...s.activeHours, start: 11 } })),
+    ]);
+    expect(answer).toMatchObject({ ok: true });
+    expect(await getSettings()).toMatchObject({
+      notifications: false,
+      whileAway: false,
+      activeHours: { enabled: true, start: 11 },
     });
   });
 

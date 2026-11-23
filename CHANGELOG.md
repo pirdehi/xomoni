@@ -7,6 +7,7 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 ### Fixed
 
 - **Safety: two quick changes in Settings no longer lose the first** (#427). Each change on the Settings page was saved as the settings the page last drew, with that one field changed. A second change made before the page drew the first, such as *From* then *Until* on a busy computer, put the old value back: the active hours could end up other than the ones chosen, and a job could then work in hours you had excluded. A change from xomoni.com could race one made on the page in the same way. Now each change applies to the settings as stored at that moment, in one step, so both land. This is a safety fix.
+- *Show my numbers on xomoni.com* turned itself off for a moment while the choice was stored, on xomoni.com and in Xomoni's Settings, so someone using the keyboard lost their place after each press: the focus fell back to the top of the page (#345). The switch now stays usable, says it is busy, and takes the next press once the choice is stored.
 
 ## [0.5.3] - 2026-11-23
 

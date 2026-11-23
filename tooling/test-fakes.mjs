@@ -8,11 +8,12 @@ import { join } from 'node:path';
 /**
  * What every fake runs, in CommonJS since the fakes have no extension. It logs the call, then follows the first rule
  * for its name whose `args` start the call's arguments and, if given, whose `has` is in one of them. A rule can write
- * `files` into the folder after `--dir`, write `output` to the file after `--output`, print `stdout` and `stderr`, and
- * end with `status`. A call no rule answers fails with status 2.
+ * `files` into the folder after `--dir`, copy `copies` (name → a file's path, for bytes such as a zip's) there too,
+ * write `output` to the file after `--output`, print `stdout` and `stderr`, and end with `status`. A call no rule
+ * answers fails with status 2.
  */
 const FAKE = `
-const { appendFileSync, mkdirSync, readFileSync, writeFileSync } = require('node:fs');
+const { appendFileSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } = require('node:fs');
 const { basename, join } = require('node:path');
 const name = basename(process.argv[1]);
 const args = process.argv.slice(2);
@@ -31,6 +32,10 @@ const after = (flag) => args[args.indexOf(flag) + 1];
 if (rule.files) {
   mkdirSync(after('--dir'), { recursive: true });
   for (const [file, content] of Object.entries(rule.files)) writeFileSync(join(after('--dir'), file), content);
+}
+if (rule.copies) {
+  mkdirSync(after('--dir'), { recursive: true });
+  for (const [file, from] of Object.entries(rule.copies)) copyFileSync(from, join(after('--dir'), file));
 }
 if (rule.output != null) writeFileSync(after('--output'), rule.output);
 if (rule.stdout) process.stdout.write(rule.stdout);

@@ -299,7 +299,7 @@ Every merge and every release passes the same written gate, enforced by commands
 | ✅ | 16 · CI: the website's and the extension's browser tests side by side in `e2e` and `e2e-edge`, each job from about 25 minutes to about 14, gating the same tests; the `/install` tests wait for React before their first click | [#404](https://github.com/pirdehi/xomoni/issues/404) | [#406](https://github.com/pirdehi/xomoni/pull/406), [#411](https://github.com/pirdehi/xomoni/pull/411) |
 | ✅ | 17 · CI: the browser tests in shards on runners of their own, the website's two each with its own Supabase and the extension's two, behind the same `e2e` and `e2e-edge` gates | [#412](https://github.com/pirdehi/xomoni/issues/412) | |
 | ✅ | 18 · Safety fix found by the time-of-day audit: two quick changes in Settings both land, so the active hours are the ones chosen | [#427](https://github.com/pirdehi/xomoni/issues/427) | |
-| ✅ | 18 · Tests that pass at any hour and in any time zone: the extension's browser tests run at night, local time, in every run, and the unit tests that show a day use the computer's calendar | [#414](https://github.com/pirdehi/xomoni/issues/414) | |
+| ✅ | 19 · Tests that pass at any hour and in any time zone: the extension's browser tests run at night, local time, in every run, and the unit tests that show a day use the computer's calendar | [#414](https://github.com/pirdehi/xomoni/issues/414) | [#435](https://github.com/pirdehi/xomoni/pull/435) |
 
 ## Dropped
 

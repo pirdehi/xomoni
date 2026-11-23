@@ -142,7 +142,8 @@ describe('HealthPlace (#233)', () => {
           level: 2,
           reason: 'X asked to prove you are human',
           pace: 0.5,
-          reducedUntil: Date.UTC(2026, 10, 27),
+          // Noon on Nov 27 by this computer's calendar: that day in every time zone (#414).
+          reducedUntil: new Date(2026, 10, 27, 12).getTime(),
           resumeAt: NOW + 3_600_000,
           fullStop: false,
         },

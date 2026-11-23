@@ -58,6 +58,7 @@ The routes in `apps/web/src/app` are thin by design (rule `web-routes-are-thin`)
 - **Component test files** start with `// @vitest-environment happy-dom`; the extension's also import `fake-indexeddb/auto`.
 - **Store listings are empty in the code** until the stores list Xomoni (#304). Website component tests mock `@/shared/config/store-listings` (`STORE_LISTINGS` as a getter, set per test); end-to-end tests put theirs in `window.__xomoniE2EStoreListings`, which only a build with `NEXT_PUBLIC_E2E_STORE_LISTINGS=1` reads (`playwright.config.ts` sets it); the extension's `StoreMoveCard` takes `listings`.
 - **Web Locks are per file** in the extension's tests (`tests/setup.ts`, #271): Node's `navigator.locks` is shared by the whole process, so one file's runner would otherwise hold up another file's sign-out.
+- **Days by the computer's calendar.** The product shows a time's day, month and hour in the person's time zone, and the tests run in any zone. A unit test that checks a day the page shows puts its times at local noon (`new Date(2026, 10, 27, 12)`) or expects what the product's formatter says (`fmtDate`), not a day written for UTC (#414). `TZ=Pacific/Kiritimati` (UTC+14) and `TZ=Pacific/Pago_Pago` (UTC−11) are the two ends to try.
 - **Types are strict in tests too** ([ADR-0016](adr/0016-strict-typescript-and-type-aware-lint.md)); tests may use `!`.
 
 ## Writing user scenarios
@@ -79,6 +80,7 @@ A later fix to the feature adds its scenario to the same file.
 2. **The browser.** Each test launches its own browser with a new profile, so it starts from a fresh install: Xomoni opens its dashboard by itself, as it does for a person. The browser is Playwright's Chromium, or `XOMONI_E2E_BROWSERS=msedge` (or `chrome`) for Edge or Chrome as installed on the computer. Chrome and Edge no longer take `--load-extension`, so the harness installs Xomoni the way their developer tools do (`Extensions.loadUnpacked`), after its routes are in place.
 3. **X.** Every request to `https://x.com` is answered from `apps/web/e2e/fixtures/x`: pages with only what Xomoni reads (`apps/extension/src/content/dom.ts`), and GraphQL answers (`graphql/<Operation>.json`) with X's rate-limit headers. As X's web app does, the profile page asks X's GraphQL API for its tab's timeline (posts, replies or likes) and shows what X answered: the posts, X's empty state, or X's error panel. X's `twid` cookie names the made-up `@xomoni_fixture`, signed in unless a test sets `test.use({ xSignedIn: false })`, and the sidebar names whoever it says. `test.use({ xHistory: 'long' })` gives the account years of posts, replies, a repost and likes (`graphql/long-history/`, #345). A test that needs X to answer otherwise adds a route of its own: Playwright tries the newest first.
 4. **No network.** The browser resolves no host but localhost, and a request from a page to any host but x.com fails the test. Only the xomoni.com/welcome tab Xomoni opens on install is let go (blocked, not failed).
+5. **At night.** Xomoni works only within the person's active hours, 8:00 to 23:00 by default, by the computer's clock. The config runs every test at night, local time (`e2e/support/time-of-day.ts`, #414): it sets `TZ` to a whole-hour zone where it is now 2:00 to 6:00, which the workers and the browsers inherit. So a test that starts a job turns active hours off first (`workAnyTime(dashboard)` in `cleanup.ts`), unless active hours are what it tests, and one that forgets fails every time, not only in the runs that fall at night. The zone stays within UTC−9 to UTC+11, where the fixtures' times (09:26 to 12:00 UTC) keep their day. `XOMONI_E2E_HOUR=14` runs at another local hour; a `TZ` you set is kept.
 
 The fixtures are synthetic. Never record a real account's pages, posts, ids or cookies into them: write the smallest answer shaped like X's that the test needs, with the fixture account's ids (in `9000000000000000xxx`, a range X hasn't issued). When X changes a page or an answer, change the fixture in the same pull request as `content/dom.ts` or the parsers.
 
@@ -112,6 +114,7 @@ supabase start && npm run test:e2e -w @xomoni/web   # end to end (needs Docker)
 npm run test:e2e -w @xomoni/web -- --grep @task-299  # one task's user scenarios
 npm run test:e2e:extension -w @xomoni/web             # the extension in a real browser (no Supabase needed)
 XOMONI_E2E_BROWSERS=msedge npm run test:e2e:extension -w @xomoni/web   # the same in Edge, if installed
+XOMONI_E2E_HOUR=14 npm run test:e2e:extension -w @xomoni/web   # by day instead of at night (#414)
 ```
 
 Playwright's Chromium is needed once: `npx playwright install chromium` in `apps/web`.

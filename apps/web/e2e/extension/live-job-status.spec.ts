@@ -119,6 +119,24 @@ async function withAccount(dashboard: Page, page: Page) {
   await browseProfile(page);
 }
 
+/** Opens Connections from the account in the sidebar, and returns the dialog. */
+async function openConnections(dashboard: Page): Promise<Locator> {
+  await dashboard.bringToFront();
+  await dashboard
+    .getByRole('complementary')
+    .getByRole('button', { name: new RegExp(` @${FIXTURE_ACCOUNT.handle}$`) })
+    .click();
+  const dialog = dashboard.getByRole('dialog', { name: 'Connections' });
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+/** What Connections says is sent, with the daily numbers off and on (ADR-0004, ADR-0026, #450). */
+const SENT = {
+  off: 'Only job status is sent: titles, states and counts, never your posts or likes.',
+  on: 'Only job status and your daily numbers are sent: titles, states and counts, never your posts or likes.',
+};
+
 /** A report comes a few seconds after a job changes (10 s of quiet first), so a poll waits up to this long. */
 const REPORT_WITHIN = 30_000;
 
@@ -399,5 +417,62 @@ test.describe('your jobs, live on xomoni.com: what Xomoni sends', { tag: '@task-
     await expect.poll(() => lastReportOf(site, COMPLETE)?.state, { timeout: REPORT_WITHIN }).toBe('paused');
     await card.getByRole('button', { name: 'Cancel' }).click();
     await expect.poll(() => lastReportOf(site, COMPLETE)?.state, { timeout: REPORT_WITHIN }).toBe('cancelled');
+  });
+
+  test('S39-33 with the numbers off, Connections says only job status is sent, and that is all that went', async ({
+    dashboard,
+    context,
+    extensionId,
+  }) => {
+    await openXWindow(dashboard);
+    const site = await signedIn(context, extensionId);
+    await expect.poll(() => reports(site).length).toBeGreaterThan(0);
+
+    const dialog = await openConnections(dashboard);
+    const cloud = dialog.getByRole('region', { name: 'xomoni.com' });
+    await expect(cloud).toContainText('Connected');
+    await expect(cloud).toContainText(SENT.off);
+    await expect(cloud).not.toContainText('daily numbers');
+    const map = dialog.getByRole('img');
+    await expect(map).toContainText('Status only');
+    await expect(map).toHaveAccessibleName(/It sends job status, and only that, to xomoni\.com\.$/);
+    expect(new Set(site.calls.map((call) => call.fn))).toEqual(new Set(['pair_device', 'device_report']));
+  });
+
+  test('S39-34 with the numbers on, Connections names them too, and job status only once they are off', async ({
+    dashboard,
+    context,
+    extensionId,
+  }) => {
+    await openXWindow(dashboard);
+    // Turned on on xomoni.com: Xomoni hears it from its report.
+    const site = await serveXomoniSite(context);
+    site.stats = true;
+    expect(await site.signIn(extensionId)).toMatchObject({ ok: true });
+    await expect.poll(() => reports(site).length).toBeGreaterThan(0);
+
+    const dialog = await openConnections(dashboard);
+    const cloud = dialog.getByRole('region', { name: 'xomoni.com' });
+    await expect(cloud).toContainText(SENT.on);
+    await expect(cloud).not.toContainText(SENT.off);
+    const map = dialog.getByRole('img');
+    await expect(map).toContainText('Status and numbers');
+    await expect(map).toHaveAccessibleName(
+      /It sends job status and your daily numbers, and only those, to xomoni\.com\.$/,
+    );
+    await dashboard.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+
+    // Off in Settings: xomoni.com deletes the days, and Connections goes back to job status only.
+    await openPage(dashboard, 'Settings');
+    const numbers = dashboard.getByRole('switch', { name: 'Show my numbers on xomoni.com' });
+    await expect(numbers).toBeChecked();
+    await numbers.click();
+    await expect(numbers).not.toBeChecked();
+    expect(site.stats).toBe(false);
+
+    const again = await openConnections(dashboard);
+    await expect(again.getByRole('region', { name: 'xomoni.com' })).toContainText(SENT.off);
+    await expect(again.getByRole('img')).toContainText('Status only');
   });
 });

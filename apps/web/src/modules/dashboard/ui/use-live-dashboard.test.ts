@@ -333,6 +333,38 @@ describe('useLiveDashboard', () => {
     expect(error).toBe('Couldn’t turn the weekly email off. Try again in a moment.');
   });
 
+  // A failed read is no answer: the numbers may still be on, so it must not read as off (#450).
+  it('says the numbers choice is unknown when it can’t be read, and reads it again when asked', async () => {
+    fake.services.numbers.get.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(true);
+    const { result } = renderHook(() => useLiveDashboard('user-1', INITIAL));
+
+    await waitFor(() => expect(result.current.numbersUnknown).toBe(true));
+    expect(result.current.numbersShown).toBeNull();
+
+    act(() => result.current.readNumbersAgain());
+    await waitFor(() => expect(result.current.numbersShown).toBe(true));
+    expect(result.current.numbersUnknown).toBe(false);
+    expect(fake.services.numbers.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('stays unknown while the choice still can’t be read, and a saved change makes it known', async () => {
+    fake.services.numbers.get.mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useLiveDashboard('user-1', INITIAL));
+    await waitFor(() => expect(result.current.numbersUnknown).toBe(true));
+
+    act(() => result.current.readNumbersAgain());
+    await waitFor(() => expect(fake.services.numbers.get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.numbersUnknown).toBe(true));
+    expect(result.current.numbersShown).toBeNull();
+
+    fake.services.numbers.set.mockResolvedValueOnce(false);
+    await act(async () => {
+      await result.current.showNumbers(false);
+    });
+    expect(result.current.numbersShown).toBe(false);
+    expect(result.current.numbersUnknown).toBe(false);
+  });
+
   it('turns the weekly email off with the numbers, and reads it as off when that read fails', async () => {
     fake.services.weeklyEmail.get.mockResolvedValue(true);
     fake.services.numbers.set.mockResolvedValue(false);

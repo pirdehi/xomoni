@@ -4,6 +4,7 @@ import { cleanup, render, renderHook, screen, waitFor, within } from '@testing-l
 import userEvent from '@testing-library/user-event';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type CloudConnection, getConnection, saveConnection } from '../../src/cloud/connection';
+import { rememberStatsChoice } from '../../src/cloud/daily-report';
 import { kvGet } from '../../src/shared/db';
 import { FORGOTTEN_HERE } from '../../src/cloud/sync';
 import type { PageInfo } from '../../src/shared/messages';
@@ -146,6 +147,78 @@ describe('the sidebar’s Connections panel (#182)', () => {
     expect(within(cloud).getByRole('link', { name: 'Open dashboard' })).toHaveAttribute(
       'href',
       'https://xomoni.com/dashboard#ext=test-extension',
+    );
+  });
+
+  // What reaches xomoni.com, said exactly whether the daily numbers are on or off (ADR-0004, ADR-0026, #450).
+  it('says only job status is sent while the daily numbers are off', async () => {
+    await saveConnection(CONNECTED);
+    const panel = await openPanel();
+
+    const cloud = within(panel).getByRole('region', { name: 'xomoni.com' });
+    expect(
+      await within(cloud).findByText('Only job status is sent: titles, states and counts, never your posts or likes.'),
+    ).toBeInTheDocument();
+    expect(cloud).not.toHaveTextContent(/daily numbers/);
+    expect(within(panel).getByRole('img')).toHaveAccessibleName(
+      /It sends job status, and only that, to xomoni\.com\.$/,
+    );
+    expect(panel).toHaveTextContent('Status only');
+  });
+
+  it('names the daily numbers while they are on, and stops naming them once they are off', async () => {
+    await saveConnection(CONNECTED);
+    await rememberStatsChoice(true);
+    const panel = await openPanel();
+
+    const cloud = within(panel).getByRole('region', { name: 'xomoni.com' });
+    expect(
+      await within(cloud).findByText(
+        'Only job status and your daily numbers are sent: titles, states and counts, never your posts or likes.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(panel).getByRole('img')).toHaveAccessibleName(
+      /It sends job status and your daily numbers, and only those, to xomoni\.com\.$/,
+    );
+    expect(panel).toHaveTextContent('Status and numbers');
+    expect(cloud).not.toHaveTextContent('Only job status is sent:');
+
+    // Turned off elsewhere: the next heartbeat brings it, and the words follow at once.
+    await rememberStatsChoice(false);
+    expect(
+      await within(cloud).findByText('Only job status is sent: titles, states and counts, never your posts or likes.'),
+    ).toBeInTheDocument();
+    expect(panel).toHaveTextContent('Status only');
+  });
+
+  it('names the numbers as a choice before signing in, and as nothing sent while not confirmed', async () => {
+    // A choice left from before can't be sent without a confirmed connection: the words say nothing is.
+    await rememberStatsChoice(true);
+    const off = await openPanel();
+    expect(within(off).getByRole('region', { name: 'xomoni.com' })).toHaveTextContent(
+      'Sign in once on xomoni.com and Xomoni here signs in with you. Only job status is sent, and your daily numbers if you turn them on.',
+    );
+    expect(within(off).getByRole('img')).toHaveAccessibleName(/isn’t connected to xomoni\.com\.$/);
+    cleanup();
+
+    await saveConnection({ ...CONNECTED, confirmed: false });
+    const pending = await openPanel();
+    const cloud = within(pending).getByRole('region', { name: 'xomoni.com' });
+    await waitFor(() => expect(cloud).toHaveTextContent('Nothing is sent until you do.'));
+    expect(cloud).not.toHaveTextContent(/daily numbers/);
+    expect(pending).not.toHaveTextContent('Status and numbers');
+  });
+
+  it('says signing out of xomoni.com stops the daily numbers too, while they are on', async () => {
+    await saveConnection(CONNECTED);
+    await rememberStatsChoice(true);
+    const panel = await openPanel();
+
+    await within(panel).findByText(/Only job status and your daily numbers are sent/);
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Sign out of xomoni.com' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Sign out of xomoni.com?' });
+    expect(confirm).toHaveTextContent(
+      'This browser stops sending job status and your daily numbers to o•••@example.com, and xomoni.com signs out in this browser too.',
     );
   });
 

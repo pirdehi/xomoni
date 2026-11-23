@@ -55,22 +55,28 @@ export function matchesFilter(filter: CleanupFilter, item: Item): boolean {
 /**
  * Inventory items of `accountId` that match the filter, newest effective time first. Reads IndexedDB only;
  * the `[accountId+kind+status+createdAt]` index narrows the range before `matchesFilter` runs.
+ * The range is read in one bulk read and filtered here (#390): Dexie's own filter walks it with a cursor, a row at a
+ * time, which took seconds for the tens of thousands of posts of a heavy X user. The rows are the same. Inside a
+ * transaction of the caller's, it reads in that one.
  */
 export async function findCandidates(accountId: string, filter: CleanupFilter): Promise<Item[]> {
   // A like happens after the post exists, so `before` bounds createdAt for likes
   // too; the lower bound can't, because an old post may have been liked recently.
   const lower = filter.target === 'like' ? 0 : (filter.after ?? 0);
-  const rows = await db.items
-    .where('[accountId+kind+status+createdAt]')
-    .between(
-      [accountId, filter.target, 'present', lower],
-      [accountId, filter.target, 'present', filter.before],
-      true,
-      false,
-    )
-    .filter((item) => matchesFilter(filter, item))
-    .toArray();
-  return rows.sort((a, b) => effectiveTime(b) - effectiveTime(a));
+  // In an explicit transaction: Dexie's live queries keep no copy of the range, which for a heavy X user's likes is
+  // tens of megabytes held as long as Cleanup is open (#390).
+  const rows = await db.transaction('r', db.items, () =>
+    db.items
+      .where('[accountId+kind+status+createdAt]')
+      .between(
+        [accountId, filter.target, 'present', lower],
+        [accountId, filter.target, 'present', filter.before],
+        true,
+        false,
+      )
+      .toArray(),
+  );
+  return rows.filter((item) => matchesFilter(filter, item)).sort((a, b) => effectiveTime(b) - effectiveTime(a));
 }
 
 /** The action that removes items of a cleanup target; likes use `relike` when `ghostLikes` is on. */

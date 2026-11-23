@@ -95,8 +95,8 @@ export function DeleteAccountSection() {
         Delete account
       </h2>
       <p className={s.text}>
-        Removes your Xomoni account, connected browsers and job history from our servers. Your X account and everything
-        stored in the extension stay as they are.
+        Removes your Xomoni account, connected browsers, job history and daily numbers from our servers. Your X account
+        and everything stored in the extension stay as they are.
       </p>
       <Dialog
         open={open}

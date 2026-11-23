@@ -241,6 +241,10 @@ describe('HomePage', () => {
         .map((h) => h.textContent),
     ).toEqual(PRINCIPLES.map((principle) => principle.title));
     for (const { body } of PRINCIPLES) expect(principles).toHaveTextContent(body);
+    // What the servers hold, with the daily numbers on and off (#450).
+    expect(principles).toHaveTextContent(
+      'Our servers hold your account and job status, and your daily numbers only if you turn them on.',
+    );
     expect(
       texts(within(within(safety).getByRole('list', { name: 'On X, Xomoni always' })).getAllByRole('listitem')),
     ).toEqual(ALWAYS);

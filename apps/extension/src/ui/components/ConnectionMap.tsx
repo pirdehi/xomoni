@@ -141,8 +141,21 @@ function Link({ flow, caption, large }: { flow: Flow; caption: string; large: bo
   );
 }
 
-/** What the map says, for people who can't see it. */
-export function describeConnections(x: XLink, cloud: CloudLink): string {
+/**
+ * What a connected browser sends to xomoni.com, in the panel's words: job status, and the daily numbers only while
+ * the account has them on (ADR-0004, ADR-0026). Nothing else leaves the browser, and the words say so in both states.
+ */
+export function sentToWebsite(numbers: boolean): string {
+  return numbers
+    ? 'Only job status and your daily numbers are sent: titles, states and counts, never your posts or likes.'
+    : 'Only job status is sent: titles, states and counts, never your posts or likes.';
+}
+
+/**
+ * What the map says, for people who can't see it. `numbers`: whether the account's daily numbers are on, as this
+ * browser last heard; they travel with the job status only then.
+ */
+export function describeConnections(x: XLink, cloud: CloudLink, numbers = false): string {
   const xPart =
     x === 'signed-in'
       ? 'This browser is signed in to X; your posts are read and cleaned here and stay here.'
@@ -151,7 +164,9 @@ export function describeConnections(x: XLink, cloud: CloudLink): string {
         : 'Xomoni works with the X account this browser is signed in to.';
   const cloudPart =
     cloud === 'connected'
-      ? 'It sends job status, and only that, to xomoni.com.'
+      ? numbers
+        ? 'It sends job status and your daily numbers, and only those, to xomoni.com.'
+        : 'It sends job status, and only that, to xomoni.com.'
       : cloud === 'pending'
         ? 'Its link to xomoni.com is waiting for you.'
         : 'It isn’t connected to xomoni.com.';
@@ -162,28 +177,38 @@ export function describeConnections(x: XLink, cloud: CloudLink): string {
  * How this browser links X and xomoni.com, drawn as three nodes: the X account, Xomoni in this browser, and
  * xomoni.com. Dots flow along a live link, dashes march along one being made, and a missing link is a still dashed
  * line to a faded node. Each line says what crosses it: X's posts stay in the browser; only job status goes to
- * xomoni.com (ADR-0004). X is named in words under a generic person icon, never drawn with its logo or its letter
- * (ADR-0035). Motion stops for people who ask their system for less of it.
+ * xomoni.com, with the daily numbers while `numbers` says they are on (ADR-0004, ADR-0026). X is named in words under
+ * a generic person icon, never drawn with its logo or its letter (ADR-0035). Motion stops for people who ask their
+ * system for less of it.
  */
 export function ConnectionMap({
   x,
   cloud,
+  numbers = false,
   size = 'compact',
 }: {
   x: XLink;
   cloud: CloudLink;
+  /** Whether the account's daily numbers are on, as this browser last heard. */
+  numbers?: boolean;
   size?: 'compact' | 'large';
 }) {
   const s = useStyles();
   const large = size === 'large';
   const disc = (...extra: (string | false)[]) => mergeClasses(s.disc, large && s.large, ...extra);
   const cloudCaption =
-    cloud === 'connected' ? 'Status only' : cloud === 'pending' ? 'Waiting for you' : 'Not connected';
+    cloud === 'connected'
+      ? numbers
+        ? 'Status and numbers'
+        : 'Status only'
+      : cloud === 'pending'
+        ? 'Waiting for you'
+        : 'Not connected';
   return (
     <div
       className={mergeClasses(s.map, large && s.mapLarge)}
       role="img"
-      aria-label={describeConnections(x, cloud)}
+      aria-label={describeConnections(x, cloud, numbers)}
       data-x={x}
       data-cloud={cloud}
     >

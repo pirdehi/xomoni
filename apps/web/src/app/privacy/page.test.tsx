@@ -42,6 +42,20 @@ describe('the privacy policy', () => {
     expect(kept).toHaveTextContent('Xomoni never uploads it.');
   });
 
+  // Exactly what reaches xomoni.com, with the daily numbers on and off (ADR-0004, ADR-0026, #450).
+  it('names the daily numbers among what an account stores, only while on, and nothing else from the extension', () => {
+    render(<PrivacyPage />);
+    expect(screen.getByText(/If you create an account, we store/)).toHaveTextContent(
+      'If you create an account, we store your email address (and name, if you give one), the browsers you connect, summaries of your jobs and, only while you have them on, your daily numbers. Nothing else from the extension reaches us.',
+    );
+    const deleting = screen.getByRole('heading', {
+      level: 2,
+      name: 'Keeping and deleting your data',
+    }).nextElementSibling;
+    expect(deleting).toHaveTextContent('Turning your daily numbers off deletes every day already sent.');
+    expect(deleting).toHaveTextContent('removes your account, browsers, job summaries and daily numbers immediately');
+  });
+
   it('describes both ways to connect a browser, keeping codes and keys only as one-way hashes (ADR-0024)', () => {
     render(<PrivacyPage />);
     const item = screen.getByText('Connected browsers:').closest('li');

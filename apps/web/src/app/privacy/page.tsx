@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Privacy Policy' };
 /** `/privacy`: the privacy policy. */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="November 21, 2026">
+    <LegalPage title="Privacy Policy" updated="November 23, 2026">
       <p>
         Xomoni is a free, open-source tool made by Omid Pirdehi that manages your digital footprint, starting with your
         own X account. It has two parts: a browser extension that does the work on your computer, and this website,
@@ -25,8 +25,9 @@ export default function PrivacyPage() {
         </li>
         <li>An account is optional. Without one, nothing is sent to us at all.</li>
         <li>
-          If you create an account, we store your email address (and name, if you give one), the browsers you connect
-          and summaries of your jobs.
+          If you create an account, we store your email address (and name, if you give one), the browsers you connect,
+          summaries of your jobs and, only while you have them on, your daily numbers. Nothing else from the extension
+          reaches us.
         </li>
         <li>No ads, no selling of data, no tracking or analytics cookies.</li>
         <li>You can delete your account and everything we hold at any time from your account page.</li>
@@ -181,8 +182,9 @@ export default function PrivacyPage() {
       <h2>Keeping and deleting your data</h2>
       <p>
         We keep account data until you delete it. Disconnecting a browser in the dashboard removes that browser and its
-        job summaries. <strong>Delete my Xomoni account</strong> on your account page removes your account, browsers and
-        job summaries immediately, with everything kept for the alert when X warns your account; copies may remain in
+        job summaries. Turning your daily numbers off deletes every day already sent.{' '}
+        <strong>Delete my Xomoni account</strong> on your account page removes your account, browsers, job summaries and
+        daily numbers immediately, with everything kept for the alert when X warns your account; copies may remain in
         our providers’ backups for a short period before they expire. Removing the extension deletes the data it stored
         in your browser.
       </p>

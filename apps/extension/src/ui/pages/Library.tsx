@@ -18,11 +18,13 @@ import {
   ChevronDown16Regular,
   Compose20Regular,
   History20Regular,
+  Play16Regular,
+  Prohibited16Regular,
   TaskListLtr20Regular,
 } from '@fluentui/react-icons';
-import { type ReactNode, useState } from 'react';
-import { createScanJob } from '../../engine/runner';
-import type { Account, ScanTarget } from '../../shared/types';
+import { type ReactNode, useId, useState } from 'react';
+import { ReadAlreadyOpen, cancelReady, createScanJob } from '../../engine/runner';
+import type { Account, Job, JobState, ScanTarget } from '../../shared/types';
 import { ARCHIVE_PAGE_URL } from '../../shared/x-archive';
 import { DownloadCopyDialog } from '../components/DownloadCopy';
 import { ItemBrowser } from '../components/ItemBrowser';
@@ -143,17 +145,34 @@ function Coverage({ status, handle }: { status: CopyStatus; handle: string }) {
   );
 }
 
+/** What the Library says of the read that hasn't ended, by its state (#441): only a running one is under way. */
+function openReadLine(state: JobState): string {
+  if (state === 'queued') return 'A read from X is ready, but hasn’t started.';
+  if (state === 'waiting') return 'A read from X is waiting for you.';
+  if (state === 'paused') return 'A read from X is paused.';
+  if (state === 'blocked') return 'A read from X stopped for safety.';
+  return 'A read from X is under way.';
+}
+
+/** Why *Read one part* is off while a read hasn't ended (#442). */
+const ONE_AT_A_TIME = 'One read at a time: Read one part is off until this read finishes or you cancel it.';
+
 /**
  * How complete Xomoni's copy is, in one card (#185, #203): X's count against what Xomoni has, each source with when it
  * was last read, X's archive as the recommended way to complete it, and reading from X folded under *Other ways*:
- * one job that reads everything a read can reach (`complete`), or one part alone. A read already under way is shown
- * instead of a second one.
+ * one job that reads everything a read can reach (`complete`), or one part alone. A read that hasn't ended is shown
+ * as what it is instead, and no second one can be asked for (#442): a running read leads to Activity, a read left
+ * Ready by *Not now* on the risks can be started or cancelled here (#441), and a paused one or one stopped for safety
+ * leads to its card under Activity, where the risk ladder decides when it may resume.
  */
 function CopyCard({ account, navigate }: { account: Account; navigate: PageProps['navigate'] }) {
   const s = useStyles();
   const status = useCopyStatus(account);
   const run = useRunner();
   const busy = run.status !== 'idle';
+  const reasonId = useId();
+  const open = status?.openRead ?? null;
+  const underWay = open?.state === 'running' || open?.state === 'waiting';
 
   const read = async (target: ScanTarget, title: string) => {
     try {
@@ -161,14 +180,30 @@ function CopyCard({ account, navigate }: { account: Account; navigate: PageProps
       void startJob(job.id);
       navigate('jobs');
     } catch (err) {
-      toast(`The read could not be saved: ${errorMessage(err)}`, 'critical');
+      // Another dashboard tab queued a read since this page drew its buttons (#442).
+      toast(
+        err instanceof ReadAlreadyOpen ? err.message : `The read could not be saved: ${errorMessage(err)}`,
+        'critical',
+      );
+    }
+  };
+  // A read left Ready starts as its card's Start does: through the risks, if they haven't been accepted yet.
+  const startRead = (job: Job) => {
+    void startJob(job.id);
+    navigate('jobs');
+  };
+  const cancelRead = async (job: Job) => {
+    try {
+      await cancelReady(job.id);
+    } catch (err) {
+      toast(`The read could not be cancelled: ${errorMessage(err)}`, 'critical');
     }
   };
 
   const readBefore = !!status && (status.recentAt != null || status.historyAt != null);
   const lastRead = Math.max(status?.recentAt ?? 0, status?.historyAt ?? 0);
-  const readsSummary = status?.openRead
-    ? 'A read from X is under way.'
+  const readsSummary = open
+    ? openReadLine(open.state)
     : readBefore
       ? `Last read from X ${fmtAgo(lastRead)}.`
       : 'Xomoni can also read your account straight from X, while X makes the archive.';
@@ -208,12 +243,13 @@ function CopyCard({ account, navigate }: { account: Account; navigate: PageProps
             Xomoni reads your profile, replies and likes, and X search back to when you joined. It misses old posts
             nobody liked, which only X’s archive has.
           </Caption1>
+          {open && (
+            <Caption1 as="p" id={reasonId} className={s.otherText}>
+              {openReadLine(open.state)} {ONE_AT_A_TIME}
+            </Caption1>
+          )}
           <div className={s.actions}>
-            {status?.openRead ? (
-              <Button variant="primary" icon={<TaskListLtr20Regular />} onClick={() => navigate('jobs')}>
-                See the read under way
-              </Button>
-            ) : (
+            {!open ? (
               <Button
                 variant="primary"
                 icon={readBefore ? <ArrowSync16Regular /> : <ArrowDownload16Regular />}
@@ -222,10 +258,31 @@ function CopyCard({ account, navigate }: { account: Account; navigate: PageProps
               >
                 {readBefore ? 'Read X again' : 'Complete my copy'}
               </Button>
+            ) : open.state === 'queued' ? (
+              <>
+                <Button variant="primary" icon={<Play16Regular />} disabled={busy} onClick={() => startRead(open)}>
+                  Start the read
+                </Button>
+                <Button icon={<Prohibited16Regular />} onClick={() => void cancelRead(open)}>
+                  Cancel the read
+                </Button>
+              </>
+            ) : (
+              <Button variant="primary" icon={<TaskListLtr20Regular />} onClick={() => navigate('jobs')}>
+                {underWay ? 'See the read under way' : 'See the read'}
+              </Button>
             )}
             <Menu>
               <MenuTrigger disableButtonEnhancement>
-                <FluentButton appearance="subtle" icon={<ChevronDown16Regular />} iconPosition="after" disabled={busy}>
+                {/* Off with its reason while a read is open, and still focusable, so the reason is heard (#442). */}
+                <FluentButton
+                  appearance="subtle"
+                  icon={<ChevronDown16Regular />}
+                  iconPosition="after"
+                  disabled={busy && !open}
+                  disabledFocusable={!!open}
+                  aria-describedby={open ? reasonId : undefined}
+                >
                   Read one part
                 </FluentButton>
               </MenuTrigger>

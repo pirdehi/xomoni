@@ -439,7 +439,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [250],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/250-numbers-on-website.md",
       "en": {
         "title": "Show my numbers on xomoni.com",
         "summary": "a switch, off until you turn it on, that sends each day's counts (whole numbers only, no text or ids) for the last 400 days. Turning it off deletes every day already sent."

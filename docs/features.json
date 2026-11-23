@@ -359,7 +359,7 @@
       "status": "shipped",
       "since": "0.3.0",
       "issues": [251],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/251-website-actions.md",
       "en": {
         "title": "Pause and cancel from xomoni.com",
         "summary": "job cards on xomoni.com pause or cancel a job of the same browser at once, and open Xomoni's pages. *Resume* asks you in Xomoni first: the website never starts or resumes work on X."

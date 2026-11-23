@@ -23,6 +23,7 @@ A security release: a Library read (*Complete my copy*, *Read one part*, a date 
 - When you picked a single reply on xomoni.com's Comments page and sent it to Xomoni, Cleanup said *1 replies you picked. Only these are removed* (#345). It now says *1 reply you picked. Only that one is removed*, and the same for one post, repost or like.
 - In *Settings*, a screen reader read the theme's first choice, *System*, as "Theme Light Dark" (#345). The three choices sat inside the theme's label, which lent them its whole text. Now they are a group named *Theme*, and each is read by its own name: System, Light or Dark.
 - When the Library refused an X archive (another account's, a ZIP that isn't X's archive, a file missing or damaged), the reason showed under the drop zone but a screen reader didn't say it (#345). It is now an alert, read out at once, as a refused move file's already was.
+- On xomoni.com, closing the dialog that says why Xomoni can't act from the page (not installed, on a phone, signed in elsewhere, or a job in another browser), with Escape or *Close*, left the keyboard focus nowhere, so someone using the keyboard started again from the top of the page (#345). The focus now goes back to the button that opened it.
 
 ## [0.5.2] - 2026-11-22
 

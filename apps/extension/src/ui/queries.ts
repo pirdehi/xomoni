@@ -259,7 +259,7 @@ export async function copyStatus(account: Account): Promise<CopyStatus> {
 
 /** Live `copyStatus` of an account; undefined while loading. */
 export function useCopyStatus(account: Account): CopyStatus | undefined {
-  return useLiveQuery(() => copyStatus(account), [account.id, account.postsCount, account.profileAt]);
+  return useLiveQuery(async () => await copyStatus(account), [account.id, account.postsCount, account.profileAt]);
 }
 
 /** Where getting X's archive through X's page stands for one account (#186). */
@@ -287,5 +287,5 @@ export async function archiveStatus(accountId: string): Promise<ArchiveStatus> {
 
 /** Live `archiveStatus` of an account; undefined while loading. */
 export function useArchiveStatus(accountId: string): ArchiveStatus | undefined {
-  return useLiveQuery(() => archiveStatus(accountId), [accountId]);
+  return useLiveQuery(async () => await archiveStatus(accountId), [accountId]);
 }

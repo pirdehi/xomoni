@@ -158,7 +158,7 @@ export function ItemBrowser({ accountId, handle }: { accountId: string; handle: 
   const total = counts?.[kind][status] ?? 0;
 
   const rows = useLiveQuery(
-    () => libraryPage({ accountId, kind, status, query, page }),
+    async () => await libraryPage({ accountId, kind, status, query, page }),
     [accountId, kind, status, query, page],
   );
 

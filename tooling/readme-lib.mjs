@@ -34,7 +34,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'store-install',
   'welcome',
   'website-dashboard',
-  'website-analytics',
   'phone-menu',
 ]);
 

@@ -1,9 +1,11 @@
 import 'fake-indexeddb/auto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { localDay } from '../src/shared/daily';
-import { db, itemKey, kvGet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
+import { db, itemKey, kvGet, kvSet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { RuntimeMessage } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
+import { vaultNotificationId } from '../src/shared/notification-ids';
+import { recordImport } from '../src/shared/vault/db';
 import { getConnection, saveConnection } from '../src/cloud/connection';
 import { PAIR_MESSAGE, startWebConnect } from '../src/cloud/web-connect';
 import { markSignedOut } from '../src/shared/session';
@@ -16,6 +18,7 @@ type Sender = { id?: string; origin?: string; url?: string; frameId?: number; ta
 type Listeners = {
   action?: () => void;
   notification?: (id: string) => void;
+  button?: (id: string, index: number) => void;
   installed?: (details: { reason: string }) => void;
   message?: (message: RuntimeMessage, sender: Sender) => unknown;
   external?: (message: unknown, sender: Sender, sendResponse: (answer: unknown) => void) => unknown;
@@ -31,6 +34,8 @@ const EXTENSION_ID = 'xomoni';
 /** An X account id; observations name accounts by X's numeric ids (#145). */
 const X_ME = '1000';
 const WORKER = { id: 7, windowId: 3 };
+/** A day in milliseconds. */
+const DAY_MS = 86_400_000;
 
 /** The listeners the service worker registered when it started. */
 const on: Listeners = {};
@@ -53,7 +58,9 @@ const chrome = {
   },
   notifications: {
     onClicked: { addListener: (listener: Listeners['notification']) => (on.notification = listener) },
+    onButtonClicked: { addListener: (listener: Listeners['button']) => (on.button = listener) },
     clear: vi.fn((): Promise<boolean> => Promise.resolve(true)),
+    create: vi.fn((): Promise<string> => Promise.resolve('')),
   },
   storage: {
     session: { get: vi.fn((): Promise<Record<string, unknown>> => Promise.resolve({})) },
@@ -185,6 +192,23 @@ describe('service worker: notification clicks', () => {
     await vi.waitFor(() => expect(chrome.tabs.create).toHaveBeenCalledWith({ url: DASHBOARD }));
     expect(chrome.notifications.clear).toHaveBeenCalledWith(FINISHED_ID);
     expect(chrome.storage.session.get).not.toHaveBeenCalled();
+  });
+
+  it('opens the Vault page from a vault reminder, and its Not now snoozes the reminder for 7 days (#425)', async () => {
+    on.notification!(vaultNotificationId(X_ME));
+    await vi.waitFor(() => expect(chrome.tabs.create).toHaveBeenCalledWith({ url: `${DASHBOARD}#/vault` }));
+    expect(chrome.notifications.clear).toHaveBeenCalledWith(vaultNotificationId(X_ME));
+
+    on.button!(vaultNotificationId(X_ME), 0);
+    await vi.waitFor(async () =>
+      expect(await kvGet(`vaultSnooze:${X_ME}`, 0)).toBeGreaterThan(Date.now() + 6 * DAY_MS),
+    );
+    // Another notification's buttons, or another button, snooze nothing.
+    await db.kv.clear();
+    on.button!(FINISHED_ID, 0);
+    on.button!(vaultNotificationId(X_ME), 1);
+    await settle();
+    expect(await kvGet(`vaultSnooze:${X_ME}`, null)).toBeNull();
   });
 
   it('brings up the worker window from an “X needs you” notification', async () => {
@@ -471,6 +495,108 @@ describe('service worker: observations from x.com tabs', () => {
       await settle();
       expect(await events()).toEqual([]);
       expect((await db.accounts.get(X_ME))?.verified).toBe(false);
+    });
+  });
+
+  describe('the vault’s reminder when X’s page is seen and no dashboard is open (#425)', () => {
+    const profile = (): RuntimeMessage => ({
+      type: 'profile',
+      profile: {
+        id: X_ME,
+        handle: 'me',
+        name: 'Me',
+        avatar: '',
+        postsCount: 1,
+        likesCount: 1,
+        followers: 1,
+        following: 1,
+        createdAt: Date.UTC(2015, 0, 1),
+        verified: null,
+      },
+    });
+    /** An archive imported `days` ago, made by X that day. */
+    const archiveFrom = (days: number) =>
+      recordImport({
+        accountId: X_ME,
+        source: 'x-archive',
+        fileName: 'twitter.zip',
+        bytes: 1,
+        fingerprint: 'zip:00112233445566778899aabbccddeeff',
+        importedAt: Date.now() - days * DAY_MS,
+        coverFrom: null,
+        coverTo: Date.now() - days * DAY_MS,
+        counts: { read: 1, merged: 1, skipped: 0 },
+        parser: 'x-archive@1',
+        problems: [],
+      });
+    const seen = async () => {
+      on.message!(profile(), FROM_TAB);
+      await vi.waitFor(async () => expect(await db.accounts.get(X_ME)).toBeDefined());
+      await settle();
+      await settle();
+    };
+    const reminders = () =>
+      chrome.notifications.create.mock.calls.filter((call) => (call as unknown[])[0] === vaultNotificationId(X_ME));
+
+    beforeEach(async () => {
+      chrome.notifications.create.mockClear();
+      chrome.runtime.getContexts.mockResolvedValue([]);
+      // Any hour is within active hours for these tests.
+      await kvSet('settings', { activeHours: { enabled: false, start: 8, end: 23 } });
+    });
+
+    it('reminds once a day when the archive is due, with Not now, and never opens X', async () => {
+      await archiveFrom(40);
+      await seen();
+      expect(reminders()).toHaveLength(1);
+      const [, options] = reminders()[0] as unknown as [
+        string,
+        { title: string; message: string; buttons?: { title: string }[] },
+      ];
+      expect(options.title).toBe('Time for a fresh copy of @me’s X files');
+      expect(options.message).toContain('X’s archive is 40 days old');
+      expect(options.buttons).toEqual([{ title: 'Not now' }]);
+      await seen();
+      expect(reminders()).toHaveLength(1);
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
+    });
+
+    it('stays quiet before the archive is due, and while a dashboard is open to remind', async () => {
+      await archiveFrom(10);
+      await seen();
+      expect(reminders()).toHaveLength(0);
+      await db.vaultImports.clear();
+      await archiveFrom(40);
+      chrome.runtime.getContexts.mockResolvedValue([{ documentUrl: `${DASHBOARD}#/home`, tabId: 1, windowId: 1 }]);
+      await seen();
+      expect(reminders()).toHaveLength(0);
+    });
+
+    it('stays quiet when snoozed, turned off, outside active hours, or signed out', async () => {
+      await archiveFrom(40);
+      await kvSet(`vaultSnooze:${X_ME}`, Date.now() + DAY_MS);
+      await seen();
+      await kvSet(`vaultSnooze:${X_ME}`, 0);
+      await kvSet('settings', { vaultReminders: false, activeHours: { enabled: false, start: 8, end: 23 } });
+      await seen();
+      const hour = new Date().getHours();
+      await kvSet('settings', { activeHours: { enabled: true, start: (hour + 2) % 24, end: (hour + 3) % 24 } });
+      await seen();
+      expect(reminders()).toHaveLength(0);
+      await kvSet('settings', { activeHours: { enabled: false, start: 8, end: 23 } });
+      await markSignedOut('me', true);
+      on.message!(profile(), FROM_TAB);
+      await settle();
+      expect(reminders()).toHaveLength(0);
+    });
+
+    it('never breaks when the browser has no notifications to show', async () => {
+      await archiveFrom(40);
+      chrome.notifications.create.mockRejectedValueOnce(new Error('Notifications are off'));
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await seen();
+      expect((await db.accounts.get(X_ME))?.handle).toBe('me');
+      warn.mockRestore();
     });
   });
 

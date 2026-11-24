@@ -418,6 +418,19 @@ describe('Settings page', () => {
       });
     });
 
+    it('reminds of the vault’s files by default, and saves turning it off (#425)', async () => {
+      await renderPage();
+      const reminders = screen.getByRole('switch', { name: /Vault reminders/ });
+      expect(reminders).toBeChecked();
+      expect(reminders).toHaveAccessibleDescription(/at most once a day.*It never opens X or starts anything/);
+
+      await userEvent.click(reminders);
+
+      await waitForStored((s) => {
+        expect(s.vaultReminders).toBe(false);
+      });
+    });
+
     it('keeps the failure limit, under Advanced, between 1 and 3 (#198)', async () => {
       await renderPage();
       expect(screen.getByText('A job pauses after 2 failed actions in a row.')).toBeInTheDocument();

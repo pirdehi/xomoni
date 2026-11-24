@@ -8,6 +8,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 - **X's archive, known when it comes again** (#424). Each import of X's archive in the Library is now kept in Xomoni's import ledger, on your computer only, with the date X made the archive, and it goes on your account's timeline. Drop the same ZIP again and Xomoni knows it: nothing is read or written twice. The Library's words, its limits and its checks, another account's archive first of all, are the same as before.
 
+### Added
+
+- **A reminder to keep your X files fresh** (#425). Once X's archive in your vault is 30 days old, or X's analytics export 60, Xomoni reminds you on this computer, at most once a day and only within your active hours. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off. It never opens X or starts anything, and asks for no new permission.
+
 ## [0.6.0] - 2026-11-24
 
 New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.

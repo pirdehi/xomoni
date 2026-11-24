@@ -51,6 +51,7 @@ import { Button, OutsideModals, type Tone, useModalHost } from './components/ui'
 import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
+import { VaultFollowUp } from './components/VaultFollowUp';
 import { ConsentDialog } from './components/ConsentDialog';
 import { PageBoundary } from './components/PageBoundary';
 import { SignOutDialog } from './components/SignOutDialog';
@@ -322,6 +323,7 @@ export function App() {
       <SignOutDialog />
       <WebsiteRequests />
       {account && <ArchiveFollowUp account={account} libraryOpen={page === 'library'} />}
+      {account && <VaultFollowUp account={account} />}
     </div>
   );
 }

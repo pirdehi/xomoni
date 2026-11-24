@@ -71,6 +71,9 @@ describe('the manifest locks the extension down (#143)', () => {
       'power',
       'downloads',
     ]);
+    // The vault's reminder (#425) uses the notifications Xomoni has: no `alarms`, no new permission.
+    expect(manifest.permissions).not.toContain('alarms');
+    expect(manifest.optional_permissions ?? []).not.toContain('alarms');
   });
 
   it('uses the downloads permission only to choose where X’s archive is saved', () => {

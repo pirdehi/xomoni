@@ -280,13 +280,16 @@ describe('ItemBrowser', () => {
       );
       render(<ItemBrowser accountId={ME} handle="me" />);
       await waitFor(() => expect(bodyRows()).toHaveLength(25));
+      // The count comes a moment after the rows (#397): page 2 is there to go to once it has.
+      expect(await screen.findByText('30 items · page 1 of 2')).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Next' }));
       expect(await screen.findByText('30 items · page 2 of 2')).toBeInTheDocument();
 
       await userEvent.click(kindTab('Likes'));
       expect(await screen.findByText('0 items · page 1 of 1')).toBeInTheDocument();
       await userEvent.click(kindTab('Posts'));
-      expect(await screen.findByText('30 items · page 1 of 2', {}, { timeout: 500 })).toBeInTheDocument();
+      expect(await screen.findByText('30 items · page 1 of 2')).toBeInTheDocument();
+      expect(screen.queryByText('30 items · page 2 of 2')).not.toBeInTheDocument();
     });
 
     it('exports every item of the kind and status shown, not just the page', async () => {

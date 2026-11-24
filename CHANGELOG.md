@@ -50,7 +50,9 @@ New in this version: Watch follows what is said about you, an email when X warns
   - How your reach spreads, as a chart or a table, and your 10 most and least seen posts.
   - A post read before it was 7 days old is *still growing*: it is shown, but not compared. A post without a number is left out, never guessed.
   - *Comparisons*: your posts with a link against posts without, with photos or videos against text only, and with Premium against the 8 weeks before it. Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, the ratio with its 95% interval, and, under *How this is computed*, what can mislead it. Below 15 posts a side, it says *not enough data* and nothing else. A table gives your usual reach by day of the week and time of day. They show what goes together, never why.
-  - The last 30 days are free; 90 days and everything, and the comparisons, are part of Plus, open as a preview until sales start.
+  - *X's labels*: each month of X's *Under the hood* report you import, with each label by X's own name, the posts it touched or that it was on the account, and what it means when a public source says so, with that source and the day it was checked. A month without labels says *No labels that month*, never "clean".
+  - *Suspected posts*: for a label X applied to n posts in a month, that month's posts furthest below your usual (under half of it, at most three for each post X counts, ten at most), each with why it was picked, under a box that can't be hidden: *This is a guess. X doesn't say which posts got a label.* You can dismiss a guess; nothing leads to a cleanup.
+  - The last 30 days are free; 90 days and everything, the comparisons and the suspected posts are part of Plus, open as a preview until sales start.
 
   Reach reads only what Xomoni already keeps: it never searches X or opens a page to measure reach, and nothing leaves your computer.
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).

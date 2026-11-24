@@ -100,6 +100,9 @@ describe('X’s Under the hood months in the vault (#428, ADR-0043, ADR-0045)', 
         ['2026-07', undefined],
       ]);
       expect(await labelMonths('2000')).toEqual([]);
+      // A row damaged on the computer is left out, and the rest still read.
+      await db.labelMonths.put({ ...row({ month: '2026-05' }), labels: 'broken' as never });
+      expect((await labelMonths(ME.id)).map((m) => m.month)).toEqual(['2026-08', '2026-07']);
     });
 
     it('puts a new or larger label on the timeline once, in Xomoni’s words, at the month’s end', async () => {

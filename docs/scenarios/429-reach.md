@@ -1,6 +1,6 @@
 ---
 task: 429
-title: Reach: each post's reach, its usual, how it spreads, and comparisons
+title: Reach: each post's reach, its usual, how it spreads, comparisons, X's labels and suspected posts
 feature: reach-diagnosis
 ---
 
@@ -9,6 +9,8 @@ feature: reach-diagnosis
 The Reach page (#429, [ADR-0045](../adr/0045-reach-diagnosis-guesses-labelled-as-guesses.md)) shows how many times X says each of the person's posts and replies was seen, from X's own numbers, against their usual: the median of their posts of the same kind (text, a link, photos or videos, a reply) in the 8 weeks before, once there are 15 of them. A post read before it was 7 days old is still growing, and isn't compared. The numbers here are the views X shows on the person's own profile, which Xomoni keeps as it already does for the daily numbers (#249); X's analytics export joins them once the vault reads it (#425). Xomoni never asks X for anything to measure reach. The last 30 days are free; longer periods are part of Plus, open as a preview until sales start (ADR-0042).
 
 Under *Comparisons* (S429-31 on), three cards compare the person's own posts (not replies) read at least 7 days after they were made: posts with a link out of X against posts without, posts with photos or videos against text only, and posts with Premium against the 8 weeks before it (leaving out the 7 days after it began). Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, and, with 15 posts a side, the ratio and its 95% interval from 2,000 resamples, the same every time for the same posts. *How this is computed* says how, and what can mislead it: when the posts were made, their subjects, the followers, and their ages. A table gives the usual reach by day of the week and time of day. They show what goes together, never why, and are part of Plus, in preview. Until the vault keeps when the account got Premium (#425), the Premium card says it can't compare yet; the date the person gives comes with it.
+
+*X's labels* (S429-61 on) shows each month of X's *Under the hood* report the person imported: each label with X's own name, the posts it touched or that it was on the account, and what it means when a public source says so (with the source and the day it was checked), X's own words from the file, or that X didn't explain it. A month without labels says *No labels that month*, never "clean"; a month the account wasn't eligible for says so. *Suspected posts* (S429-81 on, Plus, in preview) names, for each label X applied to n posts in a month, that month's posts furthest below their usual, under half of it, at most min(3n, 10), each with its reasons, under a box that can't be hidden: *This is a guess. X doesn't say which posts got a label.* The person can dismiss a guess; nothing leads to a cleanup. Until the Vault page is on main (#425), these tests put the months Xomoni keeps straight into its database, as an import of X's file leaves them.
 
 The tests run the built extension in a real browser on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), never the real X: the made-up `@xomoni_fixture`, whose profile X shows with the posts each test gives it, with their views, links and photos. Run them with no Supabase:
 
@@ -393,3 +395,297 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When axe-core checks the page
 - Then it finds no serious or critical violation
 - Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-61 · happy
+
+- Given a month of X's report with SPAM_HIGH_RECALL on 2 of 40 posts
+- When the person opens Reach
+- Then X's labels show the month, the label by X's name, 2 of 40, and what it means, with its source opening in a new tab
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-62 · happy
+
+- Given X's reports for August and September
+- When the person opens Reach
+- Then both months show, September first, each with its count
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-63 · happy
+
+- Given a month with a label on the account
+- When the person reads it
+- Then the label says it was on the account, with no post count
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-64 · happy
+
+- Given a month whose report lists orders from a government
+- When the person reads it
+- Then the orders are listed by country
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-65 · invalid
+
+- Given a label no public source explains
+- When the person reads it
+- Then it shows with X's name, and that X didn't explain this label
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-66 · invalid
+
+- Given a label X explained in its own file
+- When the person reads it
+- Then X's own words show, marked as X's
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-67 · invalid
+
+- Given a month the account wasn't eligible for
+- When the person reads it
+- Then it says X says the account wasn't eligible, with X's condition of 10 or more posts in the month before
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-68 · empty
+
+- Given no report imported yet
+- When the person opens Reach
+- Then X's labels say there is no Under the hood report yet, and the three steps to get one, with X's page as a link
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-69 · empty
+
+- Given a month in which X applied no label to 40 posts
+- When the person reads it
+- Then it says No labels that month, across 40 posts, and nowhere that the account is clean
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-70 · security
+
+- Given a label whose name is markup
+- When the person reads it
+- Then the name shows as text, and nothing of it runs
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-71 · security
+
+- Given a month of labels
+- When the person opens Reach again
+- Then the page sends no request at all
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-72 · security
+
+- Given labels X explained and labels it didn't, and a month not eligible
+- When the person reads them
+- Then no word of Xomoni's says a post was banned, penalized, suppressed or throttled
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-73 · security
+
+- Given a month of another X account's kept on this computer
+- When the person opens Reach for their own account
+- Then only their own month shows
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-74 · error
+
+- Given a month damaged on the computer, and a sound one
+- When the person opens Reach
+- Then the damaged month is left out, and the sound one shows
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-75 · error
+
+- Given no report yet, and X's Under the hood page out of reach
+- When the person follows the link to it
+- Then it fails in its own tab, and Reach stays as it was
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-76 · error
+
+- Given a report that left the month's post count out
+- When the person reads its label
+- Then the label shows its own count alone
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-77 · a11y
+
+- Given a month of labels
+- When the person reads it with a screen reader, or tabs to its source
+- Then the month is a region named by the month, its labels a table named for it, and the source's link is reached with Tab
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-78 · a11y
+
+- Given months with labels and a month not eligible, in dark mode
+- When axe-core checks the page
+- Then it finds no serious or critical violation
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-79 · browser
+
+- Given a month of labels
+- When the dashboard is as wide as a phone
+- Then the table stays in its card, and the page doesn't scroll sideways
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-80 · persistence
+
+- Given a month of labels
+- When the person reloads the dashboard
+- Then the month is still there
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-81 · happy
+
+- Given a month X labelled, with one of its posts seen 100 times against a usual of about 1,000
+- When the person opens Reach
+- Then Suspected posts shows the guess box and that post, with why it was picked and a low or medium confidence
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-82 · happy
+
+- Given a guess
+- When the person looks for the post
+- Then the guess links to the post on X
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-83 · happy
+
+- Given a label on 1 post, and five posts far below usual that month
+- When the person opens Reach
+- Then it says X says 1 post, and names at most three guesses
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-84 · happy
+
+- Given two labels in one month
+- When the person opens Reach
+- Then each label gets its own guesses
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-85 · invalid
+
+- Given the month's lowest post seen a bit over half its usual
+- When the person opens Reach
+- Then no post is a guess, and it says no post was seen less than half as much as usual
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-86 · invalid
+
+- Given a post X showed 3 days after it was made, seen 10 times
+- When the person opens Reach
+- Then it is never a guess: it may still grow
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-87 · invalid
+
+- Given a month whose only label was on the account
+- When the person opens Reach
+- Then no post is named, and it says X applied the label to the account, not to posts
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-88 · empty
+
+- Given posts with views, and no report imported
+- When the person opens Reach
+- Then no post is named, and it says Xomoni never guesses without X's report, under the guess box
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-89 · empty
+
+- Given a report with no label on posts
+- When the person opens Reach
+- Then it says there is nothing to guess
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-90 · error
+
+- Given a labelled month whose posts X showed without views
+- When the person opens Reach, with everything
+- Then it says Xomoni has no impressions or views for this month's posts
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-91 · error
+
+- Given X refused the profile with its rate limit, and a labelled month imported
+- When the person opens Reach
+- Then no guess is made, and X's labels still show
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-92 · error
+
+- Given Reach open on a labelled month
+- When X answers the profile 3 seconds late with a post far below usual
+- Then the guess appears once X answers, without a reload
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-93 · security
+
+- Given a guess
+- When the person dismisses it
+- Then the guess box stays: nothing hides it
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-94 · security
+
+- Given guesses
+- When the person reads them and dismisses one
+- Then nothing in them leads to a cleanup, their only links go to X, and dismissing sends no request
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-95 · security
+
+- Given someone else's post seen 5 times, shown on the person's profile
+- When the person opens Reach
+- Then it is never a guess
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-96 · cancel
+
+- Given three guesses for a label on 1 post, and a fourth post as low
+- When the person dismisses one
+- Then two are left, and the fourth doesn't take its place
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-97 · cancel
+
+- Given a dismissed guess
+- When the person presses Show the 1 dismissed again
+- Then the guess comes back
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-98 · a11y
+
+- Given a guess
+- When the person reaches Dismiss with Tab only and presses Enter
+- Then the guess is dismissed
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-99 · a11y
+
+- Given guesses, in light mode
+- When axe-core checks the page
+- Then it finds no serious or critical violation
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-100 · a11y
+
+- Given guesses, in dark mode
+- When axe-core checks the page
+- Then it finds no serious or critical violation
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-101 · persistence
+
+- Given a dismissed guess
+- When the person reloads the dashboard
+- Then it stays dismissed
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-102 · browser
+
+- Given a guess
+- When the dashboard is as wide as a phone
+- Then the guesses fit, and the page doesn't scroll sideways
+- Test: apps/web/e2e/extension/reach-labels.spec.ts

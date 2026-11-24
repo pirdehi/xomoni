@@ -44,6 +44,7 @@ import {
   pullRequestBody,
   readFileAt,
   summarizeCompare,
+  treeDiff,
   unpatchedParameterFiles,
 } from './algorithm-digest-lib.mjs';
 
@@ -389,6 +390,88 @@ describe('summarizing a comparison', () => {
       { ...comparison(), files: [{}] },
     ])
       assert.throws(() => summarizeCompare(bad), DigestError, JSON.stringify(bad));
+  });
+});
+
+describe('every file of a range, when GitHub’s list stops at 300', () => {
+  /** A tree as GitHub's API answers it, from path → blob id. */
+  const tree = (blobs, fields = {}) => ({
+    sha: 'x',
+    truncated: false,
+    tree: [
+      { path: 'home-mixer', type: 'tree', sha: 't1' },
+      ...Object.entries(blobs).map(([path, sha]) => ({ path, type: 'blob', sha })),
+    ],
+    ...fields,
+  });
+
+  it('lists what was added, changed and removed, by path, and nothing that stayed', () => {
+    const before = tree({ 'b.rs': '1', 'a.rs': '1', 'gone.rs': '1' });
+    const after = tree({ 'a.rs': '2', 'b.rs': '1', 'new.rs': '1' });
+    assert.deepEqual(treeDiff(before, after), [
+      { filename: 'a.rs', status: 'modified' },
+      { filename: 'gone.rs', status: 'removed' },
+      { filename: 'new.rs', status: 'added' },
+    ]);
+    assert.deepEqual(treeDiff(before, before), []);
+  });
+
+  it('gives up on a tree GitHub cut short, or one not shaped as a tree', () => {
+    const ok = tree({ 'a.rs': '1' });
+    assert.equal(treeDiff(tree({}, { truncated: true }), ok), null);
+    assert.equal(treeDiff(ok, { tree: [] }), null);
+    assert.equal(treeDiff(ok, null), null);
+    assert.equal(treeDiff(ok, tree({}, { tree: [{ type: 'blob', path: 7, sha: '1' }] })), null);
+  });
+
+  it('drafts from both trees when the comparison lists 300 files, so no area is left out', async () => {
+    const listed = Array.from({ length: COMPARE_FILE_CAP }, (_, i) =>
+      file(`abuse-x/f${String(i).padStart(3, '0')}.rs`),
+    );
+    const before = Object.fromEntries(listed.map((f) => [f.filename, '1']));
+    const after = { ...Object.fromEntries(listed.map((f) => [f.filename, '2'])), 'home-mixer/scorers/late.rs': '1' };
+    const store = lastMonth();
+    const { fetchFn, calls } = fakeGitHub(
+      usualRoutes({
+        [`compare/${BASE}...${HEAD}`]: answer(200, comparison({ files: listed })),
+        [`git/trees/${BASE}?recursive=1`]: answer(200, tree(before)),
+        [`git/trees/${HEAD}?recursive=1`]: answer(200, tree(after)),
+      }),
+    );
+    const { digest: d } = await run({ fetch: fetchFn, store });
+    assert.equal(d.files, COMPARE_FILE_CAP + 1);
+    assert.equal(d.filesCapped, false);
+    assert.deepEqual(
+      d.areas.map((a) => [a.area, a.files]),
+      [
+        ['ranking', 1],
+        ['filters', COMPARE_FILE_CAP],
+      ],
+    );
+    assert.ok(calls.every((c) => c.url.startsWith(API)));
+  });
+
+  it('keeps GitHub’s 300, saying so, when a tree is cut short', async () => {
+    const listed = Array.from({ length: COMPARE_FILE_CAP }, (_, i) => file(`docs/f${i}.md`));
+    const routes = usualRoutes({
+      [`compare/${BASE}...${HEAD}`]: answer(200, comparison({ files: listed })),
+      [`git/trees/${BASE}?recursive=1`]: answer(200, tree({}, { truncated: true })),
+      [`git/trees/${HEAD}?recursive=1`]: answer(200, tree({})),
+    });
+    const { digest: d } = await run({ fetch: fakeGitHub(routes).fetchFn, store: lastMonth() });
+    assert.equal(d.filesCapped, true);
+    assert.equal(d.files, COMPARE_FILE_CAP);
+  });
+
+  it('writes nothing when a tree can’t be read', async () => {
+    const listed = Array.from({ length: COMPARE_FILE_CAP }, (_, i) => file(`docs/f${i}.md`));
+    const store = lastMonth();
+    const routes = usualRoutes({
+      [`compare/${BASE}...${HEAD}`]: answer(200, comparison({ files: listed })),
+      [`git/trees/${BASE}?recursive=1`]: answer(500, {}),
+    });
+    await assert.rejects(run({ fetch: fakeGitHub(routes).fetchFn, store }), /answered 500 for git\/trees/);
+    assert.deepEqual(store.writes, []);
   });
 });
 

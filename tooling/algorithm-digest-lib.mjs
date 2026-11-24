@@ -2,7 +2,8 @@
 // from its command line so tooling/algorithm-digest.test.mjs can test them with a fake GitHub.
 //
 // The digest is made from public code only: X's repository `xai-org/x-algorithm`, read through GitHub's public REST
-// API. It reads the newest commit and the comparison between the last digested commit and it, sorts the changed files
+// API. It reads the newest commit and the comparison between the last digested commit and it (and both commits' trees
+// when GitHub's comparison stops at 300 files, and parameter files it gives no patch for), sorts the changed files
 // into areas, lists the parameters whose lines changed, and writes a draft (`status: "draft"`) for a maintainer to
 // review, write up in plain English and publish. No X data, no Xomoni user's data, no cookie and no analytics take part.
 //
@@ -188,8 +189,9 @@ const COMPARE_STATUSES = new Set(['ahead', 'behind', 'identical', 'diverged']);
  * of their names), the parameters that changed (up to 50, sorted, with how many in all; `extraNames` adds those read
  * from the files GitHub gave no patch for) and the distinct commit messages (up to 20, in order). Throws a
  * `DigestError` for an answer not shaped as GitHub's.
+ * `complete` says the file list is whole, from `treeDiff`, rather than GitHub's, which stops at 300.
  */
-export function summarizeCompare(json, extraNames = []) {
+export function summarizeCompare(json, extraNames = [], { complete = false } = {}) {
   if (!json || typeof json !== 'object') throw new DigestError('GitHub’s comparison is not an object.');
   const { status, total_commits: commits, files = [], commits: list = [] } = json;
   if (!COMPARE_STATUSES.has(status)) throw new DigestError(`GitHub’s comparison has an unknown status: ${status}.`);
@@ -224,7 +226,7 @@ export function summarizeCompare(json, extraNames = []) {
     status,
     commits,
     files: files.length,
-    filesCapped: files.length >= COMPARE_FILE_CAP,
+    filesCapped: !complete && files.length >= COMPARE_FILE_CAP,
     areas,
     parameters: names.slice(0, LIMITS.parameters),
     parameterCount: names.length,
@@ -298,6 +300,35 @@ export function changedParameters(before, after, filename) {
   const a = before == null ? new Map() : definitions(before, filename);
   const b = after == null ? new Map() : definitions(after, filename);
   return [...new Set([...a.keys(), ...b.keys()])].filter((name) => a.get(name) !== b.get(name)).sort();
+}
+
+/**
+ * Every file that differs between two trees of the repository (`GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1`),
+ * as a comparison lists files: `{ filename, status }`, added, removed or modified, sorted by path, with no patch. Used
+ * when GitHub's comparison stops at 300 files, so a digest names every area the range touched. Null when either tree
+ * is cut short by GitHub (`truncated`) or isn't shaped as one: the comparison's own list is kept then.
+ */
+export function treeDiff(before, after) {
+  const blobs = (tree) => {
+    if (!tree || tree.truncated !== false || !Array.isArray(tree.tree)) return null;
+    const map = new Map();
+    for (const entry of tree.tree) {
+      if (entry?.type !== 'blob') continue;
+      if (typeof entry.path !== 'string' || typeof entry.sha !== 'string') return null;
+      map.set(entry.path, entry.sha);
+    }
+    return map;
+  };
+  const a = blobs(before);
+  const b = blobs(after);
+  if (!a || !b) return null;
+  const files = [];
+  for (const [path, sha] of b) {
+    if (!a.has(path)) files.push({ filename: path, status: 'added' });
+    else if (a.get(path) !== sha) files.push({ filename: path, status: 'modified' });
+  }
+  for (const path of a.keys()) if (!b.has(path)) files.push({ filename: path, status: 'removed' });
+  return files.sort((x, y) => (x.filename < y.filename ? -1 : 1));
 }
 
 /** A month as a digest names it: `yyyy-mm`. */
@@ -577,14 +608,25 @@ export async function draft({ options, token, fetch: fetchFn, store, now }) {
   if (!from) throw new DigestError('There is no digest yet to start from: pass --from <commit>.');
   const head = await commitOf(fetchFn, token, options.to);
   if (head.sha === from) return { changed: false, reason: `No new commit in ${DIGEST_REPO} since ${from}.` };
-  const json = await askGitHub(fetchFn, token, `compare/${from}...${head.sha}`);
+  let json = await askGitHub(fetchFn, token, `compare/${from}...${head.sha}`);
+  // GitHub lists 300 files at most, alphabetically, which can leave whole areas out: the two trees name them all.
+  let complete = false;
+  if (Array.isArray(json?.files) && json.files.length >= COMPARE_FILE_CAP) {
+    const before = await askGitHub(fetchFn, token, `git/trees/${from}?recursive=1`);
+    const after = await askGitHub(fetchFn, token, `git/trees/${head.sha}?recursive=1`);
+    const files = treeDiff(before, after);
+    if (files) {
+      json = { ...json, files };
+      complete = true;
+    }
+  }
   const extra = [];
   for (const file of unpatchedParameterFiles(json)) {
     const before = file.before ? await readFileAt(fetchFn, token, file.before, from) : null;
     const after = file.after ? await readFileAt(fetchFn, token, file.after, head.sha) : null;
     extra.push(...changedParameters(before, after, file.path));
   }
-  const compare = summarizeCompare(json, extra);
+  const compare = summarizeCompare(json, extra, { complete });
   if (compare.status === 'identical' || compare.commits === 0)
     return { changed: false, reason: `No new commit in ${DIGEST_REPO} since ${from}.` };
   if (compare.status !== 'ahead')

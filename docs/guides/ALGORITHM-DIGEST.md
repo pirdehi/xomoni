@@ -8,6 +8,7 @@ On the 20th of each month, [`algorithm-digest.yml`](../../.github/workflows/algo
 
 - the newest commit on its default branch;
 - the comparison from the commit the last digest ended at to it;
+- when the comparison lists 300 files, GitHub's limit, the two commits' trees, so the draft names every file that changed;
 - for parameter files GitHub shows no patch for, the file at both ends.
 
 When something changed, it writes a draft to `apps/web/src/modules/algorithm/data/<yyyy-mm>.json`, rewrites `data/index.ts`, and opens a pull request named *Algorithm digest for yyyy-mm: draft for review*. The draft holds:
@@ -15,7 +16,7 @@ When something changed, it writes a draft to `apps/web/src/modules/algorithm/dat
 | Field | What it is |
 | --- | --- |
 | `from`, `to`, `toDate` | The commit range, and the day of its last commit |
-| `commits`, `files`, `filesCapped` | How many commits and files changed; GitHub lists 300 files at most, and `filesCapped` says when it stopped there |
+| `commits`, `files`, `filesCapped` | How many commits and files changed. GitHub's comparison lists 300 files at most; past that the two trees give the whole list, and `filesCapped` is true only when even they couldn't (a tree too large for GitHub to send) |
 | `areas` | Each area the range touched (ranking, filters, candidate sources, ads blending, content understanding, parameters, docs, other), with how many files and up to 10 of their names |
 | `parameters`, `parameterCount` | Up to 50 names of parameters whose definition changed, and how many in all |
 | `messages` | Up to 20 distinct commit messages, first line only |

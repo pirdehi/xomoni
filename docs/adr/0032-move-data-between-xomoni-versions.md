@@ -84,10 +84,31 @@ Built in [#300](https://github.com/pirdehi/xomoni/issues/300).
 
 - People can move to the fixed id or the store's version without losing their copy, their history or the safety state that keeps their X account within its limits.
 - The file holds post texts and others' replies in plain JSON. It is as private as the person keeps it; Xomoni says so and never sends it.
-- A new table, or a new `kv` value worth moving, needs a decision here and a raise of `MOVE_VERSION` if the shape changes. The test that names every table enforces the first part.
+- A new table, or a new `kv` value worth moving, needs a decision here and a raise of `MOVE_VERSION` if the shape changes. The test that names every table enforces the first part. A vault table is the exception: it registers in `VAULT_MOVE_TABLES` and keeps the version (amendment of 2026-11-24).
 - A file from an older Xomoni's *Export everything* (0.4 and older) can't be imported. The Xomoni being left must be updated to a version with this export first. The plan's phase 4 ships both together.
 - A crafted file that passes the checks can add records. It can only make Xomoni slower: more page loads, log lines or risk events counted, a lower view cap. It can't make Xomoni faster, lift a stop, give consent or start a job.
 - A very large account takes a while to export and import, in the dashboard's memory. The 256 MB limit is far above real accounts. A file above it is refused before it is read.
+
+## Amendment (2026-11-24, #424): version 2 carries the vault
+
+The vault ([ADR-0043](0043-the-vault-x-files-kept-on-the-computer.md)) adds four tables in Dexie version 8: the import ledger (`vaultImports`), X's analytics of each post and each day (`analyticsPosts`, `analyticsDays`) and the account's timeline (`accountEvents`). Left out of the file, they would be lost in a move; added as tables every file must hold, every later vault table would raise the version again.
+
+1. **`MOVE_VERSION` is 2.** The file holds the core tables of version 1, then the vault's (`VAULT_TABLE_NAMES`), without auto-increment numbers.
+2. **Version 1 still imports.** A Xomoni reads every version from `OLDEST_MOVE_VERSION` (1) to its own. A version 1 file has no vault tables, so they read as empty. One that holds a vault table was put together by hand, and is refused as an unknown table. A newer version still asks the person to update.
+3. **A registry of the vault's tables** (`VAULT_MOVE_TABLES`). Each one names:
+   - its check, the vault's own (`vault/records.ts`): X ids, whole numbers from 0 to 10¹², days that are real and not in the future, kinds and sources from closed lists, words of at most 500 characters, refs that carry no markup, and fingerprints of the form `sha256:` or `zip:` and 16 to 64 hex digits;
+   - its cap (`MOVE_LIMITS`): 10,000 ledger rows, 200,000 events, 20,000 days and 1,000,000 posts;
+   - the key no two records may share (none for the timeline, whose events may repeat);
+   - how the export reads it, all of it or one account's;
+   - how the import merges it.
+
+   A vault table a version 2 file leaves out reads as empty. A feature that adds a vault table registers it here, and the version stays at 2.
+4. **How the vault merges.** Nothing is ever deleted, and nothing is lowered:
+   - **the ledger** is joined by id, and a row already here is kept as it is;
+   - **a post's analytics** keep the highest of each number, since X's counts only grow, with the newer "as of" date;
+   - **a day's analytics** take the newer import's numbers, and keep the other's where it names none;
+   - **the timeline** gains the events it doesn't have, matched on account, kind, time and ref, so importing a file twice adds nothing.
+5. **The rest is unchanged:** the checksum, one transaction under the runner's lock, and a refused file writes nothing. The import's result, kept until the person dismisses it, reads a result kept before version 2 as nothing added to the vault.
 
 ## Alternatives considered
 

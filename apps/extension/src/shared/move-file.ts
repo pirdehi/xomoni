@@ -7,9 +7,9 @@
 // their fields, kinds and states are ones Xomoni knows, times are not far in the future, texts and lists have a size
 // limit. A field an older Xomoni didn't write yet gets the value Xomoni gives it today; a field that is there in the
 // wrong shape makes the record broken, and a broken record makes the whole file refused. Pure, apart from the SHA-256
-// of the Web Crypto API.
+// of the Web Crypto API and the vault's tables, which `VAULT_MOVE_TABLES` reads and merges (version 2, #424).
 import type { DailyStats } from './daily';
-import { type ReadUse, itemKey } from './db';
+import { type ReadUse, db, itemKey } from './db';
 import type { JobHealth, HealthSignal, SampleTally } from './health';
 import { isXId } from './ids';
 import { AVATAR_URL } from './inbound';
@@ -39,6 +39,9 @@ import type {
   SampleCheck,
   ScanTarget,
 } from './types';
+import { type MergeResult, mergeAnalyticsDays, mergeAnalyticsPosts } from './vault/db';
+import { accountEventRecord, analyticsDayRecord, analyticsPostRecord, vaultImportRecord } from './vault/records';
+import type { AccountEvent, AnalyticsDay, AnalyticsPost, VaultImport } from './vault/types';
 import { READY_TABS, type ReadyTab, type WatchResult, type WatchTab } from './watch';
 import type { ArchiveMode, ArchiveRequest } from './x-archive';
 import type { ViewCap } from './x-limits';
@@ -48,10 +51,15 @@ import { WATCHED_OPS } from './x-operations';
 export const MOVE_FORMAT = 'xomoni-export';
 
 /**
- * The version of the file's shape. Raise it when a table or a field is added or changes meaning: a Xomoni reads only
- * its own version, and tells the person to update when a file is newer.
+ * The version of the file's shape. Version 2 carries the vault (ADR-0043, #424). Raise it when a field changes meaning
+ * or a table that must be there is added: a Xomoni reads its own version and the older ones from
+ * `OLDEST_MOVE_VERSION`, and tells the person to update when a file is newer. A vault table added through
+ * `VAULT_MOVE_TABLES` keeps the version: a file without it holds none of it.
  */
-export const MOVE_VERSION = 1;
+export const MOVE_VERSION = 2;
+
+/** The oldest version a Xomoni still imports: version 1, which has no vault tables (they read as empty). */
+export const OLDEST_MOVE_VERSION = 1;
 
 /**
  * The largest file an import reads: 256 MB, read before anything else. A large account (a hundred thousand posts and
@@ -59,11 +67,8 @@ export const MOVE_VERSION = 1;
  */
 export const MAX_MOVE_BYTES = 256 * 1024 * 1024;
 
-/**
- * The tables a move carries, in the file's order. Together with `LEFT_OUT_TABLES` they name every table of the
- * database, which a test checks, so a table added later has to be decided on.
- */
-export const MOVE_TABLES = [
+/** The tables every move file holds, version 1's, in the file's order. */
+export const CORE_MOVE_TABLES = [
   'accounts',
   'items',
   'jobs',
@@ -77,18 +82,32 @@ export const MOVE_TABLES = [
   'kv',
 ] as const;
 
+/**
+ * The vault's tables (ADR-0043), in the file's order after the core ones. Version 2 carries them; a file that leaves
+ * one out holds none of it, so a feature registers its own table here (and in `VAULT_MOVE_TABLES`) without raising
+ * the version again.
+ */
+export const VAULT_TABLE_NAMES = ['vaultImports', 'analyticsPosts', 'analyticsDays', 'accountEvents'] as const;
+
+/**
+ * The tables a move carries, in the file's order. Together with `LEFT_OUT_TABLES` they name every table of the
+ * database, which a test checks, so a table added later has to be decided on.
+ */
+export const MOVE_TABLES = [...CORE_MOVE_TABLES, ...VAULT_TABLE_NAMES] as const;
+
 /** One of the tables in a move file. */
 export type MoveTable = (typeof MOVE_TABLES)[number];
+
+/** One of the vault's tables in a move file. */
+export type VaultMoveTableName = (typeof VAULT_TABLE_NAMES)[number];
+
+/** One of the tables every move file holds. */
+type CoreMoveTable = (typeof CORE_MOVE_TABLES)[number];
 
 /** The tables a move leaves out on purpose, and why. */
 export const LEFT_OUT_TABLES: Readonly<Record<string, string>> = {
   consents:
     'Informed consent is the person’s own act in this Xomoni: the new one asks again once, so no file can stand in for it.',
-  // The vault's tables (ADR-0043) move from version 2 of the file on (#424, CV.1.4); until then nothing writes them.
-  vaultImports: 'The vault’s import ledger moves with version 2 of the move file.',
-  analyticsPosts: 'The vault’s analytics move with version 2 of the move file.',
-  analyticsDays: 'The vault’s analytics move with version 2 of the move file.',
-  accountEvents: 'The account’s timeline moves with version 2 of the move file.',
 };
 
 /** The `kv` values moved for the whole browser: the settings, and which account the dashboard shows. */
@@ -127,7 +146,10 @@ export interface MoveValue {
   value: unknown;
 }
 
-/** The records of every moved table. `logs`, `reads`, `risk` and `checks` carry no `seq`: the receiver numbers them. */
+/**
+ * The records of every moved table. `logs`, `reads`, `risk`, `checks` and `accountEvents` carry no `seq`: the receiver
+ * numbers them.
+ */
 export interface MoveData {
   accounts: Account[];
   items: Item[];
@@ -140,12 +162,17 @@ export interface MoveData {
   daily: DailyStats[];
   incoming: IncomingReply[];
   kv: MoveValue[];
+  vaultImports: VaultImport[];
+  analyticsPosts: AnalyticsPost[];
+  analyticsDays: AnalyticsDay[];
+  accountEvents: AccountEvent[];
 }
 
 /** What the file says about itself; the checksum covers it with the data. */
 export interface MoveHeader {
   format: typeof MOVE_FORMAT;
-  version: typeof MOVE_VERSION;
+  /** `MOVE_VERSION` when written; a file read back keeps its own, from `OLDEST_MOVE_VERSION` on. */
+  version: number;
   /** The version of the Xomoni that wrote it (`manifest.json`). */
   app: string;
   /** When it was written, as an ISO 8601 time. */
@@ -233,8 +260,20 @@ const DAY_MS = 86_400_000;
 /** How far in the future a time may lie: a computer's clock can run a little behind, as in `inbound.ts`. */
 const FUTURE_SLACK_MS = DAY_MS;
 
-/** The most accounts, `kv` values, sampled checks and rate-limit observations a file may hold. */
-export const MOVE_LIMITS = { accounts: 100, kv: 2_000, checks: 10_000, limits: 5_000 } as const;
+/**
+ * The most records of a table a file may hold, for the tables that have a cap: accounts, `kv` values, sampled checks,
+ * rate-limit observations, and the vault's tables (#424), far above what a heavy X user's vault holds.
+ */
+export const MOVE_LIMITS = {
+  accounts: 100,
+  kv: 2_000,
+  checks: 10_000,
+  limits: 5_000,
+  vaultImports: 10_000,
+  accountEvents: 200_000,
+  analyticsDays: 20_000,
+  analyticsPosts: 1_000_000,
+} as const;
 
 /** The longest text of a post kept in a file: longer than X allows, so no real post is refused. */
 const MAX_POST_TEXT = 100_000;
@@ -865,8 +904,135 @@ function value(f: Fields, now: number): MoveValue {
 /** A table, or a `kv` key, this version doesn't move. */
 class UnknownTable extends Error {}
 
-/** The check of each moved table's records. */
-const RECORD_CHECKS: { [T in MoveTable]: (f: Fields, now: number) => MoveData[T][number] } = {
+/**
+ * One of the vault's tables in a move (#424, ADR-0032 as amended for version 2): how each record is checked (the vault's
+ * own checks, `vault/records.ts`), how many a file may hold, the key no two records may share, how the export reads
+ * the rows (all of them, or one account's), and how the import merges them, never deleting. A feature that adds a
+ * vault table registers it here, and the file's version stays.
+ */
+export interface VaultMoveTable<T> {
+  readonly check: (record: unknown, now: number) => T | null;
+  readonly limit: number;
+  readonly key?: (row: T) => string;
+  readonly read: (accountId?: string) => Promise<T[]>;
+  readonly merge: (rows: readonly T[], now: number) => Promise<MergeResult>;
+}
+
+/** Rows of `rows` whose signature isn't among `here`'s, each counted as often as it appears there. */
+function missing<T>(rows: readonly T[], here: readonly T[], signature: (row: T) => string): T[] {
+  const seen = new Map<string, number>();
+  for (const row of here) seen.set(signature(row), (seen.get(signature(row)) ?? 0) + 1);
+  return rows.filter((row) => {
+    const left = seen.get(signature(row)) ?? 0;
+    if (left > 0) seen.set(signature(row), left - 1);
+    return left === 0;
+  });
+}
+
+/** The ledger's rows, or one account's. */
+function readImports(accountId?: string): Promise<VaultImport[]> {
+  return accountId === undefined
+    ? db.vaultImports.toArray()
+    : db.vaultImports.where('accountId').equals(accountId).toArray();
+}
+
+/** Adds the ledger rows that aren't here, by id; a row already here is kept as it is. */
+async function mergeImports(rows: readonly VaultImport[]): Promise<MergeResult> {
+  const here = await db.vaultImports.bulkGet(rows.map((row) => row.id));
+  const fresh = rows.filter((_, i) => !here[i]);
+  if (fresh.length) await db.vaultImports.bulkAdd(fresh);
+  return { added: fresh.length, updated: 0 };
+}
+
+/** The analytics of posts, or one account's. */
+function readAnalyticsPosts(accountId?: string): Promise<AnalyticsPost[]> {
+  return accountId === undefined
+    ? db.analyticsPosts.toArray()
+    : db.analyticsPosts.where('accountId').equals(accountId).toArray();
+}
+
+/** The analytics of days, or one account's. */
+function readAnalyticsDays(accountId?: string): Promise<AnalyticsDay[]> {
+  return accountId === undefined
+    ? db.analyticsDays.toArray()
+    : db.analyticsDays.where('accountId').equals(accountId).toArray();
+}
+
+/** The timeline's events, or one account's, without `seq`: the receiver numbers them. */
+async function readEvents(accountId?: string): Promise<AccountEvent[]> {
+  const rows =
+    accountId === undefined
+      ? await db.accountEvents.toArray()
+      : await db.accountEvents.where('[accountId+at]').between([accountId, -Infinity], [accountId, Infinity]).toArray();
+  return rows.map(({ seq: _seq, ...event }) => event);
+}
+
+/** What makes two events one in a move: the account, the kind, the time and the ref. */
+const eventSignature = (e: AccountEvent) => JSON.stringify([e.accountId, e.kind, e.at, e.ref ?? null]);
+
+/** Adds the events that aren't here, matched by `eventSignature`, so the same file twice adds nothing. */
+async function mergeEvents(rows: readonly AccountEvent[]): Promise<MergeResult> {
+  let added = 0;
+  for (const accountId of new Set(rows.map((e) => e.accountId))) {
+    const mine = rows.filter((e) => e.accountId === accountId);
+    let [from, to] = [Infinity, -Infinity];
+    for (const e of mine) [from, to] = [Math.min(from, e.at), Math.max(to, e.at)];
+    const here = await db.accountEvents
+      .where('[accountId+at]')
+      .between([accountId, from], [accountId, to], true, true)
+      .toArray();
+    const fresh = missing(mine, here, eventSignature);
+    if (fresh.length) await db.accountEvents.bulkAdd(fresh);
+    added += fresh.length;
+  }
+  return { added, updated: 0 };
+}
+
+/** The key of a ledger row: its id. */
+const importKey = (row: VaultImport) => row.id;
+
+/** The key of a post's analytics: its account and its post. */
+const postKey = (row: AnalyticsPost) => row.key;
+
+/** The key of an analytics day: its account and its day. */
+const dayKey = (row: AnalyticsDay) => `${row.accountId}:${row.day}`;
+
+/**
+ * The vault's tables in a move, by name: the ledger is joined by id (a row here is kept), each post's analytics keep the
+ * highest of every number (`mergeAnalyticsPosts`), each day's the newer import's (`mergeAnalyticsDays`), and the
+ * timeline gains the events it doesn't have, matched on account, kind, time and ref. Nothing is ever deleted.
+ */
+export const VAULT_MOVE_TABLES: { readonly [T in VaultMoveTableName]: VaultMoveTable<MoveData[T][number]> } = {
+  vaultImports: {
+    check: vaultImportRecord,
+    limit: MOVE_LIMITS.vaultImports,
+    key: importKey,
+    read: readImports,
+    merge: mergeImports,
+  },
+  analyticsPosts: {
+    check: analyticsPostRecord,
+    limit: MOVE_LIMITS.analyticsPosts,
+    key: postKey,
+    read: readAnalyticsPosts,
+    merge: mergeAnalyticsPosts,
+  },
+  analyticsDays: {
+    check: analyticsDayRecord,
+    limit: MOVE_LIMITS.analyticsDays,
+    key: dayKey,
+    read: readAnalyticsDays,
+    merge: mergeAnalyticsDays,
+  },
+  accountEvents: { check: accountEventRecord, limit: MOVE_LIMITS.accountEvents, read: readEvents, merge: mergeEvents },
+};
+
+/** Whether `table` is one of the vault's, which a file may leave out. */
+export const isVaultMoveTable = (table: string): table is VaultMoveTableName =>
+  (VAULT_TABLE_NAMES as readonly string[]).includes(table);
+
+/** The check of each moved core table's records. */
+const RECORD_CHECKS: { [T in CoreMoveTable]: (f: Fields, now: number) => MoveData[T][number] } = {
   accounts: account,
   items: item,
   jobs: job,
@@ -889,7 +1055,17 @@ const KEYS: { [T in MoveTable]?: (record: MoveData[T][number]) => string } = {
   daily: (d) => `${d.accountId}:${d.day}`,
   incoming: (r) => r.key,
   kv: (v) => v.key,
+  vaultImports: VAULT_MOVE_TABLES.vaultImports.key,
+  analyticsPosts: VAULT_MOVE_TABLES.analyticsPosts.key,
+  analyticsDays: VAULT_MOVE_TABLES.analyticsDays.key,
 };
+
+/** A record of `table` checked and copied, or throws `Bad` (or `UnknownTable` for a `kv` key not moved). */
+function checkRecord(table: MoveTable, record: unknown, now: number): unknown {
+  if (isVaultMoveTable(table)) return VAULT_MOVE_TABLES[table].check(record, now) ?? bad();
+  const core = RECORD_CHECKS[table];
+  return object(record, now, (f) => core(f, now));
+}
 
 /**
  * A record of `table` as a move file holds it, checked and copied field by field, or null when it is out of shape. The
@@ -897,7 +1073,7 @@ const KEYS: { [T in MoveTable]?: (record: MoveData[T][number]) => string } = {
  */
 export function moveRecord<T extends MoveTable>(table: T, record: unknown, now: number): MoveData[T][number] | null {
   try {
-    return object<MoveData[T][number]>(record, now, (f) => RECORD_CHECKS[table](f, now));
+    return checkRecord(table, record, now) as MoveData[T][number];
   } catch (err) {
     if (err instanceof Bad || err instanceof UnknownTable) return null;
     throw err;
@@ -970,10 +1146,12 @@ export function summarizeMove(file: MoveFile): MoveSummary {
 }
 
 /**
- * Reads the text of a move file and checks all of it, in this order: it is JSON, it says it is Xomoni's export of this
- * version (an older Xomoni's partial export, a newer format and any other version are refused with their own message),
- * its checksum matches its content, it holds every moved table and no other, no table is larger than Xomoni keeps
- * (`MOVE_LIMITS`), and every record has the shape Xomoni writes. Anything wrong refuses the whole file. Writes nothing.
+ * Reads the text of a move file and checks all of it, in this order: it is JSON, it says it is Xomoni's export of a
+ * version this Xomoni reads, from `OLDEST_MOVE_VERSION` to `MOVE_VERSION` (an older Xomoni's partial export, a newer
+ * format and any other version are refused with their own message), its checksum matches its content, it holds every
+ * core table and no table Xomoni doesn't move (a vault table left out, as version 1 always does, is read as empty; a
+ * version 1 file holding one is refused), no table is larger than Xomoni keeps (`MOVE_LIMITS`), and every record has
+ * the shape Xomoni writes. Anything wrong refuses the whole file. Writes nothing.
  */
 export async function checkMoveText(text: string, now = Date.now()): Promise<MoveCheck | MoveRefusal> {
   if (text.length > MAX_MOVE_BYTES) return refuse('too-big');
@@ -989,21 +1167,23 @@ export async function checkMoveText(text: string, now = Date.now()): Promise<Mov
   const { version, app, exportedAt, checksum, data } = root;
   if (typeof version !== 'number' || !Number.isInteger(version)) return refuse('other-version');
   if (version > MOVE_VERSION) return refuse('newer');
-  if (version !== MOVE_VERSION) return refuse('other-version');
+  if (version < OLDEST_MOVE_VERSION) return refuse('other-version');
   const at = typeof exportedAt === 'string' ? Date.parse(exportedAt) : NaN;
   if (typeof app !== 'string' || !APP_VERSION.test(app) || !(at >= 0 && at <= now + FUTURE_SLACK_MS)) {
     return refuse('broken');
   }
   if (typeof checksum !== 'string' || !CHECKSUM.test(checksum) || !asObject(data)) return refuse('broken');
-  const header: MoveHeader = { format: MOVE_FORMAT, version: MOVE_VERSION, app, exportedAt: exportedAt as string };
+  const header: MoveHeader = { format: MOVE_FORMAT, version, app, exportedAt: exportedAt as string };
   if ((await moveChecksum(header, data)) !== checksum) return refuse('changed');
 
   const tables = asObject(data) ?? {};
-  const unknown = Object.keys(tables).find((name) => !(MOVE_TABLES as readonly string[]).includes(name));
+  // Version 1 knew no vault table: one in such a file was put there by hand.
+  const known: readonly string[] = version === 1 ? CORE_MOVE_TABLES : MOVE_TABLES;
+  const unknown = Object.keys(tables).find((name) => !known.includes(name));
   if (unknown !== undefined) return refuse('unknown-table', unknown.slice(0, 50));
   const checked = {} as Record<MoveTable, unknown[]>;
   for (const table of MOVE_TABLES) {
-    const rows = tables[table];
+    const rows = tables[table] === undefined && isVaultMoveTable(table) ? [] : tables[table];
     if (!Array.isArray(rows)) return refuse('broken', table);
     const most = (MOVE_LIMITS as Partial<Record<MoveTable, number>>)[table];
     if (most !== undefined && rows.length > most) return refuse('too-big', table);
@@ -1012,7 +1192,7 @@ export async function checkMoveText(text: string, now = Date.now()): Promise<Mov
     const keyOf = KEYS[table];
     for (const [i, row] of (rows as unknown[]).entries()) {
       try {
-        const copy = object(row, now, (f) => RECORD_CHECKS[table](f, now));
+        const copy = checkRecord(table, row, now);
         // Two records with one key can't come from one table: the file was put together by hand.
         const key = keyOf?.(copy as never);
         if (key !== undefined && keys.has(key)) bad();

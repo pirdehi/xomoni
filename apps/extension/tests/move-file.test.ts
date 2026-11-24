@@ -8,6 +8,10 @@ import {
   MOVE_TABLES,
   MOVE_VERSION,
   type MoveData,
+  CORE_MOVE_TABLES,
+  OLDEST_MOVE_VERSION,
+  VAULT_MOVE_TABLES,
+  VAULT_TABLE_NAMES,
   type MoveHeader,
   checkMoveFile,
   checkMoveText,
@@ -22,7 +26,11 @@ import {
   NOW,
   THEN,
   moverAccount,
+  moverAnalyticsDay,
+  moverAnalyticsPost,
   moverDay,
+  moverEvent,
+  moverImport,
   moverItem,
   moverJob,
   moverLog,
@@ -44,6 +52,10 @@ function data(over: Partial<MoveData> = {}): MoveData {
     daily: [moverDay()],
     incoming: [moverReply('3000000001')],
     kv: [{ key: 'activeAccount', value: MOVER }],
+    vaultImports: [moverImport()],
+    analyticsPosts: [moverAnalyticsPost('1000000001')],
+    analyticsDays: [moverAnalyticsDay('2026-11-19')],
+    accountEvents: [moverEvent()],
     ...over,
   };
 }
@@ -353,5 +365,134 @@ describe('the move file (#300, ADR-0032)', () => {
     });
     expect(summary.accounts).toEqual([{ id: MOVER, handle: 'mover', posts: 1, likes: 1, jobs: 1, logs: 1 }]);
     expect(summary.counts.items).toBe(3);
+  });
+});
+
+describe('version 2 of the move file carries the vault (#424, ADR-0032 as amended)', () => {
+  /** `data()` as Xomoni wrote it before the vault: the core tables only. */
+  const versionOne = () => Object.fromEntries(CORE_MOVE_TABLES.map((t) => [t, data()[t]]));
+
+  it('writes version 2, with the vault’s four tables after the core ones', async () => {
+    expect(MOVE_VERSION).toBe(2);
+    expect(OLDEST_MOVE_VERSION).toBe(1);
+    expect(VAULT_TABLE_NAMES).toEqual(['vaultImports', 'analyticsPosts', 'analyticsDays', 'accountEvents']);
+    expect(MOVE_TABLES).toEqual([...CORE_MOVE_TABLES, ...VAULT_TABLE_NAMES]);
+    const parsed = JSON.parse(await writeMoveFile('0.6.0', data(), THEN)) as { version: number; data: object };
+    expect(parsed.version).toBe(2);
+    expect(Object.keys(parsed.data)).toEqual([...MOVE_TABLES]);
+  });
+
+  it('still imports a version 1 file, as Xomoni writes it today, with the vault’s tables empty', async () => {
+    const result = await checkMoveText(await signedFile(versionOne(), { version: 1 }), NOW);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.file.version).toBe(1);
+    for (const table of VAULT_TABLE_NAMES) expect(result.file.data[table]).toEqual([]);
+    expect(result.file.data.items).toEqual(data().items);
+    expect(result.summary.counts.vaultImports).toBe(0);
+  });
+
+  it('refuses a version 1 file that holds a vault table: version 1 never wrote one', async () => {
+    const file = await signedFile({ ...versionOne(), vaultImports: [moverImport()] }, { version: 1 });
+    expect(await refused(file)).toMatchObject({ problem: 'unknown-table', where: 'vaultImports' });
+  });
+
+  it('reads a vault table a version 2 file leaves out as empty, so a table added later keeps the version', async () => {
+    const { analyticsDays: _left, ...without } = data();
+    const result = await checkMoveText(await signedFile(without), NOW);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.file.data.analyticsDays).toEqual([]);
+    // A vault table that isn't a list is still broken.
+    expect(await refused(await signedFile({ ...data(), accountEvents: {} }))).toMatchObject({
+      problem: 'broken',
+      where: 'accountEvents',
+    });
+  });
+
+  it('carries every vault row unchanged, through the vault’s own checks', async () => {
+    const result = await checkMoveText(await writeMoveFile('0.6.0', data(), THEN), NOW);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    for (const table of VAULT_TABLE_NAMES) expect(result.file.data[table]).toEqual(data()[table]);
+    expect(moveRecord('accountEvents', { ...moverEvent(), seq: 7 }, NOW)).toEqual(moverEvent());
+  });
+
+  it('caps each vault table at more than a heavy X user’s vault holds', async () => {
+    expect(MOVE_LIMITS).toMatchObject({
+      vaultImports: 10_000,
+      accountEvents: 200_000,
+      analyticsDays: 20_000,
+      analyticsPosts: 1_000_000,
+    });
+    for (const table of VAULT_TABLE_NAMES) expect(VAULT_MOVE_TABLES[table].limit).toBe(MOVE_LIMITS[table]);
+    const many = Array.from({ length: MOVE_LIMITS.vaultImports + 1 }, (_, i) => moverImport({ importedAt: THEN - i }));
+    expect(await refused(await signedFile({ ...data(), vaultImports: many }))).toMatchObject({
+      problem: 'too-big',
+      where: 'vaultImports',
+    });
+  });
+
+  describe('refuses vault records out of shape, with the words of MOVE_PROBLEMS and nothing imported', () => {
+    const cases: [string, keyof MoveData, unknown][] = [
+      ['a ledger row of an account that isn’t an X id', 'vaultImports', moverImport({ accountId: 'me' })],
+      ['a ledger row whose id names another account', 'vaultImports', { ...moverImport(), id: '9:x-archive:1:a' }],
+      ['a ledger row with markup in its id', 'vaultImports', { ...moverImport(), id: '<script>alert(1)</script>' }],
+      ['a ledger row of an unknown source', 'vaultImports', moverImport({ source: 'x-dms' as never })],
+      ['a fingerprint that isn’t one', 'vaultImports', moverImport({ fingerprint: 'sha256:xyz' })],
+      ['a negative size', 'vaultImports', moverImport({ bytes: -1 })],
+      [
+        'a post id that isn’t X’s',
+        'analyticsPosts',
+        { ...moverAnalyticsPost('1'), postId: '../1', key: `${MOVER}:../1` },
+      ],
+      ['a post key that names another account', 'analyticsPosts', { ...moverAnalyticsPost('1'), key: '9:1' }],
+      ['a negative count', 'analyticsPosts', moverAnalyticsPost('1', { impressions: -5 })],
+      ['a count beyond 10¹²', 'analyticsPosts', moverAnalyticsPost('1', { likes: 2e12 })],
+      ['a count as text', 'analyticsPosts', { ...moverAnalyticsPost('1'), likes: '9' }],
+      ['a day in the future', 'analyticsDays', moverAnalyticsDay('2027-01-01')],
+      ['a day that isn’t a date', 'analyticsDays', moverAnalyticsDay('2026-02-30')],
+      ['an event of a kind Xomoni doesn’t know', 'accountEvents', moverEvent({ kind: 'risk' as never })],
+      ['an event from an unknown source', 'accountEvents', moverEvent({ source: 'x.com' as never })],
+      ['an event whose words are longer than 500', 'accountEvents', moverEvent({ words: 'w'.repeat(501) })],
+      ['an event with markup in its ref', 'accountEvents', moverEvent({ ref: '<img src=x onerror=alert(1)>' })],
+      ['an event of a fake account', 'accountEvents', moverEvent({ accountId: 'javascript:alert(1)' })],
+    ];
+    it.each(cases)('%s', async (_, table, record) => {
+      const result = await refused(await withRecord(table, record));
+      expect(result.problem).toBe('bad-record');
+      expect(result.where).toBe(`${table}, record 1`);
+      expect(result.message).toBe(MOVE_PROBLEMS['bad-record']);
+    });
+  });
+
+  it('keeps markup in an event’s words as text: it is never shown as HTML', async () => {
+    const words = '<img src=x onerror=alert(1)>';
+    const result = await checkMoveText(await withRecord('accountEvents', moverEvent({ words })), NOW);
+    expect(result.ok && result.file.data.accountEvents[0]?.words).toBe(words);
+  });
+
+  it('refuses two vault records with one key; timeline events may repeat', async () => {
+    const ledger = await signedFile({ ...data(), vaultImports: [moverImport(), moverImport({ bytes: 9 })] });
+    expect(await refused(ledger)).toMatchObject({ problem: 'bad-record', where: 'vaultImports, record 2' });
+    const posts = await signedFile({
+      ...data(),
+      analyticsPosts: [moverAnalyticsPost('1'), moverAnalyticsPost('1', { likes: 1 })],
+    });
+    expect(await refused(posts)).toMatchObject({ problem: 'bad-record', where: 'analyticsPosts, record 2' });
+    const days = await signedFile({
+      ...data(),
+      analyticsDays: [moverAnalyticsDay('2026-11-19'), moverAnalyticsDay('2026-11-19')],
+    });
+    expect(await refused(days)).toMatchObject({ problem: 'bad-record', where: 'analyticsDays, record 2' });
+    const events = await signedFile({ ...data(), accountEvents: [moverEvent(), moverEvent()] });
+    expect((await checkMoveText(events, NOW)).ok).toBe(true);
+  });
+
+  it('counts a file holding only vault rows as data', async () => {
+    const onlyVault = {
+      ...Object.fromEntries(MOVE_TABLES.map((t) => [t, []])),
+      accountEvents: [moverEvent()],
+    };
+    expect((await checkMoveText(await signedFile(onlyVault), NOW)).ok).toBe(true);
   });
 });

@@ -91,7 +91,8 @@ export function VaultSources({ account, navigate }: { account: Account; navigate
   const styles = useStyles();
   // The page counts ages from the minute it shows, and again each minute.
   const now = useNow(60_000);
-  const holdings = useLiveQuery(() => vaultHoldings(account.id, now), [account.id, now]);
+  // Async, so Dexie's zone holds across the helper's awaits (#459).
+  const holdings = useLiveQuery(async () => await vaultHoldings(account.id, now), [account.id, now]);
   if (!holdings) return <Card title="Your sources" />;
   const empty = holdings.sources.every((s) => s.freshness === 'never') && !holdings.posts && !holdings.days;
 

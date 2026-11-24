@@ -66,7 +66,8 @@ export function problemWords(row: VaultImport): { state: string | null; notes: s
 export function ImportLedger({ account, id }: { account: Account; id: string }) {
   const styles = useStyles();
   const [pages, setPages] = useState(1);
-  const rows = useLiveQuery(() => importLedger(account.id), [account.id]);
+  // Async, so Dexie's zone holds across the helper's awaits (#459).
+  const rows = useLiveQuery(async () => await importLedger(account.id), [account.id]);
   const shown = rows?.slice(0, pages * LEDGER_PAGE) ?? [];
 
   return (

@@ -5,6 +5,7 @@ import { type JsonObject, asArray, asId, asNumber, asObject, asPostId, asString,
 import { isHandle } from './ids';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from './time';
 import type { IncomingDraft, ItemDraft } from './types';
+import { entityCounts } from './x-entities';
 import { decodeXText } from './x-text';
 
 export { MUTATION_OPS, PROFILE_OPS, TIMELINE_OPS } from './x-operations';
@@ -40,6 +41,12 @@ export interface ParsedTweet {
   views: number | null;
   /** Whether it quotes another post (`is_quote_status`). */
   quote: boolean;
+  /**
+   * Links that lead out of X, and photos or videos, from `legacy.entities` and `legacy.extended_entities` (a long
+   * post's links from `note_tweet`'s `entity_set`), as `entityCounts` counts them (#428); null when X sent no entities.
+   */
+  links: number | null;
+  media: number | null;
   /** Whether the viewer currently likes it, when X says so. */
   favorited: boolean | null;
   /** The original post when this is a repost. */
@@ -123,15 +130,15 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
   const user = at(t, 'core', 'user_results', 'result');
   const sourceResult = at(legacy, 'retweeted_status_result', 'result');
   const favorited = legacy.favorited;
+  const note = at(t, 'note_tweet', 'note_tweet_results', 'result');
+  const counts = entityCounts(legacy, at(note, 'entity_set', 'urls'));
   return {
     id,
     authorId: asId(legacy.user_id_str) ?? asId(at(user, 'rest_id')) ?? '',
     authorHandle: asString(at(user, 'core', 'screen_name')) ?? asString(at(user, 'legacy', 'screen_name')) ?? '',
     authorCreatedAt: parseTwitterDate(at(user, 'core', 'created_at') ?? at(user, 'legacy', 'created_at')),
     createdAt: parseTwitterDate(legacy.created_at) ?? snowflakeTime(id) ?? 0,
-    text: decodeXText(
-      asString(at(t, 'note_tweet', 'note_tweet_results', 'result', 'text')) ?? asString(legacy.full_text) ?? '',
-    ),
+    text: decodeXText(asString(at(note, 'text')) ?? asString(legacy.full_text) ?? ''),
     inReplyToId: asPostId(legacy.in_reply_to_status_id_str) ?? null,
     inReplyToUserId: asId(legacy.in_reply_to_user_id_str) ?? null,
     inReplyToHandle: handleOf(legacy.in_reply_to_screen_name),
@@ -142,6 +149,8 @@ export function parseTweet(result: unknown, sortIndex: string | null): ParsedTwe
     bookmarks: asNumber(legacy.bookmark_count) ?? 0,
     views: viewCount(at(t, 'views', 'count')),
     quote: legacy.is_quote_status === true,
+    links: counts?.links ?? null,
+    media: counts?.media ?? null,
     favorited: typeof favorited === 'boolean' ? favorited : null,
     source: sourceResult ? parseTweet(sourceResult, null) : null,
     sortIndex,
@@ -248,7 +257,8 @@ export function extractProfile(json: unknown): ParsedProfile | null {
 /**
  * Turns observed tweets into inventory drafts for the signed-in account only.
  * Likes come from the viewer's own Likes timeline; everything else must be
- * authored by the viewer.
+ * authored by the viewer. Only the viewer's own posts and replies keep X's
+ * other counts, views, and their links and media (#249, #428).
  */
 export function draftsFromTimeline(
   op: string,
@@ -312,6 +322,8 @@ export function draftsFromTimeline(
       bookmarks: t.bookmarks,
       ...(t.views !== null && { views: t.views }),
       quote: t.quote,
+      ...(t.links !== null && { links: t.links }),
+      ...(t.media !== null && { media: t.media }),
     });
   }
   return drafts;

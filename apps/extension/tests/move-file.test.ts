@@ -134,6 +134,10 @@ describe('the move file (#300, ADR-0032)', () => {
       ['a time far in the future', 'items', moverItem('1000000001', { statusAt: NOW + 3 * 86_400_000 })],
       ['a count that is not a whole number', 'items', moverItem('1000000001', { likes: -1 })],
       ['a reply-to on a post', 'items', moverItem('1000000001', { replyTo: 'friend' })],
+      ['a negative number of links (#428)', 'items', moverItem('1000000001', { links: -1 })],
+      ['more media than any post carries (#428)', 'items', moverItem('1000000001', { media: 101 })],
+      ['links that aren’t a whole number (#428)', 'items', moverItem('1000000001', { links: 1.5 })],
+      ['media as text (#428)', 'items', moverItem('1000000001', { media: '2' as never })],
       ['a job state Xomoni doesn’t know', 'jobs', moverJob('j', { state: 'hacked' as never })],
       ['a job id with markup', 'jobs', moverJob('<script>')],
       [
@@ -298,6 +302,18 @@ describe('the move file (#300, ADR-0032)', () => {
       });
       const job = moveRecord('jobs', { id: 'j1', accountId: MOVER, kind: 'scan', state: 'completed' }, NOW);
       expect(job).toMatchObject({ stats: { matched: 0, done: 0, skipped: 0, failed: 0, scanned: 0 }, filter: null });
+    });
+
+    it('keeps a post’s links and media when they are there, 0 to 100, and leaves them out when not (#428)', () => {
+      const counted = moverItem('1000000001', { links: 2, media: 0 });
+      expect(moveRecord('items', counted, NOW)).toEqual(counted);
+      expect(moveRecord('items', moverItem('1000000001', { links: 100, media: 100 }), NOW)).toMatchObject({
+        links: 100,
+        media: 100,
+      });
+      const older = moveRecord('items', moverItem('1000000001'), NOW);
+      expect(older).not.toHaveProperty('links');
+      expect(older).not.toHaveProperty('media');
     });
 
     it('keeps replies to the person cut to 1,000 characters (ADR-0030)', () => {

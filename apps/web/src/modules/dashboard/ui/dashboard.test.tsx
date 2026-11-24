@@ -24,6 +24,8 @@ vi.mock('@/modules/extension/ui/extension-session-sync', () => ({
 const xomoni = vi.hoisted(() => ({
   ask: vi.fn((_request: unknown) => Promise.resolve({ ok: true as const, outcome: 'stopping' as const })),
   recheck: vi.fn(() => Promise.resolve()),
+  // The places that read from Xomoni (the Library, the vault) get no answer here: what they show has its own tests.
+  read: vi.fn((_request: unknown) => Promise.resolve(null)),
 }));
 vi.mock('@/modules/extension/client/xomoni-actions', () => ({ createXomoniActionServices: () => xomoni }));
 

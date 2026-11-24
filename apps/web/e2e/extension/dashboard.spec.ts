@@ -8,6 +8,7 @@ const PAGES = [
   { item: 'Home', heading: 'Home', hash: '#/overview' },
   { item: 'Cleanup', heading: 'Cleanup', hash: '#/cleanup' },
   { item: 'Library', heading: 'Library', hash: '#/library' },
+  { item: 'Vault', heading: 'Vault', hash: '#/vault' },
   { item: 'Activity', heading: 'Activity', hash: '#/jobs' },
   { item: 'Watch', heading: 'Watch', hash: '#/watch' },
   { item: 'Settings', heading: 'Settings', hash: '#/settings' },

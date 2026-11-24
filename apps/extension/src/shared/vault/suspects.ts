@@ -99,14 +99,16 @@ function reasonsFor(post: SuspectInput, base: number, ratio: number, label: stri
  * the candidates are that month's settled posts (UTC, as X's periods are) under half their baseline, lowest first, at
  * most min(3n, 10); a dismissed one is left out, without another taking its place. The guess is *medium* only when the
  * month has at least 20 comparable posts and the n lowest are at most half the lowest of the others; else *low*. A
- * label on the account, or a month without numbers or baselines, gets no candidate and says why.
+ * label on the account, or a month without numbers or baselines, gets no candidate and says why. `bases` are the posts'
+ * baselines, from `posts` themselves unless given: the Reach page gives those it computed from the 8 weeks before its
+ * period too.
  */
 export function suspectPosts(
   posts: readonly SuspectInput[],
   months: readonly LabelMonth[],
   dismissed: ReadonlySet<string> = new Set(),
+  bases: ReadonlyMap<string, number | null> = baseline(posts),
 ): SuspectLabel[] {
-  const bases = baseline(posts);
   const byMonth = new Map<string, SuspectInput[]>();
   for (const post of posts) {
     const month = utcMonth(post.createdAt);

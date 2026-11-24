@@ -184,6 +184,13 @@ describe('suspected posts, as guesses (#429, ADR-0045, point 4)', () => {
     expect(label?.why).toBe('none-below-half');
   });
 
+  it('takes baselines given from outside the posts, as the page gives them', () => {
+    const [label] = suspectPosts(july([100]), [labelled(1)], new Set(), new Map([['low0', 1_000]]));
+    expect(label?.candidates.map((c) => [c.id, c.baseline, c.ratio])).toEqual([['low0', 1_000, 0.1]]);
+    // Without them, the first post of July alone has no baseline, so it isn't a candidate.
+    expect(suspectPosts(july([100]), [labelled(1)])[0]?.candidates).toEqual([]);
+  });
+
   it('puts a post in its month by UTC, as X’s periods are', () => {
     const lastMinute = post('edge', JULY, 0, 100, { createdAt: JULY - 60_000 });
     const [label] = suspectPosts([...june, lastMinute, ...july([])], [labelled(1)]);

@@ -5,6 +5,8 @@ import type { DailyStats } from '../../src/shared/daily';
 import type { Account, IncomingReply, Item, Job, LogEntry } from '../../src/shared/types';
 import { RUNNER_LOCK } from '../../src/shared/runner-lock';
 import { DEFAULT_SETTINGS } from '../../src/shared/settings';
+import { analyticsPostKey } from '../../src/shared/vault/records';
+import type { AccountEvent, AnalyticsDay, AnalyticsPost, VaultImport } from '../../src/shared/vault/types';
 
 /** The X account the move tests work with: X's ids are digits, which a move file insists on. */
 export const MOVER = '1111111111';
@@ -148,10 +150,65 @@ export function moverReply(id: string, daysAgo = 1): IncomingReply {
   };
 }
 
+/** A row of `MOVER`'s import ledger (#424): X's archive, imported a day before `THEN`. */
+export function moverImport(over: Partial<VaultImport> = {}): VaultImport {
+  const accountId = over.accountId ?? MOVER;
+  const source = over.source ?? 'x-archive';
+  const importedAt = over.importedAt ?? THEN - 86_400_000;
+  return {
+    id: `${accountId}:${source}:${importedAt}:abc123`,
+    accountId,
+    source,
+    fileName: 'twitter-2026-11-08-abc.zip',
+    bytes: 2_048_000,
+    fingerprint: 'zip:00112233445566778899aabbccddeeff',
+    importedAt,
+    coverFrom: Date.UTC(2012, 0, 1),
+    coverTo: Date.UTC(2026, 10, 8),
+    counts: { read: 420, merged: 420, skipped: 0, parts: { tweets: 120, likes: 300 } },
+    parser: 'x-archive@1',
+    problems: [],
+    ...over,
+  };
+}
+
+/** X's analytics of one of `MOVER`'s posts (#424). */
+export function moverAnalyticsPost(postId: string, over: Partial<AnalyticsPost> = {}): AnalyticsPost {
+  return {
+    key: analyticsPostKey(over.accountId ?? MOVER, postId),
+    accountId: MOVER,
+    postId,
+    createdAt: Date.UTC(2026, 9, 1),
+    asOf: THEN - 3_600_000,
+    impressions: 1_200,
+    engagements: 40,
+    likes: 9,
+    ...over,
+  };
+}
+
+/** X's analytics of one of `MOVER`'s days (#424). */
+export function moverAnalyticsDay(day: string, over: Partial<AnalyticsDay> = {}): AnalyticsDay {
+  return { accountId: MOVER, day, asOf: THEN - 3_600_000, impressions: 3_000, newFollows: 2, ...over };
+}
+
+/** An entry of `MOVER`'s timeline (#424), without its `seq`, as a move file holds it. */
+export function moverEvent(over: Partial<AccountEvent> = {}): AccountEvent {
+  return {
+    accountId: MOVER,
+    kind: 'note',
+    at: THEN - 7_200_000,
+    source: 'person',
+    words: 'Asked X about the label.',
+    ...over,
+  };
+}
+
 /**
  * Fills every table with `MOVER`'s data as a Xomoni in use holds it: posts, a like and a reply, a finished and a paused
  * job, the log, X's limits, page loads, risk events (one of them the person's override), a sampled check, a day of
- * numbers, two replies to the person, consent, and `kv` values both moved (settings, Watch, archive, view cap) and
+ * numbers, two replies to the person, consent, the vault (a ledger row, a post's and a day's analytics, two timeline
+ * entries), and `kv` values both moved (settings, Watch, archive, view cap) and
  * never moved (the xomoni.com connection with its token, the sign-in state, a plan from xomoni.com).
  */
 export async function seedEverything() {
@@ -209,6 +266,13 @@ export async function seedEverything() {
   await db.daily.put(moverDay());
   await db.incoming.bulkPut([moverReply('3000000001'), moverReply('3000000002', 10)]);
   await recordConsent(MOVER);
+  await db.vaultImports.put(moverImport());
+  await db.analyticsPosts.put(moverAnalyticsPost('1000000001'));
+  await db.analyticsDays.put(moverAnalyticsDay('2026-11-19'));
+  await db.accountEvents.bulkAdd([
+    moverEvent(),
+    moverEvent({ kind: 'archive_imported', source: 'archive', words: 'Imported X’s archive.', ref: moverImport().id }),
+  ]);
   await kvSet('settings', { ...DEFAULT_SETTINGS, notifications: false });
   await kvSet('activeAccount', MOVER);
   await kvSet(`watchTabs:${MOVER}`, [

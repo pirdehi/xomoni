@@ -10,6 +10,7 @@ import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID } from '../shared/notify';
 import { getSignedOut } from '../shared/session';
+import { notePremium } from '../shared/vault/timeline';
 import { recentUpdate } from '../shared/update-record';
 import { suggestArchivePath } from './archive-downloads';
 
@@ -118,7 +119,10 @@ async function handle(message: RuntimeMessage) {
     case 'profile': {
       const { profile } = message;
       const at = Date.now();
+      const before = await db.accounts.get(profile.id);
       await upsertAccount({ ...profile, profileAt: at });
+      // A change of X Premium on the person's own profile goes on the timeline once (#425), never at every sighting.
+      await notePremium(before, profile.verified, at);
       // The day's profile counts, from the page X already showed (#249): never a request of its own.
       await recordProfileDay(profile.id, profile, at);
       break;

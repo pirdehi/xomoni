@@ -421,6 +421,59 @@ describe('service worker: observations from x.com tabs', () => {
     );
   });
 
+  describe('X Premium on the account’s timeline (#425)', () => {
+    const premium = (verified: boolean | null): RuntimeMessage => ({
+      type: 'profile',
+      profile: {
+        id: X_ME,
+        handle: 'me',
+        name: 'Me',
+        avatar: '',
+        postsCount: 42,
+        likesCount: 7,
+        followers: 3,
+        following: 4,
+        createdAt: Date.UTC(2015, 0, 1),
+        verified,
+      },
+    });
+    const events = () => db.accountEvents.toArray();
+    const seen = async (verified: boolean | null) => {
+      const before = (await db.accounts.get(X_ME))?.profileAt ?? 0;
+      on.message!(premium(verified), FROM_TAB);
+      await vi.waitFor(async () => expect((await db.accounts.get(X_ME))?.profileAt).toBeGreaterThan(before));
+      await settle();
+    };
+
+    it('records a change once, never at every sighting, and nothing at the first one', async () => {
+      await seen(false);
+      expect(await events()).toEqual([]);
+      await seen(true);
+      expect((await events()).map((e) => [e.kind, e.source])).toEqual([['premium_on', 'profile']]);
+      await seen(true);
+      // X not saying leaves what is known as it is: no change.
+      await seen(null);
+      expect(await events()).toHaveLength(1);
+      await seen(false);
+      expect((await events()).map((e) => e.kind)).toEqual(['premium_on', 'premium_off']);
+      expect((await events())[1]?.words).toBe('X showed X Premium off for your account.');
+    });
+
+    it('records nothing for an account seen first as Premium, whose change no one saw', async () => {
+      await seen(true);
+      expect(await events()).toEqual([]);
+    });
+
+    it('records nothing from X’s page while signed out of Xomoni (ADR-0023)', async () => {
+      await seen(false);
+      await markSignedOut('me', true);
+      on.message!(premium(true), FROM_TAB);
+      await settle();
+      expect(await events()).toEqual([]);
+      expect((await db.accounts.get(X_ME))?.verified).toBe(false);
+    });
+  });
+
   it('stores X’s rate-limit observation', async () => {
     on.message!({ type: 'rate', obs: OBS }, FROM_TAB);
 

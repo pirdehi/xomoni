@@ -117,6 +117,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`packages/db`](../packages/db/README.md) | The typed contract of the database, generated from the migrations. |
 | [`packages/bridge`](../packages/bridge/README.md) | The messages xomoni.com and the extension exchange in one browser, with strict parsers, and Xomoni's fixed ids in the stores (#302): one contract for both apps (ADR-0025). |
 | [`packages/consent`](../packages/consent/README.md) | The informed-consent text shown before an X account's first job: one source for the extension, `/risks` and the README. |
+| [`packages/entitlements`](../packages/entitlements/README.md) | Xomoni's plans, the list of paid features and `hasPlan()`, the one check of a paid feature, with the offline grace and the `XOMONI_PAYWALL=off` build ([ADR-0042](adr/0042-payments-and-entitlements-with-polar.md)): one rule for the extension and xomoni.com. Pure, with 100% coverage. |
 | [`packages/fluent-theme`](../packages/fluent-theme/README.md) | Xomoni's Fluent UI themes (ADR-0019): the brand ramp and the light and dark themes, one source for the extension and xomoni.com. |
 | [`supabase`](../supabase/README.md) | Migrations, auth settings and email templates, as code ([ADR-0010](adr/0010-configuration-as-code.md)). |
 

@@ -162,7 +162,13 @@ describe("the extension's own sources (#301)", () => {
     });
 
   it('build nothing from strings and load nothing from elsewhere, before any build runs', () => {
-    const dirs = ['apps/extension/src', 'packages/bridge/src', 'packages/consent/src', 'packages/fluent-theme/src'];
+    const dirs = [
+      'apps/extension/src',
+      'packages/bridge/src',
+      'packages/consent/src',
+      'packages/entitlements/src',
+      'packages/fluent-theme/src',
+    ];
     const files = dirs.flatMap((dir) => sources(join(ROOT, dir)));
     assert.ok(files.length > 50, 'the sources were found');
     const problems = files.flatMap((file) => textProblems(file.slice(ROOT.length + 1), readFileSync(file, 'utf8')));

@@ -23,6 +23,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 - **Your vault, on xomoni.com** (#426). Beside the Library, *Your vault* shows what the vault in Xomoni holds: each of X's files with how fresh it is and what it holds, the day X made your newest archive and how many imports, read in your browser as counts and dates only, and *Open in Xomoni*. Nothing of it reaches our servers, and the website never imports anything.
 
+- **Your vault, on xomoni.com** (#426). Beside the Library, *Your vault* shows what the vault in Xomoni holds: each of X's files with how fresh it is and what it holds, the day X made your newest archive and how many imports, read in your browser as counts and dates only, and *Open the vault in Xomoni*. Nothing of it reaches our servers, and the website never imports anything.
+
 ## [0.6.0] - 2026-11-24
 
 New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.

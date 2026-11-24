@@ -181,7 +181,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 ## S426-32 · happy
 
 - Given Your vault on xomoni.com
-- When the person presses Open in Xomoni
+- When the person presses Open the vault in Xomoni, named apart from the Library's Open in Xomoni beside it
 - Then Xomoni is asked to open its Vault page, and nothing else: no import, no plan, no job
 - Test: apps/web/e2e/vault-card.spec.ts
 
@@ -196,7 +196,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given a Xomoni whose answer carries a file name
 - When the card reads it
-- Then the whole answer is refused: the card says Xomoni didn't answer, and the name is nowhere on the page
+- Then the whole answer is refused: the card says Xomoni didn't answer about the vault, and the name is nowhere on the page
 - Test: apps/web/e2e/vault-card.spec.ts
 
 ## S426-35 · invalid
@@ -217,14 +217,14 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given a Xomoni that doesn't answer
 - When the card reads the vault
-- Then it says Xomoni didn't answer. Open it on this computer and try again.
+- Then it says Xomoni didn't answer about your vault. Open it on this computer and try again.
 - Test: apps/web/e2e/vault-card.spec.ts
 
 ## S426-38 · error
 
 - Given a Xomoni older than the page, which doesn't know the read
 - When the card reads the vault
-- Then it says the Xomoni is older than this page and can't show the vault yet, with Install the newest version
+- Then it says the Xomoni is older than this page and can't show the vault yet, with Install the newest Xomoni
 - Test: apps/web/e2e/vault-card.spec.ts
 
 ## S426-39 · error
@@ -259,7 +259,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given a browser with no Xomoni
 - When the person opens the Library
-- Then Your vault says it is kept by Xomoni on their computer, and Open in Xomoni says how to install it
+- Then Your vault says it is kept by Xomoni on their computer, and Open the vault in Xomoni says how to install it
 - Test: apps/web/e2e/vault-card.spec.ts
 
 ## S426-44 · empty
@@ -286,7 +286,7 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 ## S426-47 · a11y
 
 - Given Your vault
-- When the person reaches Open in Xomoni and presses Enter
+- When the person reaches Open the vault in Xomoni and presses Enter
 - Then Xomoni is asked to open its Vault page
 - Test: apps/web/e2e/vault-card.spec.ts
 

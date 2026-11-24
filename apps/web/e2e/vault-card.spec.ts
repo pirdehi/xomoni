@@ -155,12 +155,14 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
     await expect(items.nth(1)).toContainText('Up to date');
     await expect(items.nth(2)).toContainText('Not imported yet');
     await expect(card(page)).toContainText('X made your newest archive on Oct 15, 2026. 3 imports in all.');
-    await expect(card(page)).toContainText('counts and dates only, and nothing here reaches our servers');
+    await expect(card(page)).toContainText(
+      'Counts and dates only, read from Xomoni in this browser: nothing here reaches our servers.',
+    );
   });
 
-  test('S426-32 Open in Xomoni opens the Vault page in Xomoni, and starts nothing', async ({ page }) => {
+  test('S426-32 Open the vault in Xomoni opens the Vault page in Xomoni, and starts nothing', async ({ page }) => {
     const fake = await openVault(page);
-    await card(page).getByRole('button', { name: 'Open in Xomoni' }).click();
+    await card(page).getByRole('button', { name: 'Open the vault in Xomoni' }).click();
     await expect
       .poll(() => fake.received.filter((m) => m.type === 'xomoni-open').map((m) => m.page))
       .toEqual(['vault']);
@@ -183,36 +185,40 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
 
   test('S426-34 an answer with a file name in it is refused whole', async ({ page }) => {
     await openVault(page, { vault: { ...SUMMARY, fileName: 'twitter-2026.zip' } });
-    await expect(card(page)).toContainText('Xomoni didn’t answer. Open it on this computer and try again.');
+    await expect(card(page)).toContainText(
+      'Xomoni didn’t answer about your vault. Open it on this computer and try again.',
+    );
     await expect(files(page)).toHaveCount(0);
     await expect(page.getByText('twitter-2026.zip')).toHaveCount(0);
   });
 
   test('S426-35 a count written as text is refused', async ({ page }) => {
     await openVault(page, { vault: { ...SUMMARY, imports: '3' } });
-    await expect(card(page)).toContainText('Xomoni didn’t answer.');
+    await expect(card(page)).toContainText('Xomoni didn’t answer about your vault.');
     await expect(files(page)).toHaveCount(0);
   });
 
   test('S426-36 a freshness the site doesn’t know is refused', async ({ page }) => {
     await openVault(page, { vault: { ...SUMMARY, sources: [{ ...SUMMARY.sources[0], freshness: 'stale' }] } });
-    await expect(card(page)).toContainText('Xomoni didn’t answer.');
+    await expect(card(page)).toContainText('Xomoni didn’t answer about your vault.');
   });
 
   test('S426-37 a Xomoni that doesn’t answer: the card says so', async ({ page }) => {
     await openVault(page, { refuse: 'silent' });
-    await expect(card(page)).toContainText('Xomoni didn’t answer. Open it on this computer and try again.');
+    await expect(card(page)).toContainText(
+      'Xomoni didn’t answer about your vault. Open it on this computer and try again.',
+    );
   });
 
   test('S426-38 a Xomoni older than the page says to install the newest version', async ({ page }) => {
     await openVault(page, { refuse: 'invalid' });
     await expect(card(page)).toContainText('Your Xomoni is older than this page and can’t show your vault here yet.');
-    await expect(card(page).getByRole('link', { name: 'Install the newest version' })).toBeVisible();
+    await expect(card(page).getByRole('link', { name: 'Install the newest Xomoni' })).toBeVisible();
   });
 
   test('S426-39 a Xomoni signed in to another account shows nothing of its vault', async ({ page }) => {
     await openVault(page, { refuse: 'other_account' });
-    await expect(card(page)).toContainText('Xomoni didn’t answer.');
+    await expect(card(page)).toContainText('Xomoni didn’t answer about your vault.');
     await expect(page.getByText('987,654')).toHaveCount(0);
   });
 
@@ -250,13 +256,13 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
     await expect(card(page).getByRole('link')).toHaveCount(0);
   });
 
-  test('S426-43 without Xomoni here, the card says where the vault lives, and Open in Xomoni says how to get it', async ({
+  test('S426-43 without Xomoni here, the card says where the vault lives, and Open the vault in Xomoni says how to get it', async ({
     page,
   }) => {
     await openAlone(page);
     const notHere = page.getByRole('region', { name: 'Your vault: in Xomoni' });
     await expect(notHere).toContainText('is kept by Xomoni on your computer: it never reaches our servers.');
-    await notHere.getByRole('button', { name: 'Open in Xomoni' }).click();
+    await notHere.getByRole('button', { name: 'Open the vault in Xomoni' }).click();
     await expect(page.getByRole('dialog', { name: 'You haven’t installed Xomoni yet' })).toBeVisible();
   });
 
@@ -276,7 +282,7 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
     await openAlone(page);
     await page
       .getByRole('region', { name: 'Your vault: in Xomoni' })
-      .getByRole('button', { name: 'Open in Xomoni' })
+      .getByRole('button', { name: 'Open the vault in Xomoni' })
       .click();
     const dialog = page.getByRole('dialog', { name: 'You haven’t installed Xomoni yet' });
     await expect(dialog).toBeVisible();
@@ -291,7 +297,7 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
     await openAlone(page);
     await page
       .getByRole('region', { name: 'Your vault: in Xomoni' })
-      .getByRole('button', { name: 'Open in Xomoni' })
+      .getByRole('button', { name: 'Open the vault in Xomoni' })
       .click();
     const dialog = page.getByRole('dialog', { name: 'You haven’t installed Xomoni yet' });
     await expect(dialog).toBeVisible();
@@ -299,9 +305,9 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
     await expect(dialog).toBeHidden();
   });
 
-  test('S426-47 Open in Xomoni works with the keyboard alone', async ({ page }) => {
+  test('S426-47 Open the vault in Xomoni works with the keyboard alone', async ({ page }) => {
     const fake = await openVault(page);
-    const open = card(page).getByRole('button', { name: 'Open in Xomoni' });
+    const open = card(page).getByRole('button', { name: 'Open the vault in Xomoni' });
     await expect(open).toBeVisible();
     await open.focus();
     await page.keyboard.press('Enter');

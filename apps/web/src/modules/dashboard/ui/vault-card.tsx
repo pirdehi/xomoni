@@ -37,8 +37,9 @@ const BADGE: Record<Tone, 'informative' | 'brand' | 'severe' | 'warning' | 'dang
 
 /**
  * *Your vault*: each of X's files in the person's vault, with its freshness and what it holds, the day X made the newest
- * archive, and how many imports, read from Xomoni in this browser (`what: 'vault'`). *Open in Xomoni* opens its Vault
- * page. The website never starts an import (ADR-0006).
+ * archive, and how many imports, read from Xomoni in this browser (`what: 'vault'`). *Open the vault in Xomoni* opens
+ * its Vault page. Its words and its button's name differ from the Library's beside it. The website never starts an
+ * import (ADR-0006).
  */
 export function VaultCard({ xomoni, now }: { xomoni: XomoniControls; now: number }) {
   const s = useStyles();
@@ -49,6 +50,7 @@ export function VaultCard({ xomoni, now }: { xomoni: XomoniControls; now: number
         xomoni={xomoni}
         page="vault"
         what="Your vault"
+        open="Open the vault in Xomoni"
         says="Your vault, X’s own files about your account, is kept by Xomoni on your computer: it never reaches our servers. Open this page in the browser where Xomoni runs, signed in to this account."
       />
     );
@@ -56,9 +58,9 @@ export function VaultCard({ xomoni, now }: { xomoni: XomoniControls; now: number
   return (
     <section className={s.card} aria-label="Your vault">
       <h3 className={s.title}>Your vault</h3>
-      <Notice>Read from Xomoni in this browser: counts and dates only, and nothing here reaches our servers.</Notice>
+      <Notice>Counts and dates only, read from Xomoni in this browser: nothing here reaches our servers.</Notice>
       {answer && !answer.ok ? (
-        <NoAnswer reason={answer.reason} doing="show your vault" />
+        <NoAnswer reason={answer.reason} doing="show your vault" about="your vault" />
       ) : !vault ? (
         loading && <Spinner size="extra-tiny" labelPosition="after" label="Reading your vault…" />
       ) : vaultEmpty(vault) ? (
@@ -88,7 +90,7 @@ export function VaultCard({ xomoni, now }: { xomoni: XomoniControls; now: number
         </>
       )}
       <div className={s.line}>
-        <OpenInXomoni xomoni={xomoni} page="vault" />
+        <OpenInXomoni xomoni={xomoni} page="vault" label="Open the vault in Xomoni" />
       </div>
     </section>
   );

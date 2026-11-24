@@ -56,14 +56,16 @@ describe('VaultCard', () => {
       'X’s analytics of days · Not imported yetNot yet',
     ]);
     expect(screen.getByText(/X made your newest archive on Oct 15, 2026\. 3 imports in all\./)).toBeInTheDocument();
-    expect(screen.getByText(/counts and dates only, and nothing here reaches our servers/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Counts and dates only, read from Xomoni in this browser: nothing here reaches our servers/),
+    ).toBeInTheDocument();
     expect(read).toHaveBeenCalledWith({ what: 'vault' });
   });
 
   it('opens the Vault page in Xomoni, and starts nothing', async () => {
     const { xomoni, request } = controls({ ok: true, what: 'vault', vault: SUMMARY });
     render(<VaultCard xomoni={xomoni} now={NOW} />);
-    await userEvent.click(await screen.findByRole('button', { name: /Open in Xomoni/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Open the vault in Xomoni' }));
     expect(request).toHaveBeenCalledWith({ kind: 'open', page: 'vault' });
   });
 
@@ -86,6 +88,9 @@ describe('VaultCard', () => {
       const { unmount } = render(<VaultCard xomoni={xomoni} now={NOW} />);
       const region = screen.getByRole('region', { name: 'Your vault: in Xomoni' });
       expect(region).toHaveTextContent('is kept by Xomoni on your computer: it never reaches our servers.');
+      // Named apart from the Library's *Open in Xomoni*, which the page shows beside it.
+      expect(within(region).getByRole('button', { name: 'Open the vault in Xomoni' })).toBeInTheDocument();
+      expect(within(region).queryByRole('button', { name: 'Open in Xomoni' })).not.toBeInTheDocument();
       expect(read).not.toHaveBeenCalled();
       unmount();
     }
@@ -97,11 +102,13 @@ describe('VaultCard', () => {
     expect(
       await screen.findByText(/Your Xomoni is older than this page and can’t show your vault here yet\./),
     ).toBeInTheDocument();
+    // Its link's name differs from the Library's beside it (#426).
+    expect(screen.getByRole('link', { name: 'Install the newest Xomoni' })).toBeInTheDocument();
     unmount();
     const silent = controls({ ok: false, reason: 'no_answer' });
     render(<VaultCard xomoni={silent.xomoni} now={NOW} />);
     expect(
-      await screen.findByText('Xomoni didn’t answer. Open it on this computer and try again.'),
+      await screen.findByText('Xomoni didn’t answer about your vault. Open it on this computer and try again.'),
     ).toBeInTheDocument();
   });
 

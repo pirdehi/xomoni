@@ -112,3 +112,25 @@ export function parseCsv(text: string, options: { maxRows?: number } = {}): CsvT
   }
   return { delimiter, headers: header?.cells ?? [], rows, truncated, problems };
 }
+
+/** The byte order mark a CSV for people starts with, so a spreadsheet reads it as UTF-8 (ADR-0044, decision 3). */
+export const CSV_BOM = '﻿';
+
+/** The first characters that make a spreadsheet run a cell as a formula: `=`, `+`, `-`, `@`, a tab, a carriage return. */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+/**
+ * One CSV record, RFC 4180, as a spreadsheet can't run it (ADR-0044, decision 3): a cell starting like a formula gets a
+ * `'` in front, a cell with a comma, a quote or a line break is quoted with its quotes doubled, and the record ends with
+ * CRLF. Numbers are written as they are; null and undefined are empty cells.
+ */
+export function toCsvRow(cells: readonly (string | number | null | undefined)[]): string {
+  return `${cells
+    .map((cell) => {
+      if (cell === null || cell === undefined) return '';
+      if (typeof cell === 'number') return String(cell);
+      const safe = FORMULA_START.test(cell) ? `'${cell}` : cell;
+      return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+    })
+    .join(',')}\r\n`;
+}

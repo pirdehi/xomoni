@@ -5,6 +5,7 @@
 // Xomoni folder in Downloads (#187, #196). Between the two, the dashboard looks again by itself (`nextArchiveLook`).
 import { needMessage } from '../shared/attention';
 import { archiveRequest, saveArchiveRequest } from '../shared/db';
+import { noteArchiveRequested } from '../shared/vault/timeline';
 import type { ArchiveButton } from '../shared/messages';
 import { ARCHIVE_PAGE_URL, ARCHIVE_PATH } from '../shared/x-archive';
 import { type JobContext, NeedsYou, Stop } from './context';
@@ -69,6 +70,8 @@ export async function runArchive(ctx: JobContext) {
         throw new Stop('paused', UNKNOWN_ARCHIVE_PAGE);
       case 'preparing':
         await saveArchiveRequest(accountId, { requestedAt, checkedAt: Date.now(), downloadedAt: null });
+        // On the account's timeline, once per request (#425).
+        await noteArchiveRequested(accountId, requestedAt);
         await finish(ctx, ARCHIVE_PREPARING);
         return;
       case 'ready':

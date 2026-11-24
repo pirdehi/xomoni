@@ -319,7 +319,7 @@ export interface TimelineQuery {
   to?: number;
   /** Only these kinds; all when left out. */
   kinds?: readonly TimelineKind[];
-  /** At most this many entries, the newest first; 50 when left out. */
+  /** At most this many entries, the newest first; 50 when left out, and `Infinity` for all of them. */
   limit?: number;
 }
 
@@ -334,7 +334,8 @@ export const TIMELINE_PAGE = 50;
 export async function accountTimeline(accountId: string, query: TimelineQuery = {}): Promise<TimelineEntry[]> {
   const from = query.from ?? -Infinity;
   const to = query.to ?? Infinity;
-  const limit = Math.max(0, query.limit ?? TIMELINE_PAGE);
+  // IndexedDB counts in 32 bits: a larger limit, such as the whole timeline's, is read as all of it.
+  const limit = Math.min(Math.max(0, query.limit ?? TIMELINE_PAGE), 2 ** 32 - 1);
   const kinds = query.kinds ? new Set<TimelineKind>(query.kinds) : null;
   const wantRisk = !kinds || kinds.has('risk');
   const wantEvents = !kinds || [...kinds].some((k) => k !== 'risk');

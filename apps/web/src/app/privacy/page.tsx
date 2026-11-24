@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Privacy Policy' };
 /** `/privacy`: the privacy policy. */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="November 23, 2026">
+    <LegalPage title="Privacy Policy" updated="November 24, 2026">
       <p>
         Xomoni is a free, open-source tool made by Omid Pirdehi that manages your digital footprint, starting with your
         own X account. It has two parts: a browser extension that does the work on your computer, and this website,
@@ -70,12 +70,21 @@ export default function PrivacyPage() {
         replies to you: at most the last 90 days and 5,000 replies per X account, on your computer only. When you move
         your data to another copy of Xomoni, the file you export is saved where you choose. Xomoni never uploads it.
       </p>
+      <p>
+        The vault on the extension’s Vault page keeps the files X gives you, when you import them yourself: your X
+        archive and X’s analytics exports of your posts and days, with a list of each import and a timeline of your
+        account. They stay in the same local storage on your computer. Xomoni reads such a file only when you give it
+        one, on the Vault page or in the Library, and never sends it anywhere. <em>Export my vault</em> saves the vault
+        as one ZIP in your Downloads, which Xomoni never uploads. Replies others wrote to you go into it only if you
+        tick them.
+      </p>
 
       <h2>What xomoni.com shows from the extension in the same browser</h2>
       <p>
         When you are signed in to this website and to the extension in the same browser, with the same Xomoni account,
-        pages here can ask the extension for your Library, Watch, account health, settings and comments, and show them.
-        That data goes from the extension to the page inside your browser. It never passes through our servers. The page
+        pages here can ask the extension for your Library, Watch, account health, settings and comments, and for how
+        many rows your vault holds and how recent its files are (never the files or what they say), and show them. That
+        data goes from the extension to the page inside your browser. It never passes through our servers. The page
         keeps it in memory only while it is open: it isn’t stored, logged or sent to anyone.
       </p>
       <p>

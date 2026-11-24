@@ -42,6 +42,28 @@ describe('the privacy policy', () => {
     expect(kept).toHaveTextContent('Xomoni never uploads it.');
   });
 
+  it('names the vault kept on the computer, its export never uploaded, and only its counts on xomoni.com (#426)', () => {
+    render(<PrivacyPage />);
+    const vault = screen.getByText(/keeps the files X gives you, when you import them yourself/);
+    expect(vault).toHaveTextContent('your X archive and X’s analytics exports of your posts and days');
+    expect(vault).toHaveTextContent('They stay in the same local storage on your computer.');
+    expect(vault).toHaveTextContent('never sends it anywhere');
+    expect(vault).toHaveTextContent('saves the vault as one ZIP in your Downloads, which Xomoni never uploads');
+    expect(vault).toHaveTextContent('Replies others wrote to you go into it only if you tick them.');
+    // Under *What stays on your computer*, before what xomoni.com shows.
+    const after = (a: Node, b: Node) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(after(screen.getByRole('heading', { level: 2, name: 'What stays on your computer' }), vault)).toBe(true);
+    expect(
+      after(
+        vault,
+        screen.getByRole('heading', { level: 2, name: 'What xomoni.com shows from the extension in the same browser' }),
+      ),
+    ).toBe(true);
+    expect(screen.getByText(/pages here can ask the extension for your Library/)).toHaveTextContent(
+      'how many rows your vault holds and how recent its files are (never the files or what they say)',
+    );
+  });
+
   // Exactly what reaches xomoni.com, with the daily numbers on and off (ADR-0004, ADR-0026, #450).
   it('names the daily numbers among what an account stores, only while on, and nothing else from the extension', () => {
     render(<PrivacyPage />);

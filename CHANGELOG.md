@@ -6,6 +6,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Changed
 
+- **The privacy policy names the vault** (#426). It says the files of X's you import into the vault, your archive and X's analytics, stay on your computer and are never sent anywhere; that *Export my vault* saves one ZIP in your Downloads, never uploaded; and that xomoni.com sees only how many rows the vault holds and how recent its files are.
+
 - **X's archive, known when it comes again** (#424). Each import of X's archive in the Library is now kept in Xomoni's import ledger, on your computer only, with the date X made the archive, and it goes on your account's timeline. Drop the same ZIP again and Xomoni knows it: nothing is read or written twice. The Library's words, its limits and its checks, another account's archive first of all, are the same as before.
 
 - **Faster with a large copy of your account** (#390). With 100,000 posts and 100,000 likes, as a heavy X user has:

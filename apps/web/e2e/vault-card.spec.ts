@@ -4,7 +4,7 @@ import { createConfirmedUser } from './support/admin';
 import { PASSWORD, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
 
-// *Your vault* on xomoni.com (docs/scenarios/426-website-vault.md, ADR-0028 as amended, #426): what the vault in
+// *Your vault* on xomoni.com (docs/scenarios/426-vault-export.md, S426-31 on; ADR-0028 as amended; #426): what the vault in
 // Xomoni holds, read in this browser as counts and dates only, beside the Library. Xomoni is played at the page, as
 // Chrome exposes an extension that lists xomoni.com in `externally_connectable`: it signs in with the site's code
 // (`pair_device` on the local stack), then answers `what: 'vault'` from the summary a test gives it, and records every
@@ -335,5 +335,21 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
     await page.reload();
     await expect(files(page).getByRole('listitem')).toHaveCount(3);
     expect(vaultReads(fake.received).length).toBeGreaterThan(before);
+  });
+
+  test('S426-51 the privacy policy says the vault stays on the computer, and the site sees only its counts', async ({
+    page,
+  }) => {
+    await page.goto('/privacy');
+    const main = page.getByRole('main');
+    await expect(page.getByRole('heading', { level: 2, name: 'What stays on your computer' })).toBeVisible();
+    await expect(main).toContainText('keeps the files X gives you, when you import them yourself');
+    await expect(main).toContainText('X’s analytics exports of your posts and days');
+    await expect(main).toContainText('on the Vault page or in the Library, and never sends it anywhere');
+    await expect(main).toContainText('saves the vault as one ZIP in your Downloads, which Xomoni never uploads');
+    await expect(main).toContainText('Replies others wrote to you go into it only if you tick them.');
+    await expect(main).toContainText(
+      'how many rows your vault holds and how recent its files are (never the files or what they say)',
+    );
   });
 });

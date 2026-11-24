@@ -311,3 +311,14 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When the person reloads the page
 - Then the card reads the vault again from Xomoni, and shows it the same: nothing was kept by the site
 - Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-51 · security
+
+- Given anyone on xomoni.com
+- When they open the privacy policy
+- Then under What stays on your computer it says the vault keeps X's archive and analytics exports on the computer,
+  reads a file only when the person gives it one, never sends it anywhere, and saves Export my vault in Downloads,
+  never uploaded, with others' replies only if ticked
+- And under what xomoni.com shows, it says the website gets only how many rows the vault holds and how recent its
+  files are, never the files or what they say
+- Test: apps/web/e2e/vault-card.spec.ts

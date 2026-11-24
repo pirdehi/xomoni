@@ -2,7 +2,15 @@
 // baseline, filtered and sorted as the person asks, and the spread of their reach. Pure helpers, and the one live query
 // the page reads through.
 import { useLiveQuery } from 'dexie-react-hooks';
-import { type ReachPost, reachPosts } from '../shared/vault/reach';
+import { db } from '../shared/db';
+import {
+  NO_REACH_SOURCES,
+  type PremiumPeriod,
+  type ReachPost,
+  type ReachSources,
+  premiumPeriods,
+  reachPosts,
+} from '../shared/vault/reach';
 import { BASELINE_DAYS, YOUNG_POST_DAYS, baseline, vsBaseline } from '../shared/vault/reach-stats';
 
 const DAY_MS = 86_400_000;
@@ -34,13 +42,27 @@ export interface ReachData {
   live: number;
   /** The last time X showed one of these posts' views (epoch ms); null when never. */
   lastSeen: number | null;
+  /** The spans the account had Premium, for the Premium comparison. */
+  periods: PremiumPeriod[];
 }
 
-/** The posts of `range` up to `now`, each with its baseline from the 8 weeks before the period's start too. */
-export async function reachData(accountId: string, range: ReachRange, now = Date.now()): Promise<ReachData> {
+/**
+ * The posts of `range` up to `now`, each with its baseline from the 8 weeks before the period's start too, and the
+ * account's Premium spans. The analytics CSV and Premium changes come from `sources`: nothing until the vault's tables.
+ */
+export async function reachData(
+  accountId: string,
+  range: ReachRange,
+  now = Date.now(),
+  sources: ReachSources = NO_REACH_SOURCES,
+): Promise<ReachData> {
   const days = RANGE_DAYS[range];
   const from = days === null ? 0 : now - days * DAY_MS;
-  const posts = await reachPosts(accountId, { from: Math.max(0, from - BASELINE_DAYS * DAY_MS), to: now });
+  const [posts, events, account] = await Promise.all([
+    reachPosts(accountId, { from: Math.max(0, from - BASELINE_DAYS * DAY_MS), to: now }, sources),
+    sources.premiumEvents(accountId),
+    db.accounts.get(accountId),
+  ]);
   const bases = baseline(posts);
   const rows = posts
     .filter((p) => p.createdAt >= from)
@@ -59,6 +81,7 @@ export async function reachData(accountId: string, range: ReachRange, now = Date
     csv: rows.filter((r) => r.source === 'csv').length,
     live: live.length,
     lastSeen: live.length ? Math.max(...live.map((r) => r.asOf ?? 0)) : null,
+    periods: premiumPeriods(events, account ?? null),
   };
 }
 

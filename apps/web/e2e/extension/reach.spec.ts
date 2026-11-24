@@ -50,6 +50,9 @@ const order = async (dashboard: Page) =>
   (await rows(dashboard).evaluateAll((els) => els.map((el) => el.getAttribute('data-post') ?? ''))).map((id) =>
     String(Number(id.slice(-3))),
   );
+/** The *Plus · preview* badge of the period, beside its buttons. */
+const periodBadge = (dashboard: Page): Locator =>
+  dashboard.getByRole('group', { name: 'Period' }).getByText('Plus · preview');
 const press = (dashboard: Page, name: string) => dashboard.getByRole('button', { name, exact: true }).click();
 
 /** Fifteen posts of the same kind, 8 to 20 days old, each seen about 1,000 times: enough for a usual. */
@@ -308,7 +311,7 @@ test.describe('Reach', { tag: '@task-429' }, () => {
     await expect(dashboard.getByText('No reach to show yet')).toBeVisible();
     await press(dashboard, '90 days');
     await expect(rows(dashboard)).toHaveCount(1);
-    await expect(dashboard.getByText('Plus · preview')).toBeVisible();
+    await expect(periodBadge(dashboard)).toBeVisible();
     await press(dashboard, 'Everything');
     await expect(rows(dashboard)).toHaveCount(2);
   });
@@ -324,7 +327,7 @@ test.describe('Reach', { tag: '@task-429' }, () => {
     await expect(rows(dashboard)).toHaveCount(2);
     await press(dashboard, '30 days');
     await expect(rows(dashboard)).toHaveCount(1);
-    await expect(dashboard.getByText('Plus · preview')).toHaveCount(0);
+    await expect(periodBadge(dashboard)).toHaveCount(0);
   });
 
   test('S429-21 a filter or an order changed back starts the table again at page 1', async ({

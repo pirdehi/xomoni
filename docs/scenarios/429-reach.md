@@ -1,12 +1,14 @@
 ---
 task: 429
-title: Reach: each post's reach, its usual, and how it spreads
+title: Reach: each post's reach, its usual, how it spreads, and comparisons
 feature: reach-diagnosis
 ---
 
 # Reach
 
 The Reach page (#429, [ADR-0045](../adr/0045-reach-diagnosis-guesses-labelled-as-guesses.md)) shows how many times X says each of the person's posts and replies was seen, from X's own numbers, against their usual: the median of their posts of the same kind (text, a link, photos or videos, a reply) in the 8 weeks before, once there are 15 of them. A post read before it was 7 days old is still growing, and isn't compared. The numbers here are the views X shows on the person's own profile, which Xomoni keeps as it already does for the daily numbers (#249); X's analytics export joins them once the vault reads it (#425). Xomoni never asks X for anything to measure reach. The last 30 days are free; longer periods are part of Plus, open as a preview until sales start (ADR-0042).
+
+Under *Comparisons* (S429-31 on), three cards compare the person's own posts (not replies) read at least 7 days after they were made: posts with a link out of X against posts without, posts with photos or videos against text only, and posts with Premium against the 8 weeks before it (leaving out the 7 days after it began). Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, and, with 15 posts a side, the ratio and its 95% interval from 2,000 resamples, the same every time for the same posts. *How this is computed* says how, and what can mislead it: when the posts were made, their subjects, the followers, and their ages. A table gives the usual reach by day of the week and time of day. They show what goes together, never why, and are part of Plus, in preview. Until the vault keeps when the account got Premium (#425), the Premium card says it can't compare yet; the date the person gives comes with it.
 
 The tests run the built extension in a real browser on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), never the real X: the made-up `@xomoni_fixture`, whose profile X shows with the posts each test gives it, with their views, links and photos. Run them with no Supabase:
 
@@ -212,3 +214,181 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When the person opens Reach's address
 - Then the dashboard asks for the X window first, and Reach opens once it is open
 - Test: apps/web/e2e/extension/reach.spec.ts
+
+## S429-31 · happy
+
+- Given 30 posts with a link, each seen about 500 times, and 30 text posts seen about 1,000 times
+- When the person opens Reach
+- Then the links card says *Clearly lower*, 30 posts on each side, that posts with a link were seen about half as much
+  as posts without, and the 95% interval
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-32 · happy
+
+- Given 20 posts with photos seen about 2,000 times, and 20 text posts seen about 1,000
+- When the person opens Reach
+- Then the photos card says *Clearly higher*
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-33 · happy
+
+- Given 60 posts with a link and 60 without, seen alike
+- When the person opens Reach
+- Then the links card says *No difference*
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-34 · happy
+
+- Given the links card with its verdict
+- When the person opens *How this is computed*
+- Then it says the interval comes from 2,000 resamples, that it shows what goes together and not why, and what can
+  mislead it: when the posts were made, and their subjects, which Xomoni doesn't read
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-35 · invalid
+
+- Given 14 posts with a link and 30 without
+- When the person opens Reach
+- Then the links card says *Not enough data*, 14 posts, and that each side needs at least 15, with no interval
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-36 · invalid
+
+- Given 20 posts with a link that X showed before they were 7 days old, and 30 text posts
+- When the person opens Reach
+- Then the links card counts 0 posts with a link, and says *Not enough data*
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-37 · invalid
+
+- Given 20 replies with a link, and 30 text posts
+- When the person opens Reach
+- Then the links card says *Not enough data*: replies are left out of the comparisons
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-38 · invalid
+
+- Given 20 posts whose only link is to a post on X, and 20 text posts
+- When the person opens Reach
+- Then all 40 count as posts without a link, and the card says *Not enough data*
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-39 · empty
+
+- Given Xomoni hasn't seen when the account got Premium
+- When the person opens Reach
+- Then the Premium card says *Not enough data*, and that Xomoni doesn't know yet when they got Premium, so it can't
+  compare
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-40 · error
+
+- Given X left the views out of the 60 posts, and showed one other post's views
+- When the person opens Reach
+- Then every comparison says *Not enough data*: none is made from guesses
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-41 · error
+
+- Given 20 posts with a link, 6 of which X sent with views that aren't a number, and 20 text posts
+- When the person opens Reach
+- Then the links card counts 14 posts with a link, and says *Not enough data*
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-42 · persistence
+
+- Given the links card with its verdict and interval
+- When the person reloads the dashboard
+- Then the card says exactly the same: the same posts give the same answer
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-43 · security
+
+- Given posts to compare
+- When the person opens Reach and *How this is computed*
+- Then the page sends no request at all
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-44 · security
+
+- Given every card open on *How this is computed*
+- When the person reads the page
+- Then no word says a post was banned, penalized, suppressed or throttled (ADR-0045)
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-45 · happy
+
+- Given posts to compare
+- When the person opens Reach
+- Then *Comparisons* is marked *Plus · preview*, and the cards are shown
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-46 · empty
+
+- Given a single post with views
+- When the person opens Reach
+- Then every card says *Not enough data*, and so does the day table
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-47 · happy
+
+- Given 16 posts with views
+- When the person reads *By day and time*
+- Then the time of day table has its four parts of the day, and counts the 16 posts between them
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-48 · cancel
+
+- Given *How this is computed* open on the links card
+- When the person presses it again
+- Then it folds away
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-49 · cancel
+
+- Given 20 posts with a link from 40 to 59 days ago, and 20 recent text posts
+- When the person picks *90 days*, then *30 days* again
+- Then the links card goes from *Not enough data* to *Clearly lower*, and back
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-50 · a11y
+
+- Given the links card
+- When the person reaches *How this is computed* with Tab only and presses Enter
+- Then it opens, and says how the comparison is made
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-51 · a11y
+
+- Given every card open, in dark mode
+- When axe-core checks the page
+- Then it finds no serious or critical violation
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-52 · browser
+
+- Given the comparisons
+- When the dashboard is as wide as a phone, 390 pixels
+- Then the cards stack, and the page doesn't scroll sideways
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-53 · error
+
+- Given 30 text posts, and the links card saying *Not enough data*
+- When X answers the profile 3 seconds late, with 30 more posts with a link
+- Then the links card says *Clearly lower* once X answers, without a reload
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-54 · security
+
+- Given 30 posts with a link by someone else, shown on the person's profile, and 30 of the person's text posts
+- When the person opens Reach
+- Then the links card counts 0 posts with a link: someone else's posts never count
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-55 · a11y
+
+- Given every card open, in light mode
+- When axe-core checks the page
+- Then it finds no serious or critical violation
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts

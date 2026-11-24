@@ -196,12 +196,17 @@ describe('the Reach page (#429, ADR-0045)', () => {
     await db.items.bulkPut([post('recent', 10, 50), post('old', 60, 70)]);
     await renderPage();
     await waitFor(() => expect(bodyRows()).toHaveLength(1));
-    expect(screen.queryByText('Plus · preview')).not.toBeInTheDocument();
+    // The comparisons are Plus whatever the period; the period's own badge comes with 90 days and everything.
+    const badges = () => screen.getAllByText('Plus · preview');
+    expect(badges()).toHaveLength(1);
+    expect(within(screen.getByRole('group', { name: 'Period' })).queryByText('Plus · preview')).toBeNull();
+    expect(within(screen.getByRole('region', { name: 'Comparisons' })).getByText('Plus · preview')).toBeVisible();
     await press('90 days');
     await waitFor(() => expect(bodyRows()).toHaveLength(2));
-    expect(screen.getByText('Plus · preview')).toBeInTheDocument();
+    expect(badges()).toHaveLength(2);
+    expect(within(screen.getByRole('group', { name: 'Period' })).getByText('Plus · preview')).toBeVisible();
     await press('Everything');
-    expect(screen.getByText('Plus · preview')).toBeInTheDocument();
+    expect(badges()).toHaveLength(2);
   });
 
   it('draws the spread as a chart and as a table with the same numbers', async () => {
@@ -337,6 +342,6 @@ describe('the Reach page’s helpers', () => {
     expect(data.rows.find((r) => r.id === 'in')).toMatchObject({ baseline: 1_000, vsBaseline: 0.1, growing: false });
     expect(data).toMatchObject({ csv: 0, live: 1, lastSeen: NOW - DAY });
     expect((await reachData(ME, 'all', NOW)).rows).toHaveLength(17);
-    expect(await reachData('nobody', '30d', NOW)).toEqual({ rows: [], csv: 0, live: 0, lastSeen: null });
+    expect(await reachData('nobody', '30d', NOW)).toEqual({ rows: [], csv: 0, live: 0, lastSeen: null, periods: [] });
   });
 });

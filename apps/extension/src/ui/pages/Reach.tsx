@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { fmtAgo, fmtNumber } from '../format';
 import type { PageProps } from '../navigation';
 import { PLUS_RANGES, type ReachData, type ReachRange, useReachData } from '../reach';
+import { ReachComparisons } from '../components/reach/ReachComparisons';
 import { ReachDistribution } from '../components/reach/ReachDistribution';
 import { ReachTable } from '../components/reach/ReachTable';
 import { Badge, Callout, Card, EmptyState, FieldGroup, PageHeader, Segmented } from '../components/ui';
@@ -13,6 +14,12 @@ const useStyles = makeStyles({
   period: { display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: tokens.spacingHorizontalM },
   sources: { margin: 0, paddingLeft: tokens.spacingHorizontalL, lineHeight: tokens.lineHeightBase400 },
   loading: { minHeight: '240px' },
+  heading: {
+    margin: 0,
+    fontSize: tokens.fontSizeBase500,
+    lineHeight: tokens.lineHeightBase500,
+    fontWeight: tokens.fontWeightSemibold,
+  },
 });
 
 /** The words of each period, with the plan's badge on the ones that are part of Plus. */
@@ -37,13 +44,15 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
       <div className={styles.stack}>
         <div className={styles.period}>
           <FieldGroup label="Period">
-            <Segmented
-              value={range}
-              onChange={setRange}
-              options={(['30d', '90d', 'all'] as const).map((r) => ({ value: r, label: RANGE_LABEL[r] }))}
-            />
+            <div className={styles.period}>
+              <Segmented
+                value={range}
+                onChange={setRange}
+                options={(['30d', '90d', 'all'] as const).map((r) => ({ value: r, label: RANGE_LABEL[r] }))}
+              />
+              {PLUS_RANGES.has(range) && <Badge tone="accent">Plus · preview</Badge>}
+            </div>
           </FieldGroup>
-          {PLUS_RANGES.has(range) && <Badge tone="accent">Plus · preview</Badge>}
         </div>
         {data === undefined ? (
           <div className={styles.loading} aria-busy="true" />
@@ -60,6 +69,13 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
             <Sources data={data} />
             <ReachTable rows={data.rows} handle={account.handle} />
             <ReachDistribution rows={data.rows} handle={account.handle} />
+            <section aria-label="Comparisons" className={styles.stack}>
+              <div className={styles.period}>
+                <h2 className={styles.heading}>Comparisons</h2>
+                <Badge tone="accent">Plus · preview</Badge>
+              </div>
+              <ReachComparisons rows={data.rows} periods={data.periods} />
+            </section>
           </>
         )}
       </div>

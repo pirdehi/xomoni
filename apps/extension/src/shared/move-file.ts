@@ -791,6 +791,7 @@ function settings(value: unknown, now: number): Record<string, unknown> {
       copy.maxConsecutiveFailures = setting(f.raw('maxConsecutiveFailures'));
     if (f.raw('notifications') !== undefined) copy.notifications = f.bool('notifications');
     if (f.raw('whileAway') !== undefined) copy.whileAway = f.bool('whileAway');
+    if (f.raw('vaultReminders') !== undefined) copy.vaultReminders = f.bool('vaultReminders');
     return copy;
   });
 }

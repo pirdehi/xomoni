@@ -386,4 +386,9 @@ export interface Settings {
    * keyboard or mouse a covered X window is brought forward so the job continues.
    */
   whileAway: boolean;
+  /**
+   * Remind the person, on this computer only, when one of X's files in the vault is due for a fresh copy (#425,
+   * ADR-0043): at most once a day per account, within active hours. On unless turned off.
+   */
+  vaultReminders: boolean;
 }

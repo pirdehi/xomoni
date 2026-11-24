@@ -18,6 +18,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **A reminder to keep your X files fresh** (#425). Once X's archive in your vault is 30 days old, or X's analytics export 60, Xomoni reminds you on this computer, at most once a day and only within your active hours. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off. It never opens X or starts anything, and asks for no new permission.
+
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
   - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
   - A post from an account made in the last 30 days is marked with its age, such as "account made 6 days ago". The date comes from X's own answer to the search Xomoni already loads, never from a request of its own; where X's answer has no date, there is no badge, never a guess.

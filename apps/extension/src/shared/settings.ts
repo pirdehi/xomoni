@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   maxConsecutiveFailures: 2,
   notifications: true,
   whileAway: true,
+  vaultReminders: true,
 };
 
 /**
@@ -52,6 +53,9 @@ export function normalizeSettings(stored: Partial<Settings> | null | undefined):
   // Stored settings are read back from IndexedDB as they were saved, so the number may be missing or text.
   const failures = asNumber(merged.maxConsecutiveFailures);
   merged.maxConsecutiveFailures = failures === undefined ? 2 : Math.min(3, Math.max(1, Math.round(failures)));
+  // On unless the person turned it off (#425): settings stored before it existed have none.
+  const reminders: unknown = stored?.vaultReminders;
+  merged.vaultReminders = reminders !== false;
   if (merged.preset !== 'custom') return { ...merged, preset: 'careful', pacing: PRESETS.careful };
   const pacing = {} as Record<ActionKind, PacingRule>;
   for (const action of Object.keys(DEFAULT_SETTINGS.pacing) as ActionKind[]) {

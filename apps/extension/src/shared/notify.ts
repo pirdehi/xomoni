@@ -6,13 +6,20 @@ function notifications(): typeof chrome.notifications | undefined {
   return (chrome as Partial<typeof chrome>).notifications;
 }
 
-export { ATTENTION_ID, FINISHED_ID } from './notification-ids';
+export { ATTENTION_ID, FINISHED_ID, VAULT_ID } from './notification-ids';
 
 /**
  * Shows a desktop notification, replacing one with the same id. `sticky` keeps it on screen at high priority
- * until the person acts. Never throws: failures are logged.
+ * until the person acts; `buttons` are at most two, whose clicks the service worker handles. Never throws: failures
+ * are logged.
  */
-export async function notify(id: string, title: string, message: string, sticky = false) {
+export async function notify(
+  id: string,
+  title: string,
+  message: string,
+  sticky = false,
+  buttons: readonly string[] = [],
+) {
   const api = notifications();
   if (!api) return;
   try {
@@ -25,6 +32,7 @@ export async function notify(id: string, title: string, message: string, sticky 
       message,
       priority: sticky ? 2 : 0,
       requireInteraction: sticky,
+      ...(buttons.length && { buttons: buttons.slice(0, 2).map((title) => ({ title })) }),
     });
   } catch (err) {
     console.warn('[xomoni] notification failed', err);

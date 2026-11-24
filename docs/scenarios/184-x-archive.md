@@ -221,4 +221,16 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When the person reloads the dashboard, then drops the same ZIP again
 - Then the archive is still there, Imported, with 3 posts
 - And the second import adds nothing twice: still 3 posts and 2 likes
+- And Xomoni knows the ZIP by its fingerprint (#424): the import ledger keeps a second row that says duplicate, and
+  nothing was read or written again
+- Test: apps/web/e2e/extension/x-archive.spec.ts
+
+## S184-27 · happy
+
+- Given X's ZIP with its manifest, which says X made it on 2026-11-08
+- When the person drops it on the Library's card
+- Then it imports as before: Imported 4 posts and 2 likes
+- And the import ledger keeps one row (#424, ADR-0043): X's archive, the ZIP's name and size, a fingerprint made on
+  this computer, made 2026-11-08, 4 posts, replies and reposts and 2 likes
+- And the account's timeline says Imported X's archive made on 2026-11-08: 4 posts, replies and reposts, and 2 likes.
 - Test: apps/web/e2e/extension/x-archive.spec.ts

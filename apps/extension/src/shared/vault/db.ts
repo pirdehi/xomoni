@@ -56,12 +56,15 @@ export async function recordImport(
   return record;
 }
 
-/** Whether a ledger row records a file that was read in, not a duplicate or an import cancelled before it ended. */
-const completed = (row: VaultImport) => !row.problems.includes('duplicate') && !row.problems.includes('cancelled');
+/** What a ledger row says when the file wasn't read in whole: a duplicate, a cancelled import or a failed one. */
+const UNFINISHED: readonly string[] = ['duplicate', 'cancelled', 'failed'];
+
+/** Whether a ledger row records a file that was read in whole. */
+const completed = (row: VaultImport) => !row.problems.some((p) => UNFINISHED.includes(p));
 
 /**
  * The first completed import of the file with this fingerprint for this account, or undefined: a file found here is a
- * duplicate (ADR-0043, decision 4). Imports that were themselves duplicates or were cancelled don't count.
+ * duplicate (ADR-0043, decision 4). Imports that were themselves duplicates, or were cancelled or failed, don't count.
  */
 export async function findImport(accountId: string, fingerprint: string): Promise<VaultImport | undefined> {
   const rows = await db.vaultImports.where('fingerprint').equals(fingerprint).toArray();

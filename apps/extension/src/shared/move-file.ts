@@ -84,6 +84,11 @@ export type MoveTable = (typeof MOVE_TABLES)[number];
 export const LEFT_OUT_TABLES: Readonly<Record<string, string>> = {
   consents:
     'Informed consent is the person’s own act in this Xomoni: the new one asks again once, so no file can stand in for it.',
+  // The vault's tables (ADR-0043) move from version 2 of the file on (#424, CV.1.4); until then nothing writes them.
+  vaultImports: 'The vault’s import ledger moves with version 2 of the move file.',
+  analyticsPosts: 'The vault’s analytics move with version 2 of the move file.',
+  analyticsDays: 'The vault’s analytics move with version 2 of the move file.',
+  accountEvents: 'The account’s timeline moves with version 2 of the move file.',
 };
 
 /** The `kv` values moved for the whole browser: the settings, and which account the dashboard shows. */

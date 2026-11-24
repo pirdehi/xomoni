@@ -29,12 +29,14 @@ export class VaultError extends Error {
   }
 }
 
-/** A new ledger id: `<account id>:<source>:<importedAt>:<random>`, unique and sorted by account, source and time. */
+/**
+ * A new ledger id: `<account id>:<source>:<importedAt>:<random>`, unique and sorted by account, source and time. The
+ * random part is 8 base-36 digits from Web Crypto.
+ */
 export function newImportId(accountId: string, source: VaultSource, importedAt: number): string {
-  const random = Math.floor(Math.random() * 36 ** 8)
-    .toString(36)
-    .padStart(8, '0');
-  return `${accountId}:${source}:${Math.floor(importedAt)}:${random}`;
+  const [word = 0] = crypto.getRandomValues(new Uint32Array(1));
+  const random = word.toString(36).padStart(8, '0').slice(-8);
+  return `${accountId}:${source}:${String(Math.floor(importedAt))}:${random}`;
 }
 
 /**

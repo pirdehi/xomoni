@@ -15,6 +15,13 @@ export {
   readManifestKey,
   storeExtensionIds,
 } from './extension-ids';
+export {
+  REACH_BANNED_WORDS,
+  REACH_VERDICTS,
+  REACH_VERDICT_WORDS,
+  type ReachVerdict,
+  usesBannedReachWord,
+} from './reach';
 
 /** xomoni.com's origin: the only one the extension's `externally_connectable` lists, checked again on every message. */
 export const WEBSITE_ORIGIN = 'https://xomoni.com';

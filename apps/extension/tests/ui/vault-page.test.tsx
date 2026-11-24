@@ -63,10 +63,10 @@ afterEach(() => {
 });
 
 describe('the Vault page', () => {
-  it('has its four parts, under one heading', async () => {
+  it('has its five parts, under one heading', async () => {
     show();
     expect(screen.getByRole('heading', { level: 1, name: 'Vault' })).toBeInTheDocument();
-    for (const card of ['Your sources', 'Add files', 'Imports', 'Account timeline'])
+    for (const card of ['Your sources', 'Add files', 'Imports', 'Account timeline', 'Export my vault'])
       expect(await screen.findByRole('heading', { level: 2, name: card })).toBeInTheDocument();
     expect(screen.getByText(/Nothing here is sent anywhere\./)).toBeInTheDocument();
   });

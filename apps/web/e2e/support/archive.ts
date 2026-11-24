@@ -1,4 +1,5 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
+import { inflateRawSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { type ReleaseFile, zipOf } from './release';
@@ -115,3 +116,30 @@ export function buildArchive(options: ArchiveOptions = {}): BuiltArchive {
 
 /** The folder of X's synthetic analytics exports (`content-2026.csv`, `overview-2026.csv`, …). */
 export const ANALYTICS_FIXTURES = path.join(__dirname, '..', 'fixtures', 'analytics');
+
+/**
+ * Every file of a ZIP, by path, read with Node's own zlib from the central directory (no ZIP64): for a test that opens
+ * a ZIP the extension wrote, such as *Export my vault*'s.
+ */
+export function unzip(zip: Buffer): Map<string, Buffer> {
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (end < 0) throw new Error('Not a ZIP: no end record');
+  const count = zip.readUInt16LE(end + 10);
+  let at = zip.readUInt32LE(end + 16);
+  const files = new Map<string, Buffer>();
+  for (let n = 0; n < count; n++) {
+    if (zip.readUInt32LE(at) !== 0x02014b50) throw new Error('Not a ZIP: a broken directory');
+    const method = zip.readUInt16LE(at + 10);
+    const stored = zip.readUInt32LE(at + 20);
+    const nameLength = zip.readUInt16LE(at + 28);
+    const extraLength = zip.readUInt16LE(at + 30);
+    const commentLength = zip.readUInt16LE(at + 32);
+    const local = zip.readUInt32LE(at + 42);
+    const name = zip.toString('utf8', at + 46, at + 46 + nameLength);
+    const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+    const raw = zip.subarray(start, start + stored);
+    files.set(name, method === 8 ? inflateRawSync(raw) : Buffer.from(raw));
+    at += 46 + nameLength + extraLength + commentLength;
+  }
+  return files;
+}

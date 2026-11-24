@@ -18,6 +18,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **Your vault, on xomoni.com** (#426). Beside the Library, *Your vault* shows what the vault in Xomoni holds: each of X's files with how fresh it is and what it holds, the day X made your newest archive and how many imports, read in your browser as counts and dates only, and *Open in Xomoni*. Nothing of it reaches our servers, and the website never imports anything.
+
 - **Export my vault** (#426). On the Vault page, one ZIP of your vault that you keep and read without Xomoni: each part as CSV for spreadsheets and JSON for other tools, `README.txt` with every column, `schema.json` (`xomoni-vault-export@1`) and a page any browser opens, with no script. Choose the parts, the formats and the dates; the replies others wrote to you come only if you tick them. A cell that starts like a formula gets a `'`, so a spreadsheet never runs it. The ZIP is made on your computer and saved in Downloads; *Cancel* saves nothing.
 
 - **The vault: X's own files, kept on your computer** (#425, #424). A new *Vault* page in the dashboard:

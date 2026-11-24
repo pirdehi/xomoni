@@ -83,7 +83,8 @@ export type XomoniReadRequest =
   | { what: 'settings' }
   | { what: 'cleanup'; plan: CleanupPlan }
   | { what: 'replies'; filter: RepliesFilter; offset: number }
-  | { what: 'incoming'; author: string; query: string; offset: number };
+  | { what: 'incoming'; author: string; query: string; offset: number }
+  | { what: 'vault' };
 
 /** What `useXomoni` gives a page. */
 export interface XomoniControls {

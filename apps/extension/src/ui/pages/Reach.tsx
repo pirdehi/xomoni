@@ -4,10 +4,14 @@ import { useState } from 'react';
 import { fmtAgo, fmtNumber } from '../format';
 import type { PageProps } from '../navigation';
 import { PLUS_RANGES, type ReachData, type ReachRange, useReachData } from '../reach';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { labelMonths } from '../../shared/vault/label-months';
+import { LabelHistory } from '../components/reach/LabelHistory';
 import { ReachComparisons } from '../components/reach/ReachComparisons';
 import { ReachDistribution } from '../components/reach/ReachDistribution';
 import { PlusBadge } from '../components/reach/PlusBadge';
 import { ReachTable } from '../components/reach/ReachTable';
+import { SuspectPosts } from '../components/reach/SuspectPosts';
 import { Callout, Card, EmptyState, FieldGroup, PageHeader, Segmented } from '../components/ui';
 
 const useStyles = makeStyles({
@@ -36,6 +40,7 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
   const styles = useStyles();
   const [range, setRange] = useState<ReachRange>('30d');
   const data = useReachData(account.id, range);
+  const months = useLiveQuery(async () => await labelMonths(account.id), [account.id]);
   return (
     <>
       <PageHeader
@@ -77,8 +82,18 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
               </div>
               <ReachComparisons rows={data.rows} periods={data.periods} />
             </section>
+            {months && (
+              <section aria-label="Suspected posts" className={styles.stack}>
+                <div className={styles.period}>
+                  <h2 className={styles.heading}>Suspected posts</h2>
+                  <PlusBadge feature="reach-suspects" />
+                </div>
+                <SuspectPosts accountId={account.id} rows={data.rows} months={months} handle={account.handle} />
+              </section>
+            )}
           </>
         )}
+        {months && <LabelHistory months={months} />}
       </div>
     </>
   );

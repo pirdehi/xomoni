@@ -65,6 +65,7 @@ const TABLES = () => [
   db.analyticsPosts,
   db.analyticsDays,
   db.accountEvents,
+  db.labelMonths,
 ];
 
 /** The vault's rows (#424), all of them or one account's, read through `VAULT_MOVE_TABLES`; inside `readTables`. */

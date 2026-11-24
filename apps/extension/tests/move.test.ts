@@ -81,6 +81,7 @@ const empty = (): MoveData => ({
   analyticsPosts: [],
   analyticsDays: [],
   accountEvents: [],
+  labelMonths: [],
 });
 
 async function imported(file: MoveFile): Promise<MoveResult> {
@@ -758,7 +759,14 @@ describe('the vault in a move (#424, version 2)', () => {
 
   it('brings a file from a Xomoni before the vault in, leaving the vault here as it is', async () => {
     await db.accountEvents.add(moverEvent());
-    const { vaultImports: _a, analyticsPosts: _b, analyticsDays: _c, accountEvents: _d, ...core } = empty();
+    const {
+      vaultImports: _a,
+      analyticsPosts: _b,
+      analyticsDays: _c,
+      accountEvents: _d,
+      labelMonths: _e,
+      ...core
+    } = empty();
     const checked = await checkMoveText(await signedFile({ ...core, accounts: [moverAccount()] }, { version: 1 }), NOW);
     if (!checked.ok) throw new Error(checked.message);
     const result = await imported(checked.file);

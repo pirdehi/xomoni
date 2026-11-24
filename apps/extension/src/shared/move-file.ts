@@ -41,7 +41,9 @@ import type {
 } from './types';
 import { type MergeResult, mergeAnalyticsDays, mergeAnalyticsPosts } from './vault/db';
 import { accountEventRecord, analyticsDayRecord, analyticsPostRecord, vaultImportRecord } from './vault/records';
+import { labelMonthRecord, mergeLabelMonths, readLabelMonths } from './vault/label-months';
 import type { AccountEvent, AnalyticsDay, AnalyticsPost, VaultImport } from './vault/types';
+import type { LabelMonthRow } from './vault/under-the-hood';
 import { READY_TABS, type ReadyTab, type WatchResult, type WatchTab } from './watch';
 import type { ArchiveMode, ArchiveRequest } from './x-archive';
 import { MAX_ENTITY_COUNT } from './x-entities';
@@ -88,7 +90,13 @@ export const CORE_MOVE_TABLES = [
  * one out holds none of it, so a feature registers its own table here (and in `VAULT_MOVE_TABLES`) without raising
  * the version again.
  */
-export const VAULT_TABLE_NAMES = ['vaultImports', 'analyticsPosts', 'analyticsDays', 'accountEvents'] as const;
+export const VAULT_TABLE_NAMES = [
+  'vaultImports',
+  'analyticsPosts',
+  'analyticsDays',
+  'accountEvents',
+  'labelMonths',
+] as const;
 
 /**
  * The tables a move carries, in the file's order. Together with `LEFT_OUT_TABLES` they name every table of the
@@ -167,6 +175,8 @@ export interface MoveData {
   analyticsPosts: AnalyticsPost[];
   analyticsDays: AnalyticsDay[];
   accountEvents: AccountEvent[];
+  /** X's *Under the hood* months (#428): a file of an older Xomoni has none. */
+  labelMonths: LabelMonthRow[];
 }
 
 /** What the file says about itself; the checksum covers it with the data. */
@@ -274,6 +284,7 @@ export const MOVE_LIMITS = {
   accountEvents: 200_000,
   analyticsDays: 20_000,
   analyticsPosts: 1_000_000,
+  labelMonths: 10_000,
 } as const;
 
 /** The longest text of a post kept in a file: longer than X allows, so no real post is refused. */
@@ -1007,13 +1018,17 @@ const importKey = (row: VaultImport) => row.id;
 /** The key of a post's analytics: its account and its post. */
 const postKey = (row: AnalyticsPost) => row.key;
 
+/** The key of a month of X's *Under the hood* report (#428): its account and its month. */
+const monthKey = (row: LabelMonthRow) => `${row.accountId}:${row.month}`;
+
 /** The key of an analytics day: its account and its day. */
 const dayKey = (row: AnalyticsDay) => `${row.accountId}:${row.day}`;
 
 /**
  * The vault's tables in a move, by name: the ledger is joined by id (a row here is kept), each post's analytics keep the
- * highest of every number (`mergeAnalyticsPosts`), each day's the newer import's (`mergeAnalyticsDays`), and the
- * timeline gains the events it doesn't have, matched on account, kind, time and ref. Nothing is ever deleted.
+ * highest of every number (`mergeAnalyticsPosts`), each day's the newer import's (`mergeAnalyticsDays`), the timeline
+ * gains the events it doesn't have, matched on account, kind, time and ref, and each month of X's labels is the later
+ * import's (`mergeLabelMonths`, #428). Nothing is ever deleted.
  */
 export const VAULT_MOVE_TABLES: { readonly [T in VaultMoveTableName]: VaultMoveTable<MoveData[T][number]> } = {
   vaultImports: {
@@ -1038,6 +1053,13 @@ export const VAULT_MOVE_TABLES: { readonly [T in VaultMoveTableName]: VaultMoveT
     merge: mergeAnalyticsDays,
   },
   accountEvents: { check: accountEventRecord, limit: MOVE_LIMITS.accountEvents, read: readEvents, merge: mergeEvents },
+  labelMonths: {
+    check: labelMonthRecord,
+    limit: MOVE_LIMITS.labelMonths,
+    key: monthKey,
+    read: readLabelMonths,
+    merge: mergeLabelMonths,
+  },
 };
 
 /** Whether `table` is one of the vault's, which a file may leave out. */
@@ -1071,6 +1093,7 @@ const KEYS: { [T in MoveTable]?: (record: MoveData[T][number]) => string } = {
   vaultImports: VAULT_MOVE_TABLES.vaultImports.key,
   analyticsPosts: VAULT_MOVE_TABLES.analyticsPosts.key,
   analyticsDays: VAULT_MOVE_TABLES.analyticsDays.key,
+  labelMonths: VAULT_MOVE_TABLES.labelMonths.key,
 };
 
 /** A record of `table` checked and copied, or throws `Bad` (or `UnknownTable` for a `kv` key not moved). */

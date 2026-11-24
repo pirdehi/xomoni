@@ -213,7 +213,7 @@
       "id": "watch-about-you",
       "area": "extension",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.6.0",
       "issues": [391],
       "scenarios": "docs/scenarios/391-watch-about-you.md",
       "en": {
@@ -565,7 +565,7 @@
       "id": "health-alert",
       "area": "website",
       "status": "shipped",
-      "since": "unreleased",
+      "since": "0.6.0",
       "issues": [407],
       "scenarios": "docs/scenarios/407-health-alert.md",
       "en": {

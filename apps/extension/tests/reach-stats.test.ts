@@ -15,6 +15,7 @@ import {
   isSettled,
   median,
   quantiles,
+  resampledMedian,
   seededRandom,
   verdictOf,
   vsBaseline,
@@ -66,6 +67,53 @@ describe('the statistics of reach (#429, ADR-0045)', () => {
     it('are not moved by one viral post, as a mean would be', () => {
       const usual = spread(100, 29);
       expect(median([...usual, 1_000_000])).toBeLessThan(120);
+    });
+  });
+
+  describe('a resample’s median', () => {
+    /** Whole-number binomial coefficient. */
+    const choose = (n: number, k: number) => {
+      let c = 1;
+      for (let i = 1; i <= k; i++) c = (c * (n - k + i)) / i;
+      return c;
+    };
+
+    it('has the bootstrap’s own distribution for an odd count', () => {
+      const sorted = Float64Array.from([10, 20, 30, 40, 50]);
+      const random = seededRandom(7);
+      const draws = 40_000;
+      const seen = new Map<number, number>();
+      for (let i = 0; i < draws; i++) {
+        const m = resampledMedian(sorted, random);
+        seen.set(m, (seen.get(m) ?? 0) + 1);
+      }
+      // P(median ≤ the j-th value) = P(at least 3 of 5 draws among the first j + 1 values).
+      let below = 0;
+      for (let j = 0; j < 5; j++) {
+        below += (seen.get(sorted[j]!) ?? 0) / draws;
+        const p = (j + 1) / 5;
+        let exact = 0;
+        for (let i = 3; i <= 5; i++) exact += choose(5, i) * p ** i * (1 - p) ** (5 - i);
+        expect(below).toBeCloseTo(exact, 1);
+      }
+      expect([...seen.keys()].every((m) => sorted.includes(m))).toBe(true);
+    });
+
+    it('has the bootstrap’s own mean for an even count, by every resample counted', () => {
+      const sorted = Float64Array.from([1, 2, 4, 8]);
+      let exact = 0;
+      for (let code = 0; code < 256; code++) {
+        const picks = [0, 1, 2, 3].map((d) => sorted[(code >> (2 * d)) & 3]!).sort((x, y) => x - y);
+        exact += (picks[1]! + picks[2]!) / 2 / 256;
+      }
+      const random = seededRandom(9);
+      let sum = 0;
+      for (let i = 0; i < 40_000; i++) sum += resampledMedian(sorted, random);
+      expect(sum / 40_000).toBeCloseTo(exact, 1);
+    });
+
+    it('is the only value there is for a single post', () => {
+      expect(resampledMedian(Float64Array.from([42]), seededRandom(1))).toBe(42);
     });
   });
 
@@ -154,13 +202,14 @@ describe('the statistics of reach (#429, ADR-0045)', () => {
       expect(result.interval).not.toBeNull();
     });
 
-    // A resample's median is one counting pass, so time grows with the posts, not with a sort of each resample. The
-    // budget is generous for a loaded machine with coverage on; the page's own budgets are measured in the browser.
-    it('compares 20,000 posts within a generous budget', { timeout: 30_000 }, () => {
+    // P5.4.3's budget: every comparison of 50,000 posts with 2,000 resamples within 500 ms, on a loaded machine with
+    // coverage on too. A resample's median is drawn from its order statistic, so its cost doesn't grow with the posts.
+    it('compares 50,000 posts within 500 ms', () => {
+      const [a, b] = [spread(80, 25_000, 12), spread(100, 25_000, 13)];
       const started = performance.now();
-      const result = compareGroups(spread(80, 10_000, 12), spread(100, 10_000, 13));
+      const result = compareGroups(a, b);
+      expect(performance.now() - started).toBeLessThan(500);
       expect(result.verdict).toBe('clear-lower');
-      expect(performance.now() - started).toBeLessThan(10_000);
     });
 
     it('only ever says one of the five verdicts', () => {

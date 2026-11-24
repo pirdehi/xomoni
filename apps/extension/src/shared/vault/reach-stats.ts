@@ -2,7 +2,8 @@
 // posts that are honest about their size. A comparison needs 15 posts on each side, shows each side's size and median,
 // and gives a 95% interval of their ratio from 2,000 bootstrap resamples with a seeded generator, so the same posts
 // always give the same answer. Its verdict is one of five fixed words (`REACH_VERDICT_WORDS`). It shows an association,
-// never a cause. Pure, and fast enough for 50,000 posts: a resample's median costs one pass, not a sort.
+// never a cause. Pure, and fast for 50,000 posts: a resample's median is drawn from its order statistic, not by drawing
+// the resample.
 import type { ReachVerdict } from '@xomoni/bridge';
 import type { ItemKind } from '../types';
 
@@ -126,27 +127,46 @@ export function seededRandom(seed: number): () => number {
   };
 }
 
+/** A standard normal variate from `random` (Box–Muller). */
+function normal(random: () => number): number {
+  let u = random();
+  while (u === 0) u = random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * random());
+}
+
+/** A Gamma(`shape`, 1) variate from `random`, for a shape of 1 or more (Marsaglia and Tsang, 2000). */
+function gamma(shape: number, random: () => number): number {
+  const d = shape - 1 / 3;
+  const c = 1 / Math.sqrt(9 * d);
+  for (;;) {
+    let x = normal(random);
+    let v = 1 + c * x;
+    while (v <= 0) {
+      x = normal(random);
+      v = 1 + c * x;
+    }
+    v = v * v * v;
+    const u = random();
+    if (u < 1 - 0.0331 * x ** 4 || Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+  }
+}
+
 /**
- * The median of one bootstrap resample of ascending `sorted`, in one pass: draw n positions with replacement, count
- * them, and walk the counts to the middle. Because `sorted` ascends, the resample's middle value is the value at the
- * middle position drawn. `counts` is scratch space of n slots.
+ * The median of one bootstrap resample of ascending `sorted`, without drawing the resample. A resample draws n
+ * positions, each `floor(U × n)` for a uniform U; since `sorted` ascends, its median is the value at the middle drawn
+ * position, and the k-th smallest of n uniforms is Beta(k, n − k + 1): two Gamma variates. For an even n, the next one
+ * up is the smallest of the n − k uniforms above it. So a resample costs a few draws whatever n is: the same
+ * distribution as drawing all n, and 50,000 posts compare in milliseconds.
  */
-function resampledMedian(sorted: Float64Array, random: () => number, counts: Uint32Array): number {
+export function resampledMedian(sorted: Float64Array, random: () => number): number {
   const n = sorted.length;
-  counts.fill(0);
-  for (let i = 0; i < n; i++) {
-    const drawn = Math.floor(random() * n);
-    counts[drawn] = (counts[drawn] as number) + 1;
-  }
-  const [lowRank, highRank] = [(n - 1) >> 1, n >> 1];
-  let seen = 0;
-  let low = -1;
-  for (let at = 0; at < n; at++) {
-    seen += counts[at] as number;
-    if (low < 0 && seen > lowRank) low = at;
-    if (seen > highRank) return ((sorted[low] as number) + (sorted[at] as number)) / 2;
-  }
-  return sorted[n - 1] as number;
+  const k = ((n - 1) >> 1) + 1;
+  const x = gamma(k, random);
+  const u = x / (x + gamma(n - k + 1, random));
+  const at = (q: number) => sorted[Math.min(n - 1, Math.floor(q * n))] as number;
+  if (n % 2 === 1) return at(u);
+  const next = u + (1 - u) * (1 - random() ** (1 / (n - k)));
+  return (at(u) + at(next)) / 2;
 }
 
 /** `a / b` for medians of impressions, which may be 0: 1 when both are 0, and infinite when only `b` is. */
@@ -208,10 +228,9 @@ export function compareGroups(a: readonly number[], b: readonly number[], option
     };
   }
   const random = seededRandom(seed);
-  const [countsA, countsB] = [new Uint32Array(sortedA.length), new Uint32Array(sortedB.length)];
   const ratios = new Float64Array(resamples);
   for (let i = 0; i < resamples; i++) {
-    ratios[i] = ratio(resampledMedian(sortedA, random, countsA), resampledMedian(sortedB, random, countsB));
+    ratios[i] = ratio(resampledMedian(sortedA, random), resampledMedian(sortedB, random));
   }
   ratios.sort();
   const tail = (1 - confidence) / 2;

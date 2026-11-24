@@ -499,7 +499,7 @@ describe('Settings page', () => {
       expect(file.type).toBe('application/json');
       const checked = await checkMoveText(await file.text());
       if (!checked.ok) throw new Error(checked.message);
-      expect(checked.file).toMatchObject({ format: 'xomoni-export', version: 1, app: '0.3.0' });
+      expect(checked.file).toMatchObject({ format: 'xomoni-export', version: 2, app: '0.3.0' });
       expect(checked.file.data.accounts.map((a) => a.id)).toEqual([X]);
       expect(checked.file.data.items.map((i) => i.text)).toEqual(['hello']);
       expect(checked.file.data.jobs.map((j) => j.id)).toEqual([job.id]);

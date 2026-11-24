@@ -789,3 +789,70 @@ describe('the check after each release (#343, R18 of docs/QUALITY-GATES.md)', ()
     }
   });
 });
+
+describe('the monthly algorithm digest (#430, ADR-0046)', () => {
+  const digest = workflows.find((w) => w.name === 'algorithm-digest.yml').text;
+  const job = block(digest, '  draft:');
+  const code = digest
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .join('\n');
+
+  it('runs on the 20th of each month, and by hand with an optional month and commit range', () => {
+    const on = block(digest, 'on:');
+    assert.match(on, /^ {4}- cron: '\d{1,2} \d{1,2} 20 \* \*'$/m);
+    const inputs = block(on, '  workflow_dispatch:');
+    for (const input of ['month', 'from', 'to']) {
+      const field = block(inputs, `      ${input}:`);
+      assert.match(field, /^ {8}required: false$/m, input);
+      assert.match(field, /^ {8}default: ''$/m, input);
+    }
+    assert.match(block(digest, 'concurrency:'), /^ {2}group: algorithm-digest\n {2}cancel-in-progress: false$/m);
+  });
+
+  it('can write only to its branch and its pull request, from one job, with no other secret than its own token', () => {
+    assert.match(digest, /^permissions: \{\}$/m);
+    assert.deepEqual(block(digest, 'jobs:').match(/^ {2}[\w-]+:$/gm), ['  draft:']);
+    assert.deepEqual(grants(job), ['contents: write', 'pull-requests: write']);
+    assert.doesNotMatch(code, /secrets\.|issues: write|id-token|write-all/);
+    assert.equal((code.match(/\$\{\{ github\.token \}\}/g) ?? []).length, 2);
+  });
+
+  it('installs nothing and runs no npm code with its token: Node’s built-ins, git and gh only', () => {
+    assert.doesNotMatch(code, /\bnpm\b|\bnpx\b|cache:/);
+    assert.match(job, /^ {10}persist-credentials: false$/m);
+  });
+
+  it('drafts with the script, then opens the pull request only when the draft changed something', () => {
+    const scripts = runScripts(job);
+    assert.equal(scripts.length, 2);
+    assert.match(
+      scripts[0],
+      /^ {10}node tooling\/algorithm-digest\.mjs --month "\$MONTH" --from "\$FROM" --to "\$TO"\n/,
+    );
+    assert.match(scripts[0], /--body-file "\$RUNNER_TEMP\/algorithm-digest\.md"/);
+    assert.match(job, /^ {8}id: draft$/m);
+    for (const input of ['month', 'from', 'to'])
+      assert.match(job, new RegExp(`^ {10}${input.toUpperCase()}: \\$\\{\\{ inputs\\.${input} \\}\\}$`, 'm'));
+    assert.match(job, /^ {8}if: steps\.draft\.outputs\.changed == 'true'$/m);
+    assert.match(job, /^ {10}MONTH: \$\{\{ steps\.draft\.outputs\.month \}\}$/m);
+  });
+
+  it('commits only the digest’s folder, to a branch of its own, and opens a labelled pull request against main', () => {
+    const open = runScripts(job)[1];
+    assert.match(open, /^ {10}set -euo pipefail$/m);
+    assert.match(open, /branch="algorithm-digest\/\$MONTH"/);
+    assert.deepEqual(
+      open
+        .split('\n')
+        .filter((line) => /\bgit add\b/.test(line))
+        .map((line) => line.trim()),
+      ['git add apps/web/src/modules/algorithm/data'],
+    );
+    assert.match(open, /push origin "HEAD:refs\/heads\/\$branch"/);
+    assert.doesNotMatch(open, /--force|-f\b|set -x/);
+    assert.match(open, /gh pr create --base main --head "\$branch"/);
+    assert.match(open, /--label no-changelog --label no-scenarios/);
+    assert.match(open, /::error::.*couldn't be opened.*\n\s+exit 1/);
+  });
+});

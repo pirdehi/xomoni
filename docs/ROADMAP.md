@@ -322,7 +322,7 @@ The first release with paid plans: the extension 0.6.0 and xomoni.com. Payments 
 | ⬜ | CV.4 · The vault: *Export my vault*, the *Your vault* card on xomoni.com, performance and accessibility | [#426](https://github.com/pirdehi/xomoni/issues/426) | |
 | 🔄 | P5.1 · Reach: the decisions, each post's links and media, the *Under the hood* import and the reach model. Done: the ADRs ([ADR-0045](adr/0045-reach-diagnosis-guesses-labelled-as-guesses.md), [ADR-0046](adr/0046-a-public-digest-of-xs-open-ranking-code.md)) | [#428](https://github.com/pirdehi/xomoni/issues/428) | [#434](https://github.com/pirdehi/xomoni/pull/434) |
 | ⬜ | P5.2 · Reach: the Reach page, with each post's reach, comparisons, X's labels and suspected posts as guesses | [#429](https://github.com/pirdehi/xomoni/issues/429) | |
-| ⬜ | P5.3 · Reach: the new-label alert, and the monthly digest of X's ranking code on xomoni.com/algorithm | [#430](https://github.com/pirdehi/xomoni/issues/430) | |
+| 🔄 | P5.3 · Reach: the new-label alert, and the monthly digest of X's ranking code on xomoni.com/algorithm. Done: the monthly workflow that drafts the digest from X's public repository only, for a maintainer to review ([guide](guides/ALGORITHM-DIGEST.md)) | [#430](https://github.com/pirdehi/xomoni/issues/430) | |
 | ⬜ | P5.4 · Reach on xomoni.com in the same browser, performance at 50,000 posts, accessibility and the release | [#431](https://github.com/pirdehi/xomoni/issues/431) | |
 
 ## Dropped

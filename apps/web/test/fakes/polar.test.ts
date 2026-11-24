@@ -184,9 +184,10 @@ describe('signTestEvent', () => {
     expect(Number(one.headers['webhook-timestamp'])).toBeGreaterThanOrEqual(before);
   });
 
-  it("names the account only by its id, and nothing about the person or X, in a subscription's event", () => {
+  it('names the account by its id, and carries the made-up buyer Polar would send, which Xomoni never keeps', () => {
     const event = subscriptionEvent('subscription.canceled', USER, { status: 'active', cancel: true });
     expect(event.data).toMatchObject({ cancel_at_period_end: true, customer: { external_id: USER } });
-    expect(JSON.stringify(event)).not.toMatch(/email|name|handle|@/);
+    expect(event.data).toMatchObject({ customer: { email: 'buyer@example.com' } });
+    expect(JSON.stringify(event)).not.toMatch(/handle|x\.com/);
   });
 });

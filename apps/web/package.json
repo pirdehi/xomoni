@@ -24,6 +24,7 @@
     "@xomoni/bridge": "*",
     "@xomoni/consent": "*",
     "@xomoni/db": "*",
+    "@xomoni/entitlements": "*",
     "@xomoni/fluent-theme": "*",
     "next": "16.4.6",
     "react": "^19.3.1",
@@ -46,7 +47,7 @@
     "typescript": "~6.0.3",
     "vitest": "^5.1.0"
   },
-  "description": "xomoni.com — website and remote dashboard for the Xomoni extension",
+  "description": "xomoni.com \u2014 website and remote dashboard for the Xomoni extension",
   "license": "MIT",
   "author": "Omid Pirdehi (https://github.com/pirdehi)"
 }

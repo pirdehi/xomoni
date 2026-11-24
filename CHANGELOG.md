@@ -16,6 +16,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **An email when X warns your account, if you ask for it** (#407). Turn on *Email me when X warns my account* in Settings on xomoni.com. When X warns one of your X accounts and Xomoni stops there (Retreat or above on its risk ladder; never for a single rate limit), you get one email: the account's @handle, when Xomoni may go on at the earliest, and to rest the account meanwhile. It holds nothing X showed and nothing you posted, links only to your dashboard, and comes at most once every six hours. Every email has a link that stops it without signing in. It is off until you turn it on, and xomoni.com sends it only once its email key is set up.
+
+### Added
+
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
   - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
   - A post from an account made in the last 30 days is marked with its age, such as "account made 6 days ago". The date comes from X's own answer to the search Xomoni already loads, never from a request of its own; where X's answer has no date, there is no badge, never a guess.

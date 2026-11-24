@@ -34,17 +34,19 @@ select is(
     || 'the daily numbers (#250) and of the plan (#420)');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions where has_function_privilege('anon', oid, 'execute')),
-  'device_report, device_report_stats, device_set_daily_stats, pair_device, stop_weekly_email, unpair_device',
+  'device_report, device_report_stats, device_set_daily_stats, pair_device, stop_health_alert, stop_weekly_email, '
+    || 'unpair_device',
   'anon calls only the extension''s functions: pairing, reports, and the daily numbers with their choice (#250), '
-    || 'and stopping the weekly email from its link (ADR-0031)');
+    || 'and stopping the weekly email (ADR-0031) and the health alert (ADR-0047) from their links');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions
    where has_function_privilege('authenticated', oid, 'execute')),
-  'create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, mfa_satisfied, '
-    || 'my_entitlement, pair_device, set_daily_stats, set_weekly_email, stop_weekly_email, unpair_device',
-  'a signed-in person calls only those, plus making a code, deleting their account, choosing the daily numbers '
-    || 'and the weekly email, asking whether their session verified a code where the account needs one (#173), '
-    || 'and reading their own plan (#420)');
+  'create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, '
+    || 'health_alert_status, mfa_satisfied, my_entitlement, pair_device, set_daily_stats, set_health_alert, '
+    || 'set_weekly_email, stop_health_alert, stop_weekly_email, unpair_device',
+  'a signed-in person calls only those, plus making a code, deleting their account, choosing the daily numbers, '
+    || 'the weekly email and the health alert (#407), asking whether their session verified a code where the account '
+    || 'needs one (#173), and reading their own plan (#420)');
 
 -- ── Something created from now on is exposed to nobody ────────────────────────────────────────────
 create table public.exposure_probe (id integer primary key);

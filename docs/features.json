@@ -562,6 +562,22 @@
       }
     },
     {
+      "id": "health-alert",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [407],
+      "scenarios": "docs/scenarios/407-health-alert.md",
+      "en": {
+        "title": "An email when X warns your account",
+        "summary": "if you ask for it in Settings, one email when X warns one of your X accounts and Xomoni stops there: the @handle and when Xomoni may go on, nothing X showed or you posted. At most one every six hours; one link stops it."
+      },
+      "fa": {
+        "title": "ایمیل وقتی X به حسابتان هشدار می‌دهد",
+        "summary": "اگر در تنظیمات بخواهید، وقتی X به یکی از حساب‌های X شما هشدار بدهد و Xomoni آنجا متوقف شود، یک ایمیل می‌گیرید: فقط ‎@handle و اینکه Xomoni کی می‌تواند ادامه بدهد، نه چیزی که X نشان داده یا شما نوشته‌اید. حداکثر هر شش ساعت یکی؛ با یک لینک هم قطع می‌شود."
+      }
+    },
+    {
       "id": "install-guide",
       "area": "website",
       "status": "shipped",

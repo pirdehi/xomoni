@@ -7,6 +7,7 @@ import {
   createSupabaseDashboardReader,
   createSupabaseDevicePairing,
   createSupabaseNumbersChoice,
+  createSupabaseHealthAlert,
   createSupabaseWeeklyEmail,
   createSupabaseDeviceRegistry,
   createSupabaseLiveFeed,
@@ -515,5 +516,34 @@ describe('createSupabaseWeeklyEmail (#257, ADR-0031)', () => {
     await expect(createSupabaseWeeklyEmail(refused.client).set(true)).rejects.toThrow(
       'set_weekly_email: Turn on your daily numbers first.',
     );
+  });
+});
+
+describe('createSupabaseHealthAlert (#407, ADR-0047)', () => {
+  const clientWith = (...answers: unknown[]) => {
+    const rpc = vi.fn();
+    for (const answer of answers) rpc.mockResolvedValueOnce(answer);
+    return { rpc, client: { rpc } as unknown as Parameters<typeof createSupabaseHealthAlert>[0] };
+  };
+
+  it('reads the choice and whether xomoni.com can send, through health_alert_status, never the token', async () => {
+    const { rpc, client } = clientWith(
+      { data: [{ enabled: true, can_send: false }], error: null },
+      { data: [], error: null },
+      { data: null, error: { message: 'Enter a code from your authenticator app first.' } },
+    );
+    const alert = createSupabaseHealthAlert(client);
+    expect(await alert.get()).toEqual({ enabled: true, canSend: false });
+    expect(rpc).toHaveBeenCalledWith('health_alert_status');
+    expect(await alert.get()).toEqual({ enabled: false, canSend: false });
+    await expect(alert.get()).rejects.toThrow('health_alert_status: Enter a code from your authenticator app first.');
+  });
+
+  it('sets it through set_health_alert, and passes on a refusal', async () => {
+    const { rpc, client } = clientWith({ data: false, error: null }, { data: null, error: { message: 'down' } });
+    const alert = createSupabaseHealthAlert(client);
+    expect(await alert.set(false)).toBe(false);
+    expect(rpc).toHaveBeenCalledWith('set_health_alert', { enabled: false });
+    await expect(alert.set(true)).rejects.toThrow('set_health_alert: down');
   });
 });

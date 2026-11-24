@@ -162,3 +162,46 @@ export async function weeklyEmailOf(userId: string): Promise<{ enabled: boolean;
   );
   return rows[0] ?? null;
 }
+
+/** The user's choice of the email when X warns an account (#407, ADR-0047), with its stop token, or null. */
+export async function healthAlertOf(
+  userId: string,
+): Promise<{ enabled: boolean; stop_token: string; last_sent_at: string | null } | null> {
+  const rows = await call<{ enabled: boolean; stop_token: string; last_sent_at: string | null }[]>(
+    `/rest/v1/health_alerts?user_id=eq.${userId}&select=enabled,stop_token,last_sent_at`,
+    { method: 'GET' },
+  );
+  return rows[0] ?? null;
+}
+
+/** One alert of the user's, as the database queued it: the account, the level, and whether it was sent or dropped. */
+export interface QueuedAlert {
+  x_handle: string;
+  level: number;
+  sent_at: string | null;
+  dropped_at: string | null;
+}
+
+/** The user's alerts, oldest first (#407): what the database queued when a report's level rose. */
+export async function healthAlertQueueOf(userId: string): Promise<QueuedAlert[]> {
+  return call<QueuedAlert[]>(
+    `/rest/v1/health_alert_queue?user_id=eq.${userId}&select=x_handle,level,sent_at,dropped_at&order=id`,
+    { method: 'GET' },
+  );
+}
+
+/**
+ * Calls one of the database's own functions with the admin key, as its scheduler would (#407): the website's roles
+ * can't. Returns what it answered.
+ */
+export async function asDatabase<T>(fn: string, body: Record<string, unknown> = {}): Promise<T> {
+  return call<T>(`/rest/v1/rpc/${fn}`, { method: 'POST', body });
+}
+
+/** The X accounts whose level the database keeps for the user's alert (#407): only while it is on. */
+export async function healthAlertLevelsOf(userId: string): Promise<{ x_handle: string; level: number }[]> {
+  return call<{ x_handle: string; level: number }[]>(
+    `/rest/v1/health_alert_levels?user_id=eq.${userId}&select=x_handle,level&order=x_handle`,
+    { method: 'GET' },
+  );
+}

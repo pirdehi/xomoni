@@ -259,6 +259,7 @@ xomoni.com becomes the place to see and manage the X account: every place of the
 | ✅ | Release 0.4.0: Xomoni answers the Library, Watch, Account health, Settings and Cleanup places on xomoni.com | [#282](https://github.com/pirdehi/xomoni/issues/282) | [#283](https://github.com/pirdehi/xomoni/pull/283), [v0.4.0](https://github.com/pirdehi/xomoni/releases/tag/v0.4.0) |
 | ✅ | Comments: *Your replies* (by date, likes, who and words, picked for a cleanup in Xomoni) and *Replies to you* (kept 90 days on the computer, never acted on, ADR-0030) | [#256](https://github.com/pirdehi/xomoni/issues/256) | [#284](https://github.com/pirdehi/xomoni/pull/284), [#287](https://github.com/pirdehi/xomoni/pull/287) |
 | ✅ | Reports: weekly, monthly, the year in review, cleanup and your own, as CSV and PDF, and a weekly email for those who ask (ADR-0031) | [#257](https://github.com/pirdehi/xomoni/issues/257) | [#288](https://github.com/pirdehi/xomoni/pull/288), [#291](https://github.com/pirdehi/xomoni/pull/291) |
+| ✅ | An email when X warns an account, only for those who ask: one per rise to Retreat or above, at most one every six hours, the handle and fixed words only, sent by the database (ADR-0047) | [#407](https://github.com/pirdehi/xomoni/issues/407) | [#432](https://github.com/pirdehi/xomoni/pull/432) |
 
 ## Phase 18 · Install with one click 🔄
 

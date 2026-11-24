@@ -3,9 +3,13 @@ import { useId } from 'react';
 import { AccountTimeline } from '../components/vault/AccountTimeline';
 import { ImportLedger } from '../components/vault/ImportLedger';
 import { VaultDrop } from '../components/vault/VaultDrop';
+import { VaultExport } from '../components/vault/VaultExport';
 import { VaultSources } from '../components/vault/VaultSources';
 import { PageHeader } from '../components/ui';
 import type { PageProps } from '../navigation';
+
+/** This Xomoni's version, which the export names; tests have no manifest. */
+const appVersion = () => chrome.runtime.getManifest().version;
 
 const useStyles = makeStyles({
   stack: { display: 'grid', gap: tokens.spacingVerticalL },
@@ -37,6 +41,7 @@ export function VaultPage({ account, navigate }: PageProps) {
       </div>
       <ImportLedger account={account} id={ledgerId} />
       <AccountTimeline account={account} />
+      <VaultExport account={account} appVersion={appVersion} />
     </div>
   );
 }

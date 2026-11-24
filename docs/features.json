@@ -194,6 +194,22 @@
       }
     },
     {
+      "id": "vault-export",
+      "area": "extension",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [426],
+      "scenarios": "docs/scenarios/426-vault-export.md",
+      "en": {
+        "title": "Export my vault, readable without Xomoni",
+        "summary": "one ZIP of your vault you keep: CSV for spreadsheets (no cell a spreadsheet would run), JSON for other tools, a page any browser opens, a README and a schema. Other people's words only when you tick them. Made on your computer, never sent anywhere, and free on every plan."
+      },
+      "fa": {
+        "title": "خروجی گاوصندوق، خواندنی بدون Xomoni",
+        "summary": "یک ZIP از گاوصندوق شما که نگهش می‌دارید: CSV برای صفحه‌گسترده (بدون سلولی که صفحه‌گسترده اجرایش کند)، JSON برای ابزارهای دیگر، صفحه‌ای که هر مرورگری باز می‌کند، یک README و یک schema. واژه‌های دیگران فقط وقتی خودتان تیک بزنید. روی رایانه‌ی شما ساخته می‌شود، هرگز جایی فرستاده نمی‌شود و در همه‌ی پلن‌ها رایگان است."
+      }
+    },
+    {
       "id": "archive-date-range",
       "area": "extension",
       "status": "shipped",

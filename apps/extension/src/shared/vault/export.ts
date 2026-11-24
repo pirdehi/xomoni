@@ -423,3 +423,37 @@ export async function vaultExport(
   });
   return { zip, rows: Object.fromEntries(parts.map(({ part, rows }) => [part.id, rows.length])) };
 }
+
+/**
+ * About how many rows each part holds for the account, counted through the indexes without reading them, for the
+ * export's size estimate: the posts, replies and reposts, the likes, the analytics, the timeline (with the risk
+ * ladder's events), the ledger and the replies to you.
+ */
+export async function exportRowCounts(accountId: string): Promise<Record<string, number>> {
+  const kind = (k: ItemKind) =>
+    db.items.where('[accountId+kind+createdAt]').between([accountId, k, -Infinity], [accountId, k, Infinity]).count();
+  const whole: [[string, number], [string, number]] = [
+    [accountId, -Infinity],
+    [accountId, Infinity],
+  ];
+  const events = await db.accountEvents
+    .where('[accountId+at]')
+    .between(...whole)
+    .count();
+  const risks = await db.risk
+    .where('[accountId+at]')
+    .between(...whole)
+    .count();
+  return {
+    posts: (await kind('post')) + (await kind('reply')) + (await kind('repost')),
+    likes: await kind('like'),
+    'analytics-days': await db.analyticsDays.where('accountId').equals(accountId).count(),
+    'analytics-posts': await db.analyticsPosts.where('accountId').equals(accountId).count(),
+    timeline: events + risks,
+    imports: await db.vaultImports.where('accountId').equals(accountId).count(),
+    'replies-to-you': await db.incoming.where('accountId').equals(accountId).count(),
+  };
+}
+
+/** About how many bytes a row takes in a CSV, for the estimate; JSON takes about twice that. */
+export const BYTES_PER_ROW = 160;

@@ -19,6 +19,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
   Everything stays on your computer. The vault never opens X, scrolls, clicks or starts anything there, and asks for no new permission.
 
+- **Export my vault** (#426). On the Vault page, one ZIP of your vault that you keep and read without Xomoni: each part as CSV for spreadsheets and JSON for other tools, `README.txt` with every column, `schema.json` (`xomoni-vault-export@1`) and a page any browser opens, with no script. Choose the parts, the formats and the dates; the replies others wrote to you come only if you tick them. A cell that starts like a formula gets a `'`, so a spreadsheet never runs it. The ZIP is made on your computer and saved in Downloads; *Cancel* saves nothing.
+
 ## [0.6.0] - 2026-11-24
 
 New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.

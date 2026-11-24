@@ -18,6 +18,13 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
+- **The vault: X's own files, kept on your computer** (#425, #424). A new *Vault* page in the dashboard:
+  - drop or choose X's archive (the ZIP) and its analytics export (CSV of posts or of days), together if you like. *Import these files?* says what was recognized, for which account and with what warning, before anything is written: a file already imported, a CSV whose owner you confirm, and every refused file with why;
+  - *Your sources* says how fresh each file is and what it holds, *Imports* lists every import with what it left out, and *Account timeline* keeps X Premium seen on or off, your archive's request and import, and your own notes, with *Export CSV*;
+  - a reminder, at most once a day and within your active hours, says when the archive (30 days) or the analytics (60) is due for a fresh copy. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off.
+
+  Everything stays on your computer. The vault never opens X, scrolls, clicks or starts anything there, and asks for no new permission.
+
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
   - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
   - A post from an account made in the last 30 days is marked with its age, such as "account made 6 days ago". The date comes from X's own answer to the search Xomoni already loads, never from a request of its own; where X's answer has no date, there is no badge, never a guess.

@@ -51,10 +51,18 @@ export type JobAction = 'pause' | 'cancel' | 'resume';
 export const JOB_ACTIONS: readonly JobAction[] = ['pause', 'cancel', 'resume'];
 
 /** The pages of Xomoni the website may open. */
-export type XomoniPage = 'overview' | 'activity' | 'cleanup' | 'library' | 'watch' | 'settings';
+export type XomoniPage = 'overview' | 'activity' | 'cleanup' | 'library' | 'vault' | 'watch' | 'settings';
 
 /** Every `XomoniPage`, for the parser. */
-export const XOMONI_PAGES: readonly XomoniPage[] = ['overview', 'activity', 'cleanup', 'library', 'watch', 'settings'];
+export const XOMONI_PAGES: readonly XomoniPage[] = [
+  'overview',
+  'activity',
+  'cleanup',
+  'library',
+  'vault',
+  'watch',
+  'settings',
+];
 
 /** `{type: 'xomoni-hello'}`. */
 export interface HelloMessage {

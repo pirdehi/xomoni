@@ -46,6 +46,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Keeps going while you do other things:** *Keep going while away* keeps the display on and brings a covered X window forward, and *Run hidden* shares the X tab with the dashboard so a job continues with the X window minimized. Nothing of the shared tab is recorded or sent.
 - **Your X archive, requested and imported:** *Get my archive* asks X for your archive on X's own page and downloads it once X has made it. The ZIP is imported as it is, from Downloads › Xomoni or dropped on the Library, and only `account.js`, `tweets.js` and `like.js` are read.
 - **Your copy, in the Library:** shows how much of your account Xomoni has and where it came from, with a search. *Complete my copy* reads your posts, replies, likes and full history from X in one job.
+- **The vault: X's own files, kept on your computer** *(next release)*: the *Vault* page takes X's archive and its analytics export, dropped or chosen, says what it recognized before anything is written, and keeps a ledger of every import and your account's timeline. A reminder, at most once a day, says when a file is due for a fresh copy. Nothing leaves your computer, and nothing is done on X.
 - **Archive a date range:** pick the dates, let Xomoni read them from X (read-only, at the same careful pace), and download your posts, replies and reposts from that range as a page you can open in any browser, or as JSON. It is saved on your computer only. Your official X archive stays the complete copy, with media.
 - **Watch X search:** follow up to five phrases or #hashtags in X's search. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads: nothing is liked, replied to or posted.
 - **Watch what is said about you** *(next release)*: two ready Watch searches for your own account, Mentions of you and Replies to you, off until you turn them on. A post from an account made in the last 30 days is marked with its age, from X's own search answer, and Xomoni's toolbar button counts the ones you haven't seen. Read only, and nothing leaves your computer.
@@ -241,7 +242,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3), 2026-11-23.** Xomoni has 38 [features](#features), 1 of them added since 0.5.3. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+**Latest release: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3), 2026-11-23.** Xomoni has 39 [features](#features), 2 of them added since 0.5.3. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
 
 <!-- END GENERATED: status -->
 

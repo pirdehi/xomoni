@@ -36,6 +36,8 @@ import {
   Settings20Regular,
   Sparkle20Filled,
   Sparkle20Regular,
+  Vault20Filled,
+  Vault20Regular,
   Warning16Filled,
   bundleIcon,
 } from '@fluentui/react-icons';
@@ -74,6 +76,7 @@ import { CleanupPage } from './pages/Cleanup';
 import { LibraryPage } from './pages/Library';
 import { OverviewPage } from './pages/Overview';
 import { SettingsPage } from './pages/Settings';
+import { VaultPage } from './pages/Vault';
 import { WatchPage } from './pages/Watch';
 import type { Account } from '../shared/types';
 import { MOVED_PAGES, type PageId, type PageProps } from './navigation';
@@ -84,6 +87,7 @@ const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
   { id: 'overview', label: 'Home', icon: bundleIcon(Home20Filled, Home20Regular) },
   { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
   { id: 'library', label: 'Library', icon: bundleIcon(Library20Filled, Library20Regular) },
+  { id: 'vault', label: 'Vault', icon: bundleIcon(Vault20Filled, Vault20Regular) },
   // Jobs and the log are one Activity page with two tabs (#202); the item opens its Jobs tab.
   { id: 'jobs', label: 'Activity', icon: bundleIcon(History20Filled, History20Regular) },
   { id: 'watch', label: 'Watch', icon: bundleIcon(Search20Filled, Search20Regular) },
@@ -324,6 +328,8 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
       return <CleanupPage {...props} />;
     case 'library':
       return <LibraryPage {...props} />;
+    case 'vault':
+      return <VaultPage {...props} />;
     case 'watch':
       return <WatchPage {...props} />;
     case 'jobs':

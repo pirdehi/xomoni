@@ -7,6 +7,7 @@ import { assessRisk } from '../shared/risk';
 import { CloudError, type StatusAnswer, pairDevice, reportStatus, unpairDevice } from './client';
 import { type CloudConnection, clearConnection, getConnection, saveConnection } from './connection';
 import { rememberStatsChoice, sendDailyNumbers } from './daily-report';
+import { forgetPlans, rememberPlan } from './entitlement';
 import { saveReleaseNews } from './release';
 import { type JobReport, jobReport } from './summary';
 
@@ -37,8 +38,8 @@ async function changedJobs(since: number): Promise<{ jobs: JobReport[]; upTo: nu
 /**
  * One report: a heartbeat with the jobs updated since the last one. `disconnected` when xomoni.com no longer
  * knows this browser (the person disconnected it there), `offline` when it couldn't be reached. Keeps what the
- * answer says about the newest release (#151) and the account's choice of daily numbers, and sends the days not yet
- * sent while it shows them (#250).
+ * answer says about the newest release (#151), the account's plan (ADR-0042) and its choice of daily numbers, and
+ * sends the days not yet sent while it shows them (#250).
  */
 export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offline'> {
   const connection = await getConnection();
@@ -51,6 +52,7 @@ export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offl
   } catch (err) {
     if (err instanceof CloudError && err.reason === 'unknown_device') {
       await clearConnection();
+      await forgetPlans();
       return 'disconnected';
     }
     if (err instanceof CloudError && err.reason === 'unreachable') return 'offline';
@@ -58,6 +60,8 @@ export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offl
   }
   if (upTo > connection.reportedUpTo) await saveConnection({ ...connection, reportedUpTo: upTo });
   if (answer.news) await saveReleaseNews(answer.news);
+  // The account's plan (ADR-0042): an answer that doesn't carry one readably changes nothing.
+  if (answer.plan) await rememberPlan(connection.deviceId, answer.plan);
   // Daily numbers (#250, ADR-0026): only while the account shows them, as xomoni.com just said. A failure here waits
   // for the next heartbeat and never stops the status report.
   await rememberStatsChoice(answer.stats);
@@ -84,8 +88,11 @@ export async function connect(code: string, deviceName: string): Promise<CloudCo
     account,
     confirmed: false,
   };
+  // A new connection may be another account: no plan heard before counts for it, and its own comes with the first
+  // report. Forgotten before the connection is saved, so no moment pairs the new account with the old plan.
+  await forgetPlans();
   await saveConnection(connection);
-  // A new connection may be another account: its own choice comes with the first report.
+  // Its own choice of daily numbers comes with the first report too.
   await rememberStatsChoice(false);
   return connection;
 }
@@ -116,15 +123,25 @@ export async function disconnect(): Promise<'disconnected' | 'forgotten-here' | 
   );
   await clearConnection();
   await rememberStatsChoice(false);
+  // Signing out disconnects too (`web-session.ts`, `ui/sign-out.ts`): the plan goes with the connection.
+  await forgetPlans();
   return told ? 'disconnected' : 'forgotten-here';
 }
 
 /**
  * Keeps xomoni.com up to date while the dashboard is open: reports soon after a job changes (a few seconds of
- * quiet first, so a busy job sends one report) and at least every `HEARTBEAT_MS`. Calls `onDisconnected` once
- * if the person disconnected this browser on the website. Returns the function that stops it.
+ * quiet first, so a busy job sends one report), at least every `HEARTBEAT_MS`, and at once whenever the dashboard is
+ * shown again (`page`), so a plan bought on xomoni.com in another tab opens without waiting for the heartbeat
+ * (ADR-0042). Calls `onDisconnected` once if the person disconnected this browser on the website. Returns the
+ * function that stops it.
  */
-export function startCloudSync(onDisconnected: () => void, debounceMs = 10_000): () => void {
+export function startCloudSync(
+  onDisconnected: () => void,
+  debounceMs = 10_000,
+  page: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'> | null = 'document' in globalThis
+    ? document
+    : null,
+): () => void {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const run = () => {
@@ -142,11 +159,16 @@ export function startCloudSync(onDisconnected: () => void, debounceMs = 10_000):
   const heartbeat = setInterval(run, HEARTBEAT_MS);
   // Fires on every change to the jobs table, from this tab's runner or any other.
   const changes = liveQuery(() => db.jobs.toArray()).subscribe({ next: soon, error: () => undefined });
+  const shown = () => {
+    if (page?.visibilityState === 'visible') run();
+  };
+  page?.addEventListener('visibilitychange', shown);
   run();
   return () => {
     stopped = true;
     clearTimeout(timer);
     clearInterval(heartbeat);
     changes.unsubscribe();
+    page?.removeEventListener('visibilitychange', shown);
   };
 }

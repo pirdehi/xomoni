@@ -201,7 +201,7 @@ npm run build -w @xomoni/extension
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**آخرین نسخه: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3)، ۲۰۲۶-۱۱-۲۳.** Xomoni در مجموع ۳۹ قابلیت دارد (فهرستشان بالاتر آمده) که ۲ تا از آن‌ها بعد از 0.5.3 اضافه شده‌اند. سایت xomoni.com هر تغییر را به محض merge شدن دارد و افزونه آن را با نسخه‌ی بعدی می‌گیرد.
+**آخرین نسخه: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3)، ۲۰۲۶-۱۱-۲۳.** Xomoni در مجموع ۴۰ قابلیت دارد (فهرستشان بالاتر آمده) که ۳ تا از آن‌ها بعد از 0.5.3 اضافه شده‌اند. سایت xomoni.com هر تغییر را به محض merge شدن دارد و افزونه آن را با نسخه‌ی بعدی می‌گیرد.
 
 <!-- END GENERATED: status -->
 

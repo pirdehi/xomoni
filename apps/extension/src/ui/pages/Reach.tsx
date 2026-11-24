@@ -6,8 +6,9 @@ import type { PageProps } from '../navigation';
 import { PLUS_RANGES, type ReachData, type ReachRange, useReachData } from '../reach';
 import { ReachComparisons } from '../components/reach/ReachComparisons';
 import { ReachDistribution } from '../components/reach/ReachDistribution';
+import { PlusBadge } from '../components/reach/PlusBadge';
 import { ReachTable } from '../components/reach/ReachTable';
-import { Badge, Callout, Card, EmptyState, FieldGroup, PageHeader, Segmented } from '../components/ui';
+import { Callout, Card, EmptyState, FieldGroup, PageHeader, Segmented } from '../components/ui';
 
 const useStyles = makeStyles({
   stack: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXL },
@@ -50,7 +51,7 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
                 onChange={setRange}
                 options={(['30d', '90d', 'all'] as const).map((r) => ({ value: r, label: RANGE_LABEL[r] }))}
               />
-              {PLUS_RANGES.has(range) && <Badge tone="accent">Plus · preview</Badge>}
+              {PLUS_RANGES.has(range) && <PlusBadge feature="reach-history" />}
             </div>
           </FieldGroup>
         </div>
@@ -72,7 +73,7 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
             <section aria-label="Comparisons" className={styles.stack}>
               <div className={styles.period}>
                 <h2 className={styles.heading}>Comparisons</h2>
-                <Badge tone="accent">Plus · preview</Badge>
+                <PlusBadge feature="reach-compare" />
               </div>
               <ReachComparisons rows={data.rows} periods={data.periods} />
             </section>

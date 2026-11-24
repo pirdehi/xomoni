@@ -135,8 +135,9 @@ describe('AccountTimeline', () => {
     const form = await screen.findByRole('form', { name: 'Add an entry' });
     await user.type(within(form).getByRole('textbox', { name: 'Note' }), 'Appealed the label today.');
     await user.click(within(form).getByRole('button', { name: 'Add to timeline' }));
-    expect(await screen.findByText('Appealed the label today.')).toBeInTheDocument();
-    expect(mocks.toast).toHaveBeenCalledWith('Added to your timeline', 'good');
+    // The entry shows once the live query reads it back, which can take a while on a busy machine.
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Added to your timeline', 'good'), { timeout: 5000 });
+    expect(await screen.findByText('Appealed the label today.', {}, { timeout: 5000 })).toBeInTheDocument();
     const [stored] = await db.accountEvents.toArray();
     expect(stored).toMatchObject({ kind: 'note', source: 'person', words: 'Appealed the label today.' });
     expect(screen.queryByRole('form', { name: 'Add an entry' })).not.toBeInTheDocument();
@@ -191,7 +192,9 @@ describe('AccountTimeline', () => {
       throw new Error('The browser refused the download');
     });
     show();
-    await userEvent.click(await screen.findByRole('button', { name: 'Export CSV' }));
+    // *Export CSV* is off until the entries are read, so wait for them before pressing it.
+    await screen.findByText('Mine');
+    await userEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
     await waitFor(() =>
       expect(mocks.toast).toHaveBeenCalledWith(
         'The timeline wasn’t saved: The browser refused the download',

@@ -68,7 +68,8 @@ export function VaultExport({ account, appVersion }: { account: Account; appVers
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const stop = useRef<AbortController | null>(null);
-  const counts = useLiveQuery(() => exportRowCounts(account.id), [account.id]);
+  // Async, so Dexie's zone holds across the helper's awaits (#459).
+  const counts = useLiveQuery(async () => await exportRowCounts(account.id), [account.id]);
 
   const range: ExportRange | null =
     span === 'all'

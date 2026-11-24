@@ -225,6 +225,7 @@ export function SiteFooter() {
         <nav className={s.footerNav} aria-label="Site">
           {link(INSTALL_URL, 'Install')}
           {link(RELEASES_URL, 'What’s new')}
+          {link('/algorithm', 'Algorithm digest')}
           {link('/risks', 'Risks')}
           {link('/privacy', 'Privacy')}
           {link('/terms', 'Terms')}

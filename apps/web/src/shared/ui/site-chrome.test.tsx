@@ -163,6 +163,7 @@ describe('SiteFooter', () => {
     ).toEqual([
       ['Install', '/install'],
       ['What’s new', RELEASES_URL],
+      ['Algorithm digest', '/algorithm'],
       ['Risks', '/risks'],
       ['Privacy', '/privacy'],
       ['Terms', '/terms'],

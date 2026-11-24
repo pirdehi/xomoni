@@ -31,6 +31,7 @@ const MENU = [
 const FOOTER = [
   ['Install', '/install'],
   ['What’s new', `${REPOSITORY}/releases`],
+  ['Algorithm digest', '/algorithm'],
   ['Risks', '/risks'],
   ['Privacy', '/privacy'],
   ['Terms', '/terms'],
@@ -402,7 +403,7 @@ test.describe('xomoni.com on a phone', { tag: ['@task-242'] }, () => {
     for (const href of links) {
       // /terms also covers /terms-of-sale, which the footer lists with /refunds while those pages are shown (#420).
       expect(href).toMatch(
-        /^(\/(#how|#safety|#privacy|install|risks|privacy|terms|refunds)|https:\/\/github\.com\/pirdehi\/)/,
+        /^(\/(#how|#safety|#privacy|install|algorithm|risks|privacy|terms|refunds)|https:\/\/github\.com\/pirdehi\/)/,
       );
     }
     for (const name of ['Dashboard', 'Account', 'Sign out']) {

@@ -658,6 +658,22 @@
       }
     },
     {
+      "id": "algorithm-digest",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [430],
+      "scenarios": "docs/scenarios/430-algorithm-digest.md",
+      "en": {
+        "title": "What changed in X’s ranking code",
+        "summary": "a monthly digest at xomoni.com/algorithm, made from X’s public code only and written by a person, with the parts of the code that changed, the settings by name and the exact range on GitHub; it says what it can’t tell, since the real weights are hidden."
+      },
+      "fa": {
+        "title": "تغییرهای کد رتبه‌بندی X",
+        "summary": "خلاصه‌ی ماهانه در xomoni.com/algorithm، فقط از کد عمومی X و نوشته‌ی یک انسان، با بخش‌هایی از کد که عوض شد، نام تنظیم‌ها و بازه‌ی دقیق در GitHub؛ و می‌گوید چه چیزی را نمی‌تواند بگوید، چون وزن‌های واقعی پنهان‌اند."
+      }
+    },
+    {
       "id": "install-guide",
       "area": "website",
       "status": "shipped",

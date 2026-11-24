@@ -23,6 +23,9 @@ const PUBLIC = [
   '/terms-of-sale',
   '/refunds',
   '/risks',
+  '/algorithm',
+  // A made-up digest of the tests' build, with every part filled in (#430).
+  '/algorithm/2000-01',
 ];
 
 /** Every place of the dashboard, in the menu's order, then the account page. */

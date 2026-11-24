@@ -3,8 +3,9 @@
 //
 //   node tooling/algorithm-digest.mjs [--month yyyy-mm] [--from <commit>] [--to <commit>] [--body-file <path>]
 //
-// It reads X's public repository `xai-org/x-algorithm` through GitHub's REST API: the newest commit (or `--to`), and the
-// comparison from the last digest's commit (or `--from`) to it. When something changed, it writes the draft to
+// It reads X's public repository `xai-org/x-algorithm` through GitHub's REST API: the newest commit (or `--to`), the
+// comparison from the last digest's commit (or `--from`) to it, both commits' trees when the comparison stops at 300
+// files, and parameter files GitHub shows no patch for, at both ends. When something changed, it writes the draft to
 // apps/web/src/modules/algorithm/data/<month>.json, rewrites the folder's index.ts, writes the pull request's
 // description to `--body-file` if given, and sets `changed=true` and `month` in GITHUB_OUTPUT. With no new commit it
 // writes nothing and sets `changed=false`. Any error from GitHub ends it with no file written and exit code 1.

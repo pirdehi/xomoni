@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-23
+- Amended: 2026-11-24, the verdict's bands, a baseline's size and "penalty" among the banned words, written down as built (#429)
 
 ## Context
 
@@ -31,9 +32,13 @@ Testing visibility by searching X again and again, or from a signed-out browser,
    - **Each comparison shows its numbers:** each group's size and median, and a 95% confidence interval of their ratio. The interval comes from a bootstrap of 2,000 resamples with a seeded generator, so the same data always gives the same answer.
    - **A post's baseline** is the rolling median of the person's posts of the same format (text, link, media, reply) over the 8 weeks before it.
    - **The verdict is one of five fixed words:** *clear-lower*, *clear-higher*, *maybe*, *no difference*, *not enough data* (`REACH_VERDICT_WORDS`, shared by the extension and the website).
+     - The whole interval below 1 is *clear-lower*, and above 1 *clear-higher*.
+     - An interval inside 0.8 to 1.25 is *no difference*: neither side is more than a fifth above or below the other, even at the interval's ends.
+     - Any other interval, one that holds 1 but reaches past that band, is *maybe*.
+   - **A baseline needs 15 posts too:** a post has one only when at least 15 settled posts of its format came in the 8 weeks before it.
    - **Each comparison lists what can mislead it:** the hour and the day, the subject, follower growth over the period, and the posts' ages.
 3. **Banned words.**
-   - No verdict, heading, notification or text of Reach says that a post or an account is shadowbanned, banned, penalized, suppressed or throttled.
+   - No verdict, heading, notification or text of Reach says that a post or an account is shadowbanned, banned, penalized (or under a penalty), suppressed or throttled.
    - A test searches every string of Reach, in the extension and on the website, for these words. A string that has one doesn't merge.
    - Where X names a label, Reach shows X's name.
 4. **A suspected post is a guess, and says so.** For a month in which X applied a label to n posts, Xomoni may name candidates: the posts of that month furthest below their baseline, under half of it, and at most min(3n, 10).
@@ -62,7 +67,7 @@ Built in [#428](https://github.com/pirdehi/xomoni/issues/428) (the data and the 
 - **The glossary must be kept current.** Each entry's date shows when it was last checked.
 - **Comparisons show associations, not causes,** and the page says so.
 - **Which parts of Reach are paid** is set in `FEATURES` ([ADR-0042](0042-payments-and-entitlements-with-polar.md)). The honesty rules apply on every plan.
-- **The rules are the tests' acceptance criteria:** 7 days, 15 posts, 95%, min(3n, 10), and the banned words.
+- **The rules are the tests' acceptance criteria:** 7 days, 15 posts (for a group and for a baseline), 95%, the band of 0.8 to 1.25, min(3n, 10), and the banned words.
 
 ## Alternatives considered
 

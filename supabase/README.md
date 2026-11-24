@@ -7,7 +7,7 @@ The Supabase project behind xomoni.com, described entirely by files in this fold
 | `config.toml` | Auth, API and local-stack settings. The top level is the **local** stack; `[remotes.production]` at the end holds production-only overrides (site URL, redirect URLs, Resend SMTP, the real Turnstile secret, stricter rate limits). |
 | `migrations/` | The database schema, applied in order. Every file starts with a comment explaining the change. |
 | `templates/` | Branded HTML for every auth email (confirmation, recovery, email change, invite, magic link, reauthentication) and the security notifications (password changed, email changed, sign-in method added, authenticator app added or removed). |
-| `tests/database/` | pgTAP tests for Row Level Security, `delete_account()`, `jobs.risk_level`, the per-account caps, the daily numbers with their choice, two-step verification's `aal2` rule, and the weekly email and the health alert with their sends (`supabase test db`). |
+| `tests/database/` | pgTAP tests for Row Level Security, `delete_account()`, `jobs.risk_level`, the per-account caps, the daily numbers with their choice, two-step verification's `aal2` rule, and the weekly email and the health alert with their sends, and the plan with Polar's webhook ledger (`supabase test db`). |
 | `.env` | **Git-ignored.** Secrets referenced from `config.toml` with `env(…)`: the Google OAuth client, `TURNSTILE_SECRET_KEY`, `RESEND_SMTP_API_KEY`. Never commit it. |
 
 ## Local stack
@@ -44,6 +44,16 @@ The CLI maps any environment variable named `SUPABASE_<SECTION>_<KEY>` onto `con
 select vault.create_secret('<resend key>', 'resend_api_key');
 -- to rotate it later:
 select vault.update_secret((select id from vault.secrets where name = 'resend_api_key'), '<new key>');
+```
+
+## Opening sales
+
+The plan of each account (`entitlements`), the ledger of Polar's webhooks (`billing_events`) and the switch that opens sales (`billing_settings.live`) come from one migration ([ADR-0042](../docs/adr/0042-payments-and-entitlements-with-polar.md)). Only Polar's signed webhook writes a plan, through `apply_billing_event(…)`, which only `service_role` may run. While the switch is off, every paid feature opens with a *Plus · preview* badge and no checkout is made.
+
+The maintainer turns it on in production once the *Billing launch* section of the release issue is complete, from the SQL editor, never in a migration:
+
+```sql
+update public.billing_settings set live = true;   -- false closes sales again; neither needs a release
 ```
 
 ## Changing auth or API settings

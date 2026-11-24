@@ -482,7 +482,7 @@ function RunnerBanner() {
   const styles = useStyles();
   const state = useRunner();
   const sharing = useTabShare();
-  const job = useLiveQuery(() => (state.jobId ? db.jobs.get(state.jobId) : undefined), [state.jobId]);
+  const job = useLiveQuery(async () => (state.jobId ? db.jobs.get(state.jobId) : undefined), [state.jobId]);
   const attention = state.status === 'attention';
   useEffect(() => {
     if (!attention) return;

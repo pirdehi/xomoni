@@ -138,7 +138,7 @@ export function DownloadCopyDialog({
   const range: DateRange | null =
     start != null && end != null && start <= end ? { after: start, before: nextDay(end) } : null;
   const items = useLiveQuery(
-    () => (open && range ? loadRange(account.id, range, ARCHIVE_KINDS) : Promise.resolve([] as Item[])),
+    async () => (open && range ? loadRange(account.id, range, ARCHIVE_KINDS) : Promise.resolve([] as Item[])),
     [open, account.id, range?.after, range?.before],
   );
   const count = (kind: ArchiveKind) => items?.filter((i) => i.kind === kind).length ?? 0;

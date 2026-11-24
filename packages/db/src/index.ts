@@ -18,3 +18,10 @@ export type JobRow = Tables<'jobs'>;
 
 /** One X account's counts on one day (`public.daily_stats`, ADR-0026): numbers only, never X content. */
 export type DailyStatsRow = Tables<'daily_stats'>;
+
+/**
+ * One Xomoni account's plan (`public.entitlements`, ADR-0042): the tier, status and end of what was paid for, and
+ * Polar's ids. Never an email, a card or X content. Only Polar's signed webhook writes it, through
+ * `apply_billing_event`; the plan that counts now comes from `entitlement_of`, not from `tier` alone.
+ */
+export type EntitlementRow = Tables<'entitlements'>;

@@ -141,10 +141,10 @@ export function LimitsPanel({ accountId }: { accountId: string }) {
     }
     return { byAction: out, postsSeen };
   }, [accountId, minute]);
-  const viewCap = useLiveQuery(() => getViewCap(accountId), [accountId]);
+  const viewCap = useLiveQuery(async () => getViewCap(accountId), [accountId]);
   const usage = pace && counts ? { ...pace, counts: counts.byAction } : undefined;
   const observed = useLiveQuery(
-    () =>
+    async () =>
       db.limits
         .where('accountId')
         .equals(accountId)

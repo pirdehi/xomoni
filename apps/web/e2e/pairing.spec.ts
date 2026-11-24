@@ -1,4 +1,4 @@
-import { createConfirmedUser } from './support/admin';
+import { applyBillingEvent, createConfirmedUser } from './support/admin';
 import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
 
@@ -17,7 +17,7 @@ async function asExtension(fn: string, body: Record<string, unknown>) {
 test.describe('connecting a browser with a one-time code (ADR-0018)', () => {
   test('the extension pairs with the code, reports a job, and the dashboard shows both live', async ({ page }) => {
     const email = uniqueEmail('pair');
-    await createConfirmedUser(email, PASSWORD);
+    const userId = await createConfirmedUser(email, PASSWORD);
     await signIn(page, email, PASSWORD);
     await expectDashboard(page);
     await expect(page.getByText('Live', { exact: true })).toBeVisible();
@@ -68,6 +68,30 @@ test.describe('connecting a browser with a one-time code (ADR-0018)', () => {
       security: expect.any(Boolean),
       // Daily numbers are off until the person turns them on (#250).
       stats: false,
+      // The plan of the browser's own account, Free until Polar says otherwise, and sales still closed (ADR-0042).
+      entitlement: { tier: 'free', status: null, valid_until: null },
+      billing_live: false,
+    });
+
+    // Only the server writes a plan, never the extension's key; the browser then hears it with its next report.
+    const plus = {
+      webhook_id: `msg_${userId}`,
+      event_type: 'subscription.active',
+      event_at: new Date().toISOString(),
+      user_id: userId,
+      tier: 'plus',
+      status: 'active',
+      source: 'subscription',
+      valid_until: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+    } as const;
+    expect([401, 403]).toContain((await asExtension('apply_billing_event', plus)).status);
+    expect(await applyBillingEvent(plus)).toBe('applied');
+    expect(await applyBillingEvent(plus)).toBe('ignored');
+    const heard = await asExtension('device_report', { token, version: '0.3.0', jobs: [] });
+    expect((heard.json as { entitlement: unknown }).entitlement).toEqual({
+      tier: 'plus',
+      status: 'active',
+      valid_until: expect.any(String),
     });
     await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Activity' }).click();
     await expect(page.getByRole('region', { name: 'Jobs' })).toContainText('Delete posts older than Jan 1, 2018');

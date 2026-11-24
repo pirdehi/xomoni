@@ -1,3 +1,4 @@
+import type { LabelMonthRow } from '../../src/shared/vault/under-the-hood';
 import { db, itemKey, kvSet, recordConsent } from '../../src/shared/db';
 import { incomingKey } from '../../src/shared/incoming';
 import { MOVE_FORMAT, MOVE_VERSION, type MoveHeader, moveChecksum } from '../../src/shared/move-file';
@@ -204,6 +205,18 @@ export function moverEvent(over: Partial<AccountEvent> = {}): AccountEvent {
   };
 }
 
+/** A month of X's *Under the hood* report for `MOVER` (#428): one post label. */
+export function moverLabelMonth(month: string, over: Partial<LabelMonthRow> = {}): LabelMonthRow {
+  return {
+    accountId: MOVER,
+    month,
+    importedAt: THEN - 3_600_000,
+    labels: [{ name: 'SPAM_HIGH_RECALL', count: 2, scope: 'posts', about: 'Synthetic.' }],
+    postsInMonth: 40,
+    ...over,
+  };
+}
+
 /**
  * Fills every table with `MOVER`'s data as a Xomoni in use holds it: posts, a like and a reply, a finished and a paused
  * job, the log, X's limits, page loads, risk events (one of them the person's override), a sampled check, a day of
@@ -269,6 +282,7 @@ export async function seedEverything() {
   await db.vaultImports.put(moverImport());
   await db.analyticsPosts.put(moverAnalyticsPost('1000000001'));
   await db.analyticsDays.put(moverAnalyticsDay('2026-11-19'));
+  await db.labelMonths.put(moverLabelMonth('2026-10'));
   await db.accountEvents.bulkAdd([
     moverEvent(),
     moverEvent({ kind: 'archive_imported', source: 'archive', words: 'Imported X’s archive.', ref: moverImport().id }),

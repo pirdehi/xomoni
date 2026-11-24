@@ -8,13 +8,13 @@ import { baseline } from '../../src/shared/vault/reach-stats';
 import { GUESS_NOTICE } from '../../src/shared/vault/suspects';
 import type { LabelMonthRow } from '../../src/shared/vault/under-the-hood';
 import { HowToGetUnderTheHood, LabelHistory } from '../../src/ui/components/reach/LabelHistory';
+import { SuspectPosts } from '../../src/ui/components/reach/SuspectPosts';
 import {
   MAX_DISMISSED,
-  SuspectPosts,
   dismissedSuspects,
   setDismissed,
   suspectDismissedKey,
-} from '../../src/ui/components/reach/SuspectPosts';
+} from '../../src/shared/vault/suspect-dismissals';
 import type { ReachRow } from '../../src/ui/reach';
 import { resetDb } from '../support/fixtures';
 

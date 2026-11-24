@@ -17,9 +17,21 @@ export {
 } from './extension-ids';
 export {
   REACH_BANNED_WORDS,
+  REACH_LIMITS,
+  REACH_ORDERS,
   REACH_VERDICTS,
   REACH_VERDICT_WORDS,
+  type ReachComparisonId,
+  type ReachComparisonSummary,
+  type ReachLabelSummary,
+  type ReachMonthSummary,
+  type ReachOrder,
+  type ReachPostSummary,
+  type ReachSide,
+  type ReachSummary,
+  type ReachSuspectSummary,
   type ReachVerdict,
+  parseReachSummary,
   usesBannedReachWord,
 } from './reach';
 

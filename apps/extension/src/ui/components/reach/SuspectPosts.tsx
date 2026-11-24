@@ -1,30 +1,12 @@
 import { Link, makeStyles, tokens } from '@fluentui/react-components';
 import { Info20Regular, Open16Regular } from '@fluentui/react-icons';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { kvGet, kvSet } from '../../../shared/db';
+import { clearDismissed, dismissedSuspects, setDismissed } from '../../../shared/vault/suspect-dismissals';
 import { GUESS_NOTICE, SUSPECT_WHY_WORDS, type SuspectLabel, suspectPosts } from '../../../shared/vault/suspects';
 import { type LabelMonthRow, monthName } from '../../../shared/vault/under-the-hood';
 import { fmtDate, fmtNumber, postUrl } from '../../format';
 import type { ReachRow } from '../../reach';
 import { Badge, Button, Callout, Card } from '../ui';
-
-/** Where an account's dismissed suspects are kept in `kv`: post ids. Not carried by a move, and never sent. */
-export const suspectDismissedKey = (accountId: string) => `suspectDismissed:${accountId}`;
-
-/** The most dismissed posts kept per account. */
-export const MAX_DISMISSED = 1_000;
-
-/** The account's dismissed suspects; an empty list when none, or when what is kept isn't a list of ids. */
-export async function dismissedSuspects(accountId: string): Promise<string[]> {
-  const kept = await kvGet<unknown>(suspectDismissedKey(accountId), []);
-  return Array.isArray(kept) ? kept.filter((id): id is string => typeof id === 'string' && /^\d{1,20}$/.test(id)) : [];
-}
-
-/** Dismisses `id` (or brings it back), keeping at most `MAX_DISMISSED`, newest kept. */
-export async function setDismissed(accountId: string, id: string, dismissed: boolean): Promise<void> {
-  const now = (await dismissedSuspects(accountId)).filter((kept) => kept !== id);
-  await kvSet(suspectDismissedKey(accountId), (dismissed ? [...now, id] : now).slice(-MAX_DISMISSED));
-}
 
 const useStyles = makeStyles({
   labels: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXL },
@@ -102,7 +84,7 @@ export function SuspectPosts({
         </div>
       )}
       {dismissed.length > 0 && (
-        <Button size="sm" variant="ghost" onClick={() => void kvSet(suspectDismissedKey(accountId), [])}>
+        <Button size="sm" variant="ghost" onClick={() => void clearDismissed(accountId)}>
           Show the {fmtNumber(dismissed.length)} dismissed again
         </Button>
       )}

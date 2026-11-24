@@ -4,6 +4,7 @@
 // numbers (ADR-0026) are only an estimate, for a trend, never for one post. Every number stays on the computer.
 import { type DailyStats, localDay } from '../daily';
 import { db } from '../db';
+import { analyticsPostKey } from './records';
 import type { Account, Item } from '../types';
 import { type ReachFormat, formatOf } from './reach-stats';
 
@@ -78,12 +79,46 @@ export interface ReachSources {
   premiumEvents(accountId: string): Promise<readonly PremiumEvent[]>;
 }
 
-/** No CSV and no Premium changes: what `reachPosts` reads until the vault's tables are there. */
+/** No CSV and no Premium changes: for a test, or a page that only wants what X showed live. */
 export const NO_REACH_SOURCES: ReachSources = {
   /** No CSV numbers for any post. */
   analytics: () => Promise.resolve(new Map()),
   /** No Premium changes. */
   premiumEvents: () => Promise.resolve([]),
+};
+
+/**
+ * The vault's (ADR-0043): X's analytics CSV of posts (`analyticsPosts`, a post's impressions as of the newest import
+ * that had them) and the account's timeline (`accountEvents`: X Premium seen on or off on the profile, or dated by the
+ * person).
+ */
+export const VAULT_REACH_SOURCES: ReachSources = {
+  /** The CSV's numbers of these posts that have impressions. */
+  async analytics(accountId, ids) {
+    const rows = await db.analyticsPosts.bulkGet(ids.map((id) => analyticsPostKey(accountId, id)));
+    const out = new Map<string, AnalyticsNumbers>();
+    for (const row of rows) {
+      if (row?.impressions === undefined) continue;
+      out.set(row.postId, {
+        impressions: row.impressions,
+        asOf: row.asOf,
+        ...(row.engagements !== undefined && { engagements: row.engagements }),
+      });
+    }
+    return out;
+  },
+  /** The account's Premium changes on its timeline. */
+  async premiumEvents(accountId) {
+    const changes: PremiumEvent[] = [];
+    for (const kind of ['premium_on', 'premium_off'] as const) {
+      const rows = await db.accountEvents
+        .where('[accountId+kind+at]')
+        .between([accountId, kind, -Infinity], [accountId, kind, Infinity], true, true)
+        .toArray();
+      changes.push(...rows.map((row) => ({ kind, at: row.at })));
+    }
+    return changes;
+  },
 };
 
 /**
@@ -206,13 +241,13 @@ export interface ReachRange {
 /**
  * The person's own posts and replies made from `from` to `to`, each with its reach, oldest first; those Xomoni removed
  * too, since they were seen before. Reads the
- * inventory through its `[accountId+kind+createdAt]` index, the daily numbers for the followers, and `sources` for the
- * analytics CSV and the Premium changes.
+ * inventory through its `[accountId+kind+createdAt]` index, the daily numbers for the followers, and `sources` (the
+ * vault's, `VAULT_REACH_SOURCES`, unless given) for the analytics CSV and the Premium changes.
  */
 export async function reachPosts(
   accountId: string,
   range: ReachRange,
-  sources: ReachSources = NO_REACH_SOURCES,
+  sources: ReachSources = VAULT_REACH_SOURCES,
 ): Promise<ReachPost[]> {
   const items: Item[] = [];
   for (const kind of ['post', 'reply'] as const) {

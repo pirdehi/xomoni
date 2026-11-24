@@ -61,6 +61,13 @@ export interface LabelMonth {
   generatedAt?: number;
 }
 
+/** One month as the vault keeps it (`labelMonths`, keyed by account and month): whose it is, and when it came. */
+export interface LabelMonthRow extends LabelMonth {
+  accountId: string;
+  /** When the file was imported (epoch ms): of two files for a month, the later import wins. */
+  importedAt: number;
+}
+
 /** Why a file isn't read as an *Under the hood* report. */
 export type UnderTheHoodProblem = 'too-large' | 'not-json' | 'not-under-the-hood' | 'bad-month' | 'bad-count';
 

@@ -4,10 +4,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../shared/db';
 import {
-  NO_REACH_SOURCES,
   type PremiumPeriod,
   type ReachPost,
   type ReachSources,
+  VAULT_REACH_SOURCES,
   premiumPeriods,
   reachPosts,
 } from '../shared/vault/reach';
@@ -48,13 +48,13 @@ export interface ReachData {
 
 /**
  * The posts of `range` up to `now`, each with its baseline from the 8 weeks before the period's start too, and the
- * account's Premium spans. The analytics CSV and Premium changes come from `sources`: nothing until the vault's tables.
+ * account's Premium spans. The analytics CSV and Premium changes come from `sources`, the vault's unless given.
  */
 export async function reachData(
   accountId: string,
   range: ReachRange,
   now = Date.now(),
-  sources: ReachSources = NO_REACH_SOURCES,
+  sources: ReachSources = VAULT_REACH_SOURCES,
 ): Promise<ReachData> {
   const days = RANGE_DAYS[range];
   const from = days === null ? 0 : now - days * DAY_MS;

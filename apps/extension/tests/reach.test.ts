@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { emptyDay, localDay } from '../src/shared/daily';
 import { db, itemKey, upsertAccount } from '../src/shared/db';
 import type { Item } from '../src/shared/types';
+import { analyticsPostKey } from '../src/shared/vault/records';
 import {
   type AnalyticsNumbers,
   NO_REACH_SOURCES,
   type PremiumEvent,
   type ReachSources,
+  VAULT_REACH_SOURCES,
   dailyReachSeries,
   followersAt,
   hourAndWeekday,
@@ -270,6 +272,39 @@ describe('each post’s reach (#428, ADR-0045)', () => {
       ]);
       expect(asked).toEqual([['1', '3', '2']]);
       expect(posts.every((p) => p.followersAtTime === 500)).toBe(true);
+    });
+
+    it('reads X’s analytics CSV and the Premium changes from the vault by default', async () => {
+      await db.items.bulkPut([item('1', { views: 10 }), item('2', { views: 20, createdAt: T + 2 * DAY })]);
+      await db.analyticsPosts.put({
+        key: analyticsPostKey(ME, '1'),
+        accountId: ME,
+        postId: '1',
+        createdAt: T,
+        asOf: T + 30 * DAY,
+        impressions: 4_000,
+        engagements: 80,
+      });
+      // A post the CSV counts without impressions keeps its live views.
+      await db.analyticsPosts.put({
+        key: analyticsPostKey(ME, '2'),
+        accountId: ME,
+        postId: '2',
+        createdAt: T,
+        asOf: T,
+        likes: 3,
+      });
+      await db.accountEvents.bulkAdd([
+        { accountId: ME, kind: 'premium_on', at: T + DAY, source: 'profile', words: 'X Premium on.' },
+        { accountId: ME, kind: 'note', at: T + DAY, source: 'person', words: 'A note.' },
+      ]);
+      const posts = await reachPosts(ME, { from: T - DAY, to: T + 3 * DAY, timeZone: 'UTC' });
+      expect(posts.map((p) => [p.id, p.source, p.impressions, p.engagements, p.premium])).toEqual([
+        ['1', 'csv', 4_000, 80, false],
+        ['2', 'live', 20, 6, true],
+      ]);
+      expect(await VAULT_REACH_SOURCES.premiumEvents(ME)).toEqual([{ kind: 'premium_on', at: T + DAY }]);
+      expect(await VAULT_REACH_SOURCES.analytics(ME, [])).toEqual(new Map());
     });
 
     it('reads without the vault: no CSV and no Premium changes', async () => {

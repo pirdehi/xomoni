@@ -126,7 +126,8 @@ describe('Dexie version 8 (the vault)', () => {
     old.close();
 
     await db.open();
-    expect(db.verno).toBe(8);
+    // Version 9 (#428) only adds X's Under the hood months on top of the vault's version 8.
+    expect(db.verno).toBe(9);
     expect(await db.accounts.count()).toBe(1);
     expect(await db.items.count()).toBe(50);
     expect(await db.logs.count()).toBe(1);

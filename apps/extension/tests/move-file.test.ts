@@ -33,6 +33,7 @@ import {
   moverImport,
   moverItem,
   moverJob,
+  moverLabelMonth,
   moverLog,
   moverReply,
   signedFile,
@@ -56,6 +57,7 @@ function data(over: Partial<MoveData> = {}): MoveData {
     analyticsPosts: [moverAnalyticsPost('1000000001')],
     analyticsDays: [moverAnalyticsDay('2026-11-19')],
     accountEvents: [moverEvent()],
+    labelMonths: [moverLabelMonth('2026-10')],
     ...over,
   };
 }
@@ -388,10 +390,17 @@ describe('version 2 of the move file carries the vault (#424, ADR-0032 as amende
   /** `data()` as Xomoni wrote it before the vault: the core tables only. */
   const versionOne = () => Object.fromEntries(CORE_MOVE_TABLES.map((t) => [t, data()[t]]));
 
-  it('writes version 2, with the vault’s four tables after the core ones', async () => {
+  it('writes version 2, with the vault’s tables after the core ones', async () => {
     expect(MOVE_VERSION).toBe(2);
     expect(OLDEST_MOVE_VERSION).toBe(1);
-    expect(VAULT_TABLE_NAMES).toEqual(['vaultImports', 'analyticsPosts', 'analyticsDays', 'accountEvents']);
+    expect(VAULT_TABLE_NAMES).toEqual([
+      'vaultImports',
+      'analyticsPosts',
+      'analyticsDays',
+      'accountEvents',
+      // X's Under the hood months (#428), registered without raising the version.
+      'labelMonths',
+    ]);
     expect(MOVE_TABLES).toEqual([...CORE_MOVE_TABLES, ...VAULT_TABLE_NAMES]);
     const parsed = JSON.parse(await writeMoveFile('0.6.0', data(), THEN)) as { version: number; data: object };
     expect(parsed.version).toBe(2);

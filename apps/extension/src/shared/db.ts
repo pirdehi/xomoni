@@ -30,6 +30,7 @@ import {
   normalizeQuery,
   normalizeTabs,
 } from './watch';
+import type { AccountEvent, AnalyticsDay, AnalyticsPost, VaultImport } from './vault/types';
 import { type ArchiveRequest, expectsArchive } from './x-archive';
 import type { ViewCap } from './x-limits';
 import { CONSENT_VERSION } from '@xomoni/consent';
@@ -80,6 +81,10 @@ class XomoniDB extends Dexie {
   consents!: Table<Consent, string>;
   daily!: Table<DailyStats, [string, string]>;
   incoming!: Table<IncomingReply, string>;
+  vaultImports!: Table<VaultImport, string>;
+  analyticsPosts!: Table<AnalyticsPost, string>;
+  analyticsDays!: Table<AnalyticsDay, [string, string]>;
+  accountEvents!: Table<AccountEvent, number>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -98,6 +103,13 @@ class XomoniDB extends Dexie {
     this.version(5).stores({ consents: 'accountId' });
     this.version(6).stores({ daily: '[accountId+day], accountId' });
     this.version(7).stores({ incoming: 'key, accountId, [accountId+createdAt]' });
+    // The vault (ADR-0043, #424): the import ledger, X's analytics of each post and day, and the account's timeline.
+    this.version(8).stores({
+      vaultImports: 'id, accountId, [accountId+source+importedAt], fingerprint',
+      analyticsPosts: 'key, accountId, [accountId+createdAt]',
+      analyticsDays: '[accountId+day], accountId',
+      accountEvents: '++seq, [accountId+at], [accountId+kind+at]',
+    });
   }
 }
 
@@ -106,7 +118,9 @@ class XomoniDB extends Dexie {
  * `accounts`, `items` (the inventory), `jobs`, `logs`, `limits` (X rate-limit observations), `reads` (page loads of
  * the last 24 hours), `risk` (the risk ladder's events, see `risk.ts`), `checks` (sampled actions to check again,
  * see `engine/samples.ts`), `consents` (informed consent per X account), `daily` (each day's numbers), `incoming`
- * (replies others wrote to the person, ADR-0030, see `incoming.ts`) and `kv`.
+ * (replies others wrote to the person, ADR-0030, see `incoming.ts`), the vault's (ADR-0043, see `vault/db.ts`, version 8):
+ * `vaultImports` (the import ledger), `analyticsPosts`, `analyticsDays` and `accountEvents` (the account's timeline), and
+ * `kv`.
  * @remarks Content scripts cannot use it: they run under x.com's origin, so they message the service worker.
  */
 export const db = new XomoniDB();
@@ -161,8 +175,9 @@ const KEPT_ACCOUNT_VALUES: readonly string[] = ['viewCap'];
 /**
  * Removes one X account's data from this browser when the person signs out with *Remove its data* (#226): its
  * inventory, jobs, activity log, X's observed limits, sampled posts to check again, its consent, its daily numbers, the
- * replies others wrote to it (ADR-0030), every `kv` value
- * kept for it (Watch, the archive and its request, archive files seen) and the account itself, in one transaction.
+ * replies others wrote to it (ADR-0030), its vault (the import ledger, its analytics and its timeline, ADR-0043), every
+ * `kv` value kept for it (Watch, the archive and its request, archive files seen) and the account itself, in one
+ * transaction.
  * Like `wipeLocalData`, it keeps `KEPT_ON_WIPE` and the view cap, so X's limits still hold; other accounts keep
  * everything. Stop the account's running job first.
  */
@@ -181,6 +196,10 @@ export async function forgetAccount(accountId: string) {
     db.consents,
     db.daily,
     db.incoming,
+    db.vaultImports,
+    db.analyticsPosts,
+    db.analyticsDays,
+    db.accountEvents,
     db.kv,
   ];
   await db.transaction('rw', tables, async () => {
@@ -194,6 +213,10 @@ export async function forgetAccount(accountId: string) {
     await db.consents.delete(accountId);
     await db.daily.where('accountId').equals(accountId).delete();
     await db.incoming.where('accountId').equals(accountId).delete();
+    await db.vaultImports.where('accountId').equals(accountId).delete();
+    await db.analyticsPosts.where('accountId').equals(accountId).delete();
+    await db.analyticsDays.where('accountId').equals(accountId).delete();
+    await db.accountEvents.where('[accountId+at]').between(whole, end, true, true).delete();
     await db.kv.filter((row) => own(row.key)).delete();
     if ((await kvGet<string | null>('activeAccount', null)) === accountId) await db.kv.delete('activeAccount');
     await db.accounts.delete(accountId);

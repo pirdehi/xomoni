@@ -397,6 +397,16 @@ describe('merging with what is here (#300, ADR-0032)', () => {
     expect(mergeItem(here, here)).toEqual(here);
   });
 
+  it('keeps a post’s links and media from the copy X showed last, and fills them in from the other (#428)', () => {
+    const live = moverItem('1000000001', { seenAt: THEN + 100, links: 1 });
+    const archived = moverItem('1000000001', { seenAt: 0, sources: ['archive'], links: 3, media: 2 });
+    expect(mergeItem(archived, live)).toMatchObject({ links: 1, media: 2 });
+    expect(mergeItem(live, archived)).toMatchObject({ links: 1, media: 2 });
+    const neither = mergeItem(moverItem('1000000001'), moverItem('1000000001', { seenAt: THEN + 1 }));
+    expect(neither).not.toHaveProperty('links');
+    expect(neither).not.toHaveProperty('media');
+  });
+
   it('counts an item changed by a newer copy as updated, and one already the same as nothing', async () => {
     await db.items.put(moverItem('1000000001', { likes: 1, seenAt: THEN - 10 }));
     const result = await imported(

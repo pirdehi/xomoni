@@ -258,6 +258,22 @@
       }
     },
     {
+      "id": "reach-diagnosis",
+      "area": "extension",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [429],
+      "scenarios": "docs/scenarios/429-reach.md",
+      "en": {
+        "title": "Reach",
+        "summary": "how many times X says each of your posts was seen, from X's own numbers, against your usual: the median of your posts of the same kind in the 8 weeks before. A post still growing isn't compared, and nothing is guessed. The last 30 days are free; longer periods are part of Plus, open as a preview. Xomoni never searches X to measure reach, and nothing leaves your computer."
+      },
+      "fa": {
+        "title": "دیده‌شدن",
+        "summary": "اینکه X می‌گوید هر پست شما چند بار دیده شد، از عددهای خود X، در برابر حد معمول شما: میانه‌ی پست‌های هم‌نوع شما در ۸ هفته‌ی پیش از آن. پستی که هنوز در حال رشد است مقایسه نمی‌شود و هیچ چیزی حدس زده نمی‌شود. ۳۰ روز آخر رایگان است؛ بازه‌های بلندتر بخشی از Plus است که به‌صورت پیش‌نمایش باز است. Xomoni هرگز برای سنجیدن دیده‌شدن در X جستجو نمی‌کند و چیزی از رایانه‌تان بیرون نمی‌رود."
+      }
+    },
+    {
       "id": "sign-out",
       "area": "extension",
       "status": "shipped",

@@ -1,0 +1,22 @@
+{
+  "data": {
+    "report": {
+      "notes": "Synthetic fixture for Xomoni's tests, in the shape a web view of X's Under the hood report might take. Not real data.",
+      "period": { "start_date": "2026-09-01", "end_date": "2026-09-30", "time_zone": "UTC" },
+      "generated_at": "2026-10-07T12:00:00Z",
+      "post_count": 198,
+      "post_labels": [
+        {
+          "name": "SPAM_HIGH_RECALL",
+          "description": "Post detected by automated systems as one that may contain spam.",
+          "count": "5"
+        },
+        { "name": "SYNTHETIC_UNKNOWN_LABEL", "description": "A label made up for the tests.", "count": 2 }
+      ],
+      "account_labels": [
+        { "name": "SYNTHETIC_ACCOUNT_LABEL", "description": "An account label made up for the tests." }
+      ],
+      "government_orders": [{ "country": "Synthetic country", "count": 1 }]
+    }
+  }
+}

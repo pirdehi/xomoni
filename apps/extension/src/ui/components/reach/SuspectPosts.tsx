@@ -73,7 +73,8 @@ export function SuspectPosts({
   const styles = useStyles();
   const dismissed = useLiveQuery(async () => await dismissedSuspects(accountId), [accountId]);
   if (dismissed === undefined) return null;
-  const guesses = suspectPosts(rows, months, new Set(dismissed));
+  // Each row's baseline was computed with the 8 weeks before the period, which `rows` don't hold.
+  const guesses = suspectPosts(rows, months, new Set(dismissed), new Map(rows.map((r) => [r.id, r.baseline])));
   const byId = new Map(rows.map((r) => [r.id, r]));
   return (
     <Card title="Suspected posts" subtitle="Posts that may have got a label X applied that month">

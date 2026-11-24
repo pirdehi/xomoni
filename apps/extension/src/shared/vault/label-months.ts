@@ -92,10 +92,18 @@ export function labelMonthRecord(value: unknown, now: number): LabelMonthRow | n
   }
 }
 
-/** The account's months of labels, newest first. */
-export async function labelMonths(accountId: string): Promise<LabelMonthRow[]> {
+/**
+ * The account's months of labels, newest first, each checked again (`labelMonthRecord`): a row damaged on the computer
+ * is left out rather than breaking the page.
+ */
+export async function labelMonths(accountId: string, now = Date.now()): Promise<LabelMonthRow[]> {
   const rows = await db.labelMonths.where('accountId').equals(accountId).toArray();
-  return rows.sort((a, b) => b.month.localeCompare(a.month));
+  return rows
+    .flatMap((row) => {
+      const checked = labelMonthRecord(row, now);
+      return checked ? [checked] : [];
+    })
+    .sort((a, b) => b.month.localeCompare(a.month));
 }
 
 /** The ref of a label change on the timeline: one event per month, scope and label, ever. */

@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../src/shared/db';
+import { baseline } from '../../src/shared/vault/reach-stats';
 import { GUESS_NOTICE } from '../../src/shared/vault/suspects';
 import type { LabelMonthRow } from '../../src/shared/vault/under-the-hood';
 import { HowToGetUnderTheHood, LabelHistory } from '../../src/ui/components/reach/LabelHistory';
@@ -61,11 +62,14 @@ function row(id: string, createdAt: number, impressions: number, over: Partial<R
 }
 
 /** 30 June posts at 1,000 and July's: one seen 100 times, the rest as usual. */
-const rows = [
+const plain = [
   ...Array.from({ length: 30 }, (_, i) => row(String(100 + i), JUNE + i * DAY, 1_000)),
   row('7001', JULY + DAY, 100),
   ...Array.from({ length: 20 }, (_, i) => row(String(800 + i), JULY + (i + 2) * DAY, 950 + (i % 3) * 50)),
 ];
+/** The same posts with their baselines, as the page has them. */
+const bases = baseline(plain);
+const rows = plain.map((r) => ({ ...r, baseline: bases.get(r.id) ?? null }));
 
 describe('X’s labels on the Reach page (#429, ADR-0045)', () => {
   afterEach(cleanup);

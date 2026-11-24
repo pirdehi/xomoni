@@ -4,9 +4,11 @@ title: 'The vault: Export my vault, the Your vault card on xomoni.com, performan
 feature: vault-export
 ---
 
-# Export my vault
+# Export my vault, and Your vault on xomoni.com
 
 *Export my vault* on the Vault page writes the vault as one ZIP the person keeps and reads without Xomoni (#426, [ADR-0044](../adr/0044-an-open-export-of-the-vault.md)): `README.txt`, `schema.json` (`xomoni-vault-export@1`), `index.html` (no script), and each chosen part as CSV and JSON. The replies others wrote to the person are left out unless ticked. The file is made on the computer, saved in Downloads, and never sent anywhere.
+
+The card *Your vault* on xomoni.com (S426-31 on) shows, beside the Library, what the vault in Xomoni holds, read in this browser with `what: 'vault'` as counts and dates only ([ADR-0028](../adr/0028-xomoni-data-on-the-website-in-the-same-browser.md) as amended); it never stores, logs or sends what it reads, and never starts an import ([ADR-0006](../adr/0006-website-is-view-only.md)). Its tests run the website against the local Supabase stack, with Xomoni played at the page (`apps/web/e2e/vault-card.spec.ts`).
 
 The tests run the built extension in real browsers, on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), and open the downloaded ZIP with Node's own zlib. Run them with no Supabase:
 
@@ -166,3 +168,146 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When the person exports
 - Then the ZIP still holds the archive's posts and the import in imports.csv
 - Test: apps/web/e2e/extension/vault-export.spec.ts
+
+## S426-31 · happy
+
+- Given a person signed in, with Xomoni in this browser holding X's archive and analytics
+- When they open the Library on xomoni.com
+- Then Your vault lists X's archive (987,654 rows, 40 days old, Due for a new copy), X's analytics of posts (12 posts,
+  Up to date) and X's analytics of days (Not imported yet)
+- And it says X made the newest archive on Oct 15, 2026, with 3 imports in all, read as counts and dates only
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-32 · happy
+
+- Given Your vault on xomoni.com
+- When the person presses Open in Xomoni
+- Then Xomoni is asked to open its Vault page, and nothing else: no import, no plan, no job
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-33 · happy
+
+- Given a vault with nothing in it
+- When the person opens the Library
+- Then Your vault says it is empty, and how to fill it: from X, by the person, then on Xomoni's Vault page
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-34 · invalid
+
+- Given a Xomoni whose answer carries a file name
+- When the card reads it
+- Then the whole answer is refused: the card says Xomoni didn't answer, and the name is nowhere on the page
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-35 · invalid
+
+- Given a Xomoni whose answer writes a count as text
+- When the card reads it
+- Then the answer is refused, and no list is shown
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-36 · invalid
+
+- Given a Xomoni whose answer names a freshness the site doesn't know
+- When the card reads it
+- Then the answer is refused
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-37 · error
+
+- Given a Xomoni that doesn't answer
+- When the card reads the vault
+- Then it says Xomoni didn't answer. Open it on this computer and try again.
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-38 · error
+
+- Given a Xomoni older than the page, which doesn't know the read
+- When the card reads the vault
+- Then it says the Xomoni is older than this page and can't show the vault yet, with Install the newest version
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-39 · error
+
+- Given a Xomoni signed in to another account
+- When the card reads the vault
+- Then it shows nothing of that vault
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-40 · security
+
+- Given every request the page sends watched
+- When the card shows the vault
+- Then no request and no storage carries its counts, and every read names this browser's device
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-41 · security
+
+- Given a visitor signed out
+- When they open the Library's address
+- Then they are sent to sign in, and Xomoni is never asked
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-42 · security
+
+- Given Your vault on xomoni.com
+- When the card reads the vault
+- Then the read asks only for the vault, with the device, and the card shows no link and nothing of X's content
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-43 · empty
+
+- Given a browser with no Xomoni
+- When the person opens the Library
+- Then Your vault says it is kept by Xomoni on their computer, and Open in Xomoni says how to install it
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-44 · empty
+
+- Given a vault with only the analytics
+- When the person opens the Library
+- Then X's archive says Not imported yet, and no archive date is shown
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-45 · cancel
+
+- Given the dialog that says how to install Xomoni, opened from Your vault
+- When the person closes it with its button
+- Then it closes, and nothing opens
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-46 · cancel
+
+- Given the same dialog
+- When the person presses Escape
+- Then it closes
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-47 · a11y
+
+- Given Your vault
+- When the person reaches Open in Xomoni and presses Enter
+- Then Xomoni is asked to open its Vault page
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-48 · a11y
+
+- Given Your vault with its files
+- When axe checks the page
+- Then it has no serious or critical violation
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-49 · browser
+
+- Given a phone's width, 390 pixels, in dark mode
+- When the person opens the Library
+- Then Your vault fits the width with no sideways scroll, and has no serious violation in dark colors
+- And CI runs every scenario again in Microsoft Edge (e2e-edge)
+- Test: apps/web/e2e/vault-card.spec.ts
+
+## S426-50 · persistence
+
+- Given Your vault shown
+- When the person reloads the page
+- Then the card reads the vault again from Xomoni, and shows it the same: nothing was kept by the site
+- Test: apps/web/e2e/vault-card.spec.ts

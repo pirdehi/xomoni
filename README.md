@@ -75,6 +75,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 
 ### On xomoni.com
 
+- **Your vault, on xomoni.com:** beside the Library, what your vault in Xomoni holds: each of X's files with how fresh it is and what it holds, read in your browser as counts and dates only, and *Open in Xomoni*. Nothing of it reaches our servers.
 - **Two-step verification:** turn it on in Account with an authenticator app, and every sign-in on xomoni.com asks for its 6-digit code before any private page opens. The website's server and the database both check it, so a password or a copied session alone reads and changes nothing. Changing your email or password, or resetting it by email, asks for a code too, and every app added or removed is emailed to you.
 - **The dashboard on xomoni.com:** Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings, each at its own address, with an account and period picker. A sidebar on a computer, a bottom bar on a phone.
 - **Overview, Audience, Content and Engagement:** your followers, what you published and what it received, each against the period before, in charts that answer on hover and by keyboard, with a table view. What was received is marked as an estimate.
@@ -245,7 +246,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 42 [features](#features), 2 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 43 [features](#features), 3 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
 
 <!-- END GENERATED: status -->
 

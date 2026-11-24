@@ -2,7 +2,17 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { READ, type RepliesFilter } from '@xomoni/bridge';
 import { type CloudConnection, saveConnection } from '../src/cloud/connection';
-import { answerRead, readHealth, readIncoming, readLibrary, readReplies, readWatch } from '../src/cloud/website-reads';
+import {
+  answerRead,
+  readHealth,
+  readIncoming,
+  readLibrary,
+  readReplies,
+  readVault,
+  readWatch,
+} from '../src/cloud/website-reads';
+import { mergeAnalyticsDays, recordImport } from '../src/shared/vault/db';
+import { parseReadAnswer } from '@xomoni/bridge';
 import { localDay } from '../src/shared/daily';
 import { saveIncoming } from '../src/shared/incoming';
 import { db, kvSet, recordRisk, saveWatchResult, saveWatchTabs, upsertAccount, upsertItems } from '../src/shared/db';
@@ -332,5 +342,93 @@ describe('readHealth and readWatch (#233)', () => {
     const tabs = await readWatch();
     expect(tabs.map((t) => t.query)).toEqual(['xomoni', '']);
     expect(JSON.stringify(tabs)).not.toContain('new_one');
+  });
+});
+
+describe('readVault: the vault’s summary, counts and dates only (#426)', () => {
+  const X_ACCOUNT = '9000000000000000001';
+  const DAY = 86_400_000;
+
+  beforeEach(async () => {
+    await upsertAccount(account({ id: X_ACCOUNT, handle: 'xomoni_fixture' }));
+    await kvSet('activeAccount', X_ACCOUNT);
+  });
+
+  async function seedVault() {
+    await recordImport({
+      accountId: X_ACCOUNT,
+      source: 'x-archive',
+      fileName: 'twitter-secret-name.zip',
+      bytes: 2048,
+      fingerprint: 'zip:00112233445566778899aabbccddeeff',
+      importedAt: Date.now() - 2 * DAY,
+      coverFrom: null,
+      coverTo: Date.now() - 40 * DAY,
+      counts: { read: 1500, merged: 1500, skipped: 0 },
+      parser: 'x-archive@1',
+      problems: [],
+    });
+    await recordImport({
+      accountId: X_ACCOUNT,
+      source: 'x-archive',
+      fileName: 'twitter-secret-name.zip',
+      bytes: 2048,
+      fingerprint: 'zip:00112233445566778899aabbccddeeff',
+      importedAt: Date.now() - DAY,
+      coverFrom: null,
+      coverTo: null,
+      counts: { read: 0, merged: 0, skipped: 0 },
+      parser: 'x-archive@1',
+      problems: ['duplicate'],
+    });
+    await mergeAnalyticsDays([{ accountId: X_ACCOUNT, day: '2026-11-01', asOf: Date.now(), impressions: 9 }]);
+  }
+
+  it('says each source’s date, freshness and rows, the archive’s day, and how many imports', async () => {
+    await seedVault();
+    const vault = await readVault();
+    expect(vault).toEqual({
+      handle: 'xomoni_fixture',
+      sources: [
+        { source: 'x-archive', lastAt: expect.any(Number), freshness: 'due', rows: 1500 },
+        { source: 'x-analytics-posts', lastAt: null, freshness: 'never', rows: 0 },
+        { source: 'x-analytics-days', lastAt: null, freshness: 'never', rows: 1 },
+      ],
+      archiveGeneratedAt: expect.any(Number),
+      imports: 2,
+      captureGroupsOn: 0,
+    });
+    // What the website gets carries no file name, fingerprint or X content, and parses as the bridge expects.
+    const answer = await answerRead({ type: READ, what: 'vault', deviceId: DEVICE });
+    expect(JSON.stringify(answer)).not.toMatch(/secret|zip:|impressions/);
+    expect(parseReadAnswer(JSON.parse(JSON.stringify(answer)) as unknown, 'vault')).toEqual(answer);
+  });
+
+  it('answers an empty vault, and nothing without an account', async () => {
+    expect(await readVault()).toMatchObject({
+      sources: [{ freshness: 'never' }, { freshness: 'never' }, { freshness: 'never' }],
+      imports: 0,
+    });
+    await db.kv.delete('activeAccount');
+    await db.accounts.clear();
+    expect(await readVault()).toEqual({
+      handle: '',
+      sources: [],
+      archiveGeneratedAt: null,
+      imports: 0,
+      captureGroupsOn: 0,
+    });
+  });
+
+  it('refuses another device’s page and a signed-out Xomoni, as every read', async () => {
+    await seedVault();
+    await expect(
+      answerRead({ type: READ, what: 'vault', deviceId: '9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f' }),
+    ).resolves.toEqual({ ok: false, reason: 'other_account' });
+    await markSignedOut('xomoni_fixture', true);
+    await expect(answerRead({ type: READ, what: 'vault', deviceId: DEVICE })).resolves.toEqual({
+      ok: false,
+      reason: 'signed_out',
+    });
   });
 });

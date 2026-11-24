@@ -1,6 +1,6 @@
 // What xomoni.com may read of Xomoni's own data in this browser (ADR-0028, #233): the Library, account health,
 // Watch, the settings (ADR-0029), the person's replies with whom each answers, and the replies others wrote to the
-// person, which Xomoni keeps for 90 days (ADR-0030) (#256). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
+// person, which Xomoni keeps for 90 days (ADR-0030) (#256), and the vault's summary, counts and dates only (#426). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
 // device this extension is connected as. The answers are X content: they go to that page in this browser and nowhere
 // else (ADR-0004).
 import {
@@ -20,6 +20,9 @@ import {
   type RepliesFilter,
   type RepliesPage,
   type ReplyItem,
+  VAULT_SUMMARY_SOURCES,
+  type VaultSourceSummary,
+  type VaultSummary,
   type WatchTabView,
 } from '@xomoni/bridge';
 import { localDay } from '../shared/daily';
@@ -27,6 +30,8 @@ import { db, kvGet, riskEvents, watchResults, watchTabsKey } from '../shared/db'
 import { incomingSince } from '../shared/incoming';
 import { assessRisk } from '../shared/risk';
 import type { Item } from '../shared/types';
+import { importLedger } from '../shared/vault/db';
+import { freshnessOf, freshnessSources } from '../shared/vault/freshness';
 import { normalizeTabs } from '../shared/watch';
 import { accessRefusal, activeAccount } from './website-access';
 import { estimatePlan } from './website-plans';
@@ -243,6 +248,44 @@ export async function readWatch(): Promise<WatchTabView[]> {
   });
 }
 
+/**
+ * The active account's vault, as counts and dates only (#426, ADR-0028 as amended): each source the reminder follows
+ * (X's archive, its analytics), with the date of its newest copy, its freshness and the rows the vault holds of it, the
+ * day X made the newest archive, and how many imports the ledger holds. No text, no file name, no fingerprint, no id.
+ */
+export async function readVault(now = Date.now()): Promise<VaultSummary> {
+  const account = await activeAccount();
+  if (!account) return { handle: '', sources: [], archiveGeneratedAt: null, imports: 0, captureGroupsOn: 0 };
+  const ledger = await importLedger(account.id);
+  const read = ledger.filter((r) => !r.problems.some((p) => p === 'duplicate' || p === 'cancelled' || p === 'failed'));
+  const rowsOf = async (source: string): Promise<number> => {
+    if (source === 'x-analytics-posts') return db.analyticsPosts.where('accountId').equals(account.id).count();
+    if (source === 'x-analytics-days') return db.analyticsDays.where('accountId').equals(account.id).count();
+    return read.find((r) => r.source === source)?.counts.merged ?? 0;
+  };
+  const sources: VaultSourceSummary[] = [];
+  for (const followed of freshnessSources()) {
+    const source = VAULT_SUMMARY_SOURCES.find((s) => s === followed.source);
+    if (!source) continue;
+    const lastAt = await followed.lastAt(account.id);
+    const freshness = freshnessOf(lastAt, followed.cadenceDays, followed.graceDays, now);
+    sources.push({ source, lastAt, freshness, rows: await rowsOf(source) });
+    // The analytics export is followed as one, of posts or of days; the days are counted on their own line.
+    if (source === 'x-analytics-posts') {
+      const days = read.find((r) => r.source === 'x-analytics-days')?.importedAt ?? null;
+      sources.push({ source: 'x-analytics-days', lastAt: days, freshness, rows: await rowsOf('x-analytics-days') });
+    }
+  }
+  return {
+    handle: account.handle,
+    sources,
+    archiveGeneratedAt: read.find((r) => r.source === 'x-archive')?.coverTo ?? null,
+    imports: ledger.length,
+    // Reading X's pages for the vault comes in a later release (#424's CV.3): no group is on.
+    captureGroupsOn: 0,
+  };
+}
+
 /** Answers `xomoni-read` (ADR-0028): what was asked, or why not. Never changes anything. */
 export async function answerRead(message: ReadMessage): Promise<ReadAnswer> {
   const refused = await accessRefusal(message.deviceId);
@@ -262,5 +305,7 @@ export async function answerRead(message: ReadMessage): Promise<ReadAnswer> {
       return { ok: true, what: 'replies', page: await readReplies(message.filter, message.offset) };
     case 'incoming':
       return { ok: true, what: 'incoming', page: await readIncoming(message.author, message.query, message.offset) };
+    case 'vault':
+      return { ok: true, what: 'vault', vault: await readVault() };
   }
 }

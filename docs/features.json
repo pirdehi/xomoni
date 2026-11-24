@@ -386,6 +386,22 @@
       }
     },
     {
+      "id": "website-vault",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [426],
+      "scenarios": "docs/scenarios/426-vault-export.md",
+      "en": {
+        "title": "Your vault, on xomoni.com",
+        "summary": "beside the Library, what your vault in Xomoni holds: each of X's files with how fresh it is and what it holds, read in your browser as counts and dates only, and *Open in Xomoni*. Nothing of it reaches our servers."
+      },
+      "fa": {
+        "title": "گاوصندوق شما روی xomoni.com",
+        "summary": "کنار Library، آنچه گاوصندوق شما در Xomoni دارد: هر فایل X با میزان تازگی و آنچه در آن است، که فقط به‌صورت شمارش و تاریخ در مرورگر شما خوانده می‌شود، و *Open in Xomoni*. هیچ چیز از آن به سرورهای ما نمی‌رسد."
+      }
+    },
+    {
       "id": "two-step-verification",
       "area": "website",
       "status": "shipped",

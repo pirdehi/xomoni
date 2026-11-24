@@ -21,7 +21,10 @@ import type { PremiumPeriod } from '../../../shared/vault/reach';
 import { MIN_GROUP } from '../../../shared/vault/reach-stats';
 import { fmtNumber } from '../../format';
 import type { ReachRow } from '../../reach';
-import { Badge, Card, Disclosure, type Tone } from '../ui';
+import { useState } from 'react';
+import type { Account } from '../../../shared/types';
+import { Badge, Button, Card, Disclosure, type Tone } from '../ui';
+import { PremiumDateDialog } from './PremiumDateDialog';
 
 const useStyles = makeStyles({
   grid: {
@@ -77,21 +80,32 @@ const share = (ratio: number) =>
  * the ratio with its 95% interval, and what can mislead it under *How this is computed*; and the usual reach by day and
  * time of day. They show what goes together, never why.
  */
-export function ReachComparisons({ rows, periods }: { rows: readonly ReachRow[]; periods: readonly PremiumPeriod[] }) {
+export function ReachComparisons({
+  rows,
+  periods,
+  account,
+}: {
+  rows: readonly ReachRow[];
+  periods: readonly PremiumPeriod[];
+  /** The account, for *When did you get Premium?*; without it the Premium card only says it can't compare. */
+  account?: Pick<Account, 'id' | 'createdAt'>;
+}) {
   const styles = useStyles();
+  const [asking, setAsking] = useState(false);
   const comparisons = reachComparisons(rows, periods);
   return (
     <div className={styles.grid}>
       {comparisons.map((c) => (
-        <ComparisonCard key={c.id} comparison={c} />
+        <ComparisonCard key={c.id} comparison={c} {...(account && { onAskDate: () => setAsking(true) })} />
       ))}
       <TimeTable rows={rows} />
+      {account && <PremiumDateDialog account={account} open={asking} onClose={() => setAsking(false)} />}
     </div>
   );
 }
 
-/** One comparison as a card. */
-function ComparisonCard({ comparison: c }: { comparison: ReachComparison }) {
+/** One comparison as a card; the Premium card without a known start asks for the date with `onAskDate`. */
+function ComparisonCard({ comparison: c, onAskDate }: { comparison: ReachComparison; onAskDate?: () => void }) {
   const styles = useStyles();
   const { verdict, a, b, ratio, interval } = c.result;
   const [first, second] = c.groups;
@@ -122,11 +136,18 @@ function ComparisonCard({ comparison: c }: { comparison: ReachComparison }) {
           ))}
         </div>
         {verdict === 'not-enough-data' || ratio === null || interval === null ? (
-          <p className={styles.line}>
-            {c.needsDate
-              ? "Xomoni doesn't know yet when you got Premium, so it can't compare."
-              : `Each side needs at least ${String(MIN_GROUP)} posts read 7 days or more after you made them.`}
-          </p>
+          <>
+            <p className={styles.line}>
+              {c.needsDate
+                ? "Xomoni doesn't know yet when you got Premium, so it can't compare."
+                : `Each side needs at least ${String(MIN_GROUP)} posts read 7 days or more after you made them.`}
+            </p>
+            {c.needsDate && onAskDate && (
+              <Button size="sm" onClick={onAskDate}>
+                When did you get Premium?
+              </Button>
+            )}
+          </>
         ) : (
           <p className={styles.line}>
             {capitalized(c.subjects[0])} were seen {share(ratio)} as much as {c.subjects[1]} (median against median; 95%

@@ -80,7 +80,7 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
                 <h2 className={styles.heading}>Comparisons</h2>
                 <PlusBadge feature="reach-compare" />
               </div>
-              <ReachComparisons rows={data.rows} periods={data.periods} />
+              <ReachComparisons rows={data.rows} periods={data.periods} account={account} />
             </section>
             {months && (
               <section aria-label="Suspected posts" className={styles.stack}>

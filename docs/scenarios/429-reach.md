@@ -8,7 +8,7 @@ feature: reach-diagnosis
 
 The Reach page (#429, [ADR-0045](../adr/0045-reach-diagnosis-guesses-labelled-as-guesses.md)) shows how many times X says each of the person's posts and replies was seen, from X's own numbers, against their usual: the median of their posts of the same kind (text, a link, photos or videos, a reply) in the 8 weeks before, once there are 15 of them. A post read before it was 7 days old is still growing, and isn't compared. The numbers here are the views X shows on the person's own profile, which Xomoni keeps as it already does for the daily numbers (#249); X's analytics export joins them once the vault reads it (#425). Xomoni never asks X for anything to measure reach. The last 30 days are free; longer periods are part of Plus, open as a preview until sales start (ADR-0042).
 
-Under *Comparisons* (S429-31 on), three cards compare the person's own posts (not replies) read at least 7 days after they were made: posts with a link out of X against posts without, posts with photos or videos against text only, and posts with Premium against the 8 weeks before it (leaving out the 7 days after it began). Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, and, with 15 posts a side, the ratio and its 95% interval from 2,000 resamples, the same every time for the same posts. *How this is computed* says how, and what can mislead it: when the posts were made, their subjects, the followers, and their ages. A table gives the usual reach by day of the week and time of day. They show what goes together, never why, and are part of Plus, in preview. Until the vault keeps when the account got Premium (#425), the Premium card says it can't compare yet; the date the person gives comes with it.
+Under *Comparisons* (S429-31 on), three cards compare the person's own posts (not replies) read at least 7 days after they were made: posts with a link out of X against posts without, posts with photos or videos against text only, and posts with Premium against the 8 weeks before it (leaving out the 7 days after it began). Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, and, with 15 posts a side, the ratio and its 95% interval from 2,000 resamples, the same every time for the same posts. *How this is computed* says how, and what can mislead it: when the posts were made, their subjects, the followers, and their ages. A table gives the usual reach by day of the week and time of day. They show what goes together, never why, and are part of Plus, in preview. When Xomoni never saw the account turn Premium, the Premium card says it can't compare yet and asks *When did you get Premium?*: the day the person gives goes on the account's timeline, as their own entry, and the card compares from it (S429-56 to S429-60).
 
 *X's labels* (S429-61 on) shows each month of X's *Under the hood* report the person imported: each label with X's own name, the posts it touched or that it was on the account, and what it means when a public source says so (with the source and the day it was checked), X's own words from the file, or that X didn't explain it. A month without labels says *No labels that month*, never "clean"; a month the account wasn't eligible for says so. *Suspected posts* (S429-81 on, Plus, in preview) names, for each label X applied to n posts in a month, that month's posts furthest below their usual, under half of it, at most min(3n, 10), each with its reasons, under a box that can't be hidden: *This is a guess. X doesn't say which posts got a label.* The person can dismiss a guess; nothing leads to a cleanup. Until the Vault page is on main (#425), these tests put the months Xomoni keeps straight into its database, as an import of X's file leaves them.
 
@@ -393,6 +393,41 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Given every card open, in light mode
 - When axe-core checks the page
 - Then it finds no serious or critical violation
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-56 · happy
+
+- Given posts seen about 1,000 times 70 to 110 days ago and about 2,000 times 10 to 50 days ago, and no Premium seen
+- When the person, showing everything, answers *When did you get Premium?* with the day 60 days ago
+- Then the Premium card says *Clearly higher*, and that posts with Premium were seen about twice as much as before
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-57 · invalid
+
+- Given *When did you get Premium?* open
+- When the person gives a day 3 days ahead, and saves
+- Then it says *That day is still to come*, as an alert, saves nothing, and the card still asks
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-58 · invalid
+
+- Given an X account made in January 2017
+- When the person gives a day in 2016
+- Then it says that is before the X account was made, and saves nothing
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-59 · cancel
+
+- Given a day typed in *When did you get Premium?*
+- When the person presses Cancel
+- Then the question closes, nothing is saved, and the card still says *Not enough data*
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-60 · persistence
+
+- Given the day the person got Premium, given on Reach
+- When they reload the dashboard and show everything
+- Then the Premium card still compares: the day is kept on the account's timeline
 - Test: apps/web/e2e/extension/reach-comparisons.spec.ts
 
 ## S429-61 · happy

@@ -35,6 +35,26 @@ function group(first: number, count: number, center: number, over: Partial<OwnPo
 /** Thirty posts with a link at about 500 views, and thirty text posts at about 1,000. */
 const LINKS_HALF = [...group(1, 30, 500, { links: ['https://example.com/story'] }), ...group(101, 30, 1_000)];
 
+/** Twenty posts seen about 1,000 times 70 to 110 days ago, and twenty seen about 2,000 times 10 to 50 days ago. */
+const PREMIUM_POSTS = [
+  ...Array.from({ length: 20 }, (_, i) => own(600 + i, 70 + i * 2, 900 + (i % 5) * 50)),
+  ...Array.from({ length: 20 }, (_, i) => own(700 + i, 10 + i * 2, 1_800 + (i % 5) * 100)),
+];
+
+/** The day `days` days ago on this computer, as a date field takes it. */
+const dayAgo = (days: number) => {
+  const d = new Date(Date.now() - days * DAY);
+  return `${String(d.getFullYear())}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** Answers *When did you get Premium?* from the Premium card with `day`, and saves. */
+async function giveDay(dashboard: Page, day: string) {
+  await card(dashboard, PREMIUM).getByRole('button', { name: 'When did you get Premium?' }).click();
+  const dialog = dashboard.getByRole('dialog', { name: 'When did you get Premium?' });
+  await dialog.getByLabel('The day you got X Premium').fill(day);
+  await dialog.getByRole('button', { name: 'Save' }).click();
+}
+
 async function browsedWith(dashboard: Page, page: Page, context: BrowserContext, posts: readonly OwnPost[]) {
   await answerWithOwnPosts(context, 'UserTweets', posts);
   await openXWindow(dashboard);
@@ -294,6 +314,70 @@ test.describe('Reach comparisons', { tag: '@task-429' }, () => {
     await dashboard.keyboard.press('Enter');
     await expect(button).toHaveAttribute('aria-expanded', 'true');
     await expect(card(dashboard, LINKS)).toContainText('2,000 resamples');
+  });
+
+  test('S429-56 the day the person got Premium, once given, lets the Premium card compare', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    await browsedWith(dashboard, page, context, PREMIUM_POSTS);
+    await openReach(dashboard);
+    await dashboard.getByRole('button', { name: 'Everything', exact: true }).click();
+    await giveDay(dashboard, dayAgo(60));
+    await expect(card(dashboard, PREMIUM).locator('[data-verdict]')).toHaveText('Clearly higher');
+    await expect(card(dashboard, PREMIUM)).toContainText(
+      /Posts with Premium were seen \d+% as much as posts before it/,
+    );
+  });
+
+  test('S429-57 a day still to come is refused, with why, and nothing is saved', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    await browsedWith(dashboard, page, context, LINKS_HALF);
+    await openReach(dashboard);
+    await giveDay(dashboard, dayAgo(-3));
+    await expect(dashboard.getByRole('dialog').getByRole('alert')).toHaveText(
+      'That day is still to come. Pick the day you got X Premium.',
+    );
+    await dashboard.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    await expect(card(dashboard, PREMIUM).getByRole('button', { name: 'When did you get Premium?' })).toBeVisible();
+  });
+
+  test('S429-58 a day before the X account was made is refused', async ({ dashboard, page, context }) => {
+    await browsedWith(dashboard, page, context, LINKS_HALF);
+    await openReach(dashboard);
+    await giveDay(dashboard, '2016-06-01');
+    await expect(dashboard.getByRole('dialog').getByRole('alert')).toContainText(
+      'That is before your X account was made',
+    );
+  });
+
+  test('S429-59 Cancel closes the question and saves nothing', async ({ dashboard, page, context }) => {
+    await browsedWith(dashboard, page, context, PREMIUM_POSTS);
+    await openReach(dashboard);
+    await card(dashboard, PREMIUM).getByRole('button', { name: 'When did you get Premium?' }).click();
+    const dialog = dashboard.getByRole('dialog', { name: 'When did you get Premium?' });
+    await dialog.getByLabel('The day you got X Premium').fill(dayAgo(60));
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(card(dashboard, PREMIUM).locator('[data-verdict]')).toHaveText('Not enough data');
+  });
+
+  test('S429-60 the day given is kept: after a reload the Premium card still compares', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    await browsedWith(dashboard, page, context, PREMIUM_POSTS);
+    await openReach(dashboard);
+    await giveDay(dashboard, dayAgo(60));
+    await expect(dashboard.getByRole('dialog')).toHaveCount(0);
+    await dashboard.reload();
+    await dashboard.getByRole('button', { name: 'Everything', exact: true }).click();
+    await expect(card(dashboard, PREMIUM).locator('[data-verdict]')).toHaveText('Clearly higher');
   });
 
   test('S429-53 when X answers late, the comparison appears once it answers', async ({ dashboard, page, context }) => {

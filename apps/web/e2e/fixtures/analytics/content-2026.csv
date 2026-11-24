@@ -1,0 +1,8 @@
+Post id,Date,Post text,Post Link,Impressions,Likes,Engagements,Bookmarks,Shares,New follows,Replies,Reposts,Profile visits,Detail Expands,URL Clicks,Hashtag Clicks,Permalink Clicks
+9000000000000000105,"Sun, Nov 01, 2026",Made-up post number five for the vault's tests.,https://x.com/xomoni_fixture/status/9000000000000000105,2140,18,96,3,1,2,4,2,7,31,9,0,6
+9000000000000000104,"Fri, Oct 30, 2026","A made-up post, with a comma and ""quotes"" in it.",https://x.com/xomoni_fixture/status/9000000000000000104,880,6,40,0,0,0,1,1,2,14,0,1,3
+9000000000000000103,"Wed, Oct 28, 2026","A made-up post
+over two lines.",https://x.com/xomoni_fixture/status/9000000000000000103,415,2,17,1,0,0,0,0,1,6,0,0,1
+9000000000000000102,"Mon, Oct 26, 2026","=HYPERLINK(""https://example.invalid"",""a made-up formula"")",https://x.com/xomoni_fixture/status/9000000000000000102,120,0,4,0,0,0,0,0,0,2,0,0,0
+9000000000000000101,"Sat, Oct 24, 2026",<script>alert('made-up')</script> is only text here.,https://x.com/xomoni_fixture/status/9000000000000000101,61,1,3,0,0,0,0,0,0,1,0,0,0
+9000000000000000100,"Thu, Oct 22, 2026",A made-up post with no reach yet.,https://x.com/xomoni_fixture/status/9000000000000000100,0,0,0,0,0,0,0,0,0,0,0,0,0

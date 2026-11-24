@@ -12,6 +12,13 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 - **A reminder to keep your X files fresh** (#425). Once X's archive in your vault is 30 days old, or X's analytics export 60, Xomoni reminds you on this computer, at most once a day and only within your active hours. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off. It never opens X or starts anything, and asks for no new permission.
 
+- **The vault: X's own files, kept on your computer** (#425, #424). A new *Vault* page in the dashboard:
+  - drop or choose X's archive (the ZIP) and its analytics export (CSV of posts or of days), together if you like. *Import these files?* says what was recognized, for which account and with what warning, before anything is written: a file already imported, a CSV whose owner you confirm, and every refused file with why;
+  - *Your sources* says how fresh each file is and what it holds, *Imports* lists every import with what it left out, and *Account timeline* keeps X Premium seen on or off, your archive's request and import, and your own notes, with *Export CSV*;
+  - a reminder, at most once a day and within your active hours, says when the archive (30 days) or the analytics (60) is due for a fresh copy. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off.
+
+  Everything stays on your computer. The vault never opens X, scrolls, clicks or starts anything there, and asks for no new permission.
+
 ## [0.6.0] - 2026-11-24
 
 New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.

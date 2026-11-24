@@ -447,6 +447,8 @@ export async function runImport(plan: ImportPlan, options: RunOptions = {}): Pro
       await ledger(['failed']);
       throw err;
     }
+    // A parser that saw the signal stops reading by itself: the import was cut short all the same.
+    if (options.signal?.aborted) cancelled = true;
     const result: PartResult = {
       part,
       ledger: await ledger(cancelled ? ['cancelled'] : []),

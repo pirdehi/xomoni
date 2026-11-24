@@ -97,6 +97,8 @@ A heavy X user has more than 100,000 posts and 100,000 likes. Two tests run Xomo
 | --- | --- | --- |
 | `apps/extension/tests/scale.test.ts` | The queries behind Home, the Library, Cleanup, the daily numbers, the archive import, *Export everything* and the move-your-data import, on Dexie and `fake-indexeddb` | `tests/support/history.ts`: posts, replies (a third in the person's own threads) and reposts, likes, from X's archive, from X's pages or both, some removed by Xomoni with their lines in the log, the jobs, 400 days of daily numbers and others' replies |
 | `apps/web/e2e/extension/scale.spec.ts` | The built extension in Chromium: X's archive imported in the Library, the Library opened, paged, filtered and searched, Cleanup's count with keep rules, Home with its chart, *Export everything*, *Delete local data*, and the export imported into the emptied Xomoni | `e2e/support/scale.ts`: X's archive ZIP of the same mix, over 15 years |
+| `apps/extension/tests/vault-perf.test.ts` | The vault's paths (#426): a page of the account's timeline, the Vault page's sources card, the export's estimate, the reminder, the ledger, a batch of analytics merged, and X's analytics export of posts and days imported | Made in the test: 50,000 posts' analytics, three years of days, 20,000 timeline entries and 500 imports |
+| `apps/web/e2e/extension/vault-perf.spec.ts` | The built extension: X's archive and an analytics export of 50,000 posts imported on the Vault page, the page opened, *Export my vault* | `e2e/support/scale.ts`'s archive, and a CSV made in the test |
 
 Both run at a fiftieth of the size in the normal suites (`npm test`, `npm run test:e2e:extension`). The browser's runs at the full size on demand; `XOMONI_SCALE` sets any share of it, for either:
 
@@ -125,6 +127,8 @@ Each path has budgets, wide enough for CI's runners: they catch a path that went
 | *Export everything* | 120 s | 3.5 to 5.0 s | 2.7 to 5.4 s |
 | *Delete local data* | 180 s | 29 to 38 s | 27 to 66 s (unchanged code) |
 | The move-your-data import into an emptied Xomoni | 240 s | 58 to 77 s | 56 to 118 s (unchanged code) |
+
+The vault's budgets (#426), at the full size: a page of the timeline reads at most two pages of rows (its events and the risk ladder's), the sources card and the export's estimate read no analytics row (they count on the indexes), a batch of 2,000 posts' analytics merges within 200 ms in a browser, the Vault page shows its sources within 1.5 s, and X's archive of 200,000 rows imports on it within 240 s, as in the Library. On `fake-indexeddb` at the full size the vault's queries take 3 to 56 ms, a 2,000-post batch 132 ms, and importing an analytics export of 50,000 posts and 365 days 3.7 s.
 
 Measured on a laptop busy with other work, in Playwright's Chromium: each range is the runs seen, so read them as orders of magnitude. The import's floor is IndexedDB's own writes, about a quarter of a millisecond per row with the inventory's indexes: the move-your-data import, one transaction, takes as long. Reports on xomoni.com read at most 400 days of numbers per account from the cloud, which never holds the inventory (ADR-0004), so its size can't slow them; the extension's side of the daily numbers, `dailyRows`, reads only the days asked for, which the unit test checks.
 

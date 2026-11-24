@@ -247,6 +247,50 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await check(dashboard);
     });
 
+    test('the Vault page’s states: empty, a plan with a refusal and a question, the result, a file error, an export under way (#426)', async ({
+      dashboard,
+    }) => {
+      await openXWindow(dashboard);
+      await dashboard.bringToFront();
+      await dashboard.getByRole('navigation').getByRole('button', { name: 'Vault', exact: true }).click();
+      await expect(dashboard.getByText('Your vault is empty')).toBeVisible();
+      await check(dashboard);
+
+      // A ZIP that isn't one: the alert under the drop zone.
+      const choose = async (files: { name: string; mimeType: string; buffer: Buffer }[]) => {
+        const chooser = dashboard.waitForEvent('filechooser');
+        await dashboard.getByRole('button', { name: 'Choose files' }).click();
+        await (await chooser).setFiles(files);
+      };
+      await choose([{ name: 'twitter-2026.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') }]);
+      await expect(dashboard.getByRole('alert')).toContainText('This is not a ZIP file.');
+      await check(dashboard);
+
+      // Import these files?: a CSV of days that asks whose it is, and a file refused.
+      const days = 'Date,Impressions,Likes,New follows\n"Sun, Nov 01, 2026",1,1,0\n';
+      await choose([
+        { name: 'overview.csv', mimeType: 'text/csv', buffer: Buffer.from(days) },
+        { name: 'holiday.png', mimeType: 'image/png', buffer: Buffer.from([0x89, 0x50]) },
+      ]);
+      const plan = dashboard.getByRole('dialog', { name: 'Import these files?' });
+      await expect(plan.getByRole('list', { name: 'Not imported' })).toBeVisible();
+      await check(dashboard);
+      await plan.getByRole('checkbox').check();
+      await plan.getByRole('button', { name: 'Import', exact: true }).click();
+      await expect(dashboard.getByRole('status', { name: 'What came in' })).toBeVisible();
+      await check(dashboard);
+
+      // Export my vault, with the warning about others' words and a date problem showing.
+      const exportCard = dashboard
+        .locator('section')
+        .filter({ has: dashboard.getByRole('heading', { level: 2, name: 'Export my vault' }) });
+      await exportCard.getByRole('button', { name: 'Choose dates' }).click();
+      await exportCard.getByLabel('From').fill('2026-02-01');
+      await exportCard.getByLabel('To (inclusive)').fill('2026-01-01');
+      await expect(exportCard.getByRole('alert')).toBeVisible();
+      await check(dashboard);
+    });
+
     test('X needs the person: signed out of X, and signed out of Xomoni', async ({ dashboard, context }) => {
       const x = await openXWindow(dashboard);
       await dashboard.bringToFront();

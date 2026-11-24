@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as bridge from '../src/index';
 import {
   REACH_BANNED_WORDS,
+  REACH_GUESS_NOTICE,
   REACH_LIMITS,
   REACH_ORDERS,
   REACH_VERDICTS,
@@ -75,7 +76,10 @@ describe('reach diagnosis’s shared words (ADR-0045)', () => {
   });
 
   it('uses none of them in its own words', () => {
-    for (const words of Object.values(REACH_VERDICT_WORDS)) expect(usesBannedReachWord(words)).toBe(false);
+    for (const words of [...Object.values(REACH_VERDICT_WORDS), REACH_GUESS_NOTICE])
+      expect(usesBannedReachWord(words)).toBe(false);
+    expect(REACH_GUESS_NOTICE).toBe("This is a guess. X doesn't say which posts got a label.");
+    expect(bridge.REACH_GUESS_NOTICE).toBe(REACH_GUESS_NOTICE);
   });
 });
 

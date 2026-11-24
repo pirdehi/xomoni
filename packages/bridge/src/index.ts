@@ -17,6 +17,7 @@ export {
 } from './extension-ids';
 export {
   REACH_BANNED_WORDS,
+  REACH_GUESS_NOTICE,
   REACH_LIMITS,
   REACH_ORDERS,
   REACH_VERDICTS,

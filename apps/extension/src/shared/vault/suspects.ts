@@ -2,11 +2,12 @@
 // n of the person's posts, the posts of that month furthest below their baseline, as a guess. X never says which posts
 // got a label, so every candidate is a guess and says so, with the reason it was picked; its confidence is low or
 // medium, never high; the person can dismiss it; and nothing here links to a cleanup. Pure.
+import { REACH_GUESS_NOTICE } from '@xomoni/bridge';
 import { type LabelMonth, monthName, utcMonth } from './under-the-hood';
 import { type ReachFormat, type ReachSample, baseline, isSettled, vsBaseline } from './reach-stats';
 
-/** The words every candidate carries, in a box that can't be hidden (ADR-0045, point 4). */
-export const GUESS_NOTICE = "This is a guess. X doesn't say which posts got a label.";
+/** The words every candidate carries, in a box that can't be hidden (ADR-0045, point 4); the same on xomoni.com. */
+export const GUESS_NOTICE = REACH_GUESS_NOTICE;
 
 /** A candidate is below this share of its baseline: under half. */
 export const SUSPECT_BELOW = 0.5;

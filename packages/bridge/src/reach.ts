@@ -23,6 +23,12 @@ export const REACH_VERDICT_WORDS: Readonly<Record<ReachVerdict, string>> = {
 };
 
 /**
+ * The words every suspected post carries, in a box that can't be hidden, in the extension and on xomoni.com alike
+ * (ADR-0045, point 4).
+ */
+export const REACH_GUESS_NOTICE = "This is a guess. X doesn't say which posts got a label.";
+
+/**
  * Words no verdict, heading, notification or text of Reach may use about a post or an account (ADR-0045, point 3):
  * shadowbanned, banned, penalized (or a penalty), suppressed, throttled, in any form. A test searches every string of Reach, in the
  * extension and on the website, with it. Addresses are left out before the search: a source's link may name them.

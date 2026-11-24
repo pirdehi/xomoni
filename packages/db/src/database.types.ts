@@ -3,6 +3,45 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      billing_events: {
+        Row: {
+          received_at: string;
+          result: string;
+          type: string;
+          webhook_id: string;
+        };
+        Insert: {
+          received_at?: string;
+          result: string;
+          type: string;
+          webhook_id: string;
+        };
+        Update: {
+          received_at?: string;
+          result?: string;
+          type?: string;
+          webhook_id?: string;
+        };
+        Relationships: [];
+      };
+      billing_settings: {
+        Row: {
+          changed_at: string;
+          id: boolean;
+          live: boolean;
+        };
+        Insert: {
+          changed_at?: string;
+          id?: boolean;
+          live?: boolean;
+        };
+        Update: {
+          changed_at?: string;
+          id?: boolean;
+          live?: boolean;
+        };
+        Relationships: [];
+      };
       daily_stats: {
         Row: {
           day: string;
@@ -173,6 +212,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      entitlements: {
+        Row: {
+          cancel_at_period_end: boolean;
+          event_at: string;
+          founding: boolean;
+          polar_customer_id: string | null;
+          polar_subscription_id: string | null;
+          source: string;
+          status: string;
+          tier: string;
+          updated_at: string;
+          user_id: string;
+          valid_until: string | null;
+        };
+        Insert: {
+          cancel_at_period_end?: boolean;
+          event_at: string;
+          founding?: boolean;
+          polar_customer_id?: string | null;
+          polar_subscription_id?: string | null;
+          source: string;
+          status: string;
+          tier: string;
+          updated_at?: string;
+          user_id: string;
+          valid_until?: string | null;
+        };
+        Update: {
+          cancel_at_period_end?: boolean;
+          event_at?: string;
+          founding?: boolean;
+          polar_customer_id?: string | null;
+          polar_subscription_id?: string | null;
+          source?: string;
+          status?: string;
+          tier?: string;
+          updated_at?: string;
+          user_id?: string;
+          valid_until?: string | null;
+        };
+        Relationships: [];
+      };
       extension_releases: {
         Row: {
           published_at: string;
@@ -297,6 +378,24 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      apply_billing_event: {
+        Args: {
+          cancel_at_period_end?: boolean;
+          event_at: string;
+          event_type: string;
+          founding?: boolean;
+          polar_customer_id?: string;
+          polar_subscription_id?: string;
+          source: string;
+          status: string;
+          tier: string;
+          user_id: string;
+          valid_until: string;
+          webhook_id: string;
+        };
+        Returns: string;
+      };
+      billing_live: { Args: never; Returns: boolean };
       choose_daily_stats: {
         Args: { enabled: boolean; owner: string };
         Returns: boolean;
@@ -339,8 +438,10 @@ export type Database = {
         Args: { enabled: boolean; token: string };
         Returns: boolean;
       };
+      entitlement_of: { Args: { owner: string }; Returns: Json };
       mask_email: { Args: { email: string }; Returns: string };
       mfa_satisfied: { Args: never; Returns: boolean };
+      my_entitlement: { Args: never; Returns: Json };
       normalize_pairing_code: { Args: { code: string }; Returns: string };
       pair_device: {
         Args: { code: string; name: string; version: string };

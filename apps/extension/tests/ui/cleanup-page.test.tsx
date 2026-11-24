@@ -723,14 +723,15 @@ describe('Cleanup page', () => {
       ]);
       await renderWithArchive(5);
 
+      // The preview and the copy's counts come a moment after the number that match (#397).
+      await waitFor(() => expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(5));
       const list = screen.getByRole('list');
       const entries = within(list).getAllByRole('listitem');
-      expect(entries).toHaveLength(5);
       expect(entries[0]).toHaveTextContent('Went viral');
       expect(entries[3]).toHaveTextContent('(no text)');
       expect(entries[4]).toHaveTextContent('and 1 more');
       expect(within(list).queryByText('Oldest')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^Posts/ })).toHaveTextContent('6 in your copy');
+      await waitFor(() => expect(screen.getByRole('button', { name: /^Posts/ })).toHaveTextContent('6 in your copy'));
     });
 
     it('estimates the time at the pace a new account runs at: a quarter of Careful on its first day', async () => {

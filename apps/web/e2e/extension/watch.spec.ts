@@ -311,9 +311,10 @@ test.describe('Watch X search', { tag: '@task-158' }, () => {
       await expect(newest(dashboard, '#xomoni')).toHaveCount(10, FIRST_CHECK);
       // X's search page then draws neither posts nor its empty state, as when X changes its page.
       await servePage(context, '/search', 'home.html');
+      // The next check comes a whole Watch interval later, at the read pace: give it as long as S158-02's second tab.
       await expect(dashboard.getByRole('tabpanel', { name: '#xomoni' })).toContainText(
         'X didn’t show the search results this time; the posts below are from the last check.',
-        FIRST_CHECK,
+        { timeout: 240_000 },
       );
       await expect(newest(dashboard, '#xomoni')).toHaveCount(10);
     });

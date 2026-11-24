@@ -96,7 +96,7 @@ function LogPanel({ account }: { account: Account }) {
   const [level, setLevel] = useState<Level>('all');
   const [limit, setLimit] = useState(100);
   const entries = useLiveQuery(
-    () =>
+    async () =>
       db.logs
         .where('[accountId+ts]')
         .between([account.id, 0], [account.id, Infinity])

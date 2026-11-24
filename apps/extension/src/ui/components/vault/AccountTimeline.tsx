@@ -186,8 +186,9 @@ export function AccountTimeline({ account }: { account: Account }) {
   const [pages, setPages] = useState(1);
   const [adding, setAdding] = useState(false);
   const limit = pages * TIMELINE_PAGE;
+  // An async querier keeps Dexie's zone across the helper's awaits, so the list follows every new entry (#459).
   const entries = useLiveQuery(
-    () => accountTimeline(account.id, { limit: limit + 1, ...(filter !== 'all' && { kinds: [filter] }) }),
+    async () => await accountTimeline(account.id, { limit: limit + 1, ...(filter !== 'all' && { kinds: [filter] }) }),
     [account.id, filter, limit],
   );
   const shown = entries?.slice(0, limit) ?? [];

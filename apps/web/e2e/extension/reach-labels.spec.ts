@@ -433,7 +433,7 @@ test.describe('suspected posts on Reach', { tag: '@task-429' }, () => {
     page,
     context,
   }) => {
-    const posts = postsWith([]).map((post) => ({ ...post, views: undefined }));
+    const posts: OwnPost[] = postsWith([]).map((post) => ({ ...post, views: undefined }));
     posts.push(own(300, 45, 1_000));
     await withMonths(dashboard, page, context, [{ month: LOW_MONTH(), labels: [SPAM] }], posts);
     await dashboard.getByRole('button', { name: 'Everything', exact: true }).click();

@@ -12,6 +12,7 @@ import { UNDER_THE_HOOD_PROBLEMS, labelEventWords } from '../src/shared/vault/un
 const SOURCES = import.meta.glob<string>(
   [
     '../src/shared/vault/{under-the-hood,label-glossary,reach,reach-stats,suspects}.ts',
+    '../src/ui/reach.ts',
     '../src/ui/pages/Reach.tsx',
     '../src/ui/components/reach/*.tsx',
   ],
@@ -25,10 +26,16 @@ function withoutComments(source: string): string {
 
 describe('no text of Reach says a post or an account is banned (ADR-0045, point 3)', () => {
   it('searches the files of Reach', () => {
-    expect(Object.keys(SOURCES).sort()).toEqual(
-      ['label-glossary', 'reach', 'reach-stats', 'suspects', 'under-the-hood']
-        .map((f) => `../src/shared/vault/${f}.ts`)
-        .sort(),
+    expect(Object.keys(SOURCES)).toEqual(
+      expect.arrayContaining([
+        ...['label-glossary', 'reach', 'reach-stats', 'suspects', 'under-the-hood'].map(
+          (f) => `../src/shared/vault/${f}.ts`,
+        ),
+        '../src/ui/reach.ts',
+        '../src/ui/pages/Reach.tsx',
+        '../src/ui/components/reach/ReachTable.tsx',
+        '../src/ui/components/reach/ReachDistribution.tsx',
+      ]),
     );
   });
 

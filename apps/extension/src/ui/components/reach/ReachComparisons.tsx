@@ -23,7 +23,9 @@ import type { PremiumPeriod } from '../../../shared/vault/reach';
 import { MIN_GROUP } from '../../../shared/vault/reach-stats';
 import { fmtNumber } from '../../format';
 import type { ReachRow } from '../../reach';
-import { Badge, Card, Disclosure, type Tone } from '../ui';
+import type { Account } from '../../../shared/types';
+import { Badge, Button, Card, Disclosure, type Tone } from '../ui';
+import { PremiumDateDialog } from './PremiumDateDialog';
 
 const useStyles = makeStyles({
   grid: {
@@ -100,23 +102,34 @@ function useCompared(rows: readonly ReachRow[], periods: readonly PremiumPeriod[
  * time of day. They show what goes together, never why. Each comparison takes 2,000 resamples a side, seconds with
  * tens of thousands of posts, so both are computed once for the same posts, not at each render (`useCompared`).
  */
-export function ReachComparisons({ rows, periods }: { rows: readonly ReachRow[]; periods: readonly PremiumPeriod[] }) {
+export function ReachComparisons({
+  rows,
+  periods,
+  account,
+}: {
+  rows: readonly ReachRow[];
+  periods: readonly PremiumPeriod[];
+  /** The account, for *When did you get Premium?*; without it the Premium card only says it can't compare. */
+  account?: Pick<Account, 'id' | 'createdAt'>;
+}) {
   const styles = useStyles();
+  const [asking, setAsking] = useState(false);
   const compared = useCompared(rows, periods);
   const comparisons = useMemo(() => reachComparisons(compared.rows, compared.periods), [compared]);
   const byTime = useMemo(() => reachByTime(compared.rows), [compared]);
   return (
     <div className={styles.grid}>
       {comparisons.map((c) => (
-        <ComparisonCard key={c.id} comparison={c} />
+        <ComparisonCard key={c.id} comparison={c} {...(account && { onAskDate: () => setAsking(true) })} />
       ))}
       <TimeTable byTime={byTime} />
+      {account && <PremiumDateDialog account={account} open={asking} onClose={() => setAsking(false)} />}
     </div>
   );
 }
 
-/** One comparison as a card. */
-function ComparisonCard({ comparison: c }: { comparison: ReachComparison }) {
+/** One comparison as a card; the Premium card without a known start asks for the date with `onAskDate`. */
+function ComparisonCard({ comparison: c, onAskDate }: { comparison: ReachComparison; onAskDate?: () => void }) {
   const styles = useStyles();
   const { verdict, a, b, ratio, interval } = c.result;
   const [first, second] = c.groups;
@@ -147,11 +160,18 @@ function ComparisonCard({ comparison: c }: { comparison: ReachComparison }) {
           ))}
         </div>
         {verdict === 'not-enough-data' || ratio === null || interval === null ? (
-          <p className={styles.line}>
-            {c.needsDate
-              ? "Xomoni doesn't know yet when you got Premium, so it can't compare."
-              : `Each side needs at least ${String(MIN_GROUP)} posts read 7 days or more after you made them.`}
-          </p>
+          <>
+            <p className={styles.line}>
+              {c.needsDate
+                ? "Xomoni doesn't know yet when you got Premium, so it can't compare."
+                : `Each side needs at least ${String(MIN_GROUP)} posts read 7 days or more after you made them.`}
+            </p>
+            {c.needsDate && onAskDate && (
+              <Button size="sm" onClick={onAskDate}>
+                When did you get Premium?
+              </Button>
+            )}
+          </>
         ) : (
           <p className={styles.line}>
             {capitalized(c.subjects[0])} were seen {share(ratio)} as much as {c.subjects[1]} (median against median; 95%

@@ -5,7 +5,7 @@
 // and writes one row of the import ledger per file. Nothing here sends anything anywhere (ADR-0004) or acts on X.
 import { isXId } from '../ids';
 import { type ZipEntry, listZip, looksLikeZip, readZipEntry } from '../zip';
-import { findImport, recordImport } from './db';
+import { findImport, recordImport, rememberConfirmed } from './db';
 import { type ImportCounts, MAX_FILE_NAME, MAX_PROBLEMS, type VaultImport, type VaultSource } from './types';
 
 /** The ZIP a file came in: its name, size and fingerprint, the same for every file in it. */
@@ -373,7 +373,8 @@ const keptProblems = (problems: readonly string[]) =>
  * batch in a transaction of its own, then writes the part's ledger row (ADR-0043, decision 4) and lets the parser
  * finish. A duplicate writes only its ledger row (`problems: ['duplicate']`). Cancelling with `signal` stops between
  * batches: what was merged stays, and the row says `cancelled`. A failure writes the row with `failed` and throws, as
- * the parser threw. An account Xomoni didn't learn from X (only a test's made-up one) keeps no ledger row.
+ * the parser threw. A part the person confirmed (`confirm`) is remembered as theirs (`rememberConfirmed`). An account
+ * Xomoni didn't learn from X (only a test's made-up one) keeps no ledger row.
  */
 export async function runImport(plan: ImportPlan, options: RunOptions = {}): Promise<PartResult[]> {
   const now = options.now ?? Date.now();
@@ -429,6 +430,8 @@ export async function runImport(plan: ImportPlan, options: RunOptions = {}): Pro
       results.push(result);
       continue;
     }
+    // The person confirmed these files are the account's (the plan asked): the same file isn't asked about again.
+    if (part.confirm && keepsLedger) await rememberConfirmed(plan.account.id, part.fingerprint);
     let cancelled = false;
     try {
       for await (const batch of part.parser.read(part.files, ctx)) {

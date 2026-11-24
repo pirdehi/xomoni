@@ -2,7 +2,7 @@
 // timeline, in the extension's IndexedDB (`db.ts`, Dexie version 8). Every row is checked by `records.ts` before it is
 // written, and one bad row refuses the whole write: nothing is written. Merges never lower a number. Nothing here sends
 // anything anywhere (ADR-0004) or acts on X.
-import { db } from '../db';
+import { db, kvGet, kvSet } from '../db';
 import type { RiskEvent, RiskEventKind } from '../risk';
 import { DAY } from '../time';
 import { accountEventRecord, analyticsDayRecord, analyticsPostRecord, cleanWords, vaultImportRecord } from './records';
@@ -71,6 +71,30 @@ export async function findImport(accountId: string, fingerprint: string): Promis
   return rows
     .filter((row) => row.accountId === accountId && completed(row))
     .sort((a, b) => a.importedAt - b.importedAt)[0];
+}
+
+/** Where the files whose owner the person confirmed are kept, per account, in `kv` (ADR-0043, decision 5). */
+const confirmedKey = (accountId: string) => `vaultConfirmed:${accountId}`;
+
+/** How many confirmed fingerprints an account keeps: the newest. */
+const CONFIRMED_KEPT = 500;
+
+/** Whether the person confirmed that the files with this fingerprint are the account's (a days CSV, #425). */
+export async function isConfirmed(accountId: string, fingerprint: string): Promise<boolean> {
+  const kept = await kvGet<unknown>(confirmedKey(accountId), null);
+  return Array.isArray(kept) && kept.includes(fingerprint);
+}
+
+/**
+ * Remembers that the person confirmed the files with this fingerprint are the account's, so the same file isn't asked
+ * about again. The answer goes with the account's data (`forgetAccount`) and stays behind in a move.
+ */
+export async function rememberConfirmed(accountId: string, fingerprint: string): Promise<void> {
+  await db.transaction('rw', db.kv, async () => {
+    const kept = await kvGet<unknown>(confirmedKey(accountId), null);
+    const list = Array.isArray(kept) ? kept.filter((f): f is string => typeof f === 'string' && f !== fingerprint) : [];
+    await kvSet(confirmedKey(accountId), [...list, fingerprint].slice(-CONFIRMED_KEPT));
+  });
 }
 
 /** The account's ledger, newest first; with `source`, only that source's imports. */

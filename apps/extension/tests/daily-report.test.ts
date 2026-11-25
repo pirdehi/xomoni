@@ -72,7 +72,12 @@ describe('the client for daily numbers (#250)', () => {
     fetch.mockReturnValueOnce(json(200, { latest: '0.3.0', security: false, stats: true }));
     expect((await reportStatus('t', '0.3.0', [])).stats).toBe(true);
     fetch.mockReturnValueOnce(json(200, { latest: '0.3.0', security: false }));
-    expect(await reportStatus('t', '0.3.0', [])).toEqual({ news: { latest: '0.3.0', security: false }, stats: false });
+    expect(await reportStatus('t', '0.3.0', [])).toEqual({
+      news: { latest: '0.3.0', security: false },
+      stats: false,
+      // An older server says nothing of a plan: no answer, not Free (#423).
+      plan: null,
+    });
   });
 
   it('sends days and the choice, and names the refusal while the numbers are off', async () => {

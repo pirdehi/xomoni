@@ -1,10 +1,12 @@
 // X's *Under the hood* report on the vault's importer (#428, ADR-0043, ADR-0045): the parser for the JSON the person
-// downloads from x.com/i/under_the_hood, registered when this module loads. It reads the file with `under-the-hood.ts`
-// and keeps its month with `label-months.ts`. Nothing here sends anything anywhere or acts on X.
+// downloads from x.com/i/under_the_hood, registered when this module loads, with the report's monthly reminder
+// (`under-the-hood-freshness.ts`). It reads the file with `under-the-hood.ts` and keeps its month with
+// `label-months.ts`. Nothing here sends anything anywhere or acts on X.
 import { sameHandle } from '../ids';
 import { isConfirmed } from './db';
 import { type OwnerVerdict, type VaultBatch, type VaultFile, type VaultParser, registerParser } from './importer';
 import { saveLabelMonth } from './label-months';
+import './under-the-hood-freshness';
 import {
   UNDER_THE_HOOD_MAX_BYTES,
   UNDER_THE_HOOD_PROBLEMS,
@@ -29,7 +31,7 @@ const isJson = (file: VaultFile) => file.name.toLowerCase().endsWith('.json');
 /**
  * X's *Under the hood* report on the vault's importer (`x-under-the-hood`): a `.json` file the person dropped on its own
  * (never one inside a ZIP, such as an archive's), one part per file, 5 MB at most. A JSON that isn't X's report is
- * refused with *This isn't X's Under the hood file*; one that names another account is refused; one that names none is
+ * refused with *This isn’t X’s Under the hood file*; one that names another account is refused; one that names none is
  * confirmed by the person, once for that file. Reading it keeps its month (`saveLabelMonth`), replacing an earlier
  * file's for that month, and notes the labels that are new or larger on the timeline. The same file again is a
  * duplicate, by its fingerprint.

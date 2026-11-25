@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import type { BrowserContext, Locator, Page, Request } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from '../support/a11y';
 import { browseProfile } from '../support/cleanup';
@@ -11,10 +13,11 @@ import {
 } from '../support/x-fixtures';
 
 // X's labels and suspected posts on Reach (docs/scenarios/429-reach.md, S429-61 on, #429, ADR-0045, points 4 and 5).
-// The months come from X's *Under the hood* files, which the person drops on the Vault page (#425); until that page is
-// on main, these tests put the months Xomoni keeps (`labelMonths`) straight into its database, as an import leaves
-// them, and read what Reach shows. The posts are the fixture account's own, with the views X shows on its profile.
-// The built extension runs in a real browser on x.com served from synthetic fixtures (ADR-0040).
+// The months come from X's *Under the hood* files, which the person drops on the Vault page (#425): S429-103 on do that
+// with the synthetic files in `fixtures/under-the-hood`; the others put the months Xomoni keeps (`labelMonths`)
+// straight into its database, as an import leaves them, and read what Reach shows. The posts are the fixture
+// account's own, with the views X shows on its profile. The built extension runs in a real browser on x.com served
+// from synthetic fixtures (ADR-0040).
 
 const DAY = 86_400_000;
 
@@ -579,5 +582,175 @@ test.describe('suspected posts on Reach', { tag: '@task-429' }, () => {
     await dashboard.setViewportSize({ width: 390, height: 844 });
     await expect(guessFor(dashboard, 'SPAM_HIGH_RECALL', LOW_MONTH())).toBeVisible();
     expect(await dashboard.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+});
+
+/** The synthetic *Under the hood* files (`aug-2026.json`, …). */
+const UNDER_THE_HOOD = path.join(__dirname, '..', 'fixtures', 'under-the-hood');
+
+/** A JSON file for the browser's file chooser. */
+const jsonUpload = (name: string, text: string) => ({ name, mimeType: 'application/json', buffer: Buffer.from(text) });
+
+/** The August 2026 report, as the person downloads it from X, under `name`. */
+const augustReport = (name = 'under_the_hood.json') =>
+  jsonUpload(name, readFileSync(path.join(UNDER_THE_HOOD, 'aug-2026.json'), 'utf8'));
+
+/** Opens the Vault page from the menu. */
+async function openVault(dashboard: Page) {
+  await dashboard.bringToFront();
+  await dashboard.getByRole('navigation').getByRole('button', { name: 'Vault', exact: true }).click();
+  await expect(dashboard.getByRole('heading', { level: 1, name: 'Vault' })).toBeVisible();
+}
+
+/** Presses Choose files on the Vault page and picks `files`. */
+async function chooseOnVault(dashboard: Page, files: ReturnType<typeof jsonUpload>[]) {
+  const chooser = dashboard.waitForEvent('filechooser');
+  await dashboard.getByRole('button', { name: 'Choose files' }).click();
+  await (await chooser).setFiles(files);
+}
+
+const vaultPlan = (dashboard: Page): Locator => dashboard.getByRole('dialog', { name: 'Import these files?' });
+const cameIn = (dashboard: Page): Locator => dashboard.getByRole('status', { name: 'What came in' });
+const reportSource = (dashboard: Page): Locator =>
+  dashboard
+    .getByRole('list', { name: 'Your sources' })
+    .getByRole('listitem')
+    .filter({ hasText: 'X’s Under the hood report' });
+
+/** Chooses `file` on the Vault page, says it is the person's, and imports it. */
+async function importReport(dashboard: Page, file = augustReport()) {
+  await chooseOnVault(dashboard, [file]);
+  await vaultPlan(dashboard)
+    .getByRole('checkbox', { name: /Is this Under the hood report from @xomoni_fixture\?/ })
+    .check();
+  await vaultPlan(dashboard).getByRole('button', { name: 'Import', exact: true }).click();
+}
+
+/** The first day of the month after `month` (`yyyy-mm`), UTC, plus `days`. */
+const inMonthAfter = (month: string, days: number) => {
+  const [year, m] = month.split('-').map(Number) as [number, number];
+  return Date.UTC(year, m, 1) + days * DAY;
+};
+
+/** `n` of the account's posts, made in the month after `month`, a day apart from its 5th. */
+const postsInMonthAfter = (month: string, n: number): OwnPost[] =>
+  Array.from({ length: n }, (_, i) => ({
+    id: idOf(300 + i),
+    text: `A post of the month after ${month}, ${String(i)}`,
+    createdAt: inMonthAfter(month, 4 + i),
+    views: 500,
+  }));
+
+test.describe('X’s Under the hood file on the Vault page', { tag: '@task-429' }, () => {
+  test('S429-103 X’s report, chosen on the Vault page, is confirmed, imported, and its month shows on Reach', async ({
+    dashboard,
+    page,
+  }) => {
+    await openXWindow(dashboard);
+    await browseProfile(page, ['posts']);
+    await openVault(dashboard);
+    await importReport(dashboard);
+    await expect(cameIn(dashboard)).toContainText('X’s Under the hood report: 1 row imported.');
+    await openReach(dashboard);
+    const august = monthRegion(dashboard, '2026-08');
+    await expect(august.getByRole('table')).toContainText('SPAM_HIGH_RECALL');
+    await expect(august.getByRole('table')).toContainText('3 of 212');
+  });
+
+  test('S429-104 the same file again says it was imported before, and adds nothing', async ({ dashboard, page }) => {
+    await openXWindow(dashboard);
+    await browseProfile(page, ['posts']);
+    await openVault(dashboard);
+    await importReport(dashboard);
+    await expect(cameIn(dashboard)).toContainText('1 row imported.');
+    await chooseOnVault(dashboard, [augustReport('under_the_hood (1).json')]);
+    await expect(vaultPlan(dashboard)).toContainText('importing it again adds nothing.');
+    // The person said the file was theirs the first time: it isn't asked again.
+    await expect(vaultPlan(dashboard).getByRole('checkbox')).toHaveCount(0);
+    await vaultPlan(dashboard).getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(cameIn(dashboard)).toContainText('X’s Under the hood report: already imported, nothing new.');
+    await openReach(dashboard);
+    await expect(labels(dashboard).getByRole('region')).toHaveCount(1);
+  });
+
+  test('S429-105 a JSON that isn’t X’s report is refused in words, and Reach still has no month', async ({
+    dashboard,
+    page,
+  }) => {
+    await openXWindow(dashboard);
+    await browseProfile(page, ['posts']);
+    await openVault(dashboard);
+    await chooseOnVault(dashboard, [jsonUpload('shopping.json', '{"items":["bread","milk"]}')]);
+    await expect(vaultPlan(dashboard).getByRole('list', { name: 'Not imported' })).toContainText(
+      'shopping.json: This isn’t X’s Under the hood file. Nothing was imported.',
+    );
+    await expect(vaultPlan(dashboard).getByRole('button', { name: 'Import', exact: true })).toBeDisabled();
+    await vaultPlan(dashboard).getByRole('button', { name: 'Cancel' }).click();
+    await openReach(dashboard);
+    await expect(labels(dashboard)).toContainText('No Under the hood reports yet');
+  });
+
+  test('S429-106 a report naming another account is refused, and nothing of it is kept', async ({
+    dashboard,
+    page,
+  }) => {
+    await openXWindow(dashboard);
+    await browseProfile(page, ['posts']);
+    await openVault(dashboard);
+    const theirs = JSON.parse(readFileSync(path.join(UNDER_THE_HOOD, 'aug-2026.json'), 'utf8')) as object;
+    await chooseOnVault(dashboard, [
+      jsonUpload('theirs.json', JSON.stringify({ ...theirs, screen_name: FRIEND_ACCOUNT.handle })),
+    ]);
+    await expect(vaultPlan(dashboard).getByRole('list', { name: 'Not imported' })).toContainText(
+      'theirs.json: This Under the hood report is another account’s, not @xomoni_fixture’s. Nothing was imported.',
+    );
+    await vaultPlan(dashboard).getByRole('button', { name: 'Cancel' }).click();
+    await openReach(dashboard);
+    await expect(labels(dashboard)).toContainText('No Under the hood reports yet');
+  });
+
+  test('S429-107 the Vault page takes the report, and Your sources shows when it came in and what it covers', async ({
+    dashboard,
+    page,
+  }) => {
+    await openXWindow(dashboard);
+    await browseProfile(page, ['posts']);
+    await openVault(dashboard);
+    await expect(dashboard.getByText('Your vault is empty')).toBeVisible();
+    await expect(dashboard.getByText(/the Under the hood JSON/)).toBeVisible();
+    await importReport(dashboard);
+    await expect(cameIn(dashboard)).toContainText('1 row imported.');
+    await expect(reportSource(dashboard)).toContainText('today · covers Aug 1, 2026 to Aug 31, 2026');
+  });
+
+  test('S429-108 a month with 10 posts or more after the newest report makes the next one due', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    // The newest report is three months back; the month after it has 12 posts: X has made its report since.
+    const newest = monthAgo(92);
+    await answerWithOwnPosts(context, 'UserTweets', postsInMonthAfter(newest, 12));
+    await openXWindow(dashboard);
+    await browseProfile(page, ['posts']);
+    await dashboard.bringToFront();
+    await seedMonths(dashboard, [{ month: newest, labels: [] }]);
+    await openVault(dashboard);
+    await expect(reportSource(dashboard)).toContainText(/Due for a new copy|Overdue/);
+  });
+
+  test('S429-109 months with fewer than 10 posts after it ask for nothing: X makes no report for them', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    const newest = monthAgo(92);
+    await answerWithOwnPosts(context, 'UserTweets', postsInMonthAfter(newest, 3));
+    await openXWindow(dashboard);
+    await browseProfile(page, ['posts']);
+    await dashboard.bringToFront();
+    await seedMonths(dashboard, [{ month: newest, labels: [] }]);
+    await openVault(dashboard);
+    await expect(reportSource(dashboard)).toContainText('Up to date');
   });
 });

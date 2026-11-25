@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../src/shared/db';
 import { mergeAnalyticsDays, mergeAnalyticsPosts, recordImport } from '../../src/shared/vault/db';
 import type { VaultImport } from '../../src/shared/vault/types';
+import { utcMonth } from '../../src/shared/vault/under-the-hood';
 import { ARCHIVE_PAGE_URL } from '../../src/shared/x-archive';
 import type * as Hooks from '../../src/ui/hooks';
 import { LEDGER_PAGE, SOURCE_LABELS, problemWords } from '../../src/ui/components/vault/ImportLedger';
@@ -110,6 +111,31 @@ describe('the Vault page', () => {
     expect(analytics).toHaveTextContent('1 posts · 2 days, Oct 1, 2026 to Oct 31, 2026');
   });
 
+  it('shows X’s Under the hood report with its newest import and the month it covers (#428)', async () => {
+    // A month three months back, whose report X has made; its file covers a month of its own.
+    const month = utcMonth(Date.now() - 90 * DAY);
+    await db.labelMonths.put({ accountId: ME.id, month, importedAt: Date.now() - 3 * DAY, labels: [] });
+    await row(
+      {
+        source: 'x-under-the-hood',
+        parser: 'x-under-the-hood@1',
+        fileName: 'under_the_hood.json',
+        coverFrom: Date.UTC(2026, 7, 1),
+        coverTo: Date.UTC(2026, 8, 1) - 1,
+        counts: { read: 1, merged: 1, skipped: 0 },
+      },
+      3,
+    );
+    show();
+    const sources = await screen.findByRole('list', { name: 'Your sources' });
+    const report = within(sources)
+      .getAllByRole('listitem')
+      .find((item) => item.textContent.includes('X’s Under the hood report'));
+    expect(report).toHaveTextContent('3 days old · covers Aug 1, 2026 to Aug 31, 2026');
+    // With no posts in Xomoni since that month, X makes no other report: nothing is due.
+    expect(report).toHaveTextContent('Up to date');
+  });
+
   it('lists the ledger newest first, with what went wrong or was left out, 25 at a time', async () => {
     await row({ problems: [] }, 5);
     await row({ problems: ['duplicate'] }, 4);
@@ -188,6 +214,7 @@ describe('what the page reads', () => {
     expect(holdings.sources.map((s) => [s.source, s.freshness])).toEqual([
       ['x-archive', 'never'],
       ['x-analytics-posts', 'never'],
+      ['x-under-the-hood', 'never'],
     ]);
   });
 });

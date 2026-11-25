@@ -111,7 +111,7 @@ export function VaultDrop({ account, ledgerId }: { account: Account; ledgerId: s
   return (
     <Card
       title="Add files"
-      subtitle="X's archive (the ZIP X sends) and its analytics export (CSV). They are read on this computer and never sent anywhere."
+      subtitle="X's archive (the ZIP X sends), its analytics export (CSV) and its monthly Under the hood report (JSON). They are read on this computer and never sent anywhere."
     >
       <div
         className={styles.zone}
@@ -127,7 +127,7 @@ export function VaultDrop({ account, ledgerId }: { account: Account; ledgerId: s
         ) : (
           <>
             <DocumentArrowUp20Regular aria-hidden className={styles.icon} />
-            <Body1 as="p">Drop X’s files here: the archive’s ZIP, or the analytics CSV</Body1>
+            <Body1 as="p">Drop X’s files here: the archive’s ZIP, the analytics CSV, or the Under the hood JSON</Body1>
             <Button size="sm" variant="primary" icon={<ArrowUpload16Regular />} onClick={() => input.current?.click()}>
               Choose files
             </Button>

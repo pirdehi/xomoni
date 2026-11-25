@@ -10,7 +10,7 @@ The Reach page (#429, [ADR-0045](../adr/0045-reach-diagnosis-guesses-labelled-as
 
 Under *Comparisons* (S429-31 on), three cards compare the person's own posts (not replies) read at least 7 days after they were made: posts with a link out of X against posts without, posts with photos or videos against text only, and posts with Premium against the 8 weeks before it (leaving out the 7 days after it began). Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, and, with 15 posts a side, the ratio and its 95% interval from 2,000 resamples, the same every time for the same posts. *How this is computed* says how, and what can mislead it: when the posts were made, their subjects, the followers, and their ages. A table gives the usual reach by day of the week and time of day. They show what goes together, never why, and are part of Plus, in preview. When Xomoni never saw the account turn Premium, the Premium card says it can't compare yet and asks *When did you get Premium?*: the day the person gives goes on the account's timeline, as their own entry, and the card compares from it (S429-56 to S429-60).
 
-*X's labels* (S429-61 on) shows each month of X's *Under the hood* report the person imported: each label with X's own name, the posts it touched or that it was on the account, and what it means when a public source says so (with the source and the day it was checked), X's own words from the file, or that X didn't explain it. A month without labels says *No labels that month*, never "clean"; a month the account wasn't eligible for says so. *Suspected posts* (S429-81 on, Plus, in preview) names, for each label X applied to n posts in a month, that month's posts furthest below their usual, under half of it, at most min(3n, 10), each with its reasons, under a box that can't be hidden: *This is a guess. X doesn't say which posts got a label.* The person can dismiss a guess; nothing leads to a cleanup. Until the Vault page is on main (#425), these tests put the months Xomoni keeps straight into its database, as an import of X's file leaves them.
+*X's labels* (S429-61 on) shows each month of X's *Under the hood* report the person imported: each label with X's own name, the posts it touched or that it was on the account, and what it means when a public source says so (with the source and the day it was checked), X's own words from the file, or that X didn't explain it. A month without labels says *No labels that month*, never "clean"; a month the account wasn't eligible for says so. *Suspected posts* (S429-81 on, Plus, in preview) names, for each label X applied to n posts in a month, that month's posts furthest below their usual, under half of it, at most min(3n, 10), each with its reasons, under a box that can't be hidden: *This is a guess. X doesn't say which posts got a label.* The person can dismiss a guess; nothing leads to a cleanup. Most of these tests put the months Xomoni keeps straight into its database, as an import of X's file leaves them; S429-103 to S429-109 drop the synthetic files on the Vault page (#425), where *Your sources* follows the report: from the month after the newest one, once that month is over and has 10 of the person's posts or more in Xomoni (X makes no report otherwise), the next is due, and the reminder Xomoni already gives says so.
 
 The tests run the built extension in a real browser on x.com served from synthetic fixtures ([ADR-0040](../adr/0040-test-the-extension-against-recorded-x-fixtures.md)), never the real X: the made-up `@xomoni_fixture`, whose profile X shows with the posts each test gives it, with their views, links and photos. Run them with no Supabase:
 
@@ -723,4 +723,56 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Given a guess
 - When the dashboard is as wide as a phone
 - Then the guesses fit, and the page doesn't scroll sideways
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-103 · happy
+
+- Given the person browsed their profile on X, and downloaded X's Under the hood report for August 2026
+- When they choose it on the Vault page, say it is theirs, and press Import
+- Then what came in says X's Under the hood report: 1 row imported
+- And Reach shows August 2026 with SPAM_HIGH_RECALL on 3 of 212 posts
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-104 · invalid
+
+- Given the August report was imported
+- When the person chooses the same file again, under another name
+- Then the plan says it was imported before and importing it again adds nothing, without asking whose it is
+- And what came in says already imported, nothing new, and Reach still has one month
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-105 · invalid
+
+- Given a JSON file that isn't X's report, such as a shopping list
+- When the person chooses it on the Vault page
+- Then it is refused with This isn’t X’s Under the hood file. Nothing was imported., and Import can't be pressed
+- And Reach still says No Under the hood reports yet
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-106 · security
+
+- Given X's report naming another account (@fixture_friend)
+- When the person chooses it on the Vault page
+- Then it is refused, naming the account it is for, and nothing of it is kept
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-107 · happy
+
+- Given an empty vault, whose drop zone names the Under the hood JSON among X's files
+- When the person imports the August report
+- Then Your sources says it came in today and covers Aug 1, 2026 to Aug 31, 2026
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-108 · persistence
+
+- Given the newest report kept is three months old, and Xomoni has 12 of the person's posts from the month after it
+- When the person opens the Vault page
+- Then Your sources says X's Under the hood report is due for a new copy, or overdue, as the reminder does
+- Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-109 · empty
+
+- Given the newest report kept is three months old, and Xomoni has only 3 of the person's posts since
+- When the person opens the Vault page
+- Then Your sources says the report is up to date: X makes no report for a month with fewer than 10 posts
 - Test: apps/web/e2e/extension/reach-labels.spec.ts

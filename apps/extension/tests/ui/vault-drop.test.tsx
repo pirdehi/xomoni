@@ -10,6 +10,7 @@ import type * as Hooks from '../../src/ui/hooks';
 import type * as VaultImport from '../../src/ui/vault-import';
 import { VAULT_ACCEPT, describeResult, partsToImport, planVaultImport } from '../../src/ui/vault-import';
 import { VaultDrop } from '../../src/ui/components/vault/VaultDrop';
+import aug from '../../../web/e2e/fixtures/under-the-hood/aug-2026.json?raw';
 import { FluentRoot } from '../../src/ui/fluent';
 import { ARCHIVE_OWNER, OTHER_OWNER, buildArchive, syntheticLikes, syntheticTweets } from '../support/archive';
 import { watchNetwork } from '../support/cleanup-pages';
@@ -84,6 +85,37 @@ describe('planning what was dropped', () => {
       'x-archive',
       'x-analytics-days',
     ]);
+  });
+});
+
+describe('X’s Under the hood report on the Vault page (#428)', () => {
+  it('is planned after the core’s parsers, from a JSON dropped on its own', async () => {
+    const plan = await planVaultImport([await buildArchive(), new File([aug], 'under_the_hood.json')], ME);
+    expect(plan.parts.map((p) => p.parser.source)).toEqual(['x-archive', 'x-under-the-hood']);
+    expect(plan.parts[1]?.confirm).toBe('Is this Under the hood report from @xomoni_fixture?');
+  });
+
+  it('is imported once the person says it is theirs, and its month is kept', async () => {
+    show();
+    drop([new File([aug], 'under_the_hood.json')]);
+    const asked = await dialog();
+    await userEvent.click(
+      within(asked).getByRole('checkbox', { name: /Is this Under the hood report from @xomoni_fixture\?/ }),
+    );
+    await userEvent.click(within(asked).getByRole('button', { name: 'Import' }));
+    expect(await screen.findByRole('status', { name: 'What came in' })).toHaveTextContent(
+      'X’s Under the hood report: 1 row imported.',
+    );
+    expect((await db.labelMonths.toArray()).map((m) => [m.accountId, m.month])).toEqual([[ME.id, '2026-08']]);
+  });
+
+  it('refuses a JSON that isn’t X’s report, and writes nothing', async () => {
+    show();
+    drop([new File(['{"name":"a shopping list"}'], 'list.json')]);
+    expect(within(await dialog()).getByRole('list', { name: 'Not imported' })).toHaveTextContent(
+      'list.json: This isn’t X’s Under the hood file. Nothing was imported.',
+    );
+    expect(await db.labelMonths.count()).toBe(0);
   });
 });
 

@@ -113,7 +113,7 @@ describe('parseWebsiteMessage', () => {
   });
 
   it('reads a request to open one of Xomoni’s pages, and only those pages', () => {
-    for (const page of ['overview', 'activity', 'cleanup', 'library', 'watch', 'settings'] as const) {
+    for (const page of ['overview', 'activity', 'cleanup', 'library', 'reach', 'watch', 'settings'] as const) {
       expect(parseWebsiteMessage({ type: OPEN, page, deviceId: DEVICE })).toEqual({
         type: OPEN,
         page,

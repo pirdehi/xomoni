@@ -16,6 +16,7 @@ import {
   parseTweet,
   parseVariables,
 } from '../src/shared/graphql';
+import { MAX_ENTITY_COUNT, entityCounts } from '../src/shared/x-entities';
 import { estimateDuration, matchesFilter, parseIdList } from '../src/shared/filter';
 import { estimateLikedAt, parseTwitterDate, snowflakeTime } from '../src/shared/time';
 import { sweepUrls } from '../src/engine/cleanup';
@@ -143,6 +144,165 @@ describe('graphql parsing', () => {
     const [like] = draftsFromTimeline('Likes', [liked], ME, { userId: ME });
     expect(like).not.toHaveProperty('views');
     expect(like).not.toHaveProperty('quotes');
+  });
+
+  describe('a post’s external links and media (#428)', () => {
+    const link = (expanded: string) => ({ url: 'https://t.co/abc', expanded_url: expanded, display_url: expanded });
+    const photo = (n: number) => ({ type: 'photo', media_url_https: `https://pbs.twimg.com/media/${n}.jpg` });
+    const withEntities = (
+      id: string,
+      entities: object,
+      extended?: object,
+      over: object = {},
+      opts: Parameters<typeof tweet>[1] = {},
+    ) => {
+      const base = tweet(id, opts);
+      return { ...base, ...over, legacy: { ...base.legacy, entities, extended_entities: extended } };
+    };
+    const counts = (t: object) => {
+      const parsed = parseTweet(t, null)!;
+      return { links: parsed.links, media: parsed.media };
+    };
+
+    it('counts a link card as one link and no media', () => {
+      expect(counts(withEntities('1', { urls: [link('https://example.com/story')] }))).toEqual({ links: 1, media: 0 });
+    });
+
+    it('counts a post with only photos as media and no link, its own t.co link included', () => {
+      const media = [photo(1), photo(2), photo(3)];
+      const post = withEntities(
+        '2',
+        {
+          urls: [],
+          media: [{ ...photo(1), url: 'https://t.co/pic', expanded_url: 'https://x.com/me/status/2/photo/1' }],
+        },
+        { media },
+      );
+      expect(counts(post)).toEqual({ links: 0, media: 3 });
+      // Without extended_entities, entities.media (only the first photo) is what there is.
+      expect(counts(withEntities('2', { urls: [], media: [photo(1)] }))).toEqual({ links: 0, media: 1 });
+    });
+
+    it('counts both, and neither', () => {
+      const both = withEntities(
+        '3',
+        { urls: [link('https://a.example'), link('http://b.example/x')] },
+        { media: [photo(1)] },
+      );
+      expect(counts(both)).toEqual({ links: 2, media: 1 });
+      expect(counts(withEntities('4', { urls: [], hashtags: [{ text: 'x' }] }))).toEqual({ links: 0, media: 0 });
+    });
+
+    it('never counts a quoted post, a profile or any other address on X as an external link', () => {
+      const quote = withEntities(
+        '5',
+        {
+          urls: [
+            link('https://twitter.com/other/status/900'),
+            link('https://x.com/other'),
+            link('https://mobile.twitter.com/a/status/1'),
+            link('https://pic.x.com/abc'),
+            link('https://example.com'),
+          ],
+        },
+        undefined,
+        { quoted_status_result: { result: tweet('900', { user: '2' }) } },
+      );
+      expect(counts(quote)).toEqual({ links: 1, media: 0 });
+      // A look-alike host is not X.
+      expect(
+        counts(withEntities('6', { urls: [link('https://notx.com/a'), link('https://x.com.evil.example')] })),
+      ).toEqual({
+        links: 2,
+        media: 0,
+      });
+    });
+
+    it('reads a long post’s links from its full entity set', () => {
+      const base = withEntities('7', { urls: [link('https://first.example')] });
+      const long = {
+        ...base,
+        note_tweet: {
+          note_tweet_results: {
+            result: {
+              text: 'a long post',
+              entity_set: { urls: [link('https://first.example'), link('https://second.example')] },
+            },
+          },
+        },
+      };
+      expect(counts(long)).toEqual({ links: 2, media: 0 });
+    });
+
+    it('says unknown, not zero, when X sent no entities; and drops entries out of shape', () => {
+      expect(counts(tweet('8'))).toEqual({ links: null, media: null });
+      expect(
+        entityCounts({
+          entities: {
+            urls: [
+              null,
+              'https://example.com',
+              { url: 'not a url at all' },
+              { expanded_url: 'ftp://f.example' },
+              { expanded_url: 'example.com' },
+            ],
+          },
+          extended_entities: { media: [null, 'photo', photo(1)] },
+        }),
+      ).toEqual({ links: 1, media: 1 });
+      expect(entityCounts({ entities: 'urls' })).toBeNull();
+      expect(entityCounts({ entities: { urls: 'none' } })).toEqual({ links: 0, media: 0 });
+      expect(entityCounts(null)).toBeNull();
+    });
+
+    it('caps each count at 100', () => {
+      const many = Array.from({ length: 150 }, (_, i) => link(`https://e${i}.example`));
+      const lots = Array.from({ length: 150 }, (_, i) => photo(i));
+      expect(entityCounts({ entities: { urls: many }, extended_entities: { media: lots } })).toEqual({
+        links: MAX_ENTITY_COUNT,
+        media: MAX_ENTITY_COUNT,
+      });
+    });
+
+    it('keeps them on the viewer’s own posts and replies only, never on likes or reposts', () => {
+      const own = withEntities('10', { urls: [link('https://example.com')] }, { media: [photo(1)] });
+      const reply = withEntities('11', { urls: [] }, undefined, {}, { replyTo: '77', replyToUser: '5' });
+      const [post, answer] = draftsFromTimeline(
+        'UserTweets',
+        [parseTweet(own, null)!, parseTweet(reply, null)!],
+        ME,
+        {},
+      );
+      expect(post).toMatchObject({ kind: 'post', links: 1, media: 1 });
+      expect(answer).toMatchObject({ kind: 'reply', links: 0, media: 0 });
+
+      const liked = parseTweet(
+        withEntities('12', { urls: [link('https://example.com')] }, undefined, {}, { user: '9', handle: 'x' }),
+        '1',
+      )!;
+      const [like] = draftsFromTimeline('Likes', [liked], ME, { userId: ME });
+      expect(like).not.toHaveProperty('links');
+      expect(like).not.toHaveProperty('media');
+
+      const source = withEntities(
+        '13',
+        { urls: [link('https://example.com')] },
+        { media: [photo(1)] },
+        {},
+        { user: '9' },
+      );
+      const repost = tweet('14', { rt: source });
+      const [shared] = draftsFromTimeline('UserTweets', [parseTweet(repost, null)!], ME, {});
+      expect(shared).toMatchObject({ kind: 'repost' });
+      expect(shared).not.toHaveProperty('links');
+      expect(shared).not.toHaveProperty('media');
+
+      // Someone else's post on the viewer's timeline makes no draft at all.
+      const other = parseTweet({ ...own, legacy: { ...own.legacy, user_id_str: '9' } }, null)!;
+      expect(draftsFromTimeline('UserTweets', [other], ME, {})).toEqual([]);
+      // A post X sent without entities leaves both out.
+      expect(draftsFromTimeline('UserTweets', [parseTweet(tweet('15'), null)!], ME, {})[0]).not.toHaveProperty('links');
+    });
   });
 
   it('reads op names and variables', () => {
@@ -381,6 +541,73 @@ describe('archive', () => {
     expect(
       parseArchiveAccount(parseYtd('window.YTD.account.part0 = [{"account":{"accountId":"1000","username":"me"}}]')),
     ).toEqual({ accountId: ME, handle: 'me' });
+  });
+
+  it('counts each post’s external links and media, never a repost’s (#428)', () => {
+    const at = 'Wed Oct 10 20:19:24 +0000 2018';
+    const link = (expanded: string) => ({ url: 'https://t.co/abc', expanded_url: expanded });
+    const photo = { type: 'photo', url: 'https://t.co/pic', expanded_url: 'https://x.com/me/status/22/photo/1' };
+    const rows = [
+      {
+        tweet: {
+          id_str: '21',
+          created_at: at,
+          full_text: 'read https://t.co/abc',
+          entities: { urls: [link('https://example.com/a')] },
+        },
+      },
+      {
+        tweet: {
+          id_str: '22',
+          created_at: at,
+          full_text: 'photos https://t.co/pic',
+          entities: { urls: [], media: [photo] },
+          extended_entities: { media: [photo, photo] },
+        },
+      },
+      {
+        tweet: {
+          id_str: '23',
+          created_at: at,
+          full_text: 'see this https://t.co/q',
+          entities: { urls: [link('https://twitter.com/other/status/900')] },
+        },
+      },
+      { tweet: { id_str: '24', created_at: at, full_text: 'just words', entities: { urls: [], hashtags: [] } } },
+      {
+        tweet: {
+          id_str: '25',
+          created_at: at,
+          full_text: 'RT @someone: look https://t.co/abc',
+          entities: { urls: [link('https://example.com')] },
+          extended_entities: { media: [photo] },
+        },
+      },
+      { tweet: { id_str: '26', created_at: at, full_text: 'an older row' } },
+      {
+        tweet: {
+          id_str: '27',
+          created_at: at,
+          full_text: '@a both',
+          in_reply_to_status_id_str: '5',
+          entities: { urls: [link('https://a.example'), link('https://b.example')] },
+          extended_entities: { media: [photo] },
+        },
+      },
+    ];
+    const drafts = archiveTweetDrafts(rows, ME, 'me');
+    expect(drafts.map((d) => [d.id, d.kind, d.links, d.media])).toEqual([
+      ['21', 'post', 1, 0],
+      ['22', 'post', 0, 2],
+      // A quote's link points at X, so it isn't an external link.
+      ['23', 'post', 0, 0],
+      ['24', 'post', 0, 0],
+      ['25', 'repost', undefined, undefined],
+      ['26', 'post', undefined, undefined],
+      ['27', 'reply', 2, 1],
+    ]);
+    expect(drafts[4]).not.toHaveProperty('links');
+    expect(drafts[5]).not.toHaveProperty('media');
   });
 
   it('decodes the HTML entities of the archive’s escaped text, as X’s page shows it (#370)', () => {

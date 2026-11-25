@@ -348,6 +348,107 @@ function entriesOf(node: unknown): unknown[] | null {
   return null;
 }
 
+/** One of the fixture account's own posts, as a test has X show it with its views (#429). */
+export interface OwnPost {
+  /** The post's id, made up, in the fixtures' range. */
+  id: string;
+  /** Its text, as X sends it. */
+  text: string;
+  /** When it was posted, epoch ms. */
+  createdAt: number;
+  /** The views X shows for it (`views.count`, a string of digits); left out when undefined, as X does on some posts. */
+  views?: number | string;
+  /** Links in it that lead out of X, and photos it carries. */
+  links?: readonly string[];
+  photos?: number;
+  /** The post it answers, when it is a reply to someone else. */
+  replyTo?: string;
+  /** Written by `FRIEND_ACCOUNT` instead, as X shows someone else's post on the profile (a conversation's start). */
+  byFriend?: boolean;
+}
+
+/**
+ * Makes X answer GraphQL operation `op` from now on with its usual answer and, first, `posts`: the fixture account's
+ * own (or `FRIEND_ACCOUNT`'s, with `byFriend`), each with its views, links and photos, as X shows them on the account's
+ * profile (#429); `lateMs` after the request when given, as X does when it is slow. The rest of the answer is X's usual
+ * one, from the history `context` is served with.
+ */
+export async function answerWithOwnPosts(
+  context: BrowserContext,
+  op: string,
+  posts: readonly OwnPost[],
+  { lateMs = 0 }: { lateMs?: number } = {},
+): Promise<void> {
+  const file = answerFile(op, served.get(context) ?? 'short');
+  if (!file) throw new Error(`The fixtures have no answer for ${op}`);
+  const answer = JSON.parse(readFileSync(file, 'utf8')) as unknown;
+  const entries = entriesOf(answer);
+  if (!entries) throw new Error(`The fixtures' answer for ${op} has no timeline`);
+  entries.unshift(
+    ...posts.map((post) => {
+      const author = post.byFriend ? FRIEND_ACCOUNT : FIXTURE_ACCOUNT;
+      const photos = Array.from({ length: post.photos ?? 0 }, (_, i) => ({
+        type: 'photo',
+        url: `https://t.co/p${String(i)}`,
+        expanded_url: `https://x.com/${author.handle}/status/${post.id}/photo/${String(i + 1)}`,
+        media_url_https: `https://pbs.twimg.com/media/fixture${String(i)}.jpg`,
+      }));
+      return {
+        entryId: `tweet-${post.id}`,
+        sortIndex: post.id,
+        content: {
+          itemContent: {
+            tweet_results: {
+              result: {
+                __typename: 'Tweet',
+                rest_id: post.id,
+                core: {
+                  user_results: {
+                    result: {
+                      rest_id: author.id,
+                      core: { screen_name: author.handle, name: author.name },
+                    },
+                  },
+                },
+                ...(post.views !== undefined && { views: { count: String(post.views), state: 'EnabledWithCount' } }),
+                legacy: {
+                  id_str: post.id,
+                  user_id_str: author.id,
+                  created_at: xTime(post.createdAt),
+                  full_text: post.text,
+                  favorite_count: 0,
+                  retweet_count: 0,
+                  reply_count: 0,
+                  favorited: false,
+                  retweeted: false,
+                  entities: {
+                    urls: (post.links ?? []).map((link) => ({ url: 'https://t.co/l', expanded_url: link })),
+                    ...(photos.length > 0 && { media: photos.slice(0, 1) }),
+                  },
+                  ...(photos.length > 0 && { extended_entities: { media: photos } }),
+                  ...(post.replyTo && {
+                    in_reply_to_status_id_str: post.replyTo,
+                    in_reply_to_user_id_str: FRIEND_ACCOUNT.id,
+                    in_reply_to_screen_name: FRIEND_ACCOUNT.handle,
+                  }),
+                },
+              },
+            },
+          },
+        },
+      };
+    }),
+  );
+  const body = JSON.stringify(answer);
+  await context.route(
+    (url) => url.host === 'x.com' && GRAPHQL.exec(url.pathname)?.[1] === op,
+    async (route) => {
+      if (lateMs) await new Promise((resolve) => setTimeout(resolve, lateMs));
+      await route.fulfill({ status: 200, contentType: 'application/json', headers: xRateHeaders(), body });
+    },
+  );
+}
+
 /**
  * Makes X answer GraphQL operation `op` from now on with its usual answer and, first, `replies`: each written by
  * `FRIEND_ACCOUNT` to a post of the fixture account, as X shows the replies people wrote in a conversation (#256).

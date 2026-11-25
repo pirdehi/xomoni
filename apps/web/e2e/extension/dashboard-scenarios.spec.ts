@@ -261,7 +261,7 @@ test.describe('the dashboard', { tag: '@task-34' }, () => {
     await openXWindow(dashboard);
     await browseProfile(page, ['posts']);
     const sent = xRequests(context);
-    for (const item of ['Home', 'Cleanup', 'Library', 'Activity', 'Watch', 'Settings'] as const)
+    for (const item of ['Home', 'Cleanup', 'Library', 'Reach', 'Activity', 'Watch', 'Settings'] as const)
       await dashboard.getByRole('navigation').getByRole('button', { name: item, exact: true }).click();
     await dashboard.reload();
     await expect(dashboard.getByRole('heading', { level: 1 })).toBeVisible();

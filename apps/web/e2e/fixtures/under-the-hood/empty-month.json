@@ -1,0 +1,9 @@
+{
+  "notes": "Synthetic fixture for Xomoni's tests: a month in which X applied no label. Not real data.",
+  "period": { "startDate": "2026-10-01", "endDate": "2026-10-31", "timezone": "UTC" },
+  "generatedAt": "2026-11-08T23:59:59Z",
+  "postCount": "40",
+  "postLabels": [],
+  "accountLabels": [],
+  "totalAccountLabels": 0
+}

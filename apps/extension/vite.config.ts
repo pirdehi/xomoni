@@ -71,6 +71,9 @@ function storeBuild(): Plugin {
 export default defineConfig(({ mode }) => ({
   plugins: [react(), ...(mode === 'store' ? [storeBuild()] : [])],
   base: './',
+  // `XOMONI_PAYWALL=off` builds Xomoni with every paid part open (ADR-0042, decision 7): the one variable besides
+  // Vite's own that reaches the code, as `import.meta.env.XOMONI_PAYWALL`.
+  envPrefix: ['VITE_', 'XOMONI_PAYWALL'],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

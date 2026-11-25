@@ -41,6 +41,12 @@ function fakeServices() {
         get: vi.fn<LiveDashboardServices['weeklyEmail']['get']>(() => Promise.resolve(false)),
         set: vi.fn<LiveDashboardServices['weeklyEmail']['set']>(),
       },
+      healthAlert: {
+        get: vi.fn<LiveDashboardServices['healthAlert']['get']>(() =>
+          Promise.resolve({ enabled: false, canSend: true }),
+        ),
+        set: vi.fn<LiveDashboardServices['healthAlert']['set']>(),
+      },
     },
     listDevices,
     listRecentJobs,
@@ -372,5 +378,39 @@ describe('useLiveDashboard', () => {
     fake.services.weeklyEmail.get.mockRejectedValue(new Error('offline'));
     const again = renderHook(() => useLiveDashboard('user-1', INITIAL));
     await waitFor(() => expect(again.result.current.weeklyEmail).toBe(false));
+  });
+
+  it('reads the health alert and whether xomoni.com can send it, changes it, and says why when it can’t (#407)', async () => {
+    fake.services.healthAlert.get.mockResolvedValue({ enabled: false, canSend: false });
+    const { result } = renderHook(() => useLiveDashboard('user-1', INITIAL));
+    await waitFor(() => expect(result.current.healthAlert).toEqual({ enabled: false, canSend: false }));
+
+    fake.services.healthAlert.set.mockResolvedValueOnce(true);
+    let error: string | null = 'unset';
+    await act(async () => {
+      error = await result.current.setHealthAlert(true);
+    });
+    expect(error).toBeNull();
+    expect(fake.services.healthAlert.set).toHaveBeenCalledWith(true);
+    // Kept while sending isn't set up: the card still says nothing is sent.
+    expect(result.current.healthAlert).toEqual({ enabled: true, canSend: false });
+
+    fake.services.healthAlert.set.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      error = await result.current.setHealthAlert(false);
+    });
+    expect(error).toBe('Couldn’t turn the alert off. Try again in a moment.');
+    expect(result.current.healthAlert).toEqual({ enabled: true, canSend: false });
+    fake.services.healthAlert.set.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      error = await result.current.setHealthAlert(true);
+    });
+    expect(error).toBe('Couldn’t turn the alert on. Try again in a moment.');
+  });
+
+  it('says the health alert couldn’t be read, rather than off, when the read fails', async () => {
+    fake.services.healthAlert.get.mockRejectedValue(new Error('second_factor_required'));
+    const { result } = renderHook(() => useLiveDashboard('user-1', INITIAL));
+    await waitFor(() => expect(result.current.healthAlert).toBe('error'));
   });
 });

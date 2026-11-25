@@ -119,14 +119,14 @@ const READY_TAB_HINTS: Readonly<Record<ReadyTab, string>> = {
 export function WatchPage({ account }: PageProps) {
   const styles = useStyles();
   const run = useRunner();
-  const stored = useLiveQuery(() => watchTabs(account.id), [account.id]);
+  const stored = useLiveQuery(async () => watchTabs(account.id), [account.id]);
   // A ready tab's query is the account's own (#391), so it follows the account and its handle.
   const tabs = stored && withQueries(stored, account.handle);
-  const results = useLiveQuery(() => watchResults(account.id), [account.id]);
-  const seen = useLiveQuery(() => watchSeen(account.id), [account.id]);
+  const results = useLiveQuery(async () => watchResults(account.id), [account.id]);
+  const seen = useLiveQuery(async () => watchSeen(account.id), [account.id]);
   const unseen = tabs && results && seen ? unseenNewAccounts(tabs, results, seen) : {};
   const job = useLiveQuery(
-    () =>
+    async () =>
       db.jobs
         .where('accountId')
         .equals(account.id)

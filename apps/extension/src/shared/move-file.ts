@@ -44,6 +44,7 @@ import { accountEventRecord, analyticsDayRecord, analyticsPostRecord, vaultImpor
 import type { AccountEvent, AnalyticsDay, AnalyticsPost, VaultImport } from './vault/types';
 import { READY_TABS, type ReadyTab, type WatchResult, type WatchTab } from './watch';
 import type { ArchiveMode, ArchiveRequest } from './x-archive';
+import { MAX_ENTITY_COUNT } from './x-entities';
 import type { ViewCap } from './x-limits';
 import { WATCHED_OPS } from './x-operations';
 
@@ -419,6 +420,10 @@ class Fields {
   count(name: string, fallback?: number): number {
     return this.value(name, isCount, fallback);
   }
+  /** A post's links or media: a whole number from 0 to `MAX_ENTITY_COUNT` (#428). */
+  entityCount(name: string): number {
+    return this.value(name, (v): v is number => isCount(v) && v <= MAX_ENTITY_COUNT);
+  }
   /** A count or null. */
   countOrNull(name: string): number | null {
     return this.value(name, (v): v is number | null => v === null || isCount(v), null);
@@ -519,6 +524,12 @@ function item(f: Fields): Item {
     extra,
     f.optional('quote', (n) => f.bool(n)),
   );
+  // Links and media (#428): optional, 0 to 100 each, as `entityCounts` counts them.
+  for (const name of ['links', 'media'] as const)
+    Object.assign(
+      extra,
+      f.optional(name, (n) => f.entityCount(n)),
+    );
   if (f.raw('replyTo') !== undefined) {
     const replyTo = f.handle('replyTo');
     if (kind !== 'reply' || !replyTo) bad();

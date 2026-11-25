@@ -1,0 +1,20 @@
+{
+  "name": "@xomoni/entitlements",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Xomoni's plans, its paid features and the one check of a paid feature, hasPlan(), shared by the extension and xomoni.com (ADR-0042).",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage --coverage.include='src/**/*.ts' --coverage.thresholds.100 --coverage.reporter=text-summary"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.1.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

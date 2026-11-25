@@ -230,7 +230,9 @@ export const itemKey = (accountId: string, kind: ItemKind, id: string) => `${acc
  * Merges drafts into the inventory. Live observations refresh metrics and can
  * revive an item marked deleted only if they were captured after that mark.
  * A live sighting also adds what it shows to the day's numbers (#249): the rise
- * in the counts of the person's own posts since they were last seen.
+ * in the counts of the person's own posts since they were last seen. A post's
+ * links and media (#428) come from what X shows live; the archive only fills
+ * them in where they are missing.
  */
 export async function upsertItems(accountId: string, drafts: ItemDraft[], source: ItemSource, observedAt = Date.now()) {
   if (!drafts.length) return 0;
@@ -262,7 +264,7 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
           createdAt: d.createdAt || prev.createdAt,
           seenAt: observedAt,
         });
-        for (const name of ['quotes', 'bookmarks', 'views', 'quote'] as const) {
+        for (const name of ['quotes', 'bookmarks', 'views', 'quote', 'links', 'media'] as const) {
           if (d[name] !== undefined) Object.assign(next, { [name]: d[name] });
         }
         if (prev.status !== 'present' && observedAt > prev.statusAt + 5_000) {
@@ -273,6 +275,10 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
         next.text ||= d.text;
         next.author ||= d.author;
         next.createdAt ||= d.createdAt;
+        // Links and media (#428): what X shows live wins; the archive only fills them in.
+        for (const name of ['links', 'media'] as const) {
+          if (next[name] === undefined && d[name] !== undefined) next[name] = d[name];
+        }
       }
       next.targetId ||= d.targetId;
       // Whom a reply answers (#256): what X shows live wins; the archive only fills it in.

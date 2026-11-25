@@ -207,6 +207,26 @@ describe('the store (#249)', () => {
     expect(await db.items.get(itemKey(ME, 'post', '1'))).toMatchObject({ quotes: 1, bookmarks: 2, views: 130 });
   });
 
+  it('keeps a post’s links and media: what X shows live wins, the archive only fills them in (#428)', async () => {
+    const key = itemKey(ME, 'post', '1');
+    await upsertItems(ME, [draft({ links: 2, media: 1 })], 'archive', NOON);
+    expect(await db.items.get(key)).toMatchObject({ links: 2, media: 1 });
+    await upsertItems(ME, [draft({ links: 1 })], 'scan', NOON);
+    expect(await db.items.get(key)).toMatchObject({ links: 1, media: 1 });
+    // A later archive import doesn't overwrite what X showed live.
+    await upsertItems(ME, [draft({ links: 5, media: 4 })], 'archive', NOON + 1000);
+    expect(await db.items.get(key)).toMatchObject({ links: 1, media: 1 });
+    // A sighting without them keeps what is known.
+    await upsertItems(ME, [draft()], 'scan', NOON + 2000);
+    expect(await db.items.get(key)).toMatchObject({ links: 1, media: 1 });
+
+    // An older row without them reads as unknown, and an archive import fills them in.
+    await upsertItems(ME, [draft({ id: '2', targetId: '2' })], 'scan', NOON);
+    expect(await db.items.get(itemKey(ME, 'post', '2'))).not.toHaveProperty('links');
+    await upsertItems(ME, [draft({ id: '2', targetId: '2', links: 0, media: 3 })], 'archive', NOON);
+    expect(await db.items.get(itemKey(ME, 'post', '2'))).toMatchObject({ links: 0, media: 3 });
+  });
+
   it('adds nothing for an archive import or a like', async () => {
     await upsertItems(ME, [draft({ likes: 30 })], 'archive', NOON);
     await upsertItems(ME, [draft({ kind: 'like', id: '9', targetId: '9', likes: 30 })], 'scan', NOON);

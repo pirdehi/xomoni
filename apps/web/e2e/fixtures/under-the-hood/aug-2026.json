@@ -1,0 +1,26 @@
+{
+  "notes": "Synthetic fixture for Xomoni's tests, in the shape of X's Under the hood download. Not real data.",
+  "period": { "startDate": "2026-08-01", "endDate": "2026-08-31", "timezone": "UTC" },
+  "generatedAt": "2026-09-08T23:59:59Z",
+  "postCount": "212",
+  "postLabels": [
+    {
+      "label": "SPAM_HIGH_RECALL",
+      "about": "Post detected by automated systems as one that may contain spam.",
+      "effect": "Post hidden from recommendations to non-followers.",
+      "posts": 3,
+      "totalPostsInMonth": 212,
+      "percentageOfPosts": 1.42
+    },
+    {
+      "label": "SYNTHETIC_UNKNOWN_LABEL",
+      "about": "A label made up for the tests.",
+      "effect": "None: it isn't real.",
+      "posts": 1,
+      "totalPostsInMonth": 212,
+      "percentageOfPosts": 0.47
+    }
+  ],
+  "accountLabels": [],
+  "totalAccountLabels": 0
+}

@@ -7,6 +7,7 @@ import { isHandle, isXId } from './ids';
 import { asObject } from './json';
 import type { RuntimeMessage } from './messages';
 import type { IncomingDraft, ItemDraft, ItemKind, RateObservation } from './types';
+import { MAX_ENTITY_COUNT } from './x-entities';
 import { capReset } from './x-limits';
 import { TIMELINE_OPS, WATCHED_OPS, X_ORIGIN } from './x-operations';
 
@@ -87,11 +88,18 @@ function draft(value: unknown, now: number): ItemDraft | null {
   if ((inReplyToId !== null && !isId(inReplyToId)) || typeof selfReply !== 'boolean') return null;
   if (!isCount(likes) || !isCount(reposts) || !isCount(replies)) return null;
   // X's other counts for own posts (#249): each optional, and a count when present.
-  const extra: Pick<ItemDraft, 'quotes' | 'bookmarks' | 'views' | 'quote' | 'replyTo'> = {};
+  const extra: Pick<ItemDraft, 'quotes' | 'bookmarks' | 'views' | 'quote' | 'replyTo' | 'links' | 'media'> = {};
   for (const name of ['quotes', 'bookmarks', 'views'] as const) {
     const value = d[name];
     if (value === undefined) continue;
     if (!isCount(value)) return null;
+    extra[name] = value;
+  }
+  // Links and media (#428): each optional, 0 to 100 when present, on the person's own posts and replies only.
+  for (const name of ['links', 'media'] as const) {
+    const value = d[name];
+    if (value === undefined) continue;
+    if (!isCount(value) || value > MAX_ENTITY_COUNT || (kind !== 'post' && kind !== 'reply')) return null;
     extra[name] = value;
   }
   if (d.quote !== undefined) {

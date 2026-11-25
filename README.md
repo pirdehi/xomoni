@@ -51,6 +51,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Watch what is said about you** *(next release)*: two ready Watch searches for your own account, Mentions of you and Replies to you, off until you turn them on. A post from an account made in the last 30 days is marked with its age, from X's own search answer, and Xomoni's toolbar button counts the ones you haven't seen. Read only, and nothing leaves your computer.
 - **Dashboard:** *Home* says what runs and what X needs, with the one button that helps; *Activity* shows each job's progress, time remaining and a log you can read, and export as CSV or JSON; plus removal counts and a year-by-year chart. Light and dark themes.
 - **Daily numbers:** one row per X account per day, kept in this browser: followers, following, posts and likes, what you published and removed, and an estimate of what your posts received. Only pages X already showed count; nothing new is asked of X.
+- **Reach** *(next release, preview)*: how many times X says each of your posts was seen, from X's own numbers, against your usual: the median of your posts of the same kind in the 8 weeks before. A post still growing isn't compared, and nothing is guessed. Comparisons of posts with and without a link, with photos or videos, and with Premium, each in one of five fixed words with its size, a 95% interval and what can mislead it, and your usual reach by day and time. The last 30 days are free; longer periods and the comparisons are part of Plus, open as a preview. Xomoni never searches X to measure reach, and nothing leaves your computer.
 - **Sign out of Xomoni:** one dialog names the account and says what happens: the running job pauses, the X window closes and nothing more is recorded. You can also remove the account's data from this browser, with a copy to download first, and sign out of X on X's own page.
 - **Move your data to a new Xomoni:** *Export everything* saves one file in Downloads with your accounts, your copy, jobs, the log and settings; *Import from a file* in the new Xomoni checks the whole file first, then adds it to what is there. The file never leaves your computer.
 - **Update in one click** *(preview)*: a Xomoni installed from the zip downloads the new version from GitHub, checks its signature and every file, and writes it into its own folder, never while a job runs. Your data stays. It starts once the maintainer has set up the signing key; until then, update by hand.
@@ -76,6 +77,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **The dashboard on xomoni.com:** Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings, each at its own address, with an account and period picker. A sidebar on a computer, a bottom bar on a phone.
 - **Overview, Audience, Content and Engagement:** your followers, what you published and what it received, each against the period before, in charts that answer on hover and by keyboard, with a table view. What was received is marked as an estimate.
 - **Reports and a weekly email:** weekly, monthly and the year in review, what Xomoni removed, and a report of your own, as CSV or PDF. If you ask for it, an email every Monday compares last week's numbers with the week before; one link stops it.
+- **An email when X warns your account:** if you ask for it in Settings, one email when X warns one of your X accounts and Xomoni stops there: the @handle and when Xomoni may go on, nothing X showed or you posted. At most one every six hours; one link stops it.
 - **An install guide that follows you:** xomoni.com/install gives the steps for your browser and computer, one at a time, with short illustrations, ticks as soon as Xomoni is installed, and answers what goes wrong.
 - **Send to my computer:** Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers.
 - **xomoni.com on a phone:** a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page.
@@ -241,7 +243,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3), 2026-11-23.** Xomoni has 38 [features](#features), 1 of them added since 0.5.3. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+**Latest release: [0.5.3](https://github.com/pirdehi/xomoni/releases/tag/v0.5.3), 2026-11-23.** Xomoni has 40 [features](#features), 3 of them added since 0.5.3. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
 
 <!-- END GENERATED: status -->
 

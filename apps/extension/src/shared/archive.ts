@@ -4,6 +4,7 @@ import { isHandle } from './ids';
 import { asId, asNumber, asObject, asPostId, asString, at } from './json';
 import { parseTwitterDate, snowflakeTime } from './time';
 import type { ItemDraft } from './types';
+import { entityCounts } from './x-entities';
 import { decodeXText } from './x-text';
 
 /** The archive data files Xomoni reads; everything else in the archive is ignored. */
@@ -48,7 +49,9 @@ export function parseArchiveAccount(rows: readonly unknown[]): { accountId: stri
 /**
  * Turns `tweets.js` rows into drafts. A repost is recognized by its `RT @handle:` text and gets an empty
  * `targetId`, because the archive does not say which post it points to. `accountId` decides `selfReply`. The text is
- * decoded as X's page shows it: the archive's `full_text` is HTML-escaped, as in X's GraphQL answers (#370).
+ * decoded as X's page shows it: the archive's `full_text` is HTML-escaped, as in X's GraphQL answers (#370). A post or
+ * reply gets its external links and media from its `entities` (`entityCounts`, #428); a repost, whose content is
+ * someone else's, never does.
  */
 export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, handle: string): ItemDraft[] {
   const drafts: ItemDraft[] = [];
@@ -61,6 +64,7 @@ export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, 
     const repost = text.match(/^RT @(\w+):/);
     const inReplyToId = asPostId(t.in_reply_to_status_id_str) ?? null;
     const replyTo = asString(t.in_reply_to_screen_name);
+    const counts = repost ? null : entityCounts(t);
     drafts.push({
       kind: repost ? 'repost' : inReplyToId ? 'reply' : 'post',
       id,
@@ -76,6 +80,7 @@ export function archiveTweetDrafts(rows: readonly unknown[], accountId: string, 
       likes: asNumber(t.favorite_count) ?? 0,
       reposts: asNumber(t.retweet_count) ?? 0,
       replies: 0,
+      ...counts,
     });
   }
   return drafts;

@@ -207,4 +207,21 @@ describe('SettingsPlace (#234, ADR-0029)', () => {
     expect(screen.getByText('The numbers switch')).toBeInTheDocument();
     expect(read).not.toHaveBeenCalled();
   });
+
+  it('shows the account’s own choices, the daily numbers and the health alert, with Xomoni here or not (#407)', async () => {
+    const alert = <p>The health alert switch</p>;
+    const { unmount } = render(<SettingsPlace xomoni={controls(settings()).xomoni} numbers={NUMBERS} alert={alert} />);
+    expect(await screen.findByText('The health alert switch')).toBeInTheDocument();
+    expect(screen.getByText('The numbers switch')).toBeInTheDocument();
+    unmount();
+    render(
+      <SettingsPlace
+        xomoni={controls(settings(), undefined, { kind: 'not-installed' }).xomoni}
+        numbers={NUMBERS}
+        alert={alert}
+      />,
+    );
+    expect(screen.getByText('The health alert switch')).toBeInTheDocument();
+    expect(screen.getByText('The numbers switch')).toBeInTheDocument();
+  });
 });

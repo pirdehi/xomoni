@@ -1,9 +1,10 @@
 import 'server-only';
 
 // The switch that shows xomoni.com's pages for paid plans (#420, ADR-0042): the terms of sale at /terms-of-sale, the
-// refund policy at /refunds, and the parts of /privacy and /terms about paid plans. Their texts are drafts that wait
-// for the maintainer's approval, so the switch is off unless the server's environment says otherwise: while it is
-// off, the two pages answer 404, nothing links to them, and /privacy and /terms read as before.
+// refund policy at /refunds, the parts of /privacy and /terms about paid plans, and /pricing and /account/billing
+// (#422). Their texts are drafts that wait for the maintainer's approval, so the switch is off unless the server's
+// environment says otherwise: while it is off, those pages answer 404, nothing links to them, and /privacy, /terms
+// and /account read as before.
 
 /** The environment variable that shows them: `BILLING_PAGES=1`, set in Vercel for a Preview, never in code. */
 export const BILLING_PAGES_VARIABLE = 'BILLING_PAGES';

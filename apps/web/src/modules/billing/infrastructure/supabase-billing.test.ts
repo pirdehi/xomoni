@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { hasLiveSubscription, readMyEntitlement } from './supabase-billing';
+import { hasLiveSubscription, readBillingLive, readMyEntitlement } from './supabase-billing';
 
 const answering = (data: unknown, error: unknown = null) => ({ rpc: vi.fn(async () => ({ data, error })) }) as never;
 
@@ -66,5 +66,14 @@ describe('hasLiveSubscription (#421, CB.2.4)', () => {
 
   it('counts a plan it couldn’t read as live, so a deletion never skips one', async () => {
     await expect(hasLiveSubscription(row(null, { message: 'fetch failed' }))).resolves.toBe(true);
+  });
+});
+
+describe('readBillingLive (#422)', () => {
+  it('reads whether sales are open, and nothing when the database fails or answers oddly', async () => {
+    await expect(readBillingLive(answering(true))).resolves.toBe(true);
+    await expect(readBillingLive(answering(false))).resolves.toBe(false);
+    await expect(readBillingLive(answering(null, { message: 'down' }))).resolves.toBeNull();
+    await expect(readBillingLive(answering('yes'))).resolves.toBeNull();
   });
 });

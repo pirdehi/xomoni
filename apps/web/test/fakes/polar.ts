@@ -284,6 +284,7 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
           status: 'open',
           expires_at: new Date(Date.now() + 3_600_000).toISOString(),
           success_url: fields.success_url ?? null,
+          return_url: fields.return_url ?? null,
           external_customer_id: fields.external_customer_id,
           discount_id: fields.discount_id ?? null,
           products: products.map((product) => ({ id: product })),

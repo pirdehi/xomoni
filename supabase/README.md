@@ -56,6 +56,8 @@ The maintainer turns it on in production once the *Billing launch* section of th
 update public.billing_settings set live = true;   -- false closes sales again; neither needs a release
 ```
 
+Anyone may ask whether sales are open (`billing_live()`, one boolean), so `/pricing` can say *Coming soon* to every visitor (#422). The service-role key may turn the switch too, which is how the browser tests open and close sales on the local stack.
+
 ## Changing auth or API settings
 
 Edit `config.toml`, restart the stack (`supabase stop && supabase start`), run the auth tests (`npm run test:e2e -w @xomoni/web`), then after merge:

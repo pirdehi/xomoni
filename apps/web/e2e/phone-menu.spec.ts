@@ -30,6 +30,7 @@ const MENU = [
  */
 const FOOTER = [
   ['Install', '/install'],
+  ...(process.env.BILLING_PAGES === '1' ? ([['Plans', '/pricing']] as const) : []),
   ['What’s new', `${REPOSITORY}/releases`],
   ['Risks', '/risks'],
   ['Privacy', '/privacy'],
@@ -400,9 +401,9 @@ test.describe('xomoni.com on a phone', { tag: ['@task-242'] }, () => {
     const links = [...(await menuItems(page)), ...(await footerLinks(page))].map(([, href]) => href ?? '');
     expect(links).toHaveLength(MENU.length + FOOTER.length);
     for (const href of links) {
-      // /terms also covers /terms-of-sale, which the footer lists with /refunds while those pages are shown (#420).
+      // /terms also covers /terms-of-sale, which the footer lists with /refunds and /pricing while those are shown (#420).
       expect(href).toMatch(
-        /^(\/(#how|#safety|#privacy|install|risks|privacy|terms|refunds)|https:\/\/github\.com\/pirdehi\/)/,
+        /^(\/(#how|#safety|#privacy|install|risks|privacy|terms|refunds|pricing)|https:\/\/github\.com\/pirdehi\/)/,
       );
     }
     for (const name of ['Dashboard', 'Account', 'Sign out']) {

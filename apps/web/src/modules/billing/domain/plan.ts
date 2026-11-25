@@ -8,8 +8,11 @@ export type Tier = 'free' | 'plus' | 'pro';
 
 /** The plan a page shows. */
 export type PlanView =
-  /** No one is signed in: the page shows the plans, and no plan of anyone's. */
-  | { state: 'signed_out'; live: null }
+  /**
+   * No one is signed in: the page shows the plans, and no plan of anyone's. `live` says whether sales are open, or
+   * null when that couldn't be read (the page then sells nothing).
+   */
+  | { state: 'signed_out'; live: boolean | null }
   /** The plan that counts now (`tier`), its status and end as stored (null for an account that never paid). */
   | { state: 'known'; tier: Tier; status: PlanStatus | null; validUntil: Date | null; live: boolean }
   /**

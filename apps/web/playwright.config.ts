@@ -3,7 +3,7 @@ import path from 'node:path';
 import { type Project, defineConfig, devices } from '@playwright/test';
 import { TEST_EXTENSION_ID } from './e2e/support/fixed-id';
 import { FAKE_POLAR_PORT, NO_REAL_POLAR } from './e2e/support/polar';
-import { TEST_PRODUCTS, TEST_WEBHOOK_SECRET } from './test/fakes/polar';
+import { TEST_ACCESS_TOKEN, TEST_FOUNDING_DISCOUNT, TEST_PRODUCTS, TEST_WEBHOOK_SECRET } from './test/fakes/polar';
 import { type BrowserName, browsersToTest } from './e2e/support/projects';
 
 /**
@@ -51,6 +51,9 @@ const env = {
   // fixed development service-role key, which only its writer reads (never a production secret).
   POLAR_WEBHOOK_SECRET: TEST_WEBHOOK_SECRET,
   ...TEST_PRODUCTS,
+  // Checkout and the portal (#422) ask the fake Polar, with the tests' token, and Pro carries the tests' founders' discount.
+  POLAR_ACCESS_TOKEN: TEST_ACCESS_TOKEN,
+  POLAR_FOUNDING_DISCOUNT_ID: TEST_FOUNDING_DISCOUNT,
   SUPABASE_SERVICE_ROLE_KEY: required(status.SERVICE_ROLE_KEY, 'SERVICE_ROLE_KEY'),
 };
 process.env.BILLING_PAGES = env.BILLING_PAGES;

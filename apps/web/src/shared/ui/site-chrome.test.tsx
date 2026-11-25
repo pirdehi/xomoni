@@ -172,7 +172,7 @@ describe('SiteFooter', () => {
     ]);
   });
 
-  it('lists the terms of sale and the refund policy only while the server shows them (#420)', () => {
+  it('lists the plans, the terms of sale and the refund policy only while the server shows them (#420, #422)', () => {
     const { unmount } = render(
       <BillingPagesProvider on={false}>
         <SiteFooter />
@@ -181,6 +181,7 @@ describe('SiteFooter', () => {
     const off = within(screen.getByRole('navigation', { name: 'Site' }));
     expect(off.queryByRole('link', { name: 'Terms of sale' })).not.toBeInTheDocument();
     expect(off.queryByRole('link', { name: 'Refunds' })).not.toBeInTheDocument();
+    expect(off.queryByRole('link', { name: 'Plans' })).not.toBeInTheDocument();
     unmount();
 
     render(
@@ -191,7 +192,8 @@ describe('SiteFooter', () => {
     const links = within(screen.getByRole('navigation', { name: 'Site' }))
       .getAllByRole('link')
       .map((link) => [link.textContent, link.getAttribute('href')]);
-    expect(links.slice(3, 7)).toEqual([
+    expect(links[1]).toEqual(['Plans', '/pricing']);
+    expect(links.slice(4, 8)).toEqual([
       ['Privacy', '/privacy'],
       ['Terms', '/terms'],
       ['Terms of sale', '/terms-of-sale'],

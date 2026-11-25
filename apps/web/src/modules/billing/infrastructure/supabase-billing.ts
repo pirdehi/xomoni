@@ -33,3 +33,9 @@ export async function hasLiveSubscription(supabase: Pick<ServerSupabase, 'from'>
   const ended = data.valid_until !== null && Date.parse(data.valid_until) <= Date.now();
   return data.source === 'subscription' && data.status !== 'revoked' && !ended;
 }
+
+/** Whether sales are open (`billing_live()`, public, #422), or null when the database couldn't be asked. */
+export async function readBillingLive(supabase: Pick<ServerSupabase, 'rpc'>): Promise<boolean | null> {
+  const { data, error } = await supabase.rpc('billing_live');
+  return error || typeof data !== 'boolean' ? null : data;
+}

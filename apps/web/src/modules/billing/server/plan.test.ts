@@ -13,10 +13,12 @@ describe('currentPlan (#421, CB.2.5)', () => {
     rpc.mockReset();
   });
 
-  it('reads nothing for a visitor', async () => {
+  it('reads no plan for a visitor, only whether sales are open', async () => {
     viewer.mockResolvedValue(null);
-    await expect(currentPlan()).resolves.toEqual({ state: 'signed_out', live: null });
-    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValue({ data: false, error: null });
+    await expect(currentPlan()).resolves.toEqual({ state: 'signed_out', live: false });
+    expect(rpc).toHaveBeenCalledWith('billing_live');
+    expect(rpc).not.toHaveBeenCalledWith('my_entitlement');
   });
 
   it('reads the signed-in person’s own plan with their session', async () => {

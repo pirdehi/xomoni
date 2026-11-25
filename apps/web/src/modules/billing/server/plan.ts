@@ -6,17 +6,18 @@ import { currentViewer } from '@/modules/auth/server/session';
 import { createServerSupabase } from '@/shared/supabase/server';
 import { readEntitlement } from '../application/read-entitlement';
 import type { PlanView } from '../domain/plan';
-import { readMyEntitlement } from '../infrastructure/supabase-billing';
+import { readBillingLive, readMyEntitlement } from '../infrastructure/supabase-billing';
 
 export type { PlanView } from '../domain/plan';
 
 /**
- * The plan of whoever is signed in: `signed_out`, `known` (the plan that counts now, its status and end, and whether
+ * The plan of whoever is signed in: `signed_out` (with whether sales are open), `known` (the plan that counts now, its status and end, and whether
  * sales are open), or `unavailable` when it couldn't be read. Reads the request's cookies: call it inside `<Suspense>`.
  */
 export async function currentPlan(): Promise<PlanView> {
   return readEntitlement({
     signedIn: async () => (await currentViewer()) !== null,
     read: async () => readMyEntitlement(await createServerSupabase()),
+    live: async () => readBillingLive(await createServerSupabase()),
   });
 }

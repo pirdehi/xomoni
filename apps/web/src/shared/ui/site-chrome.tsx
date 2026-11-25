@@ -200,8 +200,8 @@ function PhoneMenu() {
 }
 
 /**
- * Site footer: credits, and every page a visitor may look for (#242). The terms of sale and the refund policy are
- * listed only while the server shows them (`BILLING_PAGES`, #420).
+ * Site footer: credits, and every page a visitor may look for (#242). The plans, the terms of sale and the refund
+ * policy are listed only while the server shows them (`BILLING_PAGES`, #420, #422).
  */
 export function SiteFooter() {
   const s = useStyles();
@@ -224,6 +224,7 @@ export function SiteFooter() {
         </p>
         <nav className={s.footerNav} aria-label="Site">
           {link(INSTALL_URL, 'Install')}
+          {billing && link('/pricing', 'Plans')}
           {link(RELEASES_URL, 'What’s new')}
           {link('/risks', 'Risks')}
           {link('/privacy', 'Privacy')}

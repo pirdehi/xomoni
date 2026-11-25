@@ -1,4 +1,6 @@
 import { CORE_PARSERS } from '../shared/vault/parsers';
+// Reach's parser for X's Under the hood report (#428) registers itself after the core's, with its monthly reminder.
+import '../shared/vault/under-the-hood-parser';
 import {
   type ImportPlan,
   type PartResult,
@@ -15,7 +17,7 @@ import type { Account } from '../shared/types';
 // the plan has checked every size, nothing is written before the person presses Import, and nothing leaves the
 // computer.
 
-/** The kinds of file the Vault page takes: a ZIP, a CSV or a JSON. */
+/** The kinds of file the Vault page takes: a ZIP, a CSV or a JSON (such as X's Under the hood report). */
 export const VAULT_ACCEPT = '.zip,.csv,.json,application/zip,text/csv,application/json';
 
 /**
@@ -54,7 +56,8 @@ export function describeResult(result: PartResult): string {
   const { counts } = result;
   const label = result.part.parser.label;
   if (result.duplicate) return `${label}: already imported, nothing new.`;
-  if (result.cancelled) return `${label}: stopped. ${counts.merged.toLocaleString('en')} rows were kept.`;
+  const rows = `${counts.merged.toLocaleString('en')} ${counts.merged === 1 ? 'row' : 'rows'}`;
+  if (result.cancelled) return `${label}: stopped. ${rows} ${counts.merged === 1 ? 'was' : 'were'} kept.`;
   const skipped = counts.skipped ? `, ${counts.skipped.toLocaleString('en')} skipped` : '';
-  return `${label}: ${counts.merged.toLocaleString('en')} rows imported${skipped}.`;
+  return `${label}: ${rows} imported${skipped}.`;
 }

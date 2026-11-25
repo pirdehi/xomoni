@@ -235,7 +235,7 @@ describe('X’s Under the hood months in the vault (#428, ADR-0043, ADR-0045)', 
       expect(plan.refused).toEqual([
         {
           fileName: 'package.json',
-          reason: "This isn't X's Under the hood file. Nothing was imported.",
+          reason: 'This isn’t X’s Under the hood file. Nothing was imported.',
           source: 'x-under-the-hood',
         },
       ]);
@@ -248,12 +248,12 @@ describe('X’s Under the hood months in the vault (#428, ADR-0043, ADR-0045)', 
       const negative = jsonFile('negative.json', aug.replace('"posts": 3', '"posts": -3'));
       const plan = await planImport([broken, negative, diskFile(big)], ME, [UNDER_THE_HOOD_PARSER]);
       expect(plan.refused.map((r) => [r.fileName, r.reason])).toEqual([
-        ['broken.json', "This isn't X's Under the hood file: it isn't JSON. Nothing was imported."],
+        ['broken.json', 'This isn’t X’s Under the hood file: it isn’t JSON. Nothing was imported.'],
         [
           'negative.json',
-          "This Under the hood file has a count that isn't a whole number of 0 or more. Nothing was imported.",
+          'This Under the hood file has a count that isn’t a whole number of 0 or more. Nothing was imported.',
         ],
-        ['big.json', "This file is larger than X's Under the hood file can be (5 MB). Nothing was imported."],
+        ['big.json', 'This file is larger than X’s Under the hood file can be (5 MB). Nothing was imported.'],
       ]);
     });
 

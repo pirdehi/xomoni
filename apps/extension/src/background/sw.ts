@@ -12,6 +12,8 @@ import { ATTENTION_ID, notify } from '../shared/notify';
 import { vaultNotificationAccount } from '../shared/notification-ids';
 import { getSignedOut } from '../shared/session';
 import { remindIfDue, snoozeVault } from '../shared/vault/freshness';
+// The monthly reminder for X's Under the hood report (#428) follows with the core's sources.
+import '../shared/vault/under-the-hood-freshness';
 import { notePremium } from '../shared/vault/timeline';
 import { recentUpdate } from '../shared/update-record';
 import { suggestArchivePath } from './archive-downloads';

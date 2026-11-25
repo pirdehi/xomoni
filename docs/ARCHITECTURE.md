@@ -110,7 +110,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/dev`](../apps/extension/src/dev/README.md) | UI preview with demo data; never shipped. |
 | [`apps/web`](../apps/web/README.md) | xomoni.com: landing and legal pages, sign-in, the live dashboard. |
 | [`apps/web/src/modules/admin`](../apps/web/src/modules/admin/README.md) | The super-admin console at `/product` (#516, ADR-0048): its own sign-in at `/product/login`; an overview of accounts, browsers and jobs; every account, searchable, sortable and paged (TanStack Table), with sign out everywhere, suspend and restore, and delete, each in an audit log; the maintainer's private plan. Only through database functions that check for a super-admin themselves; the proxy answers anyone else with a real 404 before a page renders. |
-| [`apps/web/src/modules/billing`](../apps/web/src/modules/billing/README.md) | Payments with Polar ([ADR-0042](adr/0042-payments-and-entitlements-with-polar.md)): Polar's signed webhook (`POST /api/billing/webhook`), the only writer of plans, with the one client that holds Supabase's service-role key; reading a person's plan for the pages. Checkout and the customer portal come with #421, the pages with #422. |
+| [`apps/web/src/modules/billing`](../apps/web/src/modules/billing/README.md) | Payments with Polar ([ADR-0042](adr/0042-payments-and-entitlements-with-polar.md)): Polar's signed webhook (`POST /api/billing/webhook`), the only writer of plans with *Refresh*, through the one client that holds Supabase's service-role key; checkout, the customer portal and ending a subscription before an account is deleted, as Server Actions; reading a person's plan for the pages, which come with #422. |
 | [`apps/web/src/modules/auth`](../apps/web/src/modules/auth/README.md) | Identity: sign-up with email confirmation, sign-in (password or Google), two-step verification with an authenticator app, password reset, email and password changes, sessions, account deletion. |
 | [`apps/web/src/modules/dashboard`](../apps/web/src/modules/dashboard/README.md) | Devices and live job status. |
 | [`apps/web/src/modules/extension`](../apps/web/src/modules/extension/README.md) | The Xomoni extension in this browser: finding it, and one sign-in for the site and the extension (ADR-0025). |
@@ -282,7 +282,7 @@ Xomoni is installed from the browsers' stores once they list it, and from the zi
 | `web-shared-is-shared` | `shared/` depending on a module or route. |
 | `web-supabase-behind-adapters` | The Supabase SDK or database types outside `shared/supabase` and `infrastructure/`. |
 | `web-server-code-is-server-only` | A `server/` file without the `server-only` guard. |
-| `web-service-role-is-webhook-only` | Any file but the billing webhook's route handler using the client that holds Supabase's service-role key (ADR-0042). |
+| `web-service-role-is-webhook-only` | Any file but billing's two writers of a plan, the webhook's route handler and *Refresh*'s Server Action, using the client that holds Supabase's service-role key (ADR-0042). |
 | `ext-shared-is-the-kernel` | `shared/` depending on any other extension area. |
 | `ext-engine-is-headless` | The engine importing UI, page scripts or the service worker. |
 | `ext-engine-core-uses-ports` | The engine's core importing the Chrome adapters (`worker-tab.ts`, `presence.ts`, `shared/notify.ts`) instead of its ports; ESLint also forbids `chrome` in the core. |

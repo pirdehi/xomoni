@@ -11,7 +11,7 @@ import {
 import { parseEmailLink } from '../domain/email-link';
 import { ROUTES, safeNextPath, twoFactorPath } from '../domain/routes';
 import { assuranceOf, secondFactorCodeSchema, secondFactorNeeded, type SessionState } from '../domain/two-factor';
-import { viewerFromClaims, type AccountDetails, type Viewer } from '../domain/viewer';
+import { signedInWithin, viewerFromClaims, type AccountDetails, type Viewer } from '../domain/viewer';
 import type { AuthGateway, OAuthProvider, TwoFactorGateway } from './ports';
 
 /** Dependencies every auth use case receives from a composition root. */
@@ -283,14 +283,30 @@ export async function signOut({ auth }: Pick<AuthDeps, 'auth'>, options: { every
   await auth.signOut(options.everywhere ?? false);
 }
 
+/** How recent a sign-in must be to delete the account, as `delete_account()` asks (#80): 10 minutes. */
+export const DELETE_SIGN_IN_WINDOW_SECONDS = 600;
+
 /**
- * Deletes the signed-in account, then ends the session. An account with an authenticator app must have verified a
- * code in this session first (#173); the database checks that too.
+ * Deletes the signed-in person's account and signs them out. An account with an authenticator app must have verified
+ * a code in this session first (#173); the database checks that too. With `beforeDelete` (ending a paid subscription at Polar
+ * first, ADR-0042), it checks the recent sign-in `delete_account()` needs before that step, so a deletion the database
+ * would refuse never cancels anything; a failure of the step stops the deletion and deletes nothing.
  */
-export async function deleteAccount(deps: Pick<AuthDeps, 'auth' | 'twoFactor'>): Promise<AuthResult> {
+export async function deleteAccount(
+  deps: Pick<AuthDeps, 'auth' | 'twoFactor'>,
+  beforeDelete?: (userId: string) => Promise<AuthResult>,
+  nowSeconds: number = Math.floor(Date.now() / 1000),
+): Promise<AuthResult> {
   const state = await getSessionState(deps);
   if (state.status === 'signed_out') return authFailure('not_signed_in');
   if (state.status === 'second_factor_needed') return authFailure('second_factor_required');
+  if (beforeDelete) {
+    const claims = await deps.auth.currentClaims();
+    if (!signedInWithin(claims?.amr, DELETE_SIGN_IN_WINDOW_SECONDS, nowSeconds))
+      return authFailure('reauthentication_needed');
+    const ready = await beforeDelete(state.viewer.id);
+    if (!ready.ok) return ready;
+  }
   const result = await deps.auth.deleteAccount();
   if (result.ok) await deps.auth.signOut();
   return result;

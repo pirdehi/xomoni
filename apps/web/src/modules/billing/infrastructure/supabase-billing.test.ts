@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readMyEntitlement } from './supabase-billing';
+import { hasLiveSubscription, readMyEntitlement } from './supabase-billing';
 
 const answering = (data: unknown, error: unknown = null) => ({ rpc: vi.fn(async () => ({ data, error })) }) as never;
 
@@ -35,5 +35,36 @@ describe('readMyEntitlement (#421, CB.2.5)', () => {
       answering({ entitlement: null, billing_live: true }),
     ])
       await expect(readMyEntitlement(supabase)).resolves.toBeNull();
+  });
+});
+
+describe('hasLiveSubscription (#421, CB.2.4)', () => {
+  const row = (data: unknown, error: unknown = null) =>
+    ({ from: () => ({ select: () => ({ maybeSingle: async () => ({ data, error }) }) }) }) as never;
+
+  it('is true for a subscription that hasn’t ended', async () => {
+    await expect(
+      hasLiveSubscription(row({ source: 'subscription', status: 'active', valid_until: '2999-01-01T00:00:00Z' })),
+    ).resolves.toBe(true);
+    await expect(
+      hasLiveSubscription(row({ source: 'subscription', status: 'canceled', valid_until: '2999-01-01T00:00:00Z' })),
+    ).resolves.toBe(true);
+  });
+
+  it('is false with no plan, a pass, a revoked plan or one that ended', async () => {
+    await expect(hasLiveSubscription(row(null))).resolves.toBe(false);
+    await expect(
+      hasLiveSubscription(row({ source: 'pass', status: 'active', valid_until: '2999-01-01T00:00:00Z' })),
+    ).resolves.toBe(false);
+    await expect(
+      hasLiveSubscription(row({ source: 'subscription', status: 'revoked', valid_until: '2999-01-01T00:00:00Z' })),
+    ).resolves.toBe(false);
+    await expect(
+      hasLiveSubscription(row({ source: 'subscription', status: 'active', valid_until: '2000-01-01T00:00:00Z' })),
+    ).resolves.toBe(false);
+  });
+
+  it('counts a plan it couldn’t read as live, so a deletion never skips one', async () => {
+    await expect(hasLiveSubscription(row(null, { message: 'fetch failed' }))).resolves.toBe(true);
   });
 });

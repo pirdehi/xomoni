@@ -199,6 +199,12 @@ export interface FakePolar {
   requests: PolarRequest[];
   /** Gives the next request `failure`, then answers as usual again. */
   failNext(failure: PolarFailure): void;
+  /** The Xomoni accounts (`external_customer_id`) Polar knows as customers: each checkout adds its account. */
+  customers: Set<string>;
+  /** Each account's subscriptions, in Polar's shape, as `GET /v1/subscriptions/` lists them. */
+  subscriptions: Map<string, Record<string, unknown>[]>;
+  /** The subscriptions revoked with `DELETE /v1/subscriptions/{id}`, in order. */
+  revoked: string[];
 }
 
 /** A request's body: its JSON, or its text when it isn't JSON, or null when empty. */
@@ -220,8 +226,9 @@ const invalid = (field: string, msg: string) =>
 
 /**
  * A fake of Polar's API, in memory, at `url`. It takes `POST /v1/checkouts/` (`products` and `external_customer_id`
- * needed) and `POST /v1/customer-sessions/` (`external_customer_id` needed), each with `TEST_ACCESS_TOKEN` as a bearer
- * token, and answers 404 to anything else. A timeout never answers: the request ends only when its signal aborts, and
+ * needed; the account becomes a customer), `POST /v1/customer-sessions/` (for a customer only, else 422), `GET
+ * /v1/subscriptions/?external_customer_id=…` (from `subscriptions`) and `DELETE /v1/subscriptions/{id}` (404 unknown,
+ * 409 already revoked), each with `TEST_ACCESS_TOKEN` as a bearer token, and answers 404 to anything else. A timeout never answers: the request ends only when its signal aborts, and
  * a request without a signal fails at once, since a client that waits for Polar forever would hang.
  */
 export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}): FakePolar {
@@ -229,6 +236,9 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
   const fake: FakePolar = {
     url,
     requests: [],
+    customers: new Set(),
+    subscriptions: new Map(),
+    revoked: [],
     failNext: (next) => {
       failure = next;
     },
@@ -266,6 +276,7 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
         if (!Array.isArray(products) || products.length === 0 || !products.every((p) => typeof p === 'string'))
           return invalid('products', 'Field required');
         if (typeof fields.external_customer_id !== 'string') return invalid('external_customer_id', 'Field required');
+        fake.customers.add(fields.external_customer_id);
         const id = `chk_${randomUUID()}`;
         return json(201, {
           id,
@@ -280,6 +291,8 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
       }
       if (request.method === 'POST' && path === '/v1/customer-sessions/') {
         if (typeof fields.external_customer_id !== 'string') return invalid('external_customer_id', 'Field required');
+        if (!fake.customers.has(fields.external_customer_id))
+          return invalid('external_customer_id', 'Customer does not exist.');
         const token = `polar_cst_${randomUUID()}`;
         return json(201, {
           id: randomUUID(),
@@ -287,6 +300,20 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
           customer_portal_url: `${url}/portal?customer_session_token=${token}`,
           expires_at: new Date(Date.now() + 3_600_000).toISOString(),
         });
+      }
+      const listing = /^\/v1\/subscriptions\/\?(.*)$/.exec(path);
+      if (request.method === 'GET' && listing) {
+        const account = new URLSearchParams(listing[1]).get('external_customer_id') ?? '';
+        return json(200, { items: fake.subscriptions.get(account) ?? [], pagination: { total_count: 0, max_page: 1 } });
+      }
+      const one = /^\/v1\/subscriptions\/([^/?]+)$/.exec(path)?.[1];
+      if (request.method === 'DELETE' && one) {
+        const id = decodeURIComponent(one);
+        const known = [...fake.subscriptions.values()].flat().find((subscription) => subscription.id === id);
+        if (!known) return json(404, { error: 'ResourceNotFound', detail: 'Not found' });
+        if (fake.revoked.includes(id)) return json(409, { error: 'AlreadyCanceledSubscription' });
+        fake.revoked.push(id);
+        return json(200, { ...known, status: 'canceled', ended_at: new Date().toISOString() });
       }
       return json(404, { error: 'ResourceNotFound', detail: 'Not found' });
     },

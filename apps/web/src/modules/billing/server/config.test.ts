@@ -1,6 +1,6 @@
 import { TEST_FOUNDING_DISCOUNT, TEST_PRODUCTS } from '@test/fakes/polar';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PASS_DAYS, billingCatalog, billingEnv } from './config';
+import { PASS_DAYS, POLAR_API_DEFAULT, billingCatalog, billingEnv, polarSettings, productFor } from './config';
 
 describe('billing’s configuration (#421)', () => {
   afterEach(() => {
@@ -36,5 +36,24 @@ describe('billing’s configuration (#421)', () => {
       POLAR_WEBHOOK_SECRET: 'polar_whs_env',
     });
     expect(billingCatalog().products.get('prod_from_env')).toEqual({ tier: 'pro', source: 'subscription' });
+  });
+
+  it('has Polar’s settings only with a token, at production’s API unless another is named', () => {
+    expect(polarSettings({})).toBeNull();
+    expect(polarSettings({ POLAR_ACCESS_TOKEN: ' ' })).toBeNull();
+    expect(polarSettings({ POLAR_ACCESS_TOKEN: 'tok' })).toEqual({ baseUrl: POLAR_API_DEFAULT, token: 'tok' });
+    expect(polarSettings({ POLAR_ACCESS_TOKEN: 'tok', POLAR_API_URL: 'https://sandbox-api.polar.sh' })).toEqual({
+      baseUrl: 'https://sandbox-api.polar.sh',
+      token: 'tok',
+    });
+  });
+
+  it('finds each purchase’s product, and none that isn’t set', () => {
+    expect(productFor({ plan: 'plus', interval: 'month' }, TEST_PRODUCTS)).toBe('prod_plus_monthly_test');
+    expect(productFor({ plan: 'plus', interval: 'year' }, TEST_PRODUCTS)).toBe('prod_plus_yearly_test');
+    expect(productFor({ plan: 'pro', interval: 'month' }, TEST_PRODUCTS)).toBe('prod_pro_monthly_test');
+    expect(productFor({ plan: 'pro', interval: 'year' }, TEST_PRODUCTS)).toBe('prod_pro_yearly_test');
+    expect(productFor({ plan: 'pass' }, TEST_PRODUCTS)).toBe('prod_plus_pass_test');
+    expect(productFor({ plan: 'pass' }, {})).toBeNull();
   });
 });

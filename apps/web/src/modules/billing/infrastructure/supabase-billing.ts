@@ -21,3 +21,15 @@ export async function readMyEntitlement(supabase: Pick<ServerSupabase, 'rpc'>): 
     live: answer.billing_live,
   };
 }
+
+/**
+ * Whether the person's stored plan is a subscription that hasn't ended (Row Level Security: their own row only).
+ * Unreadable counts as yes, so a deletion never skips a subscription it couldn't see.
+ */
+export async function hasLiveSubscription(supabase: Pick<ServerSupabase, 'from'>): Promise<boolean> {
+  const { data, error } = await supabase.from('entitlements').select('source, status, valid_until').maybeSingle();
+  if (error) return true;
+  if (!data) return false;
+  const ended = data.valid_until !== null && Date.parse(data.valid_until) <= Date.now();
+  return data.source === 'subscription' && data.status !== 'revoked' && !ended;
+}

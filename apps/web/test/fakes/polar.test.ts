@@ -53,6 +53,7 @@ describe('the fake Polar API', () => {
 
   it('opens a customer session with a portal address of its own', async () => {
     const polar = fakePolarFetch({ url: 'http://127.0.0.1:9999' });
+    polar.customers.add(USER);
     const answer = await polar.fetch('http://127.0.0.1:9999/v1/customer-sessions/', {
       method: 'POST',
       headers: auth,
@@ -189,5 +190,41 @@ describe('signTestEvent', () => {
     expect(event.data).toMatchObject({ cancel_at_period_end: true, customer: { external_id: USER } });
     expect(event.data).toMatchObject({ customer: { email: 'buyer@example.com' } });
     expect(JSON.stringify(event)).not.toMatch(/handle|x\.com/);
+  });
+});
+
+describe('the fake Polar’s customers and subscriptions', () => {
+  it('knows an account as a customer once it made a checkout, and opens no portal for anyone else', async () => {
+    const polar = fakePolarFetch();
+    const portal = () =>
+      polar.fetch(`${polar.url}/v1/customer-sessions/`, {
+        method: 'POST',
+        headers: auth,
+        body: JSON.stringify({ external_customer_id: USER }),
+      });
+    expect((await portal()).status).toBe(422);
+    await checkout(polar);
+    expect(polar.customers.has(USER)).toBe(true);
+    expect((await portal()).status).toBe(201);
+  });
+
+  it('lists an account’s subscriptions, and revokes one once', async () => {
+    const polar = fakePolarFetch();
+    const subscription = subscriptionEvent('subscription.active', USER).data;
+    polar.subscriptions.set(USER, [subscription]);
+    const list = await polar.fetch(`${polar.url}/v1/subscriptions/?external_customer_id=${USER}&limit=10`, {
+      headers: auth,
+    });
+    expect(await list.json()).toMatchObject({ items: [{ id: subscription.id }] });
+    const empty = await polar.fetch(`${polar.url}/v1/subscriptions/?external_customer_id=nobody`, { headers: auth });
+    expect(await empty.json()).toMatchObject({ items: [] });
+    const revoke = () =>
+      polar.fetch(`${polar.url}/v1/subscriptions/${String(subscription.id)}`, { method: 'DELETE', headers: auth });
+    expect((await revoke()).status).toBe(200);
+    expect((await revoke()).status).toBe(409);
+    expect(polar.revoked).toEqual([subscription.id]);
+    expect(
+      (await polar.fetch(`${polar.url}/v1/subscriptions/sub_unknown`, { method: 'DELETE', headers: auth })).status,
+    ).toBe(404);
   });
 });

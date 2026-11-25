@@ -33,6 +33,8 @@ export const ADA: IdentityClaims = {
   email: 'ada@example.com',
   user_metadata: { full_name: 'Ada Lovelace' },
   app_metadata: { providers: ['email'] },
+  // Signed in with her password a minute before the tests load, so she may delete her account (#80).
+  amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) - 60 }],
 };
 
 const ok = (): Promise<AuthResult> => Promise.resolve({ ok: true });

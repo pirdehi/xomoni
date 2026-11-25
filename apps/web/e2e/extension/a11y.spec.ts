@@ -22,6 +22,7 @@ const PAGES = [
   { hash: '#/overview', heading: 'Home' },
   { hash: '#/cleanup', heading: 'Cleanup' },
   { hash: '#/library', heading: 'Library' },
+  { hash: '#/reach', heading: 'Reach' },
   { hash: '#/jobs', heading: 'Activity' },
   { hash: '#/activity', heading: 'Activity' },
   { hash: '#/watch', heading: 'Watch' },

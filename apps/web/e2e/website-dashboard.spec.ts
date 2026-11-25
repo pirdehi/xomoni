@@ -17,6 +17,7 @@ const PLACES = [
   ['Content', '/dashboard/content', 'What you publish, and what still stands.'],
   ['Engagement', '/dashboard/engagement', 'How people respond to what you post.'],
   ['Reports', '/dashboard/reports', 'Your account in one page, to keep or share.'],
+  ['Reach', '/dashboard/reach', 'How many times X says each of your posts was seen, against your usual.'],
   ['Library', '/dashboard/library', 'Every post, reply, repost and like Xomoni knows.'],
   ['Comments', '/dashboard/comments', 'Your replies, and the replies you get.'],
   ['Cleanup', '/dashboard/cleanup', 'Plan what to remove; Xomoni does it, at a careful pace.'],
@@ -354,7 +355,7 @@ test.describe('the dashboard on xomoni.com', { tag: '@task-245' }, () => {
       await phoneBar(page).getByRole('link', { name: 'Insights' }).click();
       await expect(title(page, 'Audience')).toBeVisible();
       const insights = page.getByRole('navigation', { name: 'Insights' });
-      await expect(insights.getByRole('link')).toHaveText(['Audience', 'Content', 'Engagement', 'Reports']);
+      await expect(insights.getByRole('link')).toHaveText(['Audience', 'Content', 'Engagement', 'Reports', 'Reach']);
       await expect(insights.getByRole('link', { name: 'Audience' })).toHaveAttribute('aria-current', 'page');
       await phoneBar(page).getByRole('button', { name: 'More' }).click();
       await expect(page.getByRole('menuitem')).toHaveCount(PLACES.length);

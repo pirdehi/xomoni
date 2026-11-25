@@ -9,6 +9,7 @@ describe('the dashboard’s places (#245)', () => {
       'content',
       'engagement',
       'reports',
+      'reach',
       'library',
       'comments',
       'cleanup',
@@ -39,6 +40,7 @@ describe('the dashboard’s places (#245)', () => {
       'content',
       'engagement',
       'reports',
+      'reach',
       'library',
       'comments',
       'cleanup',
@@ -52,6 +54,7 @@ describe('the dashboard’s places (#245)', () => {
 
   it('marks as needing Xomoni exactly the places whose lists or actions come from the extension (ADR-0027)', () => {
     expect(SECTIONS.filter((s) => s.needsXomoni).map((s) => s.id)).toEqual([
+      'reach',
       'library',
       'comments',
       'cleanup',
@@ -83,5 +86,6 @@ describe('xomoniPageFor (ADR-0027, #251)', () => {
     expect(xomoniPageFor('comments')).toBe('library');
     expect(xomoniPageFor('health')).toBe('overview');
     expect(xomoniPageFor('settings')).toBe('settings');
+    expect(xomoniPageFor('reach')).toBe('reach');
   });
 });

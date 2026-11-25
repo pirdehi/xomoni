@@ -33,6 +33,8 @@ import type {
   CleanupPlan,
   JobAction,
   LibraryKind,
+  ReachOrder,
+  ReachRange,
   ReadAnswer,
   RepliesFilter,
   SettingsAnswer,
@@ -84,7 +86,8 @@ export type XomoniReadRequest =
   | { what: 'cleanup'; plan: CleanupPlan }
   | { what: 'replies'; filter: RepliesFilter; offset: number }
   | { what: 'incoming'; author: string; query: string; offset: number }
-  | { what: 'vault' };
+  | { what: 'vault' }
+  | { what: 'reach'; rangeDays: ReachRange; order: ReachOrder; offset: number };
 
 /** What `useXomoni` gives a page. */
 export interface XomoniControls {

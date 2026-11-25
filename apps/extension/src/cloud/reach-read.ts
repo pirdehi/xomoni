@@ -9,22 +9,23 @@ import {
   type ReachMonthSummary,
   type ReachOrder,
   type ReachPostSummary,
+  type ReachRange,
   type ReachSummary,
   type ReachSuspectSummary,
 } from '@xomoni/bridge';
-import { db, kvGet } from '../shared/db';
 import { labelMonths } from '../shared/vault/label-months';
 import { VAULT_REACH_SOURCES, premiumPeriods, reachPosts } from '../shared/vault/reach';
 import { reachComparisons } from '../shared/vault/reach-compare';
 import { BASELINE_DAYS, YOUNG_POST_DAYS, baseline, vsBaseline } from '../shared/vault/reach-stats';
 import { dismissedSuspects } from '../shared/vault/suspect-dismissals';
 import { suspectPosts } from '../shared/vault/suspects';
+import { activeAccount } from './website-access';
 
 const DAY_MS = 86_400_000;
 
 /** What a `reach` read asks: the period's length in days (null for everything), the posts' order, and the page. */
 export interface ReachQuery {
-  rangeDays: number | null;
+  rangeDays: ReachRange;
   order: ReachOrder;
   offset: number;
 }
@@ -51,8 +52,7 @@ const EMPTY = (rangeDays: number | null): ReachSummary => ({
  * from the 8 weeks before the period too, as on the Reach page.
  */
 export async function readReach(query: ReachQuery, now = Date.now()): Promise<ReachSummary> {
-  const activeId = await kvGet<string | null>('activeAccount', null);
-  const account = activeId ? await db.accounts.get(activeId) : undefined;
+  const account = await activeAccount();
   if (!account) return EMPTY(query.rangeDays);
   const from = query.rangeDays === null ? 0 : now - query.rangeDays * DAY_MS;
   const [all, events, months, dismissed] = await Promise.all([

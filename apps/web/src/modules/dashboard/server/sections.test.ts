@@ -18,9 +18,10 @@ describe('sectionOr404 (#245)', () => {
   });
 
   it('lists every place but Overview for the route, which lives at /dashboard itself', () => {
-    expect(sectionSlugs()).toHaveLength(12);
+    expect(sectionSlugs()).toHaveLength(13);
     expect(sectionSlugs()).not.toContain('overview');
     expect(sectionSlugs()).toContain('browsers');
+    expect(sectionSlugs()).toContain('reach');
   });
 
   it('titles a page by its place, and Dashboard for an unknown address', () => {

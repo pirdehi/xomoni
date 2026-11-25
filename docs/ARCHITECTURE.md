@@ -104,7 +104,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/inject`](../apps/extension/src/inject/README.md) | Page-world script: reads X's own GraphQL responses and rate-limit headers. Never sends. |
 | [`apps/extension/src/engine`](../apps/extension/src/engine/README.md) | Job runner, pacing limiter, safety policy, cleanup, scan, watch and archive strategies. |
 | [`apps/extension/src/shared`](../apps/extension/src/shared/README.md) | Types, IndexedDB schema, parsers, filters, settings: the extension's kernel. |
-| [`apps/extension/src/cloud`](../apps/extension/src/cloud/README.md) | Connects the browser to a xomoni.com account with a one-time code and reports job status only (ADR-0018). |
+| [`apps/extension/src/cloud`](../apps/extension/src/cloud/README.md) | Connects the browser to a xomoni.com account with a one-time code and reports job status only (ADR-0018); hears the account's plan in the answer, kept in IndexedDB with 7 days of grace offline (ADR-0042). |
 | [`apps/extension/src/update`](../apps/extension/src/update/README.md) | One-click updates of a zip install: a signed release from GitHub, checked, then written into Xomoni's own folder ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). |
 | [`apps/extension/src/ui`](../apps/extension/src/ui/README.md) | The dashboard (React). |
 | [`apps/extension/src/dev`](../apps/extension/src/dev/README.md) | UI preview with demo data; never shipped. |

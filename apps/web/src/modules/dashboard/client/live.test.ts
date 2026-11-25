@@ -16,7 +16,15 @@ describe('createLiveDashboardServices (browser composition root)', () => {
   it('builds every port on one browser client', () => {
     const services = createLiveDashboardServices();
     expect(createBrowserSupabase).toHaveBeenCalledOnce();
-    expect(Object.keys(services).sort()).toEqual(['feed', 'numbers', 'pairing', 'reader', 'registry', 'weeklyEmail']);
+    expect(Object.keys(services).sort()).toEqual([
+      'feed',
+      'healthAlert',
+      'numbers',
+      'pairing',
+      'reader',
+      'registry',
+      'weeklyEmail',
+    ]);
   });
 
   it('re-reads devices through the browser client', async () => {

@@ -63,4 +63,18 @@ describe('the privacy policy', () => {
     expect(item).toHaveTextContent('or by typing that code from your dashboard into the extension');
     expect(item).toHaveTextContent('only as one-way hashes');
   });
+
+  it('says what the alert when X warns an account keeps, only while it is on, and for how long (#407, ADR-0047)', () => {
+    render(<PrivacyPage />);
+    const alert = screen.getByText(/we also email you when X warns one of your X accounts/);
+    expect(alert).toHaveTextContent('nothing X showed and nothing you posted');
+    expect(alert).toHaveTextContent(
+      'While it is on, and only then, we keep for each of your X accounts the highest risk level',
+    );
+    expect(alert).toHaveTextContent('for a week after it was sent or dropped');
+    expect(alert).toHaveTextContent('Turning the alert off deletes the levels at once');
+    expect(screen.getByText(/Delete my Xomoni account/).closest('p')).toHaveTextContent(
+      'with everything kept for the alert when X warns your account',
+    );
+  });
 });

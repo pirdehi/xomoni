@@ -286,7 +286,7 @@ function putBackWords(result: PutBackResult, unfinished: { from: string; to: str
  */
 export function UpdateRecovery() {
   const styles = useStyles();
-  const unfinished = useLiveQuery(() => unfinishedUpdate());
+  const unfinished = useLiveQuery(async () => unfinishedUpdate());
   const writing = useUpdateWriting();
   const [putting, setPutting] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);

@@ -27,7 +27,7 @@ const useStyles = makeStyles({
  */
 export function UpdateNotice() {
   const current = chrome.runtime.getManifest().version;
-  const notice = useLiveQuery(() => currentUpdateNotice(current), [current]);
+  const notice = useLiveQuery(async () => currentUpdateNotice(current), [current]);
   return (
     <>
       <UpdateRecovery />

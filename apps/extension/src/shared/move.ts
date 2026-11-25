@@ -65,6 +65,7 @@ const TABLES = () => [
   db.analyticsPosts,
   db.analyticsDays,
   db.accountEvents,
+  db.labelMonths,
 ];
 
 /** The vault's rows (#424), all of them or one account's, read through `VAULT_MOVE_TABLES`; inside `readTables`. */
@@ -194,7 +195,8 @@ function standingOf(here: Item, there: Item): Item {
  * Two copies of an inventory item as one, field by field, so neither loses what it knows:
  * - where it stands (`status`, `statusAt`, `lastJobId`) comes from `standingOf`, so an item Xomoni removed stays
  *   removed unless X showed it again later;
- * - X's counts (`likes`, `views`, …) and `seenAt` come from the copy X showed last;
+ * - X's counts (`likes`, `views`, …), the links and media (#428) and `seenAt` come from the copy X showed last, and
+ *   the other fills in what it lacks;
  * - text, author, dates and ids come from the newer copy, and fill in what it left empty from the other;
  * - `sources` is both copies' sources, and `likedAt` the later one.
  * On a tie, this Xomoni's copy (`here`) wins.
@@ -226,7 +228,7 @@ export function mergeItem(here: Item, there: Item): Item {
     statusAt: standing.statusAt,
     lastJobId: standing.lastJobId,
   };
-  for (const name of ['quotes', 'bookmarks', 'views', 'quote', 'replyTo'] as const) {
+  for (const name of ['quotes', 'bookmarks', 'views', 'quote', 'replyTo', 'links', 'media'] as const) {
     const value = seen[name] ?? unseen[name];
     if (value !== undefined) Object.assign(merged, { [name]: value });
   }

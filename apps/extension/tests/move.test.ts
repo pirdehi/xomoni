@@ -81,6 +81,7 @@ const empty = (): MoveData => ({
   analyticsPosts: [],
   analyticsDays: [],
   accountEvents: [],
+  labelMonths: [],
 });
 
 async function imported(file: MoveFile): Promise<MoveResult> {
@@ -411,6 +412,16 @@ describe('merging with what is here (#300, ADR-0032)', () => {
       likedAt: THEN - 50,
     });
     expect(mergeItem(here, here)).toEqual(here);
+  });
+
+  it('keeps a post’s links and media from the copy X showed last, and fills them in from the other (#428)', () => {
+    const live = moverItem('1000000001', { seenAt: THEN + 100, links: 1 });
+    const archived = moverItem('1000000001', { seenAt: 0, sources: ['archive'], links: 3, media: 2 });
+    expect(mergeItem(archived, live)).toMatchObject({ links: 1, media: 2 });
+    expect(mergeItem(live, archived)).toMatchObject({ links: 1, media: 2 });
+    const neither = mergeItem(moverItem('1000000001'), moverItem('1000000001', { seenAt: THEN + 1 }));
+    expect(neither).not.toHaveProperty('links');
+    expect(neither).not.toHaveProperty('media');
   });
 
   it('counts an item changed by a newer copy as updated, and one already the same as nothing', async () => {
@@ -748,7 +759,14 @@ describe('the vault in a move (#424, version 2)', () => {
 
   it('brings a file from a Xomoni before the vault in, leaving the vault here as it is', async () => {
     await db.accountEvents.add(moverEvent());
-    const { vaultImports: _a, analyticsPosts: _b, analyticsDays: _c, accountEvents: _d, ...core } = empty();
+    const {
+      vaultImports: _a,
+      analyticsPosts: _b,
+      analyticsDays: _c,
+      accountEvents: _d,
+      labelMonths: _e,
+      ...core
+    } = empty();
     const checked = await checkMoveText(await signedFile({ ...core, accounts: [moverAccount()] }, { version: 1 }), NOW);
     if (!checked.ok) throw new Error(checked.message);
     const result = await imported(checked.file);

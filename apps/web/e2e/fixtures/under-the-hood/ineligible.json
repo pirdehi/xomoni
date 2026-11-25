@@ -1,0 +1,8 @@
+{
+  "notes": "Synthetic fixture for Xomoni's tests: an account that wasn't eligible for the report that month. Not real data.",
+  "period": { "startDate": "2026-07-01", "endDate": "2026-07-31", "timezone": "UTC" },
+  "generatedAt": "2026-08-08T23:59:59Z",
+  "status": "NOT_ELIGIBLE",
+  "reason": "Fewer than 10 posts in the prior month.",
+  "postCount": "6"
+}

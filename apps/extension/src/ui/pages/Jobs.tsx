@@ -46,7 +46,7 @@ export function JobsPanel({ account, navigate }: Pick<PageProps, 'account' | 'na
   const styles = useStyles();
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const jobs = useLiveQuery(
-    () => db.jobs.where('accountId').equals(account.id).reverse().sortBy('createdAt'),
+    async () => db.jobs.where('accountId').equals(account.id).reverse().sortBy('createdAt'),
     [account.id],
   );
   const shown = jobs?.filter((j) => filter === 'all' || OPEN_STATES.has(j.state));

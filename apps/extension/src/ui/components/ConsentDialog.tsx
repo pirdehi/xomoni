@@ -44,7 +44,7 @@ export function ConsentDialog() {
 
 function ConsentForm({ request }: { request: ConsentRequest }) {
   const styles = useStyles();
-  const account = useLiveQuery(() => db.accounts.get(request.accountId), [request.accountId]);
+  const account = useLiveQuery(async () => db.accounts.get(request.accountId), [request.accountId]);
   const [typed, setTyped] = useState('');
 
   const agree = async () => {

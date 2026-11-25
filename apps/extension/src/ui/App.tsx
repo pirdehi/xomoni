@@ -20,6 +20,8 @@ import {
   Home20Filled,
   Home20Regular,
   CheckmarkCircle16Filled,
+  DataTrending20Filled,
+  DataTrending20Regular,
   Eye16Regular,
   EyeOff16Regular,
   type FluentIcon,
@@ -75,6 +77,7 @@ import { ActivityPage } from './pages/Activity';
 import { CleanupPage } from './pages/Cleanup';
 import { LibraryPage } from './pages/Library';
 import { OverviewPage } from './pages/Overview';
+import { ReachPage } from './pages/Reach';
 import { SettingsPage } from './pages/Settings';
 import { VaultPage } from './pages/Vault';
 import { WatchPage } from './pages/Watch';
@@ -88,6 +91,7 @@ const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
   { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
   { id: 'library', label: 'Library', icon: bundleIcon(Library20Filled, Library20Regular) },
   { id: 'vault', label: 'Vault', icon: bundleIcon(Vault20Filled, Vault20Regular) },
+  { id: 'reach', label: 'Reach', icon: bundleIcon(DataTrending20Filled, DataTrending20Regular) },
   // Jobs and the log are one Activity page with two tabs (#202); the item opens its Jobs tab.
   { id: 'jobs', label: 'Activity', icon: bundleIcon(History20Filled, History20Regular) },
   { id: 'watch', label: 'Watch', icon: bundleIcon(Search20Filled, Search20Regular) },
@@ -330,6 +334,8 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
       return <LibraryPage {...props} />;
     case 'vault':
       return <VaultPage {...props} />;
+    case 'reach':
+      return <ReachPage {...props} />;
     case 'watch':
       return <WatchPage {...props} />;
     case 'jobs':
@@ -490,7 +496,7 @@ function RunnerBanner() {
   const styles = useStyles();
   const state = useRunner();
   const sharing = useTabShare();
-  const job = useLiveQuery(() => (state.jobId ? db.jobs.get(state.jobId) : undefined), [state.jobId]);
+  const job = useLiveQuery(async () => (state.jobId ? db.jobs.get(state.jobId) : undefined), [state.jobId]);
   const attention = state.status === 'attention';
   useEffect(() => {
     if (!attention) return;

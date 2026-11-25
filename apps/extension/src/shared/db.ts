@@ -31,6 +31,7 @@ import {
   normalizeTabs,
 } from './watch';
 import type { AccountEvent, AnalyticsDay, AnalyticsPost, VaultImport } from './vault/types';
+import type { LabelMonthRow } from './vault/under-the-hood';
 import { type ArchiveRequest, expectsArchive } from './x-archive';
 import type { ViewCap } from './x-limits';
 import { CONSENT_VERSION } from '@xomoni/consent';
@@ -85,6 +86,7 @@ class XomoniDB extends Dexie {
   analyticsPosts!: Table<AnalyticsPost, string>;
   analyticsDays!: Table<AnalyticsDay, [string, string]>;
   accountEvents!: Table<AccountEvent, number>;
+  labelMonths!: Table<LabelMonthRow, [string, string]>;
   kv!: Table<KV, string>;
 
   constructor() {
@@ -110,6 +112,8 @@ class XomoniDB extends Dexie {
       analyticsDays: '[accountId+day], accountId',
       accountEvents: '++seq, [accountId+at], [accountId+kind+at]',
     });
+    // X's Under the hood months (#428): one row per account and month.
+    this.version(9).stores({ labelMonths: '[accountId+month], accountId' });
   }
 }
 
@@ -119,7 +123,8 @@ class XomoniDB extends Dexie {
  * the last 24 hours), `risk` (the risk ladder's events, see `risk.ts`), `checks` (sampled actions to check again,
  * see `engine/samples.ts`), `consents` (informed consent per X account), `daily` (each day's numbers), `incoming`
  * (replies others wrote to the person, ADR-0030, see `incoming.ts`), the vault's (ADR-0043, see `vault/db.ts`, version 8):
- * `vaultImports` (the import ledger), `analyticsPosts`, `analyticsDays` and `accountEvents` (the account's timeline), and
+ * `vaultImports` (the import ledger), `analyticsPosts`, `analyticsDays` and `accountEvents` (the account's timeline),
+ * `labelMonths` (X's *Under the hood* months, version 9, #428), and
  * `kv`.
  * @remarks Content scripts cannot use it: they run under x.com's origin, so they message the service worker.
  */
@@ -200,6 +205,7 @@ export async function forgetAccount(accountId: string) {
     db.analyticsPosts,
     db.analyticsDays,
     db.accountEvents,
+    db.labelMonths,
     db.kv,
   ];
   await db.transaction('rw', tables, async () => {
@@ -217,6 +223,7 @@ export async function forgetAccount(accountId: string) {
     await db.analyticsPosts.where('accountId').equals(accountId).delete();
     await db.analyticsDays.where('accountId').equals(accountId).delete();
     await db.accountEvents.where('[accountId+at]').between(whole, end, true, true).delete();
+    await db.labelMonths.where('accountId').equals(accountId).delete();
     await db.kv.filter((row) => own(row.key)).delete();
     if ((await kvGet<string | null>('activeAccount', null)) === accountId) await db.kv.delete('activeAccount');
     await db.accounts.delete(accountId);
@@ -230,7 +237,9 @@ export const itemKey = (accountId: string, kind: ItemKind, id: string) => `${acc
  * Merges drafts into the inventory. Live observations refresh metrics and can
  * revive an item marked deleted only if they were captured after that mark.
  * A live sighting also adds what it shows to the day's numbers (#249): the rise
- * in the counts of the person's own posts since they were last seen.
+ * in the counts of the person's own posts since they were last seen. A post's
+ * links and media (#428) come from what X shows live; the archive only fills
+ * them in where they are missing.
  */
 export async function upsertItems(accountId: string, drafts: ItemDraft[], source: ItemSource, observedAt = Date.now()) {
   if (!drafts.length) return 0;
@@ -262,7 +271,7 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
           createdAt: d.createdAt || prev.createdAt,
           seenAt: observedAt,
         });
-        for (const name of ['quotes', 'bookmarks', 'views', 'quote'] as const) {
+        for (const name of ['quotes', 'bookmarks', 'views', 'quote', 'links', 'media'] as const) {
           if (d[name] !== undefined) Object.assign(next, { [name]: d[name] });
         }
         if (prev.status !== 'present' && observedAt > prev.statusAt + 5_000) {
@@ -273,6 +282,10 @@ export async function upsertItems(accountId: string, drafts: ItemDraft[], source
         next.text ||= d.text;
         next.author ||= d.author;
         next.createdAt ||= d.createdAt;
+        // Links and media (#428): what X shows live wins; the archive only fills them in.
+        for (const name of ['links', 'media'] as const) {
+          if (next[name] === undefined && d[name] !== undefined) next[name] = d[name];
+        }
       }
       next.targetId ||= d.targetId;
       // Whom a reply answers (#256): what X shows live wins; the archive only fills it in.

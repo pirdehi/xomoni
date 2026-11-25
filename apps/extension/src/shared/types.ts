@@ -53,6 +53,13 @@ export interface Item {
   views?: number;
   /** Whether the post quotes another one (X's `is_quote_status`); missing when not known. */
   quote?: boolean;
+  /**
+   * The person's own posts and replies only (#428): how many links lead out of X, and how many photos or videos it
+   * carries (`entityCounts`), 0 to 100 each. What X shows live wins; the archive only fills them in. Missing when not
+   * known: older rows, and posts X sent without their `entities`.
+   */
+  links?: number;
+  media?: number;
   /** Every source that has reported this item. */
   sources: ItemSource[];
   status: ItemStatus;
@@ -104,7 +111,7 @@ export type ItemDraft = Pick<
   | 'reposts'
   | 'replies'
 > &
-  Partial<Pick<Item, 'quotes' | 'bookmarks' | 'views' | 'quote' | 'replyTo'>>;
+  Partial<Pick<Item, 'quotes' | 'bookmarks' | 'views' | 'quote' | 'replyTo' | 'links' | 'media'>>;
 
 /**
  * An X account Xomoni has seen, keyed by X's numeric user id (`rest_id`, also in the `twid` cookie).

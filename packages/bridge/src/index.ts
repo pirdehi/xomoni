@@ -15,6 +15,13 @@ export {
   readManifestKey,
   storeExtensionIds,
 } from './extension-ids';
+export {
+  REACH_BANNED_WORDS,
+  REACH_VERDICTS,
+  REACH_VERDICT_WORDS,
+  type ReachVerdict,
+  usesBannedReachWord,
+} from './reach';
 
 /** xomoni.com's origin: the only one the extension's `externally_connectable` lists, checked again on every message. */
 export const WEBSITE_ORIGIN = 'https://xomoni.com';
@@ -51,7 +58,7 @@ export type JobAction = 'pause' | 'cancel' | 'resume';
 export const JOB_ACTIONS: readonly JobAction[] = ['pause', 'cancel', 'resume'];
 
 /** The pages of Xomoni the website may open. */
-export type XomoniPage = 'overview' | 'activity' | 'cleanup' | 'library' | 'vault' | 'watch' | 'settings';
+export type XomoniPage = 'overview' | 'activity' | 'cleanup' | 'library' | 'vault' | 'reach' | 'watch' | 'settings';
 
 /** Every `XomoniPage`, for the parser. */
 export const XOMONI_PAGES: readonly XomoniPage[] = [
@@ -60,6 +67,7 @@ export const XOMONI_PAGES: readonly XomoniPage[] = [
   'cleanup',
   'library',
   'vault',
+  'reach',
   'watch',
   'settings',
 ];

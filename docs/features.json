@@ -274,6 +274,22 @@
       }
     },
     {
+      "id": "reach-diagnosis",
+      "area": "extension",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [429],
+      "scenarios": "docs/scenarios/429-reach.md",
+      "en": {
+        "title": "Reach",
+        "summary": "how many times X says each of your posts was seen, from X's own numbers, against your usual: the median of your posts of the same kind in the 8 weeks before. A post still growing isn't compared, and nothing is guessed. Comparisons of posts with and without a link, with photos or videos, and with Premium, each in one of five fixed words with its size, a 95% interval and what can mislead it, and your usual reach by day and time. The last 30 days are free; longer periods and the comparisons are part of Plus, open as a preview. Xomoni never searches X to measure reach, and nothing leaves your computer."
+      },
+      "fa": {
+        "title": "دیده‌شدن",
+        "summary": "اینکه X می‌گوید هر پست شما چند بار دیده شد، از عددهای خود X، در برابر حد معمول شما: میانه‌ی پست‌های هم‌نوع شما در ۸ هفته‌ی پیش از آن. پستی که هنوز در حال رشد است مقایسه نمی‌شود و هیچ چیزی حدس زده نمی‌شود. مقایسه‌ی پست‌های با و بی لینک، با عکس یا ویدیو، و با Premium، هر کدام با یکی از پنج واژه‌ی ثابت، اندازه، بازه‌ی ۹۵٪ و آنچه می‌تواند گمراه کند، و دیده‌شدن معمول شما بر حسب روز و ساعت. ۳۰ روز آخر رایگان است؛ بازه‌های بلندتر و مقایسه‌ها بخشی از Plus است که به‌صورت پیش‌نمایش باز است. Xomoni هرگز برای سنجیدن دیده‌شدن در X جستجو نمی‌کند و چیزی از رایانه‌تان بیرون نمی‌رود."
+      }
+    },
+    {
       "id": "sign-out",
       "area": "extension",
       "status": "shipped",
@@ -575,6 +591,22 @@
       "fa": {
         "title": "گزارش‌ها و ایمیل هفتگی",
         "summary": "گزارش هفتگی، ماهانه و مرور سال، آنچه Xomoni حذف کرده، و گزارش دلخواه خودتان، به‌صورت CSV یا PDF. اگر بخواهید، هر دوشنبه ایمیلی آمار هفته‌ی گذشته را با هفته‌ی قبلش مقایسه می‌کند؛ با یک لینک هم قطع می‌شود."
+      }
+    },
+    {
+      "id": "health-alert",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [407],
+      "scenarios": "docs/scenarios/407-health-alert.md",
+      "en": {
+        "title": "An email when X warns your account",
+        "summary": "if you ask for it in Settings, one email when X warns one of your X accounts and Xomoni stops there: the @handle and when Xomoni may go on, nothing X showed or you posted. At most one every six hours; one link stops it."
+      },
+      "fa": {
+        "title": "ایمیل وقتی X به حسابتان هشدار می‌دهد",
+        "summary": "اگر در تنظیمات بخواهید، وقتی X به یکی از حساب‌های X شما هشدار بدهد و Xomoni آنجا متوقف شود، یک ایمیل می‌گیرید: فقط ‎@handle و اینکه Xomoni کی می‌تواند ادامه بدهد، نه چیزی که X نشان داده یا شما نوشته‌اید. حداکثر هر شش ساعت یکی؛ با یک لینک هم قطع می‌شود."
       }
     },
     {

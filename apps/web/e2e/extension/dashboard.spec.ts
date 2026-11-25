@@ -9,6 +9,7 @@ const PAGES = [
   { item: 'Cleanup', heading: 'Cleanup', hash: '#/cleanup' },
   { item: 'Library', heading: 'Library', hash: '#/library' },
   { item: 'Vault', heading: 'Vault', hash: '#/vault' },
+  { item: 'Reach', heading: 'Reach', hash: '#/reach' },
   { item: 'Activity', heading: 'Activity', hash: '#/jobs' },
   { item: 'Watch', heading: 'Watch', hash: '#/watch' },
   { item: 'Settings', heading: 'Settings', hash: '#/settings' },

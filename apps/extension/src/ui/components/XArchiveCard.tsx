@@ -245,7 +245,7 @@ export function XArchiveCard({
   const s = useStyles();
   const status = useArchiveStatus(account.id);
   const settings = useLiveQuery(getSettings, []);
-  const folder = useLiveQuery(() => store.get(), [store]);
+  const folder = useLiveQuery(async () => store.get(), [store]);
   const run = useRunner();
   const now = useNow(30_000);
   const panelId = useId();

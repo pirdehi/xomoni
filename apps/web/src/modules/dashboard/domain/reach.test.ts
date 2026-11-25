@@ -1,4 +1,4 @@
-import { REACH_VERDICT_WORDS, type ReachComparisonSummary, usesBannedReachWord } from '@xomoni/bridge';
+import { REACH_RANGES, REACH_VERDICT_WORDS, type ReachComparisonSummary, usesBannedReachWord } from '@xomoni/bridge';
 import { describe, expect, it } from 'vitest';
 import {
   REACH_ORDER_WORDS,
@@ -7,6 +7,8 @@ import {
   monthNote,
   monthWords,
   postUrl,
+  rangeIsPlus,
+  rangeWords,
   reachPostsCsv,
   shareWords,
   vsUsualWords,
@@ -64,6 +66,11 @@ describe('Reach on xomoni.com (#431, ADR-0045)', () => {
         eligible: null,
       }),
     ).toBeNull();
+  });
+
+  it('names each period, and only the free 30 days as free', () => {
+    expect(REACH_RANGES.map(rangeWords)).toEqual(['Last 30 days', 'Last 90 days', 'Last year', 'Everything']);
+    expect(REACH_RANGES.filter(rangeIsPlus)).toEqual([90, 365, null]);
   });
 
   it('words shares, orders and links', () => {

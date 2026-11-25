@@ -57,6 +57,7 @@ import { Engagement } from './engagement';
 import { ColumnChart, LineChart, formatCount } from './charts';
 import { Delta } from './delta';
 import { HealthPlace, LibraryPlace, WatchPlace } from './xomoni-places';
+import { ReachPlace } from './reach-place';
 import { VaultCard } from './vault-card';
 import { SettingsPlace } from './settings-place';
 import { CleanupPlace } from './cleanup-place';
@@ -551,6 +552,8 @@ export function Dashboard({
     );
   } else if (section.id === 'comments') {
     content = <CommentsPlace xomoni={xomoni} now={now} />;
+  } else if (section.id === 'reach') {
+    content = <ReachPlace xomoni={xomoni} />;
   } else if (section.id === 'settings') {
     content = (
       <SettingsPlace

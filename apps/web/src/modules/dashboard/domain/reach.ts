@@ -7,6 +7,7 @@ import {
   type ReachMonthSummary,
   type ReachOrder,
   type ReachPostSummary,
+  type ReachRange,
   type ReachSummary,
 } from '@xomoni/bridge';
 import { type Cell, toCsv } from './reports';
@@ -17,6 +18,18 @@ export const REACH_ORDER_WORDS: Readonly<Record<ReachOrder, string>> = {
   best: 'Most seen',
   worst: 'Least seen',
 };
+
+/** What a period is called on the page: "Last 30 days", "Last 90 days", "Last year" or "Everything". */
+export function rangeWords(range: ReachRange): string {
+  if (range === null) return 'Everything';
+  return range === 365 ? 'Last year' : `Last ${String(range)} days`;
+}
+
+/**
+ * Whether a period goes past the free 30 days: Reach's longer history is part of Plus, open as a preview until sales
+ * start (ADR-0042), as in the extension.
+ */
+export const rangeIsPlus = (range: ReachRange) => range !== 30;
 
 /** What each comparison is about, and how its two sides read in a sentence. */
 const COMPARISON_WORDS: Readonly<

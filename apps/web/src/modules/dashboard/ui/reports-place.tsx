@@ -88,7 +88,7 @@ function moved(value: number | null, previous: number | null): string {
 }
 
 /** Hands the person a file made in the browser; nothing is sent anywhere. */
-function download(name: string, text: string) {
+export function download(name: string, text: string) {
   // A byte-order mark, so spreadsheets read the file as UTF-8.
   const url = URL.createObjectURL(new Blob(['﻿', text], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');

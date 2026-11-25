@@ -61,6 +61,15 @@ export type ReachOrder = 'best' | 'worst' | 'recent';
 /** Every `ReachOrder`. */
 export const REACH_ORDERS: readonly ReachOrder[] = ['best', 'worst', 'recent'];
 
+/**
+ * The periods a `reach` read may ask for, in days, as the Reach page offers them: the last 30 days (free), 90 days and
+ * a year (Plus, in preview until sales start), or everything (null).
+ */
+export type ReachRange = 30 | 90 | 365 | null;
+
+/** Every `ReachRange`, shortest first. */
+export const REACH_RANGES: readonly ReachRange[] = [30, 90, 365, null];
+
 /** What a comparison is about. */
 export type ReachComparisonId = 'links' | 'media' | 'premium';
 

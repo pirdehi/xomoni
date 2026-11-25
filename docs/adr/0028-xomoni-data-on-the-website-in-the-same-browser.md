@@ -44,6 +44,14 @@ The vault ([ADR-0043](0043-the-vault-x-files-kept-on-the-computer.md)) keeps X's
 2. **Counts and dates only** (`VaultSummary`): for each source X's file comes from, the date of its newest copy, its freshness and the rows the vault holds; the day X made the newest archive; how many imports the ledger holds; and how many page-reading groups are on (none in R1). There is no text, no file name, no fingerprint and no id of X's. The bridge refuses an answer with any other key, a count that isn't a whole number, or a source or freshness it doesn't know.
 3. **It stays in the page's memory,** like every read: never stored, logged or sent. The website never starts an import ([ADR-0006](0006-website-is-view-only.md)); *Open in Xomoni* opens Xomoni's Vault page.
 
+## Amendment (2026-11-25, #431): Reach
+
+Reach ([ADR-0045](0045-reach-diagnosis-guesses-labelled-as-guesses.md), point 6) is read the same way, in its own place on the dashboard:
+
+1. **`what: 'reach'`**, with the device, a period of `REACH_RANGES` (30, 90 or 365 days, or everything), an order of `REACH_ORDERS` (most seen, least seen, newest) and an offset; nothing else. Xomoni answers it under the same rules (`accessRefusal`).
+2. **A bounded answer** (`ReachSummary`, `REACH_LIMITS`): at most 8 comparisons, each with its verdict, sizes, medians, ratio and interval; 24 months of X's labels, 50 labels each, by X's names and counts; 100 posts with their date, views, source, share of usual and 280 characters of their text; and 20 suspected posts with their reasons, **each marked `guess: true`**. The bridge refuses the whole answer when anything is past those bounds, of a shape it doesn't know, a post id that isn't X's, or a suspected post not marked as a guess. The person's own posts' text is X content, as in the Library, and is treated the same way.
+3. **It stays in the page's memory,** like every read: never stored, logged or sent. The posts shown can be saved as CSV made in the browser. Nothing on the place starts anything on X or leads to a cleanup ([ADR-0006](0006-website-is-view-only.md)); *Open Reach in Xomoni* opens Xomoni's Reach page. Every suspected post is shown under the box *This is a guess. X doesn't say which posts got a label.*, the same words as the extension's.
+
 ## Consequences
 
 - The Library, Watch and account health appear on xomoni.com in the browser where Xomoni runs, with nothing new stored anywhere.

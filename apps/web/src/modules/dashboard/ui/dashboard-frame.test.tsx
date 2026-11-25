@@ -104,7 +104,7 @@ describe('DashboardFrame (#245)', () => {
       within(tabs)
         .getAllByRole('link')
         .map((l) => l.textContent),
-    ).toEqual(['Audience', 'Content', 'Engagement', 'Reports']);
+    ).toEqual(['Audience', 'Content', 'Engagement', 'Reports', 'Reach']);
     const bar = screen.getByRole('navigation', { name: 'Dashboard, on a phone' });
     expect(
       within(bar)

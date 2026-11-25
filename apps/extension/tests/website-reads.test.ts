@@ -432,3 +432,33 @@ describe('readVault: the vault’s summary, counts and dates only (#426)', () =>
     });
   });
 });
+
+describe('answerRead: Reach (#431, ADR-0045 point 6, ADR-0028 as amended)', () => {
+  const reach = { type: READ, what: 'reach', deviceId: DEVICE, rangeDays: 30, order: 'best', offset: 0 } as const;
+
+  it('answers the active account’s Reach, in a shape the website’s parser takes', async () => {
+    const now = Date.now();
+    await upsertItems(
+      ME,
+      [1, 2, 3].map((n) => draft({ id: String(n), targetId: String(n), createdAt: now - n * 86_400_000 })),
+      'scan',
+    );
+    const answer = await answerRead(reach);
+    expect(answer).toMatchObject({ ok: true, what: 'reach', reach: { rangeDays: 30, suspects: [] } });
+    expect(parseReadAnswer(JSON.parse(JSON.stringify(answer)) as unknown, 'reach')).toEqual(answer);
+  });
+
+  it('passes the period, the order and the page on as asked', async () => {
+    const answer = await answerRead({ ...reach, rangeDays: null, order: 'recent', offset: 100 });
+    expect(answer).toMatchObject({ ok: true, what: 'reach', reach: { rangeDays: null, posts: [] } });
+  });
+
+  it('refuses another device’s page and a signed-out Xomoni, as every read', async () => {
+    await expect(answerRead({ ...reach, deviceId: '9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f' })).resolves.toEqual({
+      ok: false,
+      reason: 'other_account',
+    });
+    await markSignedOut('me', true);
+    await expect(answerRead(reach)).resolves.toEqual({ ok: false, reason: 'signed_out' });
+  });
+});

@@ -402,6 +402,22 @@
       }
     },
     {
+      "id": "website-reach",
+      "area": "website",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [431],
+      "scenarios": "docs/scenarios/431-website-reach.md",
+      "en": {
+        "title": "Reach, on xomoni.com",
+        "summary": "*Reach* on the dashboard shows what the Reach page in Xomoni shows, read in your browser: the comparisons in the same five words, your posts 100 at a time with their views and their share of usual, by period and order, X's labels month by month, and the suspected posts, each in a box that says it is a guess. The posts shown can be saved as CSV made in your browser. Nothing of it reaches our servers, and nothing on it leads to a cleanup. Part of Plus, open as a preview."
+      },
+      "fa": {
+        "title": "دیده‌شدن روی xomoni.com",
+        "summary": "*Reach* در داشبورد همان چیزی را نشان می‌دهد که صفحه‌ی Reach در Xomoni نشان می‌دهد و در مرورگر شما خوانده می‌شود: مقایسه‌ها با همان پنج واژه، پست‌های شما صدتا صدتا با بازدید و سهمشان از حد معمول، بر حسب بازه و ترتیب، برچسب‌های X ماه به ماه، و پست‌های مظنون، هر کدام در کادری که می‌گوید حدس است. پست‌های نمایش‌داده را می‌توان به‌صورت CSV ساخته‌شده در مرورگر ذخیره کرد. هیچ چیز از آن به سرورهای ما نمی‌رسد و هیچ چیز در آن به پاک‌سازی نمی‌انجامد. بخشی از Plus که به‌صورت پیش‌نمایش باز است."
+      }
+    },
+    {
       "id": "two-step-verification",
       "area": "website",
       "status": "shipped",

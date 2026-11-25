@@ -5,6 +5,7 @@ import {
   REACH_GUESS_NOTICE,
   REACH_LIMITS,
   REACH_ORDERS,
+  REACH_RANGES,
   REACH_VERDICTS,
   REACH_VERDICT_WORDS,
   type ReachSummary,
@@ -221,5 +222,60 @@ describe('a reach read’s answer (ADR-0045 point 6, ADR-0028)', () => {
     ]) {
       expect(parseReachSummary(bad), JSON.stringify(bad).slice(0, 120)).toBeNull();
     }
+  });
+  it('is read in answer to a reach read, and only to one', () => {
+    const reach = summary();
+    expect(bridge.parseReadAnswer({ ok: true, what: 'reach', reach }, 'reach')).toEqual({
+      ok: true,
+      what: 'reach',
+      reach,
+    });
+    // An answer out of bounds, or with a guess not marked as one, is no answer at all.
+    const unmarked = { ...reach, suspects: reach.suspects.map((g) => ({ ...g, guess: false })) };
+    expect(bridge.parseReadAnswer({ ok: true, what: 'reach', reach: unmarked }, 'reach')).toEqual({
+      ok: false,
+      reason: 'refused',
+    });
+    expect(bridge.parseReadAnswer({ ok: true, what: 'vault', reach }, 'reach')).toEqual({
+      ok: false,
+      reason: 'refused',
+    });
+    expect(bridge.parseReadAnswer({ ok: false, reason: 'other_account' }, 'reach')).toEqual({
+      ok: false,
+      reason: 'other_account',
+    });
+  });
+});
+
+describe('a reach read (#431, ADR-0028 as amended)', () => {
+  const DEVICE = '0b5e0b9e-7c1a-4d55-9a53-8f3f6a1c2d3e';
+  const ask = { type: bridge.READ, what: 'reach', deviceId: DEVICE, rangeDays: 30, order: 'best', offset: 0 };
+
+  it('offers the Reach page’s periods, shortest first, and its three orders', () => {
+    expect(REACH_RANGES).toEqual([30, 90, 365, null]);
+    expect(REACH_ORDERS).toEqual(['best', 'worst', 'recent']);
+  });
+
+  it('is read with a period, an order and a page, and nothing else', () => {
+    expect(bridge.parseReadMessage(ask)).toEqual(ask);
+    for (const rangeDays of REACH_RANGES)
+      expect(bridge.parseReadMessage({ ...ask, rangeDays })).toMatchObject({ rangeDays });
+    expect(bridge.parseReadMessage({ ...ask, order: 'recent', offset: 200 })).toMatchObject({ order: 'recent' });
+    expect(bridge.parseWebsiteMessage(ask)).toMatchObject({ what: 'reach' });
+  });
+
+  it('refuses a period, an order or a page it doesn’t know, and any other key', () => {
+    for (const bad of [
+      { ...ask, rangeDays: 31 },
+      { ...ask, rangeDays: '30' },
+      { ...ask, rangeDays: undefined },
+      { ...ask, order: 'random' },
+      { ...ask, offset: -1 },
+      { ...ask, offset: 1.5 },
+      { ...ask, offset: 2_000_000 },
+      { ...ask, deviceId: 'not-a-device' },
+      { ...ask, account: '9000000000000000002' },
+    ])
+      expect(bridge.parseReadMessage(bad), JSON.stringify(bad)).toBeNull();
   });
 });

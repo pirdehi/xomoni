@@ -20,6 +20,7 @@ export {
   REACH_GUESS_NOTICE,
   REACH_LIMITS,
   REACH_ORDERS,
+  REACH_RANGES,
   REACH_VERDICTS,
   REACH_VERDICT_WORDS,
   type ReachComparisonId,
@@ -28,12 +29,21 @@ export {
   type ReachMonthSummary,
   type ReachOrder,
   type ReachPostSummary,
+  type ReachRange,
   type ReachSide,
   type ReachSummary,
   type ReachSuspectSummary,
   type ReachVerdict,
   parseReachSummary,
   usesBannedReachWord,
+} from './reach';
+import {
+  REACH_ORDERS,
+  REACH_RANGES,
+  type ReachOrder,
+  type ReachRange,
+  type ReachSummary,
+  parseReachSummary,
 } from './reach';
 
 /** xomoni.com's origin: the only one the extension's `externally_connectable` lists, checked again on every message. */
@@ -360,9 +370,11 @@ export const READ = 'xomoni-read';
 /**
  * What the website may read: `settings` too, under ADR-0029, a cleanup plan's estimate (#235), the person's replies
  * with whom each answers, the replies other people wrote to the person (`incoming`, ADR-0030) (#256), and the vault's
- * summary (`vault`, #426): counts and dates only, never a text or an id of X's.
+ * summary (`vault`, #426): counts and dates only, never a text or an id of X's; and Reach (`reach`, #431, ADR-0045 point
+ * 6): a page of the person's posts with their views, the comparisons, X's labels and the suspected posts, each a guess.
  */
-export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup' | 'replies' | 'incoming' | 'vault';
+export type ReadWhat =
+  'library' | 'health' | 'watch' | 'settings' | 'cleanup' | 'replies' | 'incoming' | 'vault' | 'reach';
 
 /** The kinds of item the Library holds. */
 export type LibraryKind = 'post' | 'reply' | 'repost' | 'like';
@@ -407,7 +419,8 @@ export type ReadMessage =
   | { type: typeof READ; what: 'health' | 'watch' | 'settings' | 'vault'; deviceId: string }
   | { type: typeof READ; what: 'cleanup'; deviceId: string; plan: CleanupPlan }
   | { type: typeof READ; what: 'replies'; deviceId: string; filter: RepliesFilter; offset: number }
-  | { type: typeof READ; what: 'incoming'; deviceId: string; author: string; query: string; offset: number };
+  | { type: typeof READ; what: 'incoming'; deviceId: string; author: string; query: string; offset: number }
+  | { type: typeof READ; what: 'reach'; deviceId: string; rangeDays: ReachRange; order: ReachOrder; offset: number };
 
 function readOffset(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 1e6 ? value : null;
@@ -450,6 +463,15 @@ export function parseReadMessage(raw: unknown): ReadMessage | null {
     const offset = readOffset(value.offset);
     return author !== null && query !== null && offset !== null
       ? { type: READ, what: 'incoming', deviceId, author, query, offset }
+      : null;
+  }
+  if (value.what === 'reach') {
+    if (!onlyKeys(value, ['type', 'what', 'deviceId', 'rangeDays', 'order', 'offset'])) return null;
+    const rangeDays = REACH_RANGES.find((r) => r === value.rangeDays);
+    const order = REACH_ORDERS.find((o) => o === value.order);
+    const offset = readOffset(value.offset);
+    return rangeDays !== undefined && order && offset !== null
+      ? { type: READ, what: 'reach', deviceId, rangeDays, order, offset }
       : null;
   }
   if (value.what === 'replies') {
@@ -601,6 +623,7 @@ export type ReadAnswer =
   | { ok: true; what: 'replies'; page: RepliesPage }
   | { ok: true; what: 'incoming'; page: IncomingPage }
   | { ok: true; what: 'vault'; vault: VaultSummary }
+  | { ok: true; what: 'reach'; reach: ReachSummary }
   | { ok: false; reason: ActionRefusal };
 
 /** How fresh one of X's files in the vault is (#425): never imported, fresh, due for a new copy, or overdue. */
@@ -863,6 +886,9 @@ export function parseReadAnswer(raw: unknown, what: ReadWhat): ReadAnswer {
     } else if (what === 'vault') {
       const vault = parseVaultSummary(answer.vault);
       if (vault) return { ok: true, what, vault };
+    } else if (what === 'reach') {
+      const reach = parseReachSummary(answer.reach);
+      if (reach) return { ok: true, what, reach };
     }
   }
   const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);

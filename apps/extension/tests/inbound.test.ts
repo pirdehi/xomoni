@@ -57,6 +57,28 @@ describe('messages from the content script, checked before the service worker st
     expect(plain?.type === 'ingest' && plain.drafts[0]).not.toHaveProperty('views');
   });
 
+  it('keeps a post’s links and media from 0 to 100, on own posts and replies only, and refuses them otherwise (#428)', () => {
+    const counted = { ...draft, links: 1, media: 4 };
+    const message = parseRuntimeMessage({ ...ingest, drafts: [counted] }, NOW);
+    expect(message?.type === 'ingest' && message.drafts[0]).toEqual(counted);
+    const post = { ...draft, kind: 'post' as const, inReplyToId: null, selfReply: false, links: 0, media: 100 };
+    const posted = parseRuntimeMessage({ ...ingest, drafts: [post] }, NOW);
+    expect(posted?.type === 'ingest' && posted.drafts[0]).toEqual(post);
+    for (const bad of [
+      { links: -1 },
+      { media: 101 },
+      { links: 0.5 },
+      { media: '1' },
+      { links: null },
+      { kind: 'like', links: 0 },
+      { kind: 'repost', media: 1 },
+    ]) {
+      expect(parseRuntimeMessage({ ...ingest, drafts: [{ ...draft, ...bad }] }, NOW), JSON.stringify(bad)).toBeNull();
+    }
+    const plain = parseRuntimeMessage(ingest, NOW);
+    expect(plain?.type === 'ingest' && plain.drafts[0]).not.toHaveProperty('links');
+  });
+
   it('keeps whom a reply answers when it is a handle, on replies only (#256)', () => {
     const answered = { ...draft, replyTo: 'Ada_L' };
     const message = parseRuntimeMessage({ ...ingest, drafts: [answered] }, NOW);

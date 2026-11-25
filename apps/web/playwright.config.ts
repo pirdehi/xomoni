@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { type Project, defineConfig, devices } from '@playwright/test';
 import { TEST_EXTENSION_ID } from './e2e/support/fixed-id';
-import { FAKE_POLAR_PORT } from './e2e/support/polar';
+import { FAKE_POLAR_PORT, NO_REAL_POLAR } from './e2e/support/polar';
 import { type BrowserName, browsersToTest } from './e2e/support/projects';
 
 /**
@@ -94,6 +94,8 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // No page reaches the real Polar (#420): the browser resolves none of its hosts.
+    launchOptions: { args: [NO_REAL_POLAR] },
   },
   projects: browsersToTest().map((name) => PROJECTS[name]),
   webServer: {

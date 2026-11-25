@@ -1,12 +1,12 @@
 import { expect, test as base } from '@playwright/test';
-import { blockRealPolar } from './polar';
+import { watchRealPolar } from './polar';
 
 /**
  * Playwright's `test`, failing any test in which the browser blocked something on the site under its
  * Content-Security-Policy (#8). A page that needs a new origin must add it to the policy on purpose
  * (`src/shared/config/security-headers.ts`). Other origins' pages, such as Turnstile's frame, are ignored. It also
- * fails any test whose pages asked the real Polar for anything (#420): the request is blocked before it leaves, and
- * tests use the fake in `e2e/support/polar.ts`.
+ * fails any test whose pages asked the real Polar for anything (#420): the browser resolves none of Polar's hosts
+ * (`NO_REAL_POLAR`), so nothing leaves, and tests use the fake in `e2e/support/polar.ts`.
  */
 export const test = base.extend<{ cspGuard: undefined; polarGuard: undefined }>({
   cspGuard: [
@@ -30,7 +30,7 @@ export const test = base.extend<{ cspGuard: undefined; polarGuard: undefined }>(
   ],
   polarGuard: [
     async ({ context }, use) => {
-      const attempts = await blockRealPolar(context);
+      const attempts = watchRealPolar(context);
       await use(undefined);
       expect(attempts, 'requests to the real Polar: use the fake in e2e/support/polar.ts').toEqual([]);
     },

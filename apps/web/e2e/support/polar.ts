@@ -13,8 +13,8 @@ import {
 // Polar as the browser tests see it (#420, ADR-0042): a server on localhost that answers Polar's API with the fake of
 // test/fakes/polar.ts, and plays Polar's checkout. Opening a checkout's page "pays": the fake sends a signed event to
 // the webhook it was given, as Polar does, then sends the browser back to the checkout's `success_url`. No test reaches
-// the real Polar: the website's server is pointed here (`POLAR_API_URL`), and e2e/support/test.ts fails any test whose
-// page asks polar.sh for anything.
+// the real Polar: the website's server is pointed here (`POLAR_API_URL`), the browser resolves none of Polar's hosts
+// (`NO_REAL_POLAR`), and e2e/support/test.ts fails any test whose page asks polar.sh for anything.
 
 /**
  * Where the website's server finds Polar in the browser tests (`POLAR_API_URL`, set in playwright.config.ts), once a
@@ -126,17 +126,20 @@ export async function startFakePolar({
 }
 
 /**
- * Blocks every request a page in `context` makes to Polar's own hosts, and returns the list of them, so a test can
- * fail when there is one. e2e/support/test.ts does this for every test.
+ * The browser's own resolver sends Polar's hosts nowhere (`--host-resolver-rules`, set by playwright.config.ts), so a
+ * page that asks the real Polar for anything gets a refused connection and nothing leaves the computer. No request is
+ * intercepted, which would slow every test and turn off the browser's cache.
  */
-export async function blockRealPolar(context: BrowserContext): Promise<string[]> {
+export const NO_REAL_POLAR = '--host-resolver-rules=MAP polar.sh ~NOTFOUND, MAP *.polar.sh ~NOTFOUND';
+
+/**
+ * Records every request a page in `context` makes to Polar's own hosts, and returns the list of them, so a test can
+ * fail when there is one. e2e/support/test.ts does this for every test; `NO_REAL_POLAR` keeps them from leaving.
+ */
+export function watchRealPolar(context: BrowserContext): string[] {
   const attempts: string[] = [];
-  await context.route(
-    (url) => isRealPolar(url),
-    (route) => {
-      attempts.push(route.request().url());
-      return route.abort('blockedbyclient');
-    },
-  );
+  context.on('request', (request) => {
+    if (isRealPolar(request.url())) attempts.push(request.url());
+  });
   return attempts;
 }

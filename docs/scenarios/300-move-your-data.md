@@ -264,10 +264,11 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 ## S300-29 · persistence
 
 - Given a file that carries the vault (#424, ADR-0032 as amended for version 2): a row of the import ledger, X's
-  analytics of a post and of a day, and an entry of the account's timeline with markup in its words
+  analytics of a post and of a day, an entry of the account's timeline with markup in its words, and a month of X's
+  Under the hood report with markup in a label's meaning (#428)
 - When the person imports it in a new Xomoni, and reloads the dashboard
-- Then Export everything in that Xomoni writes the same ledger row, the same analytics and the same timeline entry,
-  its words kept as text
+- Then Export everything in that Xomoni writes the same ledger row, the same analytics, the same timeline entry and
+  the same month, their words kept as text
 - Test: apps/web/e2e/extension/move-your-data.spec.ts
 
 ## S300-30 · happy

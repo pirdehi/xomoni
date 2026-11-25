@@ -116,6 +116,14 @@ describe('the Reach page (#429, ADR-0045)', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
+  it('links the digest of X’s ranking code on xomoni.com, with numbers or without (#430)', async () => {
+    await renderPage();
+    const link = await screen.findByRole('link', { name: 'Read the digests on xomoni.com' });
+    expect(link).toHaveAttribute('href', 'https://xomoni.com/algorithm');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('heading', { level: 2, name: 'What changed in X’s ranking code' })).toBeInTheDocument();
+  });
+
   it('fills the table from the views Xomoni saw live, each with its Live badge and a link to X', async () => {
     await db.items.bulkPut([post('11', 10, 1_200), post('12', 9, 40, { kind: 'reply' })]);
     await renderPage();

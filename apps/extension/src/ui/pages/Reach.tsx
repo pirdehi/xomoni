@@ -9,6 +9,7 @@ import { labelMonths } from '../../shared/vault/label-months';
 import { LabelHistory } from '../components/reach/LabelHistory';
 import { ReachComparisons } from '../components/reach/ReachComparisons';
 import { ReachDistribution } from '../components/reach/ReachDistribution';
+import { AlgorithmDigestCard } from '../components/reach/AlgorithmDigestCard';
 import { PlusBadge } from '../components/reach/PlusBadge';
 import { ReachTable } from '../components/reach/ReachTable';
 import { SuspectPosts } from '../components/reach/SuspectPosts';
@@ -94,6 +95,8 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
           </>
         )}
         {months && <LabelHistory months={months} />}
+        {/* What changed in X's ranking code (#430, ADR-0046): a link to xomoni.com, nothing fetched. */}
+        <AlgorithmDigestCard />
       </div>
     </>
   );

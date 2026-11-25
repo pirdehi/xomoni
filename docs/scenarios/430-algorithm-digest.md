@@ -189,3 +189,11 @@ xomoni.com/algorithm and its month pages (#430, [ADR-0046](../adr/0046-a-public-
 - When a visitor opens it directly, then reloads
 - Then the same digest shows both times
 - Test: apps/web/e2e/algorithm-digest.spec.ts
+
+## S430-25 · happy
+
+- Given a person on Reach in Xomoni
+- When they look below their numbers
+- Then *What changed in X’s ranking code* says what the digest is and that X hides the real weights
+- And *Read the digests on xomoni.com* links https://xomoni.com/algorithm in a new tab, and the page fetches nothing
+- Test: apps/web/e2e/extension/reach.spec.ts

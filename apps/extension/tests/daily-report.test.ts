@@ -159,6 +159,39 @@ describe('sending the days (#250)', () => {
     expect(await statsShown()).toBe(false);
   });
 
+  it('sends and writes nothing more once the report it belongs to may keep nothing (#497)', async () => {
+    for (let i = 0; i < 70; i++) {
+      await recordProfileDay(ME, { followers: i, following: 1, postsCount: 1, likesCount: 1 }, NOW - i * DAY_MS);
+    }
+    await rememberStatsChoice(true);
+    fetch.mockImplementation((_url, init) => json(200, (parse(init) as { rows: unknown[] }).rows.length));
+
+    // Current for the first send only: a sign-out began while it was on its way.
+    let current = true;
+    const keep = async (write?: () => Promise<void>) => {
+      const now = current;
+      current = false;
+      if (now) await write?.();
+      return now;
+    };
+    expect(await sendDailyNumbers('t', NOW, keep)).toBe(STATS_BATCH);
+    expect(bodies('device_report_stats').map((b) => b.rows.length)).toEqual([STATS_BATCH]);
+    expect(await db.kv.get('dailyStats')).toMatchObject({ value: { on: true, sentUpTo: {} } });
+
+    // Refused as off elsewhere, after a sign-out began: the choice isn't written either.
+    fetch.mockReset();
+    fetch.mockReturnValue(json(400, { message: 'off', hint: 'stats_off' }));
+    let asked = 0;
+    const firstOnly = async (write?: () => Promise<void>) => {
+      asked++;
+      if (asked > 1) return false;
+      await write?.();
+      return true;
+    };
+    expect(await sendDailyNumbers('t', NOW, firstOnly)).toBe(0);
+    expect(await statsShown()).toBe(true);
+  });
+
   it('turns them on or off from the extension, and keeps what xomoni.com stored', async () => {
     fetch.mockReturnValueOnce(json(200, true));
     expect(await chooseStats('t', true)).toBe(true);

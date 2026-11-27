@@ -468,6 +468,39 @@ describe('App job banner', () => {
   });
 });
 
+describe('App when a page fails to draw (#497)', () => {
+  beforeEach(async () => {
+    await upsertAccount(account());
+  });
+
+  it('says so in the page’s place, and keeps the menu and the running job’s banner with its Pause', async () => {
+    const job = await createScanJob(ME, 'Scan: your posts', 'posts');
+    fakeRunner({ status: 'running', jobId: job.id, message: 'Scanning…' });
+    const pause = vi.spyOn(runner, 'pause').mockImplementation(() => undefined);
+    // Reach's read fails, as it did for 125,000 posts or more; React reports the error it caught in the console.
+    const where = db.items.where.bind(db.items);
+    vi.spyOn(db.items, 'where').mockImplementation(((index: string) => {
+      if (index === '[accountId+kind+createdAt]') throw new RangeError('Maximum call stack size exceeded');
+      return where(index);
+    }) as never);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.location.hash = '#/reach';
+    render(<App />);
+
+    expect(await pageHeading("This page couldn't be shown")).toBeInTheDocument();
+    expect(within(sidebar()).getByRole('button', { name: 'Reach' })).toHaveAttribute('aria-current', 'page');
+    const banner = screen.getByRole('region', { name: 'Running job' });
+    expect(banner).toHaveTextContent('Scan: your posts');
+    await userEvent.click(within(banner).getByRole('button', { name: 'Pause' }));
+    expect(pause).toHaveBeenCalled();
+
+    // Another page from the menu draws as usual.
+    await userEvent.click(within(sidebar()).getByRole('button', { name: 'Settings' }));
+    expect(await pageHeading('Settings')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: "This page couldn't be shown" })).not.toBeInTheDocument();
+  });
+});
+
 describe('App toasts and consent', () => {
   beforeEach(async () => {
     await upsertAccount(account());

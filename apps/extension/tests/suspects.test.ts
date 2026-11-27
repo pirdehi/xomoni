@@ -149,6 +149,13 @@ describe('suspected posts, as guesses (#429, ADR-0045, point 4)', () => {
       expect(suspectPosts([...june, ...young], [labelled(1)])[0]?.why).toBe('no-numbers');
     });
 
+    it('says where the numbers come from today, as Reach does, offering neither X’s analytics export nor Premium', () => {
+      const words = SUSPECT_WHY_WORDS['no-numbers'];
+      expect(words).toContain('the views X shows on your own posts and replies');
+      expect(words).toContain('More sources are coming.');
+      expect(words).not.toMatch(/analytics|premium|import/i);
+    });
+
     it('for a month whose posts have too few earlier ones to compare with', () => {
       const first = Array.from({ length: 10 }, (_, i) => post(`f${i}`, JULY, i, i === 9 ? 10 : 1_000));
       expect(suspectPosts(first, [labelled(1)])[0]?.why).toBe('no-baseline');

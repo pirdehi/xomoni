@@ -47,7 +47,7 @@ export type SuspectWhy = 'account-label' | 'no-numbers' | 'no-baseline' | 'none-
 export const SUSPECT_WHY_WORDS: Readonly<Record<SuspectWhy, string>> = {
   'account-label': 'X applied this label to the account, not to posts, so there are no posts to suggest.',
   'no-numbers':
-    "Xomoni has no impressions or views for this month's posts. Import your X analytics export, or open your posts on X so Xomoni sees their views.",
+    "Xomoni has no views for this month's posts. Reach's numbers come from the views X shows on your own posts and replies: open your profile on X, and Xomoni keeps the views it shows. More sources are coming.",
   'no-baseline':
     "This month's posts have too few earlier posts of the same kind to compare with (15 in the 8 weeks before each).",
   'none-below-half': 'No post of this month was seen less than half as much as usual, so Xomoni suggests none.',

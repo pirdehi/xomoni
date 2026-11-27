@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-24
+
+New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.
+
 ### Changed
 
 - **Faster with a large copy of your account** (#390). With 100,000 posts and 100,000 likes, as a heavy X user has:
@@ -26,9 +30,6 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - The last 30 days are free; 90 days and everything, and the comparisons, are part of Plus, open as a preview until sales start.
 
   Reach reads only what Xomoni already keeps: it never searches X or opens a page to measure reach, and nothing leaves your computer.
-
-### Added
-
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
   - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
   - A post from an account made in the last 30 days is marked with its age, such as "account made 6 days ago". The date comes from X's own answer to the search Xomoni already loads, never from a request of its own; where X's answer has no date, there is no badge, never a guess.

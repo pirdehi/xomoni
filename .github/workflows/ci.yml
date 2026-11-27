@@ -97,8 +97,10 @@ jobs:
   # confirmation, sign-in, reset, account and the rest) against a local Supabase with emails read from Mailpit, each
   # shard with its own Supabase, so its one worker shares an Auth server and an inbox with no other; and the built
   # extension on x.com pages served from synthetic fixtures with no network (ADR-0040), which needs neither the site
-  # nor Supabase. Each part fails on a failed flow, a blocked policy or a serious accessibility violation (axe). The
-  # gate below, `e2e`, is what branch protection requires.
+  # nor Supabase. The extension's tests are in three shards (#345): a job's pace keeps its tests waiting, and in two,
+  # Edge's second shard took 27 to 29 of its 30 minutes before the scenarios of #345 added more. Each part fails on a
+  # failed flow, a blocked policy or a serious accessibility violation (axe). The gate below, `e2e`, is what branch
+  # protection requires.
   e2e-parts:
     name: e2e (${{ matrix.part }})
     runs-on: ubuntu-latest
@@ -115,10 +117,13 @@ jobs:
             shard: 2/2
           - part: extension-1
             suite: extension
-            shard: 1/2
+            shard: 1/3
           - part: extension-2
             suite: extension
-            shard: 2/2
+            shard: 2/3
+          - part: extension-3
+            suite: extension
+            shard: 3/3
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
@@ -192,10 +197,13 @@ jobs:
             shard: 2/2
           - part: extension-1
             suite: extension
-            shard: 1/2
+            shard: 1/3
           - part: extension-2
             suite: extension
-            shard: 2/2
+            shard: 2/3
+          - part: extension-3
+            suite: extension
+            shard: 3/3
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder

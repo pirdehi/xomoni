@@ -284,7 +284,8 @@ describe('scenarios files (#337, ADR-0038)', () => {
   });
 
   it('may be null only for a legacy feature', () => {
-    assert.ok(LEGACY_FEATURES.includes('resumable-jobs'));
+    // The list only shrinks (#345), down to nothing: whatever is left is legacy features' ids, never a new one.
+    assert.ok(LEGACY_FEATURES.every((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)));
     assert.ok(!LEGACY_FEATURES.includes('brand-new'));
     assert.match(
       registryProblems(registry(), { changelog: CHANGELOG, exists: allExist, legacy: ['cleanup-by-date'] }).join('\n'),

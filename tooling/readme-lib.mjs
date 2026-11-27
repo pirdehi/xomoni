@@ -23,7 +23,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'beyond-profile-limit',
   'verified-actions',
   'login-handoff',
-  'resumable-jobs',
   'keeps-going',
 ]);
 

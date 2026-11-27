@@ -119,7 +119,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [23],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/23-resumable-jobs.md",
       "en": {
         "title": "Resumable jobs",
         "summary": "pause, close the browser, and resume later without losing progress."

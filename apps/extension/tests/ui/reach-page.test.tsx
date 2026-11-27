@@ -23,6 +23,10 @@ import { ME, account, resetDb } from '../support/fixtures';
 const DAY = 86_400_000;
 const NOW = Date.now();
 
+/** What the page says while it has no number: where they come from today, and nothing it can't do yet. */
+const EMPTY_WORDS =
+  "Reach's numbers come from the views X shows on your own posts and replies. Open your profile on X, and Xomoni keeps the views it shows. More sources are coming.";
+
 /** One of the person's posts, made `daysAgo` days ago and seen live `views` times a day ago. */
 function post(id: string, daysAgo: number, views: number | undefined, over: Partial<Item> = {}): Item {
   const kind = over.kind ?? 'post';
@@ -106,11 +110,9 @@ describe('the Reach page (#429, ADR-0045)', () => {
     await db.items.bulkPut([post('1', 3, undefined), post('2', 3, undefined, { kind: 'like' })]);
     await renderPage();
     expect(await screen.findByText('No reach to show yet')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Import your X analytics export (needs X Premium), or open your profile on X so Xomoni sees your views.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(EMPTY_WORDS)).toBeInTheDocument();
+    // Nothing in this version reads X's analytics export, so the page neither offers it nor asks for X Premium.
+    expect(screen.queryByText(/analytics|Premium|import/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
@@ -279,6 +281,7 @@ describe('how reach spreads', () => {
 
 describe('the Reach page’s helpers', () => {
   beforeEach(resetDb);
+  afterEach(() => vi.restoreAllMocks());
 
   it('keep only rows with a number, of the kind and format asked for', () => {
     const rows = [
@@ -343,5 +346,23 @@ describe('the Reach page’s helpers', () => {
     expect(data).toMatchObject({ csv: 0, live: 1, lastSeen: NOW - DAY });
     expect((await reachData(ME, 'all', NOW)).rows).toHaveLength(17);
     expect(await reachData('nobody', '30d', NOW)).toEqual({ rows: [], csv: 0, live: 0, lastSeen: null, periods: [] });
+  });
+
+  it('read 200,000 posts seen live on Everything, more than a call’s arguments can take, with the last one seen', async () => {
+    // One post every half hour, for over 11 years; one was seen an hour ago, the rest a day ago. X's index answers with
+    // them all; filling fake-indexeddb with as many would take minutes.
+    const many = Array.from({ length: 200_000 }, (_, i) =>
+      post(String(1_000_000 + i), (200_000 - i) / 48, i, i === 123_456 ? { seenAt: NOW - 3_600_000 } : {}),
+    );
+    vi.spyOn(db.items, 'where').mockImplementation((() => ({
+      between: (lower: readonly unknown[]) => ({
+        toArray: () => Promise.resolve(lower[1] === 'post' ? many : []),
+      }),
+    })) as never);
+
+    const data = await reachData(ME, 'all', NOW);
+
+    expect(data.rows).toHaveLength(200_000);
+    expect(data).toMatchObject({ csv: 0, live: 200_000, lastSeen: NOW - 3_600_000 });
   });
 });

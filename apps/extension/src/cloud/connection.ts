@@ -68,8 +68,25 @@ export function saveConnection(connection: CloudConnection): Promise<void> {
 
 /** Forgets the connection, here and wherever an earlier version kept it: the token is gone, so nothing more is reported. */
 export async function clearConnection(): Promise<void> {
-  await db.kv.delete(KEY);
+  await forgetStoredConnection();
   await chrome.storage.local.remove(LEGACY_KEY);
+}
+
+/**
+ * Whether `connection` is still the stored one: the same device, with the same token. Reads IndexedDB only, never
+ * `chrome.storage`, so it can run inside a Dexie transaction, which waiting on anything else would end.
+ */
+export async function isStoredConnection(connection: Pick<CloudConnection, 'deviceId' | 'token'>): Promise<boolean> {
+  const stored = parse((await db.kv.get(KEY))?.value);
+  return stored?.deviceId === connection.deviceId && stored.token === connection.token;
+}
+
+/**
+ * Forgets the connection in IndexedDB only, for use inside a Dexie transaction. Where an earlier version kept it is
+ * already empty once `getConnection` has read it, which moves it; `clearConnection` empties both.
+ */
+export async function forgetStoredConnection(): Promise<void> {
+  await db.kv.delete(KEY);
 }
 
 /**

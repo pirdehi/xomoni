@@ -105,8 +105,9 @@ export async function connectFromWebsite(message: WebPairing, now = Date.now()):
   if (await getConnection()) return { ok: false, reason: 'already_connected' };
   try {
     const connection = await connect(message.code, suggestedDeviceName());
-    await confirmConnection();
+    // Before the first report: nothing is reported while signed out.
     await endSignOut();
+    await confirmConnection();
     return { ok: true, account: connection.account };
   } catch (err) {
     return { ok: false, reason: err instanceof CloudError ? err.reason : 'refused' };

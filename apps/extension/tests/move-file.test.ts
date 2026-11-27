@@ -152,6 +152,16 @@ describe('the move file (#300, ADR-0032)', () => {
       ['more media than any post carries (#428)', 'items', moverItem('1000000001', { media: 101 })],
       ['links that aren’t a whole number (#428)', 'items', moverItem('1000000001', { links: 1.5 })],
       ['media as text (#428)', 'items', moverItem('1000000001', { media: '2' as never })],
+      [
+        'links on a like, which only a post or a reply carries (#497)',
+        'items',
+        moverItem('1000000001', { kind: 'like', links: 1 }),
+      ],
+      [
+        'media on a repost, which only a post or a reply carries (#497)',
+        'items',
+        moverItem('1000000001', { kind: 'repost', media: 0 }),
+      ],
       ['a job state Xomoni doesn’t know', 'jobs', moverJob('j', { state: 'hacked' as never })],
       ['a job id with markup', 'jobs', moverJob('<script>')],
       [
@@ -328,6 +338,13 @@ describe('the move file (#300, ADR-0032)', () => {
       const older = moveRecord('items', moverItem('1000000001'), NOW);
       expect(older).not.toHaveProperty('links');
       expect(older).not.toHaveProperty('media');
+      // A reply carries them too; a like or a repost, without them, still moves (#497).
+      const reply = moverItem('1000000002', { kind: 'reply', links: 1, media: 2 });
+      expect(moveRecord('items', reply, NOW)).toEqual(reply);
+      for (const kind of ['like', 'repost'] as const) {
+        const other = moverItem('1000000003', { kind });
+        expect(moveRecord('items', other, NOW)).toEqual(other);
+      }
     });
 
     it('keeps replies to the person cut to 1,000 characters (ADR-0030)', () => {

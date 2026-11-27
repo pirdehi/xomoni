@@ -44,8 +44,9 @@ export async function extensionState(): Promise<ExtensionState> {
 /**
  * Signs in to the account the website's page is signed in to, with a one-time code it made (ADR-0018). A browser
  * connected to another account is only switched when the page names that connection's device in `replace`: the page
- * checked that the device isn't one of its account's. Signing in also ends a sign-out of Xomoni here (ADR-0023). The
- * person signed in to that account in this browser, so the account is confirmed at once (#149) and reports.
+ * checked that the device isn't one of its account's. Signing in also ends a sign-out of Xomoni here (ADR-0023), once
+ * the code worked and before the first report, since nothing is reported while signed out. The person signed in to
+ * that account in this browser, so the account is confirmed at once (#149) and reports.
  */
 export async function signInFromWebsite(message: SignInMessage): Promise<SignInAnswer> {
   const current = await getConnection();
@@ -53,8 +54,8 @@ export async function signInFromWebsite(message: SignInMessage): Promise<SignInA
   if (current) await disconnect();
   try {
     const connection = await connect(message.code, suggestedDeviceName());
-    await confirmConnection();
     await endSignOut();
+    await confirmConnection();
     return { ok: true, account: connection.account, deviceId: connection.deviceId };
   } catch (err) {
     const reason = err instanceof CloudError ? err.reason : 'refused';

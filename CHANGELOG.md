@@ -8,6 +8,12 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 - **X's archive, known when it comes again** (#424). Each import of X's archive in the Library is now kept in Xomoni's import ledger, on your computer only, with the date X made the archive, and it goes on your account's timeline. Drop the same ZIP again and Xomoni knows it: nothing is read or written twice. The Library's words, its limits and its checks, another account's archive first of all, are the same as before.
 
+## [0.6.0] - 2026-11-24
+
+New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.
+
+### Changed
+
 - **Faster with a large copy of your account** (#390). With 100,000 posts and 100,000 likes, as a heavy X user has:
   - importing X's archive in the Library takes about a minute and a half instead of four to five: it saves 20,000 posts at a time, so the page counts your copy again ten times rather than a hundred;
   - the Library opens in about a second instead of four or five, and Home's counts and its chart by year in under two seconds instead of five: Xomoni counts your posts the fast way, and no longer reads them one by one for the chart;
@@ -28,9 +34,6 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
   - The last 30 days are free; 90 days and everything, and the comparisons, are part of Plus, open as a preview until sales start.
 
   Reach reads only what Xomoni already keeps: it never searches X or opens a page to measure reach, and nothing leaves your computer.
-
-### Added
-
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
   - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
   - A post from an account made in the last 30 days is marked with its age, such as "account made 6 days ago". The date comes from X's own answer to the search Xomoni already loads, never from a request of its own; where X's answer has no date, there is no badge, never a guess.
@@ -40,6 +43,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Fixed
 
+- When one of the dashboard's pages failed while drawing, the whole dashboard went blank, the menu and the running job's *Pause* with it (#497). Now only that page says *This page couldn't be shown*: the menu, the job's banner and its *Pause* stay, and the other pages open as usual.
+- A status report still on its way to xomoni.com when you signed out of Xomoni, or disconnected this browser, could put the connection back once xomoni.com answered, so this browser could go on reporting job status after you left (#497). Now a report keeps nothing once a sign-out or a disconnect began, nothing is sent while you are signed out, and the dashboard sends one report at a time, however often you switch back to its tab.
 - Some parts of the dashboard could stop following what they show, such as the account in the X window, the update notice, xomoni.com's requests and the limits panel (#459). Their live reads now all keep up: each one runs as Dexie needs to follow it, and a check stops the pattern coming back.
 - **Safety: two quick changes in Settings no longer lose the first** (#427). Each change on the Settings page was saved as the settings the page last drew, with that one field changed. A second change made before the page drew the first, such as *From* then *Until* on a busy computer, put the old value back: the active hours could end up other than the ones chosen, and a job could then work in hours you had excluded. A change from xomoni.com could race one made on the page in the same way. Now each change applies to the settings as stored at that moment, in one step, so both land. This is a safety fix.
 - Xomoni's *Connections* panel said *Only job status is sent* even while your daily numbers were sent to xomoni.com too (#450). It now says *Only job status and your daily numbers are sent* while they are on, and job status only while they are off, and so do its map, the sign-out dialogs and Settings. The privacy policy, the landing page, the install guide and xomoni.com's sign-in panel now name the daily numbers, sent only if you turn them on, as the only other thing that reaches xomoni.com. On xomoni.com's dashboard, when your numbers choice can't be read, it no longer shows a switch that says off while they may be on: it says it couldn't tell, with *Try again*.

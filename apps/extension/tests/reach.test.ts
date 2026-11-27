@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyDay, localDay } from '../src/shared/daily';
 import { db, itemKey, upsertAccount } from '../src/shared/db';
 import type { Item } from '../src/shared/types';
@@ -9,6 +9,7 @@ import {
   NO_REACH_SOURCES,
   type PremiumEvent,
   type ReachSources,
+  BULK_LOOKUP,
   VAULT_REACH_SOURCES,
   dailyReachSeries,
   followersAt,
@@ -307,6 +308,26 @@ describe('each post’s reach (#428, ADR-0045)', () => {
       expect(await VAULT_REACH_SOURCES.analytics(ME, [])).toEqual(new Map());
     });
 
+    it('reads the CSV of a large period by the account in one pass, keeping only the posts asked for', async () => {
+      await db.analyticsPosts.bulkPut([
+        { key: analyticsPostKey(ME, '1'), accountId: ME, postId: '1', createdAt: T, asOf: T, impressions: 40 },
+        { key: analyticsPostKey(ME, '9'), accountId: ME, postId: '9', createdAt: T, asOf: T, impressions: 90 },
+        { key: analyticsPostKey('other', '1'), accountId: 'other', postId: '1', createdAt: T, asOf: T, impressions: 7 },
+      ]);
+      const many = Array.from({ length: BULK_LOOKUP + 1 }, (_, i) => String(i + 1));
+      const bulkGet = vi.spyOn(db.analyticsPosts, 'bulkGet');
+      const read = await VAULT_REACH_SOURCES.analytics(ME, many);
+      expect(bulkGet).not.toHaveBeenCalled();
+      // Post 9 is asked for too; a post of another account, or one not asked for, never comes back.
+      expect([...read.entries()]).toEqual([
+        ['1', { impressions: 40, asOf: T }],
+        ['9', { impressions: 90, asOf: T }],
+      ]);
+      expect([...(await VAULT_REACH_SOURCES.analytics(ME, ['9'])).keys()]).toEqual(['9']);
+      expect([...(await VAULT_REACH_SOURCES.analytics(ME, ['2', ...many.slice(9)])).keys()]).toEqual([]);
+      bulkGet.mockRestore();
+    });
+
     it('reads without the vault: no CSV and no Premium changes', async () => {
       await db.items.put(item('1', { views: 10 }));
       const posts = await reachPosts(ME, { from: T - DAY, to: T + DAY });
@@ -315,6 +336,33 @@ describe('each post’s reach (#428, ADR-0045)', () => {
       expect(await NO_REACH_SOURCES.analytics(ME, ['1'])).toEqual(new Map());
       expect(await NO_REACH_SOURCES.premiumEvents(ME)).toEqual([]);
       expect(await reachPosts('nobody', { from: 0, to: Date.now() })).toEqual([]);
+    });
+
+    describe('for a large account', () => {
+      afterEach(() => vi.restoreAllMocks());
+
+      it('reads 200,000 posts, more than a call’s arguments can take, without running out of stack', async () => {
+        // X's index answers with 200,000 posts and no replies; filling fake-indexeddb with as many would take minutes.
+        const many = Array.from({ length: 200_000 }, (_, i) =>
+          item(String(1_000_000 + i), { createdAt: T + i * 60_000, views: i }),
+        );
+        const asked: unknown[] = [];
+        vi.spyOn(db.items, 'where').mockImplementation(((index: string) => {
+          asked.push(index);
+          return {
+            between: (lower: readonly unknown[]) => ({
+              toArray: () => Promise.resolve(lower[1] === 'post' ? many : []),
+            }),
+          };
+        }) as never);
+
+        const posts = await reachPosts(ME, { from: 0, to: T + 200 * DAY });
+
+        expect(asked).toEqual(['[accountId+kind+createdAt]', '[accountId+kind+createdAt]']);
+        expect(posts).toHaveLength(200_000);
+        expect(posts[0]).toMatchObject({ id: '1000000', impressions: 0, source: 'live' });
+        expect(posts.at(-1)).toMatchObject({ id: '1199999', impressions: 199_999, source: 'live' });
+      });
     });
   });
 

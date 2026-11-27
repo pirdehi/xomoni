@@ -52,6 +52,7 @@ import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
 import { ConsentDialog } from './components/ConsentDialog';
+import { PageBoundary } from './components/PageBoundary';
 import { SignOutDialog } from './components/SignOutDialog';
 import { WebsiteRequests } from './components/WebsiteRequests';
 import { errorMessage } from './format';
@@ -280,7 +281,8 @@ function useHashRoute(): [PageId, (p: PageId) => void] {
  * is out (#151), the current page and toasts, and the archive follow-up, which gets X's archive the rest of the way
  * by itself once the person asked for it (#186).
  * Pages are addressed by the URL hash (`#/jobs`). Until an X account is known, and while signed out of Xomoni (#226),
- * only the onboarding view or the signed-out page is shown, whatever the hash says. The sign-out dialog lives here, so
+ * only the onboarding view or the signed-out page is shown, whatever the hash says. A page that fails to draw says so
+ * in its place, and the rest of the shell stays (`PageBoundary`, #497). The sign-out dialog lives here, so
  * it outlives the account menu it was opened from. The shell holds Fluent's focus manager (`useModalHost`), so a page
  * behind a closing dialog never stays hidden from assistive technology (#315), and its toasts sit outside what an open
  * dialog hides, so they are read out over it (#352).
@@ -304,11 +306,15 @@ export function App() {
         {account && <IdleNeedBanner account={account} worker={worker} />}
         <div className={styles.content}>
           <UpdateNotice />
-          {account === undefined ? null : !account ? (
-            <OverviewPage account={null} worker={worker} navigate={navigate} />
-          ) : (
-            <PageSwitch page={page} account={account} worker={worker} navigate={navigate} />
-          )}
+          {/* One page's error stays in its place: the sidebar and the running job's banner stay usable (#497). Keyed by
+              the menu item, so Activity's two tabs stay one page, and another page draws afresh. */}
+          <PageBoundary key={navItemOf(page)}>
+            {account === undefined ? null : !account ? (
+              <OverviewPage account={null} worker={worker} navigate={navigate} />
+            ) : (
+              <PageSwitch page={page} account={account} worker={worker} navigate={navigate} />
+            )}
+          </PageBoundary>
         </div>
       </main>
       <Toasts />

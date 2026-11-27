@@ -3,11 +3,14 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { CloudError, pairDevice, reportStatus, unpairDevice } from '../src/cloud/client';
 import { CLOUD_KEY, CLOUD_URL } from '../src/cloud/config';
 import { clearConnection, getConnection, saveConnection, watchConnection } from '../src/cloud/connection';
+import { currentEntitlement, currentPlanState, planKey, rememberPlan } from '../src/cloud/entitlement';
 import { currentUpdateNotice } from '../src/cloud/release';
 import { jobReport, phaseWords } from '../src/cloud/summary';
 import { HEARTBEAT_MS, confirmConnection, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
 import { createCleanupJob, watchJob } from '../src/engine/runner';
-import { db, recordRisk, upsertAccount } from '../src/shared/db';
+import { rememberStatsChoice, statsShown } from '../src/cloud/daily-report';
+import { db, kvGet, recordProfileDay, recordRisk, upsertAccount } from '../src/shared/db';
+import { markSignedOut } from '../src/shared/session';
 import type { Job } from '../src/shared/types';
 import { stubChrome } from './support/chrome';
 import { ME, resetDb } from './support/fixtures';
@@ -407,5 +410,299 @@ describe('reporting', () => {
     const stop = startCloudSync(onDisconnected, 10);
     await vi.waitFor(() => expect(onDisconnected).toHaveBeenCalled());
     stop();
+  });
+});
+
+describe('the plan, from each report’s answer (#423, ADR-0042)', () => {
+  const UNTIL = '2026-12-24T12:00:00+00:00';
+  const plus = { tier: 'plus', status: 'active', valid_until: UNTIL };
+  /** A report's answer, as #444's device_report writes it. */
+  const answer = (entitlement: unknown = plus, live: unknown = true) => ({
+    latest: '0.7.0',
+    security: false,
+    stats: false,
+    entitlement,
+    billing_live: live,
+  });
+  const connected = (deviceId = 'd1') =>
+    saveConnection({
+      deviceId,
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
+
+  it('reads the plan and the sales switch from the answer, heard when it came', async () => {
+    fetch.mockReturnValueOnce(json(200, answer()));
+    const status = await reportStatus('t', '0.7.0', [], 1_000);
+    expect(status.plan).toEqual({
+      entitlement: { tier: 'plus', status: 'active', validUntil: Date.parse(UNTIL), checkedAt: 1_000 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(200, { latest: '0.7.0', security: false, stats: true }));
+    expect((await reportStatus('t', '0.7.0', [])).plan).toBeNull();
+  });
+
+  it('keeps the plan each report brings, for this device', async () => {
+    await connected();
+    fetch.mockReturnValueOnce(json(200, answer()));
+    expect(await syncOnce()).toBe('ok');
+    expect(await currentPlanState()).toMatchObject({ entitlement: { tier: 'plus' }, live: true });
+    fetch.mockReturnValueOnce(json(200, answer({ tier: 'free', status: 'canceled', valid_until: UNTIL })));
+    expect(await syncOnce()).toBe('ok');
+    expect(await currentEntitlement()).toMatchObject({ tier: 'free', status: 'canceled' });
+  });
+
+  it('never lets an answer it can’t read, or none at all, erase the plan it had', async () => {
+    await connected();
+    fetch.mockReturnValueOnce(json(200, answer()));
+    await syncOnce();
+    const kept = await currentEntitlement();
+    for (const broken of [answer({ tier: 'gold' }), answer(plus, 'yes'), { latest: '0.7.0' }, null]) {
+      fetch.mockReturnValueOnce(json(200, broken));
+      expect(await syncOnce()).toBe('ok');
+      expect(await currentEntitlement()).toEqual(kept);
+    }
+    // Offline: the report fails, and the plan heard stays for its 7 days of grace.
+    fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    expect(await syncOnce()).toBe('offline');
+    expect(await currentEntitlement()).toEqual(kept);
+  });
+
+  it('forgets the plan when this browser disconnects, signs out, or connects anew', async () => {
+    await connected();
+    await rememberPlan('d1', {
+      entitlement: { tier: 'pro', status: 'active', validUntil: null, checkedAt: 1 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(204, null));
+    expect(await disconnect()).toBe('disconnected');
+    expect(await kvGet(planKey('d1'), null)).toBeNull();
+    // The sales switch isn't about the account: a browser that isn't connected is Free once sales are open.
+    expect(await currentPlanState()).toEqual({ entitlement: null, live: true });
+
+    await rememberPlan('d9', {
+      entitlement: { tier: 'pro', status: 'active', validUntil: null, checkedAt: 1 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd2', token: 'secret' }]));
+    await connect('code', 'Chrome');
+    expect(await kvGet(planKey('d9'), null)).toBeNull();
+  });
+
+  it('forgets the plan when the website no longer knows this browser', async () => {
+    await connected();
+    await rememberPlan('d1', {
+      entitlement: { tier: 'plus', status: 'active', validUntil: null, checkedAt: 1 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(400, { message: 'Not connected.', hint: 'unknown_device' }));
+    expect(await syncOnce()).toBe('disconnected');
+    expect(await kvGet(planKey('d1'), null)).toBeNull();
+  });
+
+  it('reports at once when the dashboard is shown again, so a plan bought in another tab opens without waiting', async () => {
+    await connected();
+    fetch.mockImplementation(() => json(200, answer()));
+    const visibility: { visibilityState: DocumentVisibilityState } = { visibilityState: 'visible' };
+    const page = Object.assign(new EventTarget(), visibility);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    const stop = startCloudSync(vi.fn(), 60_000, page);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    page.visibilityState = 'hidden';
+    page.dispatchEvent(new Event('visibilitychange'));
+    page.visibilityState = 'visible';
+    page.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+
+    stop();
+    page.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('one report at a time, and nothing kept once a sign-out began (#497)', () => {
+  const UNTIL = '2026-12-24T12:00:00+00:00';
+  /** A report's answer with everything it can carry: news, the plan, and the daily numbers on. */
+  const full = {
+    latest: '0.9.0',
+    security: false,
+    stats: true,
+    entitlement: { tier: 'plus', status: 'active', valid_until: UNTIL },
+    billing_live: true,
+  };
+  const CONNECTED = {
+    deviceId: 'd1',
+    token: 't',
+    deviceName: 'Chrome',
+    connectedAt: 1,
+    reportedUpTo: 0,
+    account: 'o•••@example.com',
+    confirmed: true,
+  };
+  /** Answers held until the test lets them go, in the order asked. */
+  let held: { fn: string; answer: (status: number, body: unknown) => void }[];
+  const fn = (url: string) => url.split('/').pop() ?? '';
+  const reports = () => fetch.mock.calls.filter(([url]) => fn(url) === 'device_report').length;
+
+  beforeEach(async () => {
+    held = [];
+    await upsertAccount({ id: ME, handle: 'me' });
+    await recordProfileDay(ME, { followers: 5, following: 1, postsCount: 9, likesCount: 2 }, Date.now());
+    await saveConnection(CONNECTED);
+    // `device_report` and `device_report_stats` wait for the test; anything else answers at once.
+    fetch.mockImplementation((url) =>
+      ['device_report', 'device_report_stats'].includes(fn(url))
+        ? new Promise<Response>((resolve) => {
+            held.push({
+              fn: fn(url),
+              answer: (status, body) => resolve(new Response(JSON.stringify(body), { status })),
+            });
+          })
+        : json(204, null),
+    );
+  });
+
+  // A report left waiting would hold every later one in this file (`syncOnce` runs one at a time): let them all go.
+  afterEach(async () => {
+    for (let i = 0; i < 10 && held.length; i++) {
+      held.shift()!.answer(200, null);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  });
+
+  /** Lets the oldest held answer go, once it is asked for. */
+  async function answer(status: number, body: unknown) {
+    await vi.waitFor(() => expect(held.length).toBeGreaterThan(0));
+    held.shift()!.answer(status, body);
+  }
+
+  /** Everything a report could have written. */
+  async function written() {
+    return {
+      connection: await getConnection(),
+      plan: await kvGet(planKey('d1'), null),
+      live: await kvGet('billingLive', null),
+      news: await currentUpdateNotice('0.3.0'),
+      stats: await statsShown(),
+    };
+  }
+
+  it('sends one report at a time: the dashboard shown again and again while one runs makes one more, after it', async () => {
+    const visibility: { visibilityState: DocumentVisibilityState } = { visibilityState: 'visible' };
+    const page = Object.assign(new EventTarget(), visibility);
+    const stop = startCloudSync(vi.fn(), 60_000, page);
+    await vi.waitFor(() => expect(reports()).toBe(1));
+
+    for (let i = 0; i < 3; i++) page.dispatchEvent(new Event('visibilitychange'));
+    const asked = [syncOnce(), syncOnce()];
+    expect(asked[0]).toBe(asked[1]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(reports()).toBe(1);
+
+    await answer(200, { latest: '0.3.0', security: false, stats: false });
+    await vi.waitFor(() => expect(reports()).toBe(2));
+    await answer(200, { latest: '0.3.0', security: false, stats: false });
+    expect(await asked[0]).toBe('ok');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(reports()).toBe(2);
+    stop();
+  });
+
+  it('runs the follow-up even when the report before it failed, and reads the connection afresh', async () => {
+    const first = syncOnce();
+    const next = syncOnce();
+    await answer(500, { message: 'boom' });
+    await expect(first).rejects.toThrow();
+    await vi.waitFor(() => expect(reports()).toBe(2));
+    await answer(200, { ...full, stats: false });
+    expect(await next).toBe('ok');
+    expect(await currentEntitlement()).toMatchObject({ tier: 'plus' });
+  });
+
+  it('sends nothing while signed out of Xomoni, even before the sign-out disconnected this browser', async () => {
+    await markSignedOut('me', true);
+    expect(await syncOnce()).toBe('idle');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps nothing from a report under way when the person signs out and the browser disconnects', async () => {
+    await rememberStatsChoice(false);
+    const report = syncOnce();
+    await vi.waitFor(() => expect(held).toHaveLength(1));
+
+    // Signing out (ui/sign-out.ts, web-session.ts): the sign-out first, then the disconnect, which forgets the plan.
+    await markSignedOut('me', true);
+    expect(await disconnect()).toBe('disconnected');
+    await answer(200, full);
+
+    expect(await report).toBe('idle');
+    expect(await written()).toEqual({ connection: null, plan: null, live: null, news: null, stats: false });
+    expect(fetch.mock.calls.map(([url]) => fn(url))).toEqual(['device_report', 'unpair_device']);
+  });
+
+  it('keeps nothing once a sign-out began, even before it disconnected', async () => {
+    const report = syncOnce();
+    await vi.waitFor(() => expect(held).toHaveLength(1));
+    await markSignedOut('me', true);
+    await answer(200, full);
+
+    expect(await report).toBe('idle');
+    expect(await written()).toEqual({ connection: CONNECTED, plan: null, live: null, news: null, stats: false });
+  });
+
+  it('keeps nothing for a connection replaced meanwhile, and leaves the new one alone', async () => {
+    const report = syncOnce();
+    await vi.waitFor(() => expect(held).toHaveLength(1));
+    await saveConnection({ ...CONNECTED, deviceId: 'd2', token: 'new' });
+    await answer(200, full);
+
+    expect(await report).toBe('idle');
+    expect(await getConnection()).toMatchObject({ deviceId: 'd2', token: 'new', reportedUpTo: 0 });
+    expect(await kvGet(planKey('d1'), null)).toBeNull();
+
+    // xomoni.com no longer knows the old device: the new connection still stays.
+    const gone = syncOnce();
+    await vi.waitFor(() => expect(held).toHaveLength(1));
+    await saveConnection({ ...CONNECTED, deviceId: 'd3', token: 'newer' });
+    await answer(400, { message: 'Not connected.', hint: 'unknown_device' });
+    expect(await gone).toBe('idle');
+    expect(await getConnection()).toMatchObject({ deviceId: 'd3' });
+  });
+
+  it('tells the dashboard of a disconnect on xomoni.com only when it is this connection’s, not during a sign-out', async () => {
+    const onDisconnected = vi.fn();
+    const stop = startCloudSync(onDisconnected, 60_000, null);
+    await vi.waitFor(() => expect(held).toHaveLength(1));
+    await markSignedOut('me', true);
+    await answer(400, { message: 'Not connected.', hint: 'unknown_device' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(onDisconnected).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('stops sending the daily numbers, and keeps what it sent unwritten, once a sign-out began', async () => {
+    for (let i = 1; i < 70; i++) {
+      await recordProfileDay(
+        ME,
+        { followers: i, following: 1, postsCount: 1, likesCount: 1 },
+        Date.now() - i * 86_400_000,
+      );
+    }
+    const report = syncOnce();
+    await answer(200, full);
+    // The first 60 days are on their way when the person signs out.
+    await vi.waitFor(() => expect(held.map((h) => h.fn)).toEqual(['device_report_stats']));
+    await markSignedOut('me', true);
+    await answer(200, 60);
+
+    expect(await report).toBe('ok');
+    expect(fetch.mock.calls.map(([url]) => fn(url))).toEqual(['device_report', 'device_report_stats']);
+    expect(await kvGet('dailyStats', null)).toEqual({ on: true, sentUpTo: {} });
   });
 });

@@ -2,6 +2,7 @@
 // numbers with their choice (ADR-0026). Plain `fetch` to PostgREST with the publishable key and no session.
 import { asArray, asObject, asString } from '../shared/json';
 import { CLOUD_KEY, CLOUD_URL } from './config';
+import { type HeardPlan, planFromReport } from './entitlement';
 import { type ReleaseNews, parseReleaseNews } from './release';
 import type { JobReport } from './summary';
 
@@ -81,20 +82,31 @@ export interface StatsRow {
   removed_likes: number;
 }
 
-/** What a report's answer says: the newest release, and whether the account shows its daily numbers (#250). */
+/**
+ * What a report's answer says: the newest release, whether the account shows its daily numbers (#250), and its plan
+ * with whether sales are open (ADR-0042).
+ */
 export interface StatusAnswer {
   news: ReleaseNews | null;
   /** False from a server older than daily numbers. */
   stats: boolean;
+  /** Null from a server older than plans, or an answer the extension can't read: what was heard before stays. */
+  plan: HeardPlan | null;
 }
 
 /**
  * Says the extension is still there and reports its jobs' status (up to 50). Answers with the newest release
- * (#151), or null when xomoni.com didn't say, and whether the account shows its daily numbers (#250).
+ * (#151), or null when xomoni.com didn't say, whether the account shows its daily numbers (#250), and the account's
+ * plan, heard at `now` (ADR-0042).
  */
-export async function reportStatus(token: string, version: string, jobs: readonly JobReport[]): Promise<StatusAnswer> {
+export async function reportStatus(
+  token: string,
+  version: string,
+  jobs: readonly JobReport[],
+  now = Date.now(),
+): Promise<StatusAnswer> {
   const answer = await rpc('device_report', { token, version, jobs });
-  return { news: parseReleaseNews(answer), stats: asObject(answer)?.stats === true };
+  return { news: parseReleaseNews(answer), stats: asObject(answer)?.stats === true, plan: planFromReport(answer, now) };
 }
 
 /**

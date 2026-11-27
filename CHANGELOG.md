@@ -22,8 +22,14 @@ New in this version: Watch follows what is said about you, an email when X warns
 
 - **An email when X warns your account, if you ask for it** (#407). Turn on *Email me when X warns my account* in Settings on xomoni.com. When X warns one of your X accounts and Xomoni stops there (Retreat or above on its risk ladder; never for a single rate limit), you get one email: the account's @handle, when Xomoni may go on at the earliest, and to rest the account meanwhile. It holds nothing X showed and nothing you posted, links only to your dashboard, and comes at most once every six hours. Every email has a link that stops it without signing in. It is off until you turn it on, and xomoni.com sends it only once its email key is set up.
 
-### Added
+- **Reach** (#429), a new page in the menu: how many times X says each of your posts and replies was seen, from X's own numbers, against your usual (the median of your posts of the same kind in the 8 weeks before, once there are 15 of them).
+  - Each post shows its views, its share of usual, where the number comes from (*Live*: the views X last showed Xomoni on a page you opened), and a link to it on X. Filter by posts or replies and by what they carry (a link, photos or videos, text only), and sort by date, by reach, or by how far below usual.
+  - How your reach spreads, as a chart or a table, and your 10 most and least seen posts.
+  - A post read before it was 7 days old is *still growing*: it is shown, but not compared. A post without a number is left out, never guessed.
+  - *Comparisons*: your posts with a link against posts without, with photos or videos against text only, and with Premium against the 8 weeks before it. Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, the ratio with its 95% interval, and, under *How this is computed*, what can mislead it. Below 15 posts a side, it says *not enough data* and nothing else. A table gives your usual reach by day of the week and time of day. They show what goes together, never why.
+  - The last 30 days are free; 90 days and everything, and the comparisons, are part of Plus, open as a preview until sales start.
 
+  Reach reads only what Xomoni already keeps: it never searches X or opens a page to measure reach, and nothing leaves your computer.
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
   - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
   - A post from an account made in the last 30 days is marked with its age, such as "account made 6 days ago". The date comes from X's own answer to the search Xomoni already loads, never from a request of its own; where X's answer has no date, there is no badge, never a guess.

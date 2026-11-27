@@ -1,0 +1,23 @@
+{
+  "notes": "Synthetic fixture for Xomoni's tests: fields Xomoni doesn't know yet. Not real data.",
+  "schemaVersion": 3,
+  "period": { "startDate": "2026-06-01", "endDate": "2026-06-30", "timezone": "UTC", "granularity": "month" },
+  "generatedAt": "2026-07-08T23:59:59Z",
+  "postCount": "75",
+  "reachSummary": { "impressions": "secret-looking value Xomoni never keeps" },
+  "postLabels": [
+    {
+      "label": "SPAM_HIGH_RECALL",
+      "about": "Post detected by automated systems as one that may contain spam.",
+      "effect": "Post hidden from recommendations to non-followers.",
+      "posts": 2,
+      "totalPostsInMonth": 75,
+      "percentageOfPosts": 2.67,
+      "severity": "medium",
+      "appealUrl": "https://example.com/never-kept"
+    },
+    { "about": "An entry without a name, which Xomoni skips." }
+  ],
+  "accountLabels": [],
+  "totalAccountLabels": 0
+}

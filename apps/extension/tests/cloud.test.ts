@@ -3,11 +3,12 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { CloudError, pairDevice, reportStatus, unpairDevice } from '../src/cloud/client';
 import { CLOUD_KEY, CLOUD_URL } from '../src/cloud/config';
 import { clearConnection, getConnection, saveConnection, watchConnection } from '../src/cloud/connection';
+import { currentEntitlement, currentPlanState, planKey, rememberPlan } from '../src/cloud/entitlement';
 import { currentUpdateNotice } from '../src/cloud/release';
 import { jobReport, phaseWords } from '../src/cloud/summary';
 import { HEARTBEAT_MS, confirmConnection, connect, disconnect, startCloudSync, syncOnce } from '../src/cloud/sync';
 import { createCleanupJob, watchJob } from '../src/engine/runner';
-import { db, recordRisk, upsertAccount } from '../src/shared/db';
+import { db, kvGet, recordRisk, upsertAccount } from '../src/shared/db';
 import type { Job } from '../src/shared/types';
 import { stubChrome } from './support/chrome';
 import { ME, resetDb } from './support/fixtures';
@@ -407,5 +408,118 @@ describe('reporting', () => {
     const stop = startCloudSync(onDisconnected, 10);
     await vi.waitFor(() => expect(onDisconnected).toHaveBeenCalled());
     stop();
+  });
+});
+
+describe('the plan, from each report’s answer (#423, ADR-0042)', () => {
+  const UNTIL = '2026-12-24T12:00:00+00:00';
+  const plus = { tier: 'plus', status: 'active', valid_until: UNTIL };
+  /** A report's answer, as #444's device_report writes it. */
+  const answer = (entitlement: unknown = plus, live: unknown = true) => ({
+    latest: '0.7.0',
+    security: false,
+    stats: false,
+    entitlement,
+    billing_live: live,
+  });
+  const connected = (deviceId = 'd1') =>
+    saveConnection({
+      deviceId,
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
+
+  it('reads the plan and the sales switch from the answer, heard when it came', async () => {
+    fetch.mockReturnValueOnce(json(200, answer()));
+    const status = await reportStatus('t', '0.7.0', [], 1_000);
+    expect(status.plan).toEqual({
+      entitlement: { tier: 'plus', status: 'active', validUntil: Date.parse(UNTIL), checkedAt: 1_000 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(200, { latest: '0.7.0', security: false, stats: true }));
+    expect((await reportStatus('t', '0.7.0', [])).plan).toBeNull();
+  });
+
+  it('keeps the plan each report brings, for this device', async () => {
+    await connected();
+    fetch.mockReturnValueOnce(json(200, answer()));
+    expect(await syncOnce()).toBe('ok');
+    expect(await currentPlanState()).toMatchObject({ entitlement: { tier: 'plus' }, live: true });
+    fetch.mockReturnValueOnce(json(200, answer({ tier: 'free', status: 'canceled', valid_until: UNTIL })));
+    expect(await syncOnce()).toBe('ok');
+    expect(await currentEntitlement()).toMatchObject({ tier: 'free', status: 'canceled' });
+  });
+
+  it('never lets an answer it can’t read, or none at all, erase the plan it had', async () => {
+    await connected();
+    fetch.mockReturnValueOnce(json(200, answer()));
+    await syncOnce();
+    const kept = await currentEntitlement();
+    for (const broken of [answer({ tier: 'gold' }), answer(plus, 'yes'), { latest: '0.7.0' }, null]) {
+      fetch.mockReturnValueOnce(json(200, broken));
+      expect(await syncOnce()).toBe('ok');
+      expect(await currentEntitlement()).toEqual(kept);
+    }
+    // Offline: the report fails, and the plan heard stays for its 7 days of grace.
+    fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    expect(await syncOnce()).toBe('offline');
+    expect(await currentEntitlement()).toEqual(kept);
+  });
+
+  it('forgets the plan when this browser disconnects, signs out, or connects anew', async () => {
+    await connected();
+    await rememberPlan('d1', {
+      entitlement: { tier: 'pro', status: 'active', validUntil: null, checkedAt: 1 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(204, null));
+    expect(await disconnect()).toBe('disconnected');
+    expect(await kvGet(planKey('d1'), null)).toBeNull();
+    // The sales switch isn't about the account: a browser that isn't connected is Free once sales are open.
+    expect(await currentPlanState()).toEqual({ entitlement: null, live: true });
+
+    await rememberPlan('d9', {
+      entitlement: { tier: 'pro', status: 'active', validUntil: null, checkedAt: 1 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(200, [{ device_id: 'd2', token: 'secret' }]));
+    await connect('code', 'Chrome');
+    expect(await kvGet(planKey('d9'), null)).toBeNull();
+  });
+
+  it('forgets the plan when the website no longer knows this browser', async () => {
+    await connected();
+    await rememberPlan('d1', {
+      entitlement: { tier: 'plus', status: 'active', validUntil: null, checkedAt: 1 },
+      live: true,
+    });
+    fetch.mockReturnValueOnce(json(400, { message: 'Not connected.', hint: 'unknown_device' }));
+    expect(await syncOnce()).toBe('disconnected');
+    expect(await kvGet(planKey('d1'), null)).toBeNull();
+  });
+
+  it('reports at once when the dashboard is shown again, so a plan bought in another tab opens without waiting', async () => {
+    await connected();
+    fetch.mockImplementation(() => json(200, answer()));
+    const visibility: { visibilityState: DocumentVisibilityState } = { visibilityState: 'visible' };
+    const page = Object.assign(new EventTarget(), visibility);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    const stop = startCloudSync(vi.fn(), 60_000, page);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    page.visibilityState = 'hidden';
+    page.dispatchEvent(new Event('visibilitychange'));
+    page.visibilityState = 'visible';
+    page.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+
+    stop();
+    page.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

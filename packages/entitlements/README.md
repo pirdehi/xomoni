@@ -23,6 +23,10 @@ Xomoni's plans and the one check of a paid feature ([ADR-0042](../../docs/adr/00
 
 Falling back to Free deletes nothing: a plan opens views and never locks data a person already has.
 
+## Used by
+
+- The extension's Reach page (#429): `ui/components/reach/PlusBadge.tsx` says each paid part's plan from `FEATURES` and `planAccess`, *Plus · preview* while sales aren't open. It locks nothing; `PlanGate` (#423) will check `hasPlan` once the plan comes from xomoni.com.
+
 ## Rules
 
 - `packages-do-not-import-apps`: this package depends on nothing in `apps/`.

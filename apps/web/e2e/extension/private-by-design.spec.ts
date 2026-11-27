@@ -21,7 +21,7 @@ function requests(context: BrowserContext): string[] {
 }
 
 /** The dashboard's pages, from the sidebar, with each page's heading. */
-const PAGES = ['Home', 'Cleanup', 'Library', 'Activity', 'Watch', 'Settings'] as const;
+const PAGES = ['Home', 'Cleanup', 'Library', 'Reach', 'Activity', 'Watch', 'Settings'] as const;
 
 /** What Xomoni's IndexedDB holds in the page `page` runs in: each database's name, and the copy's items there. */
 async function xomoniDatabase(page: Page) {

@@ -143,7 +143,8 @@ export function reachComparisons(
     known.filter((p) => p.links === 0 && p.media === 0),
     options,
   );
-  const start = Math.max(-Infinity, ...periods.flatMap((p) => (p.from === null ? [] : [p.from])));
+  // The latest known start, without spreading the spans into `Math.max`'s arguments: any number of them works.
+  const start = periods.reduce((latest, p) => (p.from === null ? latest : Math.max(latest, p.from)), -Infinity);
   const before = Number.isFinite(start)
     ? settled.filter((p) => p.createdAt >= start - PREMIUM_SIDE_DAYS * DAY_MS && p.createdAt < start)
     : [];
@@ -161,6 +162,37 @@ export function reachComparisons(
     options,
   );
   return [links, media, Number.isFinite(start) ? premium : { ...premium, needsDate: true }];
+}
+
+/** One number's 64 bits, as two 32-bit words, for `comparedKey`. */
+const NUMBER = new Float64Array(1);
+const WORDS = new Uint32Array(NUMBER.buffer);
+
+/**
+ * A key that changes whenever anything `reachComparisons` or `reachByTime` reads changes: the settled posts (replies
+ * left out), each one's time, hour, day, impressions, links, media and followers, and the Premium spans' starts. Rows
+ * that are new copies of the same posts, or posts that changed in what neither reads (whether one is still on X, its
+ * text, a reply, a post still growing), give the same key, so the page computes the comparisons again only when they
+ * can change (#497). One pass over the posts, a 64-bit hash: far cheaper than one of the 2,000 resamples.
+ */
+export function comparedKey(posts: readonly ComparedPost[], periods: readonly PremiumPeriod[]): string {
+  let [h1, h2] = [0xdeadbeef, 0x41c6ce57];
+  const mix = (value: number | null) => {
+    NUMBER[0] = value ?? Number.NaN;
+    for (const word of WORDS) {
+      h1 = Math.imul(h1 ^ word, 2_654_435_761);
+      h2 = Math.imul(h2 ^ word, 1_597_334_677);
+    }
+  };
+  const settled = settledPosts(posts);
+  for (const p of settled) {
+    for (const value of [p.createdAt, p.impressions, p.links, p.media, p.hour, p.weekday, p.followersAtTime])
+      mix(value);
+  }
+  for (const p of periods) mix(p.from);
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2_246_822_507) ^ Math.imul(h2 ^ (h2 >>> 13), 3_266_489_909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2_246_822_507) ^ Math.imul(h1 ^ (h1 >>> 13), 3_266_489_909);
+  return [settled.length, periods.length, h1 >>> 0, h2 >>> 0].map((n) => n.toString(36)).join(':');
 }
 
 /** A cell of the day and time table: how many settled posts, and their median when there are enough. */

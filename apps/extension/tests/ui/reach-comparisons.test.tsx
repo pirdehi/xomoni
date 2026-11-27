@@ -1,9 +1,16 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as compare from '../../src/shared/vault/reach-compare';
 import { ReachComparisons } from '../../src/ui/components/reach/ReachComparisons';
 import type { ReachRow } from '../../src/ui/reach';
+
+// The real statistics, counted: each comparison takes 2,000 resamples a side, so the page must not repeat them.
+vi.mock('../../src/shared/vault/reach-compare', async (importOriginal) => {
+  const real = await importOriginal<typeof compare>();
+  return { ...real, reachComparisons: vi.fn(real.reachComparisons), reachByTime: vi.fn(real.reachByTime) };
+});
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 1);
@@ -123,5 +130,58 @@ describe('Reach’s comparisons (#429, ADR-0045)', () => {
       'Not enough data',
       'Not enough data',
     ]);
+  });
+});
+
+describe('Reach’s comparisons, computed once for the same posts (#429)', () => {
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(cleanup);
+
+  const rows = [...many('l', 30, 500, { links: 1 }), ...many('t', 30, 1_000)];
+  const calls = () => [
+    vi.mocked(compare.reachComparisons).mock.calls.length,
+    vi.mocked(compare.reachByTime).mock.calls.length,
+  ];
+
+  it('draws again with copies of the same posts, or with changes no comparison reads, without computing again', () => {
+    const { rerender } = render(<ReachComparisons rows={rows} periods={[]} />);
+    expect(calls()).toEqual([1, 1]);
+    expect(document.querySelector('[data-verdict="clear-lower"]')).toBeInTheDocument();
+
+    // The page's live query hands over new copies of every row whenever any item changes, such as a post a running
+    // cleanup removed from X, a reply seen again, or a young post's views.
+    rerender(<ReachComparisons rows={rows.map((r) => ({ ...r }))} periods={[]} />);
+    rerender(
+      <ReachComparisons
+        rows={[
+          ...rows.map((r, i) => (i === 0 ? { ...r, onX: false, text: 'removed' } : { ...r })),
+          row('reply', 9_999, { kind: 'reply', links: 1 }),
+          row('young', 9_999, { ageAtAsOfDays: 2, growing: true }),
+        ]}
+        periods={[]}
+      />,
+    );
+    rerender(<ReachComparisons rows={rows} periods={[]} />);
+    expect(calls()).toEqual([1, 1]);
+    expect(document.querySelector('[data-verdict="clear-lower"]')).toBeInTheDocument();
+  });
+
+  it('computes again, once, when a post it compares changes, or when Xomoni learns when Premium began', () => {
+    const { rerender } = render(<ReachComparisons rows={rows} periods={[]} />);
+    expect(calls()).toEqual([1, 1]);
+
+    // The links side now seen as much as the rest: no longer lower.
+    const seenMore = rows.map((r) => (r.links ? { ...r, impressions: (r.impressions ?? 0) * 2 } : r));
+    rerender(<ReachComparisons rows={seenMore} periods={[]} />);
+    expect(calls()).toEqual([2, 2]);
+    expect(document.querySelector('[data-verdict="clear-lower"]')).not.toBeInTheDocument();
+    rerender(<ReachComparisons rows={seenMore.map((r) => ({ ...r }))} periods={[]} />);
+    expect(calls()).toEqual([2, 2]);
+
+    rerender(<ReachComparisons rows={seenMore} periods={[{ from: NOW - 70 * DAY, to: null }]} />);
+    expect(calls()).toEqual([3, 3]);
+    expect(
+      screen.queryByText("Xomoni doesn't know yet when you got Premium, so it can't compare."),
+    ).not.toBeInTheDocument();
   });
 });

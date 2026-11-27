@@ -9,6 +9,7 @@ import {
   NO_REACH_SOURCES,
   type PremiumEvent,
   type ReachSources,
+  BULK_LOOKUP,
   VAULT_REACH_SOURCES,
   dailyReachSeries,
   followersAt,
@@ -305,6 +306,26 @@ describe('each post’s reach (#428, ADR-0045)', () => {
       ]);
       expect(await VAULT_REACH_SOURCES.premiumEvents(ME)).toEqual([{ kind: 'premium_on', at: T + DAY }]);
       expect(await VAULT_REACH_SOURCES.analytics(ME, [])).toEqual(new Map());
+    });
+
+    it('reads the CSV of a large period by the account in one pass, keeping only the posts asked for', async () => {
+      await db.analyticsPosts.bulkPut([
+        { key: analyticsPostKey(ME, '1'), accountId: ME, postId: '1', createdAt: T, asOf: T, impressions: 40 },
+        { key: analyticsPostKey(ME, '9'), accountId: ME, postId: '9', createdAt: T, asOf: T, impressions: 90 },
+        { key: analyticsPostKey('other', '1'), accountId: 'other', postId: '1', createdAt: T, asOf: T, impressions: 7 },
+      ]);
+      const many = Array.from({ length: BULK_LOOKUP + 1 }, (_, i) => String(i + 1));
+      const bulkGet = vi.spyOn(db.analyticsPosts, 'bulkGet');
+      const read = await VAULT_REACH_SOURCES.analytics(ME, many);
+      expect(bulkGet).not.toHaveBeenCalled();
+      // Post 9 is asked for too; a post of another account, or one not asked for, never comes back.
+      expect([...read.entries()]).toEqual([
+        ['1', { impressions: 40, asOf: T }],
+        ['9', { impressions: 90, asOf: T }],
+      ]);
+      expect([...(await VAULT_REACH_SOURCES.analytics(ME, ['9'])).keys()]).toEqual(['9']);
+      expect([...(await VAULT_REACH_SOURCES.analytics(ME, ['2', ...many.slice(9)])).keys()]).toEqual([]);
+      bulkGet.mockRestore();
     });
 
     it('reads without the vault: no CSV and no Premium changes', async () => {

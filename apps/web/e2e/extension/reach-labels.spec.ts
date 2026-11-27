@@ -316,6 +316,20 @@ test.describe('X’s labels on Reach', { tag: '@task-429' }, () => {
     await tabTo(monthRegion(dashboard, '2026-08').getByRole('link', { name: 'Roboin, 4 September 2026' }), 200);
   });
 
+  test('S429-111 X’s labels have no serious accessibility violation in light mode', async ({
+    dashboard,
+    page,
+    context,
+  }) => {
+    await withMonths(dashboard, page, context, [
+      { month: '2026-08', labels: [SPAM, { name: 'SYNTHETIC', count: 1, scope: 'account' }], postsInMonth: 30 },
+      { month: '2026-07', labels: [], eligible: false },
+      { month: '2026-06', labels: [], governmentOrders: [{ country: 'Synthetic country', count: 1 }] },
+    ]);
+    await expect(monthRegion(dashboard, '2026-08')).toBeVisible();
+    await expectNoSeriousA11yViolations(dashboard);
+  });
+
   test.describe('in dark mode', () => {
     test.use({ colorScheme: 'dark' });
 

@@ -97,8 +97,9 @@ A heavy X user has more than 100,000 posts and 100,000 likes. Two tests run Xomo
 | Test | What it runs | The history |
 | --- | --- | --- |
 | `apps/extension/tests/scale.test.ts` | The queries behind Home, the Library, Cleanup, the daily numbers, the archive import, *Export everything* and the move-your-data import, on Dexie and `fake-indexeddb` | `tests/support/history.ts`: posts, replies (a third in the person's own threads) and reposts, likes, from X's archive, from X's pages or both, some removed by Xomoni with their lines in the log, the jobs, 400 days of daily numbers and others' replies |
-| `apps/web/e2e/extension/scale.spec.ts` | The built extension in Chromium: X's archive imported in the Library, the Library opened, paged, filtered and searched, Cleanup's count with keep rules, Home with its chart, *Export everything*, *Delete local data*, and the export imported into the emptied Xomoni | `e2e/support/scale.ts`: X's archive ZIP of the same mix, over 15 years |
+| `apps/web/e2e/extension/scale.spec.ts` | The built extension in Chromium: X's archive imported in the Library, the Library opened, paged, filtered and searched, Cleanup's count with keep rules, Home with its chart, Reach over 30 days and over everything, its posts given views (#431), *Export everything*, *Delete local data*, and the export imported into the emptied Xomoni | `e2e/support/scale.ts`: X's archive ZIP of the same mix, over 15 years |
 | `apps/extension/tests/reach-stats.test.ts` | Reach's comparisons (#429, #431): 50,000 posts compared with 2,000 bootstrap resamples within 500 ms, P5.4.3's budget, on a loaded machine with coverage on. A resample's median is drawn from its order statistic (`resampledMedian`), and two tests check it against the bootstrap's exact distribution. | Two groups of 25,000 views from a seeded generator |
+| `apps/extension/tests/reach-perf.test.ts` | Reach at 50,000 posts (#431, P5.4.3): the posts read within a second, the three comparisons within half a second, and the suspected posts of 24 months of X's labels within half a second. The posts' hour and day in a time zone use one formatter per zone: making one for each post took six seconds at that size | 50,000 posts over two years with views, links and photos, from a pattern; X's index played, as `fake-indexeddb` would take minutes to fill |
 | `apps/extension/tests/vault-perf.test.ts` | The vault's paths (#426): a page of the account's timeline, the Vault page's sources card, the export's estimate, the reminder, the ledger, a batch of analytics merged, and X's analytics export of posts and days imported | Made in the test: 50,000 posts' analytics, three years of days, 20,000 timeline entries and 500 imports |
 | `apps/web/e2e/extension/vault-perf.spec.ts` | The built extension: X's archive and an analytics export of 50,000 posts imported on the Vault page, the page opened, *Export my vault* | `e2e/support/scale.ts`'s archive, and a CSV made in the test |
 
@@ -126,6 +127,7 @@ Each path has budgets, wide enough for CI's runners: they catch a path that went
 | Cleanup: the count of posts older than a year | 15 s | 3.9 to 5.1 s | 1.7 to 2.5 s |
 | Cleanup: the count with keep rules | 15 s | 3.0 to 4.1 s | 0.6 to 0.8 s |
 | Home: its counts and its chart by year | 10 s | 5.4 s | 1.7 s |
+| Reach over the last 30 days, then over every post (#431), the archive's 88,000 posts and replies given views first | 10 s, 15 s | — | 0.3 s, then 3.6 s: over everything this is past P5.4.3's 1.5 s for a first view, a follow-up |
 | *Export everything* | 120 s | 3.5 to 5.0 s | 2.7 to 5.4 s |
 | *Delete local data* | 180 s | 29 to 38 s | 27 to 66 s (unchanged code) |
 | The move-your-data import into an emptied Xomoni | 240 s | 58 to 77 s | 56 to 118 s (unchanged code) |

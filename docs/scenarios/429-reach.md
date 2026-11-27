@@ -776,3 +776,18 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When the person opens the Vault page
 - Then Your sources says the report is up to date: X makes no report for a month with fewer than 10 posts
 - Test: apps/web/e2e/extension/reach-labels.spec.ts
+
+## S429-110 · a11y
+
+- Given the Premium card asks When did you get Premium?, in light and in dark mode
+- When the person opens the question, then gives a day ahead of today and presses Save
+- Then axe-core finds no serious or critical violation with the dialog open, nor with what it says is wrong
+- Test: apps/web/e2e/extension/reach-comparisons.spec.ts
+
+## S429-111 · a11y
+
+- Given three months of X's labels in light mode: one with a label on posts and one on the account, one the account
+  wasn't eligible for, and one with a government's order
+- When axe-core checks the page
+- Then it finds no serious or critical violation
+- Test: apps/web/e2e/extension/reach-labels.spec.ts

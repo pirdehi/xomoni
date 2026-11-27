@@ -157,17 +157,27 @@ export function premiumAt(periods: readonly PremiumPeriod[], at: number): boolea
   return known ? false : null;
 }
 
+/**
+ * One formatter per time zone, made once: making one takes about a tenth of a millisecond, which at 50,000 posts was
+ * most of the time Reach took to read them (#431, P5.4.3).
+ */
+const FORMATS = new Map<string, Intl.DateTimeFormat>();
+
 /** The hour and the day of the week of `ms` in `timeZone` (an IANA name), or in the computer's own when not given. */
 export function hourAndWeekday(ms: number, timeZone?: string): { hour: number; weekday: number } {
   if (!timeZone) {
     const d = new Date(ms);
     return { hour: d.getHours(), weekday: d.getDay() };
   }
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23', weekday: 'short' })
-    .formatToParts(ms)
-    .reduce<Record<string, string>>((all, part) => ({ ...all, [part.type]: part.value }), {});
-  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday ?? '');
-  return { hour: Number(parts.hour), weekday };
+  let format = FORMATS.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23', weekday: 'short' });
+    FORMATS.set(timeZone, format);
+  }
+  const parts = format.formatToParts(ms);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(value('weekday'));
+  return { hour: Number(value('hour')), weekday };
 }
 
 /** The followers of the day closest to `at` whose row has the profile's counts (the earlier on a tie); null without. */

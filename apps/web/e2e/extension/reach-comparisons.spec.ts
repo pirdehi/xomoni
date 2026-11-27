@@ -429,6 +429,31 @@ test.describe('Reach comparisons', { tag: '@task-429' }, () => {
     });
   });
 
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test.describe(`in ${colorScheme} mode`, () => {
+      test.use({ colorScheme });
+
+      test('S429-110 the Premium question’s dialog has no serious accessibility violation', async ({
+        dashboard,
+        page,
+        context,
+      }) => {
+        await browsedWith(dashboard, page, context, PREMIUM_POSTS);
+        await openReach(dashboard);
+        await dashboard.getByRole('button', { name: 'Everything', exact: true }).click();
+        await card(dashboard, PREMIUM).getByRole('button', { name: 'When did you get Premium?' }).click();
+        const dialog = dashboard.getByRole('dialog', { name: 'When did you get Premium?' });
+        await expect(dialog.getByLabel('The day you got X Premium')).toBeVisible();
+        await expectNoSeriousA11yViolations(dashboard);
+        // A day ahead of today: the dialog says why it can't be, and still reads well.
+        await dialog.getByLabel('The day you got X Premium').fill(dayAgo(-3));
+        await dialog.getByRole('button', { name: 'Save' }).click();
+        await expect(dialog.getByRole('alert')).toBeVisible();
+        await expectNoSeriousA11yViolations(dashboard);
+      });
+    });
+  }
+
   test('S429-52 at a phone’s width the cards stack, and the page doesn’t scroll sideways', async ({
     dashboard,
     page,

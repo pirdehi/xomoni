@@ -19,13 +19,7 @@ export const README_FILES = { en: 'README.md', fa: 'README.fa.md' };
  * leaves the list when its file lands (the check fails while a feature with a file is still listed). A new feature
  * never joins it: it names its `docs/scenarios/<issue>-<slug>.md` from the start.
  */
-export const LEGACY_FEATURES = Object.freeze([
-  'beyond-profile-limit',
-  'verified-actions',
-  'login-handoff',
-  'resumable-jobs',
-  'keeps-going',
-]);
+export const LEGACY_FEATURES = Object.freeze(['verified-actions', 'login-handoff', 'resumable-jobs', 'keeps-going']);
 
 const REGISTRY = 'docs/features.json';
 const RELEASE_URL = 'https://github.com/pirdehi/xomoni/releases/tag/v';

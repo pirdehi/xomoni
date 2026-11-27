@@ -55,7 +55,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [15],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/15-beyond-profile-limit.md",
       "en": {
         "title": "Reaches past the ~3,200 profile limit",
         "summary": "sweeps X search (`from:you until:date`) in pages and imports your official X archive."

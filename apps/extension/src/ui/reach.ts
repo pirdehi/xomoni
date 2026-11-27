@@ -80,7 +80,8 @@ export async function reachData(
     rows,
     csv: rows.filter((r) => r.source === 'csv').length,
     live: live.length,
-    lastSeen: live.length ? Math.max(...live.map((r) => r.asOf ?? 0)) : null,
+    // Not `Math.max(...)`: spreading 125,000 or more values into a call's arguments overflows V8's stack.
+    lastSeen: live.length ? live.reduce((latest, r) => Math.max(latest, r.asOf ?? 0), -Infinity) : null,
     periods: premiumPeriods(events, account ?? null),
   };
 }

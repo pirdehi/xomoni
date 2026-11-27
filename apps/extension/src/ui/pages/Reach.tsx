@@ -67,7 +67,7 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
             <EmptyState
               icon={<DataTrending20Regular />}
               title="No reach to show yet"
-              body="Import your X analytics export (needs X Premium), or open your profile on X so Xomoni sees your views."
+              body="Reach's numbers come from the views X shows on your own posts and replies. Open your profile on X, and Xomoni keeps the views it shows. More sources are coming."
             />
           </Card>
         ) : (

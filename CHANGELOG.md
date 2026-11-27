@@ -8,6 +8,29 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 - **X's archive, known when it comes again** (#424). Each import of X's archive in the Library is now kept in Xomoni's import ledger, on your computer only, with the date X made the archive, and it goes on your account's timeline. Drop the same ZIP again and Xomoni knows it: nothing is read or written twice. The Library's words, its limits and its checks, another account's archive first of all, are the same as before.
 
+### Added
+
+- **The vault: X's own files, kept on your computer** (#425, #424). A new *Vault* page in the dashboard:
+  - drop or choose X's archive (the ZIP) and its analytics export (CSV of posts or of days), together if you like. *Import these files?* says what was recognized, for which account and with what warning, before anything is written: a file already imported, a CSV whose owner you confirm, and every refused file with why;
+  - *Your sources* says how fresh each file is and what it holds, *Imports* lists every import with what it left out, and *Account timeline* keeps X Premium seen on or off, your archive's request and import, and your own notes, with *Export CSV*;
+  - a reminder, at most once a day and within your active hours, says when the archive (30 days) or the analytics (60) is due for a fresh copy. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off.
+
+  Everything stays on your computer. The vault never opens X, scrolls, clicks or starts anything there, and asks for no new permission.
+
+- **Reach: X's labels and suspected posts** (#428, #429). On the Reach page:
+  - *X's labels*: each month of X's *Under the hood* report you import, with each label by X's own name, the posts it touched or that it was on the account, and what it means when a public source says so, with that source and the day it was checked. A month without labels says *No labels that month*, never "clean".
+  - *Suspected posts*: for a label X applied to n posts in a month, that month's posts furthest below your usual (under half of it, at most three for each post X counts, ten at most), each with why it was picked, under a box that can't be hidden: *This is a guess. X doesn't say which posts got a label.* You can dismiss a guess; nothing leads to a cleanup.
+  - drop X's *Under the hood* report (JSON) on the Vault page; *Your sources* follows it, and the vault's reminder says when the next month's is out (from the 3rd of each month, never for a month with fewer than 10 of your posts in Xomoni).
+  - when Xomoni never saw your account turn Premium, the Premium comparison asks *When did you get Premium?* and compares from the day you give, kept on your account's timeline.
+
+  The suspected posts are part of Plus, open as a preview until sales start. Nothing leaves your computer.
+
+## [0.6.0] - 2026-11-24
+
+New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.
+
+### Changed
+
 - **Faster with a large copy of your account** (#390). With 100,000 posts and 100,000 likes, as a heavy X user has:
   - importing X's archive in the Library takes about a minute and a half instead of four to five: it saves 20,000 posts at a time, so the page counts your copy again ten times rather than a hundred;
   - the Library opens in about a second instead of four or five, and Home's counts and its chart by year in under two seconds instead of five: Xomoni counts your posts the fast way, and no longer reads them one by one for the chart;
@@ -18,27 +41,16 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Added
 
-- **The vault: X's own files, kept on your computer** (#425, #424). A new *Vault* page in the dashboard:
-  - drop or choose X's archive (the ZIP) and its analytics export (CSV of posts or of days), together if you like. *Import these files?* says what was recognized, for which account and with what warning, before anything is written: a file already imported, a CSV whose owner you confirm, and every refused file with why;
-  - *Your sources* says how fresh each file is and what it holds, *Imports* lists every import with what it left out, and *Account timeline* keeps X Premium seen on or off, your archive's request and import, and your own notes, with *Export CSV*;
-  - a reminder, at most once a day and within your active hours, says when the archive (30 days) or the analytics (60) is due for a fresh copy. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off.
-
-  Everything stays on your computer. The vault never opens X, scrolls, clicks or starts anything there, and asks for no new permission.
-
 - **An email when X warns your account, if you ask for it** (#407). Turn on *Email me when X warns my account* in Settings on xomoni.com. When X warns one of your X accounts and Xomoni stops there (Retreat or above on its risk ladder; never for a single rate limit), you get one email: the account's @handle, when Xomoni may go on at the earliest, and to rest the account meanwhile. It holds nothing X showed and nothing you posted, links only to your dashboard, and comes at most once every six hours. Every email has a link that stops it without signing in. It is off until you turn it on, and xomoni.com sends it only once its email key is set up.
 
 - **Reach** (#429), a new page in the menu: how many times X says each of your posts and replies was seen, from X's own numbers, against your usual (the median of your posts of the same kind in the 8 weeks before, once there are 15 of them).
   - Each post shows its views, its share of usual, where the number comes from (*Live*: the views X last showed Xomoni on a page you opened), and a link to it on X. Filter by posts or replies and by what they carry (a link, photos or videos, text only), and sort by date, by reach, or by how far below usual.
   - How your reach spreads, as a chart or a table, and your 10 most and least seen posts.
   - A post read before it was 7 days old is *still growing*: it is shown, but not compared. A post without a number is left out, never guessed.
-  - *Comparisons*: your posts with a link against posts without, with photos or videos against text only, and with Premium against the 8 weeks before it. Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, the ratio with its 95% interval, and, under *How this is computed*, what can mislead it. Below 15 posts a side, it says *not enough data* and nothing else. When Xomoni never saw your account turn Premium, the Premium card asks *When did you get Premium?*, and the day you give goes on your account's timeline. A table gives your usual reach by day of the week and time of day. They show what goes together, never why.
-  - *X's labels*: each month of X's *Under the hood* report you import, with each label by X's own name, the posts it touched or that it was on the account, and what it means when a public source says so, with that source and the day it was checked. A month without labels says *No labels that month*, never "clean".
-  - *Suspected posts*: for a label X applied to n posts in a month, that month's posts furthest below your usual (under half of it, at most three for each post X counts, ten at most), each with why it was picked, under a box that can't be hidden: *This is a guess. X doesn't say which posts got a label.* You can dismiss a guess; nothing leads to a cleanup.
-  - The last 30 days are free; 90 days and everything, the comparisons and the suspected posts are part of Plus, open as a preview until sales start.
+  - *Comparisons*: your posts with a link against posts without, with photos or videos against text only, and with Premium against the 8 weeks before it. Each says one of five fixed words (*Clearly lower*, *Clearly higher*, *No difference*, *Maybe*, *Not enough data*), each side's size and median, the ratio with its 95% interval, and, under *How this is computed*, what can mislead it. Below 15 posts a side, it says *not enough data* and nothing else. A table gives your usual reach by day of the week and time of day. They show what goes together, never why.
+  - The last 30 days are free; 90 days and everything, and the comparisons, are part of Plus, open as a preview until sales start.
 
   Reach reads only what Xomoni already keeps: it never searches X or opens a page to measure reach, and nothing leaves your computer.
-
-### Added
 
 - **Watch what is said about you** (#391). Watch has two ready searches for the account in your X window: *Mentions of you* (`@handle -from:handle`) and *Replies to you* (`to:handle`).
   - They are off until you turn them on, under *About you* on the Watch page, and each counts as one of the five tabs. Each shows exactly what it searches, and follows your account: sign in to X as another account, and they search that one's.
@@ -49,6 +61,8 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ### Fixed
 
+- When one of the dashboard's pages failed while drawing, the whole dashboard went blank, the menu and the running job's *Pause* with it (#497). Now only that page says *This page couldn't be shown*: the menu, the job's banner and its *Pause* stay, and the other pages open as usual.
+- A status report still on its way to xomoni.com when you signed out of Xomoni, or disconnected this browser, could put the connection back once xomoni.com answered, so this browser could go on reporting job status after you left (#497). Now a report keeps nothing once a sign-out or a disconnect began, nothing is sent while you are signed out, and the dashboard sends one report at a time, however often you switch back to its tab.
 - Some parts of the dashboard could stop following what they show, such as the account in the X window, the update notice, xomoni.com's requests and the limits panel (#459). Their live reads now all keep up: each one runs as Dexie needs to follow it, and a check stops the pattern coming back.
 - **Safety: two quick changes in Settings no longer lose the first** (#427). Each change on the Settings page was saved as the settings the page last drew, with that one field changed. A second change made before the page drew the first, such as *From* then *Until* on a busy computer, put the old value back: the active hours could end up other than the ones chosen, and a job could then work in hours you had excluded. A change from xomoni.com could race one made on the page in the same way. Now each change applies to the settings as stored at that moment, in one step, so both land. This is a safety fix.
 - Xomoni's *Connections* panel said *Only job status is sent* even while your daily numbers were sent to xomoni.com too (#450). It now says *Only job status and your daily numbers are sent* while they are on, and job status only while they are off, and so do its map, the sign-out dialogs and Settings. The privacy policy, the landing page, the install guide and xomoni.com's sign-in panel now name the daily numbers, sent only if you turn them on, as the only other thing that reaches xomoni.com. On xomoni.com's dashboard, when your numbers choice can't be read, it no longer shows a switch that says off while they may be on: it says it couldn't tell, with *Try again*.

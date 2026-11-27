@@ -149,8 +149,9 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given a fresh install, with the X window open
 - When the person opens Reach
-- Then it says *No reach to show yet*, and *Import your X analytics export (needs X Premium), or open your profile on
-  X so Xomoni sees your views.*
+- Then it says *No reach to show yet*, and *Reach's numbers come from the views X shows on your own posts and replies.
+  Open your profile on X, and Xomoni keeps the views it shows. More sources are coming.*
+- And it doesn't offer X's analytics export, which this version can't read, nor ask for X Premium
 - Test: apps/web/e2e/extension/reach.spec.ts
 
 ## S429-19 · empty

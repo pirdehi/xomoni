@@ -4,9 +4,17 @@
 import { liveQuery } from 'dexie';
 import { db, riskEvents } from '../shared/db';
 import { assessRisk } from '../shared/risk';
+import { getSignedOut } from '../shared/session';
 import { CloudError, type StatusAnswer, pairDevice, reportStatus, unpairDevice } from './client';
-import { type CloudConnection, clearConnection, getConnection, saveConnection } from './connection';
-import { rememberStatsChoice, sendDailyNumbers } from './daily-report';
+import {
+  type CloudConnection,
+  clearConnection,
+  forgetStoredConnection,
+  getConnection,
+  isStoredConnection,
+  saveConnection,
+} from './connection';
+import { type KeepIfCurrent, rememberStatsChoice, sendDailyNumbers } from './daily-report';
 import { forgetPlans, rememberPlan } from './entitlement';
 import { saveReleaseNews } from './release';
 import { type JobReport, jobReport } from './summary';
@@ -35,38 +43,93 @@ async function changedJobs(since: number): Promise<{ jobs: JobReport[]; upTo: nu
   return { jobs, upTo: changed.at(-1)?.updatedAt ?? since };
 }
 
+/** How a report went: see `syncOnce`. */
+export type SyncResult = 'ok' | 'idle' | 'disconnected' | 'offline';
+
 /**
- * One report: a heartbeat with the jobs updated since the last one. `disconnected` when xomoni.com no longer
- * knows this browser (the person disconnected it there), `offline` when it couldn't be reached. Keeps what the
- * answer says about the newest release (#151), the account's plan (ADR-0042) and its choice of daily numbers, and
- * sends the days not yet sent while it shows them (#250).
+ * The writes of a report for `connection`, each in one transaction with the check that it may still keep them: no
+ * sign-out began (`signedOut` in `kv`, the first thing every sign-out records) and `connection` is still the stored
+ * one, not disconnected nor replaced by another. Without that, a report still under way when the person signed out,
+ * disconnected or connected anew wrote the plan back after it was forgotten, or saved the old connection again. The
+ * check reads IndexedDB only, so nothing else can end the transaction between it and the writes.
  */
-export async function syncOnce(): Promise<'ok' | 'idle' | 'disconnected' | 'offline'> {
+function keepIfCurrent(connection: CloudConnection): KeepIfCurrent {
+  return (write) =>
+    db.transaction('rw', db.kv, async () => {
+      if ((await getSignedOut()) || !(await isStoredConnection(connection))) return false;
+      await write?.();
+      return true;
+    });
+}
+
+/** One report, as `syncOnce` describes it. */
+async function reportOnce(): Promise<SyncResult> {
   const connection = await getConnection();
-  // Nothing goes out until the person confirmed the account is theirs (#149).
-  if (!connection?.confirmed) return 'idle';
+  // Nothing goes out until the person confirmed the account is theirs (#149), nor once they signed out of Xomoni,
+  // even in the moment before the sign-out disconnects this browser (#226).
+  if (!connection?.confirmed || (await getSignedOut())) return 'idle';
+  const keep = keepIfCurrent(connection);
   const { jobs, upTo } = await changedJobs(connection.reportedUpTo);
   let answer: StatusAnswer;
   try {
     answer = await reportStatus(connection.token, version(), jobs);
   } catch (err) {
     if (err instanceof CloudError && err.reason === 'unknown_device') {
-      await clearConnection();
-      await forgetPlans();
-      return 'disconnected';
+      // Only this connection, as it was: a sign-out forgets it anyway, and a connection made since stays.
+      const forgot = await keep(async () => {
+        await forgetStoredConnection();
+        await forgetPlans();
+      });
+      return forgot ? 'disconnected' : 'idle';
     }
     if (err instanceof CloudError && err.reason === 'unreachable') return 'offline';
     throw err;
   }
-  if (upTo > connection.reportedUpTo) await saveConnection({ ...connection, reportedUpTo: upTo });
-  if (answer.news) await saveReleaseNews(answer.news);
-  // The account's plan (ADR-0042): an answer that doesn't carry one readably changes nothing.
-  if (answer.plan) await rememberPlan(connection.deviceId, answer.plan);
-  // Daily numbers (#250, ADR-0026): only while the account shows them, as xomoni.com just said. A failure here waits
-  // for the next heartbeat and never stops the status report.
-  await rememberStatsChoice(answer.stats);
-  if (answer.stats) await sendDailyNumbers(connection.token).catch(() => 0);
+  const kept = await keep(async () => {
+    if (upTo > connection.reportedUpTo) await saveConnection({ ...connection, reportedUpTo: upTo });
+    if (answer.news) await saveReleaseNews(answer.news);
+    // The account's plan (ADR-0042): an answer that doesn't carry one readably changes nothing.
+    if (answer.plan) await rememberPlan(connection.deviceId, answer.plan);
+    // Daily numbers (#250, ADR-0026): only while the account shows them, as xomoni.com just said.
+    await rememberStatsChoice(answer.stats);
+  });
+  if (!kept) return 'idle';
+  // A failure here waits for the next heartbeat and never stops the status report.
+  if (answer.stats) await sendDailyNumbers(connection.token, Date.now(), keep).catch(() => 0);
   return 'ok';
+}
+
+/** The report under way in this page, and the one asked for while it runs: one at a time. */
+let running: Promise<SyncResult> | null = null;
+let followUp: Promise<SyncResult> | null = null;
+
+/** Starts the report asked for while the last one ran. */
+const afterRunning = (): Promise<SyncResult> => {
+  followUp = null;
+  return syncOnce();
+};
+
+/**
+ * One report: a heartbeat with the jobs updated since the last one. `disconnected` when xomoni.com no longer
+ * knows this browser (the person disconnected it there), `offline` when it couldn't be reached, `idle` when nothing
+ * went out or nothing came back to keep. Keeps what the answer says about the newest release (#151), the account's
+ * plan (ADR-0042) and its choice of daily numbers, and sends the days not yet sent while it shows them (#250).
+ *
+ * One report at a time in a page: asked for while one runs, as each time the dashboard is shown again, it waits for
+ * that one, and every request made meanwhile shares a single follow-up (the promise they get), which reads the
+ * connection and the jobs afresh. Nothing is sent once a sign-out began, and nothing a report brings back is kept once
+ * a sign-out began or the connection changed (`keepIfCurrent`).
+ */
+export function syncOnce(): Promise<SyncResult> {
+  if (running) {
+    followUp ??= running.then(afterRunning, afterRunning);
+    return followUp;
+  }
+  const report = reportOnce().finally(() => {
+    running = null;
+  });
+  running = report;
+  return report;
 }
 
 /**
@@ -132,8 +195,9 @@ export async function disconnect(): Promise<'disconnected' | 'forgotten-here' | 
  * Keeps xomoni.com up to date while the dashboard is open: reports soon after a job changes (a few seconds of
  * quiet first, so a busy job sends one report), at least every `HEARTBEAT_MS`, and at once whenever the dashboard is
  * shown again (`page`), so a plan bought on xomoni.com in another tab opens without waiting for the heartbeat
- * (ADR-0042). Calls `onDisconnected` once if the person disconnected this browser on the website. Returns the
- * function that stops it.
+ * (ADR-0042). A report asked for while one runs waits for it, and all such requests make one more (`syncOnce`), so
+ * switching tabs quickly never sends reports side by side. Calls `onDisconnected` once if the person disconnected this
+ * browser on the website. Returns the function that stops it.
  */
 export function startCloudSync(
   onDisconnected: () => void,
@@ -144,9 +208,14 @@ export function startCloudSync(
 ): () => void {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // The last report followed: a request that joined it (`syncOnce`'s follow-up) gets the same one, heard once.
+  let followed: Promise<SyncResult> | null = null;
   const run = () => {
     if (stopped) return;
-    void syncOnce()
+    const report = syncOnce();
+    if (report === followed) return;
+    followed = report;
+    void report
       .then((result) => {
         if (result === 'disconnected') onDisconnected();
       })

@@ -115,10 +115,16 @@ jobs:
             shard: 2/2
           - part: extension-1
             suite: extension
-            shard: 1/2
+            shard: 1/4
           - part: extension-2
             suite: extension
-            shard: 2/2
+            shard: 2/4
+          - part: extension-3
+            suite: extension
+            shard: 3/4
+          - part: extension-4
+            suite: extension
+            shard: 4/4
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
@@ -192,10 +198,16 @@ jobs:
             shard: 2/2
           - part: extension-1
             suite: extension
-            shard: 1/2
+            shard: 1/4
           - part: extension-2
             suite: extension
-            shard: 2/2
+            shard: 2/4
+          - part: extension-3
+            suite: extension
+            shard: 3/4
+          - part: extension-4
+            suite: extension
+            shard: 4/4
     env:
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder

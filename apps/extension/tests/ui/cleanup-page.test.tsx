@@ -646,7 +646,8 @@ describe('Cleanup page', () => {
       const props = await renderWithArchive();
 
       await userEvent.click(screen.getByRole('button', { name: /^Replies/ }));
-      expect(screen.getByRole('button', { name: /^Replies/ })).toHaveTextContent('2 in your copy');
+      // The counts come from the copy after the page is drawn (#463): wait for them, as the other tests here do.
+      await waitFor(() => expect(screen.getByRole('button', { name: /^Replies/ })).toHaveTextContent('2 in your copy'));
       await waitFor(() => expect(matching()).toHaveTextContent(/^1$/));
       expect(screen.getByText('Keeps replies in your own threads.')).toBeInTheDocument();
       await openExceptions();

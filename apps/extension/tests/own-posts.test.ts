@@ -298,7 +298,9 @@ describe('the account’s handle (#144)', () => {
       createdAt: null,
       updatedAt: NOW,
     });
-    const { ctx } = context({ waitReady: async () => page({ handle: null }) });
+    // Neither the X window's page nor the fresh load of X's Home a run starts with (#377) names a handle yet.
+    const unnamed = async () => page({ handle: null });
+    const { ctx } = context({ waitReady: unnamed, navigate: unnamed, ping: unnamed });
     await ctx.connect();
     expect(ctx.handle).toBe('known_me');
     await db.accounts.clear();

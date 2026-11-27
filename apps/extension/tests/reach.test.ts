@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyDay, localDay } from '../src/shared/daily';
 import { db, itemKey, upsertAccount } from '../src/shared/db';
 import type { Item } from '../src/shared/types';
@@ -280,6 +280,33 @@ describe('each post’s reach (#428, ADR-0045)', () => {
       expect(await NO_REACH_SOURCES.analytics(ME, ['1'])).toEqual(new Map());
       expect(await NO_REACH_SOURCES.premiumEvents(ME)).toEqual([]);
       expect(await reachPosts('nobody', { from: 0, to: Date.now() })).toEqual([]);
+    });
+
+    describe('for a large account', () => {
+      afterEach(() => vi.restoreAllMocks());
+
+      it('reads 200,000 posts, more than a call’s arguments can take, without running out of stack', async () => {
+        // X's index answers with 200,000 posts and no replies; filling fake-indexeddb with as many would take minutes.
+        const many = Array.from({ length: 200_000 }, (_, i) =>
+          item(String(1_000_000 + i), { createdAt: T + i * 60_000, views: i }),
+        );
+        const asked: unknown[] = [];
+        vi.spyOn(db.items, 'where').mockImplementation(((index: string) => {
+          asked.push(index);
+          return {
+            between: (lower: readonly unknown[]) => ({
+              toArray: () => Promise.resolve(lower[1] === 'post' ? many : []),
+            }),
+          };
+        }) as never);
+
+        const posts = await reachPosts(ME, { from: 0, to: T + 200 * DAY });
+
+        expect(asked).toEqual(['[accountId+kind+createdAt]', '[accountId+kind+createdAt]']);
+        expect(posts).toHaveLength(200_000);
+        expect(posts[0]).toMatchObject({ id: '1000000', impressions: 0, source: 'live' });
+        expect(posts.at(-1)).toMatchObject({ id: '1199999', impressions: 199_999, source: 'live' });
+      });
     });
   });
 

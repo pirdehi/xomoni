@@ -93,11 +93,25 @@ export function sendFrom(lastSent: string | undefined, now: number): number {
 }
 
 /**
+ * What a status report's writes go through (`sync.ts`): runs `write` only while the report may still keep anything,
+ * that is, no sign-out began and the connection it reported for is still the stored one, and resolves to whether it
+ * did. Without `write`, it only asks.
+ */
+export type KeepIfCurrent = (write?: () => Promise<void>) => Promise<boolean>;
+
+/** Every write runs: for a send that belongs to no report. */
+const ALWAYS: KeepIfCurrent = async (write) => {
+  await write?.();
+  return true;
+};
+
+/**
  * Sends each X account's days not yet sent, while the account shows its numbers: nothing when it doesn't. An account
  * without a known handle waits. Returns how many days were sent; a refusal because the numbers were turned off
- * elsewhere is remembered, so sending stops.
+ * elsewhere is remembered, so sending stops. Each send and each write goes through `keep`: once a sign-out began, or
+ * the connection changed, nothing more is sent or written.
  */
-export async function sendDailyNumbers(token: string, now = Date.now()): Promise<number> {
+export async function sendDailyNumbers(token: string, now = Date.now(), keep: KeepIfCurrent = ALWAYS): Promise<number> {
   const current = await state();
   if (!current.on) return 0;
   let sent = 0;
@@ -107,17 +121,19 @@ export async function sendDailyNumbers(token: string, now = Date.now()): Promise
       toStatsRow(account.handle, row),
     );
     try {
-      for (let i = 0; i < rows.length; i += STATS_BATCH)
+      for (let i = 0; i < rows.length; i += STATS_BATCH) {
+        if (!(await keep())) return sent;
         sent += await reportStats(token, rows.slice(i, i + STATS_BATCH));
+      }
     } catch (err) {
       if (err instanceof CloudError && err.reason === 'stats_off') {
-        await rememberStatsChoice(false);
+        await keep(() => rememberStatsChoice(false));
         return sent;
       }
       throw err;
     }
     current.sentUpTo[account.id] = localDay(now);
-    await kvSet(KEY, current satisfies StatsState);
+    if (!(await keep(() => kvSet(KEY, current satisfies StatsState)))) return sent;
   }
   return sent;
 }

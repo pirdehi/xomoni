@@ -62,6 +62,8 @@ describe('starting a connection on xomoni.com (#228)', () => {
 
     expect(await connectFromWebsite({ code: CODE, nonce }, NOW + 60_000)).toMatchObject({ ok: true });
     expect(await getSignedOut()).toBeNull();
+    // The sign-out ends before the first report, which nothing sends while signed out (#497).
+    expect(fetch.mock.calls.map(([url]) => url.split('/').pop())).toEqual(['pair_device', 'device_report']);
   });
 
   it('stays signed out when the code didn’t work (#232)', async () => {

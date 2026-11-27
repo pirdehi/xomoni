@@ -205,22 +205,23 @@ export interface ReachRange {
 
 /**
  * The person's own posts and replies made from `from` to `to`, each with its reach, oldest first; those Xomoni removed
- * too, since they were seen before. Reads the
- * inventory through its `[accountId+kind+createdAt]` index, the daily numbers for the followers, and `sources` for the
- * analytics CSV and the Premium changes.
+ * too, since they were seen before. Reads the inventory through its `[accountId+kind+createdAt]` index, the daily
+ * numbers for the followers, and `sources` for the analytics CSV and the Premium changes. Any number of posts: nothing
+ * spreads them into a call's arguments, which V8 can't take past about 125,000.
  */
 export async function reachPosts(
   accountId: string,
   range: ReachRange,
   sources: ReachSources = NO_REACH_SOURCES,
 ): Promise<ReachPost[]> {
-  const items: Item[] = [];
+  let items: Item[] = [];
   for (const kind of ['post', 'reply'] as const) {
     const rows = await db.items
       .where('[accountId+kind+createdAt]')
       .between([accountId, kind, range.from], [accountId, kind, range.to], true, true)
       .toArray();
-    items.push(...rows);
+    // Not `push(...rows)`: spreading 125,000 or more rows into a call's arguments overflows V8's stack.
+    items = items.concat(rows);
   }
   const [analytics, events, account, days] = await Promise.all([
     sources.analytics(

@@ -6,9 +6,11 @@ import {
   PREMIUM_SIDE_DAYS,
   PREMIUM_TRANSITION_DAYS,
   WEEKDAYS,
+  comparedKey,
   reachByTime,
   reachComparisons,
 } from '../src/shared/vault/reach-compare';
+import type { PremiumPeriod } from '../src/shared/vault/reach';
 
 const DAY = 86_400_000;
 const START = Date.UTC(2026, 3, 1);
@@ -109,6 +111,20 @@ describe('the comparisons of reach (#429, ADR-0045)', () => {
         expect(premium.result.verdict).toBe('not-enough-data');
       }
     });
+
+    it('takes 200,000 spans, more than a call’s arguments can take, and still finds the latest start', () => {
+      const posts = [...many('b', 20, 80, 1_000), ...many('a', 20, 110, 1_000)];
+      // Old spans, each a day long, then the one that began on day 100, last.
+      const periods: PremiumPeriod[] = Array.from({ length: 200_000 }, (_, i) => ({
+        from: START - (i + 2) * DAY,
+        to: START - i * DAY,
+      }));
+      periods.push({ from, to: null });
+      const premium = byId(reachComparisons(posts, periods), 'premium');
+      expect(premium.needsDate).toBeUndefined();
+      expect(premium.result.a.n).toBe(20);
+      expect(premium.result.b.n).toBe(20);
+    });
   });
 
   it('lists what can mislead each comparison, with the followers on each side when known', () => {
@@ -128,6 +144,48 @@ describe('the comparisons of reach (#429, ADR-0045)', () => {
     for (const c of reachComparisons(posts, [])) {
       for (const words of [c.title, ...c.groups, ...c.misleads]) expect(usesBannedReachWord(words)).toBe(false);
     }
+  });
+
+  describe('the key of what they read', () => {
+    const posts = [...many('l', 20, 0, 500, { links: 1 }), ...many('t', 20, 0, 1_000)];
+    const periods = [{ from: START + 100 * DAY, to: null }];
+    const key = comparedKey(posts, periods);
+
+    it('stays the same for copies of the same posts, and for what no comparison reads', () => {
+      expect(comparedKey(structuredClone(posts), structuredClone(periods))).toBe(key);
+      const unread = [
+        ...posts.map((p) => ({ ...p, id: `${p.id}-copy` })),
+        post('reply', 1, 99_999, { kind: 'reply', links: 1 }),
+        post('young', 1, 99_999, { ageAtAsOfDays: 2 }),
+        post('unseen', 1, 0, { impressions: null }),
+      ];
+      expect(comparedKey(unread, periods)).toBe(key);
+      expect(comparedKey(posts, [{ ...periods[0]!, to: START + 300 * DAY }])).toBe(key);
+    });
+
+    it('changes with anything a comparison or the day and time table reads', () => {
+      const changed: [string, ComparedPost[], readonly PremiumPeriod[]][] = [
+        ['impressions', posts.map((p, i) => (i === 3 ? { ...p, impressions: p.impressions! + 1 } : p)), periods],
+        ['time', posts.map((p, i) => (i === 3 ? { ...p, createdAt: p.createdAt + 1 } : p)), periods],
+        ['links', posts.map((p, i) => (i === 3 ? { ...p, links: 0 } : p)), periods],
+        ['media', posts.map((p, i) => (i === 3 ? { ...p, media: 1 } : p)), periods],
+        ['hour', posts.map((p, i) => (i === 3 ? { ...p, hour: 13 } : p)), periods],
+        ['weekday', posts.map((p, i) => (i === 3 ? { ...p, weekday: 4 } : p)), periods],
+        ['followers', posts.map((p, i) => (i === 3 ? { ...p, followersAtTime: null } : p)), periods],
+        ['a post settled', [...posts, post('new', 1, 10)], periods],
+        ['a post no longer settled', posts.map((p, i) => (i === 3 ? { ...p, ageAtAsOfDays: 6 } : p)), periods],
+        ['the Premium start', posts, [{ from: START + 101 * DAY, to: null }]],
+        ['a Premium start no longer known', posts, [{ from: null, to: null }]],
+      ];
+      const keys = changed.map(([, p, s]) => comparedKey(p, s));
+      for (const [i, [what]] of changed.entries()) expect(keys[i], what).not.toBe(key);
+      expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it('takes 200,000 posts in one pass', () => {
+      const lots = Array.from({ length: 200_000 }, (_, i) => post(`p${String(i)}`, i / 48, i));
+      expect(comparedKey(lots, periods)).toBe(comparedKey(structuredClone(lots), periods));
+    });
   });
 
   it('gives the same answer every time', () => {

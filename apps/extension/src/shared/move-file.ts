@@ -480,11 +480,12 @@ function item(f: Fields): Item {
     extra,
     f.optional('quote', (n) => f.bool(n)),
   );
-  // Links and media (#428): optional, 0 to 100 each, as `entityCounts` counts them.
+  // Links and media (#428): optional, 0 to 100 each, as `entityCounts` counts them, on the person's own posts and
+  // replies only, as `inbound.ts` takes them from X's pages.
   for (const name of ['links', 'media'] as const)
     Object.assign(
       extra,
-      f.optional(name, (n) => f.entityCount(n)),
+      f.optional(name, (n) => (kind === 'post' || kind === 'reply' ? f.entityCount(n) : bad())),
     );
   if (f.raw('replyTo') !== undefined) {
     const replyTo = f.handle('replyTo');

@@ -296,9 +296,11 @@ test.describe('Reach', { tag: '@task-429' }, () => {
     await expect(dashboard.getByText('No reach to show yet')).toBeVisible();
     await expect(
       dashboard.getByText(
-        'Import your X analytics export (needs X Premium), or open your profile on X so Xomoni sees your views.',
+        "Reach's numbers come from the views X shows on your own posts and replies. Open your profile on X, and Xomoni keeps the views it shows. More sources are coming.",
       ),
     ).toBeVisible();
+    // Nothing in this version reads X's analytics export: the page neither offers it nor asks for X Premium.
+    await expect(dashboard.getByRole('main')).not.toContainText(/analytics export|X Premium/);
   });
 
   test('S429-19 posts older than 30 days wait for a longer period, marked as Plus in preview', async ({

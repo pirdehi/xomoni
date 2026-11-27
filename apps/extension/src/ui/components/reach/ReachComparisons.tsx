@@ -9,11 +9,13 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { REACH_VERDICT_WORDS, type ReachVerdict } from '@xomoni/bridge';
+import { useMemo, useState } from 'react';
 import {
   DAY_PARTS,
   type ReachComparison,
   type TimeCell,
   WEEKDAYS,
+  comparedKey,
   reachByTime,
   reachComparisons,
 } from '../../../shared/vault/reach-compare';
@@ -71,21 +73,44 @@ const capitalized = (words: string) => words.charAt(0).toUpperCase() + words.sli
 const share = (ratio: number) =>
   Number.isFinite(ratio) ? `${Math.round(ratio * 100).toLocaleString('en-US')}%` : 'more than any share';
 
+/** What the comparisons are computed from, held with the key it had (`comparedKey`). */
+interface Compared {
+  key: string;
+  rows: readonly ReachRow[];
+  periods: readonly PremiumPeriod[];
+}
+
+/**
+ * The rows and spans to compute from: the ones first seen with this key (`comparedKey`), kept while the key stays the
+ * same. The page's live query hands over new copies of every row whenever any item changes, such as a post a running
+ * cleanup removed; those keep the key, so what is computed from them isn't computed again (#497).
+ */
+function useCompared(rows: readonly ReachRow[], periods: readonly PremiumPeriod[]): Compared {
+  const key = comparedKey(rows, periods);
+  const [held, setHeld] = useState<Compared>({ key, rows, periods });
+  // React's pattern for state from an earlier render: this render's output is dropped, and the next uses the new rows.
+  if (held.key !== key) setHeld({ key, rows, periods });
+  return held;
+}
+
 /**
  * The Reach page's comparisons (#429, ADR-0045): posts with a link against posts without, photos or videos against
  * text, and Premium against before it, each with its verdict in one of five fixed words, each group's size and median,
  * the ratio with its 95% interval, and what can mislead it under *How this is computed*; and the usual reach by day and
- * time of day. They show what goes together, never why.
+ * time of day. They show what goes together, never why. Each comparison takes 2,000 resamples a side, seconds with
+ * tens of thousands of posts, so both are computed once for the same posts, not at each render (`useCompared`).
  */
 export function ReachComparisons({ rows, periods }: { rows: readonly ReachRow[]; periods: readonly PremiumPeriod[] }) {
   const styles = useStyles();
-  const comparisons = reachComparisons(rows, periods);
+  const compared = useCompared(rows, periods);
+  const comparisons = useMemo(() => reachComparisons(compared.rows, compared.periods), [compared]);
+  const byTime = useMemo(() => reachByTime(compared.rows), [compared]);
   return (
     <div className={styles.grid}>
       {comparisons.map((c) => (
         <ComparisonCard key={c.id} comparison={c} />
       ))}
-      <TimeTable rows={rows} />
+      <TimeTable byTime={byTime} />
     </div>
   );
 }
@@ -156,9 +181,8 @@ function cellWords(cell: TimeCell): string {
 }
 
 /** The usual reach by day of the week and time of day, as a table. */
-function TimeTable({ rows }: { rows: readonly ReachRow[] }) {
+function TimeTable({ byTime: { days, parts } }: { byTime: ReturnType<typeof reachByTime> }) {
   const styles = useStyles();
-  const { days, parts } = reachByTime(rows);
   const table = (label: string, names: readonly string[], cells: readonly TimeCell[]) => (
     <Table size="small" className={styles.table} aria-label={label}>
       <TableHeader>

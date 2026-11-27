@@ -518,13 +518,15 @@ test.describe('acts only on what it can verify', { tag: '@task-21' }, () => {
     page,
     context,
   }) => {
+    test.setTimeout(180_000);
     await postsBefore(dashboard, page, '2021-01-01', 2);
     const xWindow = await xWindowNamingTheAccountById(dashboard, page, context);
     const loads = xRequests(dashboard, graphql);
     await startCleanup(dashboard);
 
+    // Each run first loads X's Home again, at the reading pace (#377): 12–24 s, up to 90 s more one time in twenty.
     const card = jobCard(dashboard, JOB.before2021);
-    await expect(card).toContainText('Stopped for safety');
+    await expect(card).toContainText('Stopped for safety', { timeout: 150_000 });
     await expect(card).toContainText(
       'Could not determine your @handle from X. Open your profile once in the X window.',
     );
@@ -688,12 +690,14 @@ test.describe('acts only on what it can verify', { tag: '@task-21' }, () => {
       page,
       context,
     }) => {
+      test.setTimeout(180_000);
       expect(await dashboard.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true);
       await postsBefore(dashboard, page, '2021-01-01', 2);
       await xWindowNamingTheAccountById(dashboard, page, context);
       await startCleanup(dashboard);
       const card = jobCard(dashboard, JOB.before2021);
-      await expect(card).toContainText('Stopped for safety');
+      // After the run's paced load of X's Home (#377).
+      await expect(card).toContainText('Stopped for safety', { timeout: 150_000 });
       await showLog(dashboard, card);
       await expectNoSeriousA11yViolations(dashboard);
     });

@@ -149,8 +149,9 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Given the X window open on X's Home after X changed its page: its sidebar's Profile link names the account by its id,
   /i/user/9000000000000000001, not by a handle
 - When the person starts a cleanup of posts
-- Then the job stops for safety before it loads anything: Could not determine your @handle from X. Open your profile
-  once in the X window., with 0 removed
+- Then the job loads X's Home again first, at Xomoni's reading pace, as every run does (#377), and stops there for
+  safety, before it loads any page of posts: Could not determine your @handle from X. Open your profile once in the X
+  window., with 0 removed
 - And the dashboard keeps the handle X's profile answer gave, Fixture Person @xomoni_fixture: a link that isn't a
   handle never replaces it (fixed with these scenarios, #345)
 - And a page that names no handle yet, as X's while it is still drawing its sidebar, leaves the job the handle Xomoni

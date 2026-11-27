@@ -135,7 +135,7 @@
       "status": "shipped",
       "since": "0.2.0",
       "issues": [134, 140],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/134-keeps-going.md",
       "en": {
         "title": "Keeps going while you do other things",
         "summary": "*Keep going while away* keeps the display on and brings a covered X window forward, and *Run hidden* shares the X tab with the dashboard so a job continues with the X window minimized. Nothing of the shared tab is recorded or sent."

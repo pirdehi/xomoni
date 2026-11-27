@@ -24,7 +24,6 @@ export const LEGACY_FEATURES = Object.freeze([
   'verified-actions',
   'login-handoff',
   'resumable-jobs',
-  'keeps-going',
 ]);
 
 const REGISTRY = 'docs/features.json';

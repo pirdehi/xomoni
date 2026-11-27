@@ -31,6 +31,12 @@ describe('X’s login routes (#20, PLAYBOOK D2)', () => {
   });
 });
 
+describe('X’s answer that the person is signed out (#20, PLAYBOOK D1)', () => {
+  it.each([32, 89, 215, 353])('reads code %i as signed out, for the person to log in again', (code) => {
+    expect(classify(event(401, errors(code)), 'DeleteTweet').outcome).toBe('logged_out');
+  });
+});
+
 describe('suspension and restriction (#18, PLAYBOOK C3, C4)', () => {
   it('stops on a suspension instead of waiting', () => {
     expect(classify(event(403, errors(64)), 'DeleteTweet').outcome).toBe('suspended');

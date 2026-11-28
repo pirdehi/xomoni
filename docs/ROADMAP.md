@@ -84,7 +84,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Sign out of every session | [#83](https://github.com/pirdehi/xomoni/issues/83) | [#87](https://github.com/pirdehi/xomoni/pull/87) |
 | ✅ | Realtime channel private to each user; public access to channels off in Supabase since 14 November | [#81](https://github.com/pirdehi/xomoni/issues/81) | [#89](https://github.com/pirdehi/xomoni/pull/89) |
 | ⏸ | Google brand verification, so the consent screen says Xomoni | [#9](https://github.com/pirdehi/xomoni/issues/9) | |
-| ✅ | A private product document at `/product`, for super-admins only, kept only in the database ([ADR-0048](adr/0048-a-private-product-document-for-super-admins.md)) | [#514](https://github.com/pirdehi/xomoni/issues/514) | PRNUM |
+| ✅ | A private product document at `/product`, for super-admins only, kept only in the database ([ADR-0048](adr/0048-a-private-product-document-for-super-admins.md)) | [#514](https://github.com/pirdehi/xomoni/issues/514) | [#515](https://github.com/pirdehi/xomoni/pull/515) |
 
 ## Phase 4 · Extension: real-account pilot
 

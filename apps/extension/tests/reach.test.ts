@@ -12,7 +12,9 @@ import {
   BULK_LOOKUP,
   VAULT_REACH_SOURCES,
   dailyReachSeries,
+  followerDays,
   followersAt,
+  followersNear,
   hourAndWeekday,
   premiumAt,
   premiumPeriods,
@@ -233,6 +235,24 @@ describe('each post’s reach (#428, ADR-0045)', () => {
       expect(followersAt(days, T)).toBe(120);
       expect(followersAt([row(-2, 90), row(2, 110)], T)).toBe(90);
       expect(followersAt([row(0, 95), row(1, 96)], T)).toBe(95);
+    });
+
+    it('are found by a binary search that agrees with a scan of every day, whatever order the days come in', () => {
+      const days = [row(9, 190), row(-30, 70), row(0, null), row(4, 140), row(-5, 95), row(20, 300)];
+      const sorted = followerDays(days);
+      expect(sorted.map((d) => d.followers)).toEqual([70, 95, 140, 190, 300]);
+      const scan = (at: number) => {
+        const target = Date.parse(`${localDay(at)}T00:00:00Z`);
+        let best: { distance: number; followers: number } | null = null;
+        for (const d of sorted) {
+          const distance = Math.abs(d.at - target);
+          if (!best || distance < best.distance) best = { distance, followers: d.followers };
+        }
+        return best?.followers ?? null;
+      };
+      for (let day = -40; day <= 30; day += 1) expect(followersNear(sorted, T + day * DAY)).toBe(scan(T + day * DAY));
+      expect(followersNear([], T)).toBeNull();
+      expect(reachPost(item('1'), { ...context, days, followerDays: sorted }).followersAtTime).toBe(140);
     });
 
     it('are unknown for an account without daily numbers', () => {

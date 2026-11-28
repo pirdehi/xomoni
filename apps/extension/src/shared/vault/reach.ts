@@ -192,14 +192,42 @@ export function hourAndWeekday(ms: number, timeZone?: string): { hour: number; w
 
 /** The followers of the day closest to `at` whose row has the profile's counts (the earlier on a tie); null without. */
 export function followersAt(days: readonly Pick<DailyStats, 'day' | 'followers'>[], at: number): number | null {
-  const target = Date.parse(`${localDay(at)}T00:00:00Z`);
-  let best: { distance: number; followers: number } | null = null;
+  return followersNear(followerDays(days), at);
+}
+
+/** A day with the profile's followers, at its UTC midnight (epoch ms). */
+export interface FollowerDay {
+  at: number;
+  followers: number;
+}
+
+/** The days that have the profile's followers, oldest first, made once for `followersNear`'s binary search. */
+export function followerDays(days: readonly Pick<DailyStats, 'day' | 'followers'>[]): FollowerDay[] {
+  const out: FollowerDay[] = [];
   for (const row of days) {
-    if (row.followers === null) continue;
-    const distance = Math.abs(Date.parse(`${row.day}T00:00:00Z`) - target);
-    if (!best || distance < best.distance) best = { distance, followers: row.followers };
+    if (row.followers !== null) out.push({ at: Date.parse(`${row.day}T00:00:00Z`), followers: row.followers });
   }
-  return best?.followers ?? null;
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/**
+ * The followers of the day in `sorted` (`followerDays`) closest to `at`'s day, the earlier on a tie; null without any.
+ * A binary search: a scan of every day for every post took seconds for a heavy account with a year of days (#501).
+ */
+export function followersNear(sorted: readonly FollowerDay[], at: number): number | null {
+  const target = Date.parse(`${localDay(at)}T00:00:00Z`);
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if ((sorted[mid]?.at ?? Infinity) < target) lo = mid + 1;
+    else hi = mid;
+  }
+  const before = sorted[lo - 1];
+  const after = sorted[lo];
+  if (!before) return after?.followers ?? null;
+  if (!after) return before.followers;
+  return target - before.at <= after.at - target ? before.followers : after.followers;
 }
 
 /** The context `reachPost` needs beyond the post: its CSV numbers, the Premium spans, the days, the time zone. */
@@ -207,6 +235,8 @@ export interface ReachContext {
   analytics?: AnalyticsNumbers;
   periods: readonly PremiumPeriod[];
   days: readonly Pick<DailyStats, 'day' | 'followers'>[];
+  /** `days` as `followerDays`, made once for a whole read; made from `days` when missing. */
+  followerDays?: readonly FollowerDay[];
   timeZone?: string;
 }
 
@@ -243,7 +273,7 @@ export function reachPost(item: Item, context: ReachContext): ReachPost {
     hour,
     weekday,
     premium: premiumAt(context.periods, item.createdAt),
-    followersAtTime: followersAt(context.days, item.createdAt),
+    followersAtTime: followersNear(context.followerDays ?? followerDays(context.days), item.createdAt),
     ageAtAsOfDays: asOf === null ? null : Math.max(0, (asOf - item.createdAt) / DAY_MS),
     onX: item.status === 'present',
   };
@@ -289,9 +319,18 @@ export async function reachPosts(
     db.daily.where('accountId').equals(accountId).toArray(),
   ]);
   const periods = premiumPeriods(events, account ?? null);
+  const sortedDays = followerDays(days);
   return items
     .sort((a, b) => a.createdAt - b.createdAt)
-    .map((item) => reachPost(item, { analytics: analytics.get(item.id), periods, days, timeZone: range.timeZone }));
+    .map((item) =>
+      reachPost(item, {
+        analytics: analytics.get(item.id),
+        periods,
+        days,
+        followerDays: sortedDays,
+        timeZone: range.timeZone,
+      }),
+    );
 }
 
 /** One day of the daily numbers' views: an estimate for a trend (ADR-0045, point 1.3), never one post's reach. */

@@ -146,6 +146,22 @@ module.exports = {
       to: { path: [`${EXT}/engine/(worker-tab|presence)\\.ts$`, `${EXT}/shared/notify\\.ts$`] },
     },
     {
+      name: 'ext-scanner-is-headless',
+      severity: 'error',
+      comment:
+        'The on-device scanner (ADR-0049) reads files already on the computer and never touches X: it imports scanner/ and shared/ only, never the engine, page scripts, the UI or the cloud.',
+      from: { path: `${EXT}/scanner/` },
+      to: { path: `${EXT}/(?!scanner/|shared/)` },
+    },
+    {
+      name: 'ext-scanner-core-uses-ports',
+      severity: 'error',
+      comment:
+        "The scanner's core reaches models and their downloads only through its ports (scanner/ports.ts); the adapters are wired in scanner/platform.ts (ADR-0049).",
+      from: { path: `${EXT}/scanner/`, pathNot: `${EXT}/scanner/(platform\\.ts$|models/)` },
+      to: { path: `${EXT}/scanner/models/(chrome-ai|transformers|webllm|store)\\.ts$` },
+    },
+    {
       name: 'ext-content-is-isolated',
       severity: 'error',
       comment: "The content script runs inside x.com's tab; it shares only types and parsers with the rest.",

@@ -27,6 +27,7 @@ const EXEMPT = {
   'apps/extension/src/shared/types.ts': 'types only',
   'apps/extension/src/shared/messages.ts': 'message types only',
   'apps/extension/src/ui/navigation.ts': 'types only',
+  'apps/extension/src/scanner/ports.ts': 'interfaces only',
   'apps/extension/src/ui/main.tsx': 'entry point: mounts <App />, which has its own tests',
   'apps/web/src/modules/admin/application/ports.ts': 'interfaces only',
   'apps/web/src/modules/auth/application/ports.ts': 'interfaces only',

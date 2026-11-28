@@ -80,6 +80,19 @@ export default defineConfig(
     },
   },
   {
+    // The scanner never touches X (ADR-0049): no `chrome.*` and no `fetch` in it, but in its composition root and
+    // the model pack store, which downloads only a pack the person asked for (ADR-0051).
+    files: ['apps/extension/src/scanner/**/*.ts'],
+    ignores: ['apps/extension/src/scanner/platform.ts', 'apps/extension/src/scanner/models/store.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'chrome', message: 'Use the scanner ports (scanner/ports.ts); only platform.ts touches chrome.*.' },
+        { name: 'fetch', message: 'The scanner fetches nothing but a model pack, in scanner/models/store.ts.' },
+      ],
+    },
+  },
+  {
     // The page-world interceptor keeps X's own fetch and XMLHttpRequest methods to call them later with the
     // page's `this`: holding unbound methods is the point there (ADR-0016).
     files: ['apps/extension/src/inject/interceptor.ts'],

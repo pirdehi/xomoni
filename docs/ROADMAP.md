@@ -335,7 +335,7 @@ The release that reads a person's old posts for what could hurt them today, on t
 
 | | Task | Issue | Pull request |
 | --- | --- | --- | --- |
-| 🔄 | CS.1 · The scanner: the decisions, the `scanner/` area with its rules, its tables in Dexie version 10, more of the archive's fields, and the archive builder. Done: the scanner's ADR ([ADR-0049](adr/0049-the-on-device-archive-scanner.md)), proposed | [#491](https://github.com/pirdehi/xomoni/issues/491) | |
+| 🔄 | CS.1 · The scanner: the decisions, the `scanner/` area with its rules, its tables in Dexie version 10, more of the archive's fields, and the archive builder. Done: the scanner's ADR ([ADR-0049](adr/0049-the-on-device-archive-scanner.md)), proposed; the `scanner/` area with its ports, its dependency rules and its lint | [#491](https://github.com/pirdehi/xomoni/issues/491) | |
 
 ## Dropped
 

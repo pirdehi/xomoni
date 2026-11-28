@@ -66,6 +66,7 @@ src/
     cleanup.ts            sweep (search or timeline) and deep clean (item by item)
     scan.ts               profile, replies, likes, full-history and date-range scans
     worker-tab.ts         the x.com worker window
+  scanner/                the on-device archive scanner, which never touches X (ADR-0049): its ports so far (R2)
   shared/                 types, Dexie database, parsers, rules, settings, notifications
     vault/                X's official files kept on the computer: importer, analytics CSV, ledger, timeline, export (ADR-0043)
   update/                 one-click updates of a zip install: a signed release, written into Xomoni's folder (ADR-0033)

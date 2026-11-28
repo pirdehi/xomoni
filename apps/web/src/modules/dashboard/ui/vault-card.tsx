@@ -58,7 +58,7 @@ export function VaultCard({ xomoni, now }: { xomoni: XomoniControls; now: number
   return (
     <section className={s.card} aria-label="Your vault">
       <h3 className={s.title}>Your vault</h3>
-      <Notice>Counts and dates only, read from Xomoni in this browser: nothing here reaches our servers.</Notice>
+      <Notice>Only counts and dates, from Xomoni in this browser. None of it reaches our servers.</Notice>
       {answer && !answer.ok ? (
         <NoAnswer reason={answer.reason} doing="show your vault" about="your vault" />
       ) : !vault ? (

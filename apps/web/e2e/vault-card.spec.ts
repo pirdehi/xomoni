@@ -156,7 +156,7 @@ test.describe('Your vault on xomoni.com', { tag: '@task-426' }, () => {
     await expect(items.nth(2)).toContainText('Not imported yet');
     await expect(card(page)).toContainText('X made your newest archive on Oct 15, 2026. 3 imports in all.');
     await expect(card(page)).toContainText(
-      'Counts and dates only, read from Xomoni in this browser: nothing here reaches our servers.',
+      'Only counts and dates, from Xomoni in this browser. None of it reaches our servers.',
     );
   });
 

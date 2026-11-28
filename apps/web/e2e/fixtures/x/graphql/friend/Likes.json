@@ -1,0 +1,92 @@
+{
+  "data": {
+    "user": {
+      "result": {
+        "__typename": "User",
+        "timeline": {
+          "timeline": {
+            "instructions": [
+              {
+                "type": "TimelineAddEntries",
+                "entries": [
+                  {
+                    "entryId": "tweet-9000000000000000106",
+                    "sortIndex": "9000000000000000106",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000106",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000106",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Thu Feb 08 12:00:00 +0000 2024",
+                              "full_text": "Our launch went well: thank you, everyone.",
+                              "favorite_count": 3,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": true,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-9000000000000000105",
+                    "sortIndex": "9000000000000000105",
+                    "content": {
+                      "itemContent": {
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "9000000000000000105",
+                            "core": {
+                              "user_results": {
+                                "result": {
+                                  "rest_id": "9000000000000000001",
+                                  "core": {
+                                    "screen_name": "xomoni_fixture",
+                                    "name": "Fixture Person"
+                                  }
+                                }
+                              }
+                            },
+                            "legacy": {
+                              "id_str": "9000000000000000105",
+                              "user_id_str": "9000000000000000001",
+                              "created_at": "Sat May 20 12:00:00 +0000 2023",
+                              "full_text": "A made-up post that many people liked.",
+                              "favorite_count": 120,
+                              "retweet_count": 0,
+                              "reply_count": 0,
+                              "favorited": true,
+                              "retweeted": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

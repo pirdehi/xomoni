@@ -230,14 +230,33 @@ describe('useWorkerStatus', () => {
   });
 
   it('updates the handle when the person renamed their account, keeping the rest', async () => {
-    await db.accounts.put(account({ handle: 'old-name', name: 'Me' }));
-    openWorker(chrome, pageInfo({ viewerId: ME, handle: 'new-name' }));
+    await db.accounts.put(account({ handle: 'old_name', name: 'Me' }));
+    openWorker(chrome, pageInfo({ viewerId: ME, handle: 'new_name' }));
     renderHook(() => useWorkerStatus(60_000));
 
     await waitFor(async () => {
-      expect((await db.accounts.get(ME))?.handle).toBe('new-name');
+      expect((await db.accounts.get(ME))?.handle).toBe('new_name');
     });
     expect((await db.accounts.get(ME))?.name).toBe('Me');
+  });
+
+  it('never takes a handle X wouldn’t allow from X’s page, such as its /i/user/<id> link (#345)', async () => {
+    await db.accounts.put(account({ handle: 'me', updatedAt: 1_000 }));
+    openWorker(chrome, pageInfo({ viewerId: ME, handle: 'i/user/1234' }));
+    renderHook(() => useWorkerStatus(60_000));
+
+    await waitFor(async () => {
+      expect(await kvGet('activeAccount', null)).toBe(ME);
+    });
+    expect(await db.accounts.get(ME)).toMatchObject({ handle: 'me', updatedAt: 1_000 });
+
+    // An account it doesn't know yet is registered without one.
+    openWorker(chrome, pageInfo({ viewerId: 'acct-new', handle: '<b>me</b>' }));
+    renderHook(() => useWorkerStatus(60_000));
+    await waitFor(async () => {
+      expect(await kvGet('activeAccount', null)).toBe('acct-new');
+    });
+    expect((await db.accounts.get('acct-new'))?.handle).toBe('');
   });
 
   it('registers nobody while the worker is loading or signed out', async () => {

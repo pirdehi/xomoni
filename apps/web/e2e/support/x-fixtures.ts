@@ -23,15 +23,30 @@ const HISTORY_ANSWERS: Record<XHistory, string> = {
   long: path.join(X_FIXTURES, 'graphql', 'long-history'),
 };
 
-/** x.com's pages the fixtures have, by path. Any other path answers 404, as X does for a page that doesn't exist. */
+/**
+ * The folder of X's answers about the other made-up account (#345): its profile and its Likes tab, which lists two of
+ * the fixture account's posts. X answers from here whatever history the fixture account has.
+ */
+const FRIEND_ANSWERS = path.join(X_FIXTURES, 'graphql', 'friend');
+
+/**
+ * x.com's pages the fixtures have, by path: Home, and the profile tabs of both made-up accounts. Any other path answers
+ * 404, as X does for a page that doesn't exist, but a post's page (`POST_PAGE`).
+ */
 const PAGES = new Map([
   ['/home', 'home.html'],
   ['/xomoni_fixture', 'profile.html'],
   ['/xomoni_fixture/with_replies', 'profile.html'],
   ['/xomoni_fixture/likes', 'profile.html'],
+  ['/fixture_friend', 'profile.html'],
+  ['/fixture_friend/with_replies', 'profile.html'],
+  ['/fixture_friend/likes', 'profile.html'],
   // X's search, which Watch loads (#158, #345): its query is in the address.
   ['/search', 'search.html'],
 ]);
+
+/** A post's page, `/<handle>/status/<id>`, served from `post.html`, which asks X for the post (#345). */
+const POST_PAGE = /^\/[A-Za-z0-9_]{1,15}\/status\/\d+$/;
 
 /** A GraphQL request of X's web app: `/i/api/graphql/<query id>/<Operation>`. */
 const GRAPHQL = /^\/i\/api\/graphql\/[^/]+\/([A-Za-z]+)$/;
@@ -102,13 +117,26 @@ function xRateHeaders({ limit = 150, remaining, resetAt, resetIn = 15 * 60_000, 
   };
 }
 
-/** The fixture file of a GraphQL operation's answer in `history`, or null when the fixtures have none. */
-function answerFile(op: string, history: XHistory): string | null {
-  for (const folder of [HISTORY_ANSWERS[history], HISTORY_ANSWERS.short]) {
+/**
+ * The fixture file of a GraphQL operation's answer in `history`, or about the other made-up account with `friend`; null
+ * when the fixtures have none.
+ */
+function answerFile(op: string, history: XHistory, friend = false): string | null {
+  for (const folder of friend ? [FRIEND_ANSWERS] : [HISTORY_ANSWERS[history], HISTORY_ANSWERS.short]) {
     const file = path.join(folder, `${op}.json`);
     if (existsSync(file)) return file;
   }
   return null;
+}
+
+/** Whether a GraphQL request asks about the other made-up account: its variables name its handle or its id (#345). */
+function aboutFriend(url: URL): boolean {
+  try {
+    const variables = JSON.parse(url.searchParams.get('variables') ?? '{}') as Record<string, unknown>;
+    return variables.screen_name === FRIEND_ACCOUNT.handle || variables.userId === FRIEND_ACCOUNT.id;
+  } catch {
+    return false;
+  }
 }
 
 /** The history each browser context's x.com was served with (`serveX`), for the routes tests add later. */
@@ -119,11 +147,11 @@ function answer(request: Request, history: XHistory): Parameters<Route['fulfill'
   const url = new URL(request.url());
   const op = GRAPHQL.exec(url.pathname)?.[1];
   if (op) {
-    const file = answerFile(op, history);
+    const file = answerFile(op, history, aboutFriend(url));
     if (!file) return { status: 404, contentType: 'application/json', body: '{"errors":[]}' };
     return { status: 200, contentType: 'application/json', headers: xRateHeaders(), path: file };
   }
-  const page = PAGES.get(url.pathname);
+  const page = PAGES.get(url.pathname) ?? (POST_PAGE.test(url.pathname) ? 'post.html' : undefined);
   if (!page) return { status: 404, contentType: 'text/html', body: '<!doctype html><title>Page not found / X</title>' };
   return { status: 200, contentType: 'text/html; charset=utf-8', path: path.join(X_FIXTURES, page) };
 }
@@ -215,6 +243,22 @@ export async function answerLate(context: BrowserContext, op: string, ms: number
       await new Promise((resolve) => setTimeout(resolve, ms));
       await route.fulfill({ status: 200, contentType: 'application/json', headers: xRateHeaders(), path: file });
     },
+  );
+}
+
+/**
+ * Makes X answer GraphQL operation `op` with the fixture `file` from now on (#345), a path under `fixtures/x/graphql`:
+ * `edge-cases/UserTweets.json`, the long history's posts with a quote of the other made-up account's post and a post
+ * whose id isn't one X could give; or `post-not-found/TweetDetail.json`, X saying it has no such post. With X's usual
+ * rate-limit headers. The person's own browsing and Xomoni's page loads both see it, as on X.
+ */
+export async function answerFrom(context: BrowserContext, op: string, file: string): Promise<void> {
+  const answerPath = path.join(X_FIXTURES, 'graphql', file);
+  if (!existsSync(answerPath)) throw new Error(`The fixtures have no ${file}`);
+  await context.route(
+    (url) => url.host === 'x.com' && GRAPHQL.exec(url.pathname)?.[1] === op,
+    (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', headers: xRateHeaders(), path: answerPath }),
   );
 }
 

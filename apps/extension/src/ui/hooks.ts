@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { db, hasConsent, kvGet, kvSet, recordRisk, riskEvents, upsertAccount } from '../shared/db';
+import { isHandle } from '../shared/ids';
 import { type RiskAssessment, assessRisk } from '../shared/risk';
 import { DAY } from '../shared/time';
 import { WARMUP_RESET_DAYS, earlierActiveDays, readFactor, spendsQuota, warmup } from '../shared/x-limits';
@@ -38,7 +39,10 @@ export interface WorkerStatus {
   info: PageInfo | null;
 }
 
-/** Polls the worker tab; also registers the signed-in account it reports. */
+/**
+ * Polls the worker tab; also registers the signed-in account it reports, with the handle X's page names when it is one
+ * X allows (#345).
+ */
 export function useWorkerStatus(intervalMs = 3000): WorkerStatus {
   const [status, setStatus] = useState<WorkerStatus>({ open: false, info: null });
   useEffect(() => {
@@ -51,9 +55,11 @@ export function useWorkerStatus(intervalMs = 3000): WorkerStatus {
         setStatus({ open, info });
         // Signed out (#226), the account in the X window waits for the person's *Continue as*.
         if (info?.viewerId && !(await getSignedOut())) {
+          // Only a handle X allows, as the service worker takes from X's pages: a page that names the account some
+          // other way, such as X's /i/user/<id>, never replaces the handle Xomoni knows (#345).
+          const handle = info.handle && isHandle(info.handle) ? info.handle : '';
           const known = await db.accounts.get(info.viewerId);
-          if (!known || (info.handle && known.handle !== info.handle))
-            await upsertAccount({ id: info.viewerId, handle: info.handle ?? '' });
+          if (!known || (handle && known.handle !== handle)) await upsertAccount({ id: info.viewerId, handle });
           if ((await kvGet<string | null>('activeAccount', null)) !== info.viewerId)
             await kvSet('activeAccount', info.viewerId);
         }

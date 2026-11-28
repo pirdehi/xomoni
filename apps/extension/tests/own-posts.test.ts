@@ -284,4 +284,25 @@ describe('the account’s handle (#144)', () => {
     await ctx.connect();
     expect(ctx.handle).toBe('me');
   });
+
+  it('uses the handle Xomoni knows while X’s page names none yet, as before X draws its sidebar (#345)', async () => {
+    await db.accounts.put({
+      id: ACCOUNT,
+      handle: 'known_me',
+      name: '',
+      avatar: '',
+      postsCount: null,
+      likesCount: null,
+      followers: null,
+      following: null,
+      createdAt: null,
+      updatedAt: NOW,
+    });
+    // Neither the X window's page nor the fresh load of X's Home a run starts with (#377) names a handle yet.
+    const unnamed = async () => page({ handle: null });
+    const { ctx } = context({ waitReady: unnamed, navigate: unnamed, ping: unnamed });
+    await ctx.connect();
+    expect(ctx.handle).toBe('known_me');
+    await db.accounts.clear();
+  });
 });

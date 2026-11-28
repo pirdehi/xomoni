@@ -183,6 +183,20 @@ describe('the move file (#300, ADR-0032)', () => {
       ['settings in the wrong shape', 'kv', { key: 'settings', value: { pacing: { delete: { minDelay: 'fast' } } } }],
       ['an active account that is not an X id', 'kv', { key: 'activeAccount', value: 'me' }],
       ['a view cap without a number', 'kv', { key: `viewCap:${MOVER}`, value: { cap: 'none' } }],
+      [
+        'AI dates with overlapping private spells (#518)',
+        'kv',
+        {
+          key: `aiDates:${MOVER}`,
+          value: {
+            optOut: { kind: 'never' },
+            privateSpells: [
+              { from: '2020-01-01', to: '2020-06-01' },
+              { from: '2020-05-01', to: null },
+            ],
+          },
+        },
+      ],
       ['a record that is not an object', 'items', 'post'],
     ];
     it.each(cases)('%s', async (_, table, record) => {
@@ -356,6 +370,12 @@ describe('the move file (#300, ADR-0032)', () => {
         key: `archive:${MOVER}`,
         value: true,
       });
+      // The person's AI dates (#518) move as they were kept, checked again; an unknown key is dropped.
+      const dates = { optOut: { kind: 'day', day: '2024-12-01' }, privateSpells: [{ from: '2021-03-01', to: null }] };
+      expect(moveRecord('kv', { key: `aiDates:${MOVER}`, value: { ...dates, note: 'x' } }, NOW)).toEqual({
+        key: `aiDates:${MOVER}`,
+        value: dates,
+      });
     });
   });
 
@@ -363,6 +383,7 @@ describe('the move file (#300, ADR-0032)', () => {
     expect(movedValueName('settings')).toBe('settings');
     expect(movedValueName(`watchTabs:${MOVER}`)).toBe('watchTabs');
     expect(movedValueName(`viewCap:${MOVER}`)).toBe('viewCap');
+    expect(movedValueName(`aiDates:${MOVER}`)).toBe('aiDates');
     for (const key of [
       'cloud',
       'signedOut',

@@ -8,6 +8,7 @@
 // limit. A field an older Xomoni didn't write yet gets the value Xomoni gives it today; a field that is there in the
 // wrong shape makes the record broken, and a broken record makes the whole file refused. Pure, apart from the SHA-256
 // of the Web Crypto API.
+import { checkAiDates } from './ai-dates';
 import type { DailyStats } from './daily';
 import { type ReadUse, itemKey } from './db';
 import type { JobHealth, HealthSignal, SampleTally } from './health';
@@ -93,8 +94,8 @@ export const MOVED_VALUES = ['settings', 'activeAccount'] as const;
 /**
  * The `kv` values moved for each X account (`<name>:<account id>`): Watch's searches, their last results and the posts
  * from new accounts already seen in its ready tabs (#391), so they don't count on the toolbar again, when the
- * X archive was imported (so the Cleanup page knows, PLAYBOOK E2), the archive asked for on X, and the daily view cap
- * learned from X (PLAYBOOK A4).
+ * X archive was imported (so the Cleanup page knows, PLAYBOOK E2), the archive asked for on X, the daily view cap
+ * learned from X (PLAYBOOK A4), and the person's own dates for the AI exposure audit (`aiDates`, #518).
  */
 export const MOVED_ACCOUNT_VALUES = [
   'watchTabs',
@@ -103,6 +104,7 @@ export const MOVED_ACCOUNT_VALUES = [
   'archive',
   'archiveRequest',
   'viewCap',
+  'aiDates',
 ] as const;
 
 /**
@@ -850,6 +852,11 @@ const VALUE_CHECKS: Record<string, (value: unknown, now: number) => unknown> = {
   archive: (v, now) => (v === true || (isFinite(v) && v >= 0 && v <= now + FUTURE_SLACK_MS) ? v : bad()),
   archiveRequest,
   viewCap,
+  // The person's dates, checked as when they were kept; the account's creation isn't known here.
+  aiDates: (v, now) => {
+    const checked = checkAiDates(v, { accountCreatedAt: null, now });
+    return checked.ok ? checked.dates : bad();
+  },
 };
 
 /** The name of a moved `kv` key (`settings`, or `watchTabs` for `watchTabs:<account id>`); null for any other. */

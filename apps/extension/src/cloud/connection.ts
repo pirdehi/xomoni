@@ -6,7 +6,9 @@ import { liveQuery } from 'dexie';
 import { db, kvSet } from '../shared/db';
 import { asNumber, asObject, asString } from '../shared/json';
 
-const KEY = 'cloud';
+/** The `kv` key the connection is kept under. */
+export const CONNECTION_KEY = 'cloud';
+const KEY = CONNECTION_KEY;
 /** Where versions before #151 kept the connection, in `chrome.storage.local`. */
 const LEGACY_KEY = 'cloud';
 
@@ -30,7 +32,7 @@ export interface CloudConnection {
 }
 
 /** `stored` as a connection, or null when it lacks a device id or token. */
-function parse(stored: unknown): CloudConnection | null {
+export function parseConnection(stored: unknown): CloudConnection | null {
   const value = asObject(stored);
   const deviceId = asString(value?.deviceId);
   const token = asString(value?.token);
@@ -50,7 +52,7 @@ function parse(stored: unknown): CloudConnection | null {
 async function moveLegacy(): Promise<CloudConnection | null> {
   const stored = await chrome.storage.local.get(LEGACY_KEY);
   if (!(LEGACY_KEY in stored)) return null;
-  const legacy = parse(stored[LEGACY_KEY]);
+  const legacy = parseConnection(stored[LEGACY_KEY]);
   if (legacy) await kvSet(KEY, legacy);
   await chrome.storage.local.remove(LEGACY_KEY);
   return legacy;
@@ -58,7 +60,7 @@ async function moveLegacy(): Promise<CloudConnection | null> {
 
 /** The stored connection, or null when this browser isn't connected (or the stored value is unusable). */
 export async function getConnection(): Promise<CloudConnection | null> {
-  return parse((await db.kv.get(KEY))?.value) ?? moveLegacy();
+  return parseConnection((await db.kv.get(KEY))?.value) ?? moveLegacy();
 }
 
 /** Stores the connection. */
@@ -77,7 +79,7 @@ export async function clearConnection(): Promise<void> {
  * `chrome.storage`, so it can run inside a Dexie transaction, which waiting on anything else would end.
  */
 export async function isStoredConnection(connection: Pick<CloudConnection, 'deviceId' | 'token'>): Promise<boolean> {
-  const stored = parse((await db.kv.get(KEY))?.value);
+  const stored = parseConnection((await db.kv.get(KEY))?.value);
   return stored?.deviceId === connection.deviceId && stored.token === connection.token;
 }
 

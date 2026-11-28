@@ -7,6 +7,7 @@ The part of Xomoni that acts on X. A Chrome MV3 extension that deletes the perso
 ```bash
 npm run build -w @xomoni/extension       # → apps/extension/dist
 npm run build:store -w @xomoni/extension # the same for a store, without the one-click updater (ADR-0033)
+XOMONI_PAYWALL=off npm run build -w @xomoni/extension # every paid part open, no paywall (ADR-0042)
 npm run watch -w @xomoni/extension       # rebuild on change
 npm run preview:ui -w @xomoni/extension  # dashboard with demo data, no X connection
 npm run store:images -w @xomoni/extension # store icon, logo, screenshots, promo tile → docs/store; Home → apps/web/public/screens

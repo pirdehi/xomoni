@@ -52,3 +52,4 @@ Why Xomoni is built the way it is. Each record captures one decision; see [ADR-0
 | [0046](0046-a-public-digest-of-xs-open-ranking-code.md) | A public digest of X's open ranking code, made from public code only | Accepted |
 | [0047](0047-an-email-when-x-warns-an-account.md) | An email when X warns an account, only for those who ask, sent by the database | Accepted |
 | [0048](0048-a-private-product-document-for-super-admins.md) | A private product document for super-admins, kept only in the database | Accepted |
+| [0049](0049-the-on-device-archive-scanner.md) | The on-device archive scanner, a new extension area that never touches X | Proposed |

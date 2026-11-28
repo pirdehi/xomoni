@@ -249,7 +249,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 44 [features](#features), 4 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 45 [features](#features), 5 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
 
 <!-- END GENERATED: status -->
 

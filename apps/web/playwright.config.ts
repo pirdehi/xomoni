@@ -46,6 +46,9 @@ const env = {
   // The pages for paid plans (#420): on, as on a Preview where the maintainer reviews their drafts, so their scenarios
   // run. Production keeps them off until the texts are approved; unit tests prove that state.
   BILLING_PAGES: '1',
+  // Adds the made-up digests of the year 2000 to xomoni.com/algorithm (e2e/algorithm-digest.spec.ts, #430). Only a
+  // local build reads it.
+  XOMONI_E2E_DIGESTS: '1',
 };
 process.env.BILLING_PAGES = env.BILLING_PAGES;
 process.env.MAILPIT_URL = env.MAILPIT_URL;

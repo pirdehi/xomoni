@@ -3,7 +3,9 @@ import 'fake-indexeddb/auto';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db, itemKey } from '../../src/shared/db';
+import { saveConnection } from '../../src/cloud/connection';
+import { LIVE_KEY, rememberPlan } from '../../src/cloud/entitlement';
+import { db, itemKey, kvSet } from '../../src/shared/db';
 import type { Item } from '../../src/shared/types';
 import { ReachPage } from '../../src/ui/pages/Reach';
 import {
@@ -116,6 +118,14 @@ describe('the Reach page (#429, ADR-0045)', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
+  it('links the digest of X’s ranking code on xomoni.com, with numbers or without (#430)', async () => {
+    await renderPage();
+    const link = await screen.findByRole('link', { name: 'Read the digests on xomoni.com' });
+    expect(link).toHaveAttribute('href', 'https://xomoni.com/algorithm');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('heading', { level: 2, name: 'What changed in X’s ranking code' })).toBeInTheDocument();
+  });
+
   it('fills the table from the views Xomoni saw live, each with its Live badge and a link to X', async () => {
     await db.items.bulkPut([post('11', 10, 1_200), post('12', 9, 40, { kind: 'reply' })]);
     await renderPage();
@@ -210,6 +220,46 @@ describe('the Reach page (#429, ADR-0045)', () => {
     expect(within(screen.getByRole('group', { name: 'Period' })).getByText('Plus · preview')).toBeVisible();
     await press('Everything');
     expect(badges()).toHaveLength(3);
+  });
+
+  it('closes the longer periods and the comparisons for Free once sales are open, keeping the last 30 days (#423)', async () => {
+    await kvSet(LIVE_KEY, true);
+    await db.items.bulkPut([post('recent', 10, 50), post('old', 60, 70)]);
+    await renderPage();
+    await waitFor(() => expect(bodyRows()).toHaveLength(1));
+    const comparisons = screen.getByRole('region', { name: 'Comparisons' });
+    expect(await within(comparisons).findByRole('region', { name: 'Part of Plus' })).toBeVisible();
+    expect(within(comparisons).getByRole('link', { name: 'See plans on xomoni.com' })).toBeVisible();
+    await press('90 days');
+    await waitFor(() => expect(screen.getAllByRole('region', { name: 'Part of Plus' })).toHaveLength(2));
+    expect(screen.queryByRole('table', { name: "Each post's reach" })).not.toBeInTheDocument();
+    // The posts are all still there: only the view closed.
+    expect(await db.items.count()).toBe(2);
+    await press('30 days');
+    await waitFor(() => expect(bodyRows()).toHaveLength(1));
+  });
+
+  it('opens them as soon as a plan that includes them is heard, with nothing imported again (#423)', async () => {
+    await kvSet(LIVE_KEY, true);
+    await saveConnection({
+      deviceId: 'd1',
+      token: 't',
+      deviceName: 'Chrome',
+      connectedAt: 1,
+      reportedUpTo: 0,
+      account: 'o•••@example.com',
+      confirmed: true,
+    });
+    await db.items.bulkPut([post('recent', 10, 50), post('old', 60, 70)]);
+    await renderPage();
+    await press('90 days');
+    await waitFor(() => expect(screen.getAllByRole('region', { name: 'Part of Plus' })).toHaveLength(2));
+    await rememberPlan('d1', {
+      entitlement: { tier: 'plus', status: 'active', validUntil: null, checkedAt: Date.now() },
+      live: true,
+    });
+    await waitFor(() => expect(bodyRows()).toHaveLength(2));
+    expect(screen.queryByRole('region', { name: 'Part of Plus' })).not.toBeInTheDocument();
   });
 
   it('draws the spread as a chart and as a table with the same numbers', async () => {

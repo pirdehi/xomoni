@@ -42,6 +42,7 @@ import { type ThemeChoice, getStoredTheme, setTheme } from '../theme';
 import { CloudCard } from '../components/CloudCard';
 import { LimitsPanel } from '../components/LimitsPanel';
 import { MoveDataCard } from '../components/MoveData';
+import { PlanCard } from '../components/PlanCard';
 import { UpdatesCard } from '../components/OneClickUpdate';
 import { xLinkOf } from '../components/ConnectionMap';
 
@@ -376,6 +377,8 @@ export function SettingsPage({ account, worker }: PageProps) {
           </Card>
 
           <CloudCard x={xLinkOf(worker)} />
+
+          <PlanCard />
 
           <Card title="Appearance & data">
             <FieldGroup label="Theme">

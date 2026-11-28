@@ -290,6 +290,22 @@
       }
     },
     {
+      "id": "plan-in-xomoni",
+      "area": "extension",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [423],
+      "scenarios": "docs/scenarios/423-plan-in-xomoni.md",
+      "en": {
+        "title": "Your plan, in Xomoni",
+        "summary": "the plan of your xomoni.com account, heard with the status report Xomoni already sends, kept for 7 days offline, and named in Settings; Reach's longer periods and comparisons open with Plus, and a closed part deletes nothing. Until sales open, every part is a free preview."
+      },
+      "fa": {
+        "title": "پله‌ی شما در Xomoni",
+        "summary": "پله‌ی حساب xomoni.com شما، از همان گزارش وضعیتی که Xomoni می‌فرستد، تا ۷ روز آفلاین نگه داشته می‌شود و در تنظیمات دیده می‌شود؛ بازه‌های بلندتر Reach و مقایسه‌ها با Plus باز می‌شوند و بخش بسته هیچ داده‌ای را پاک نمی‌کند. تا آغاز فروش، همه‌ی بخش‌ها پیش‌نمایش رایگان‌اند."
+      }
+    },
+    {
       "id": "reach-diagnosis",
       "area": "extension",
       "status": "preview",
@@ -655,6 +671,22 @@
       "fa": {
         "title": "ایمیل وقتی X به حسابتان هشدار می‌دهد",
         "summary": "اگر در تنظیمات بخواهید، وقتی X به یکی از حساب‌های X شما هشدار بدهد و Xomoni آنجا متوقف شود، یک ایمیل می‌گیرید: فقط ‎@handle و اینکه Xomoni کی می‌تواند ادامه بدهد، نه چیزی که X نشان داده یا شما نوشته‌اید. حداکثر هر شش ساعت یکی؛ با یک لینک هم قطع می‌شود."
+      }
+    },
+    {
+      "id": "algorithm-digest",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [430],
+      "scenarios": "docs/scenarios/430-algorithm-digest.md",
+      "en": {
+        "title": "What changed in X’s ranking code",
+        "summary": "a monthly digest at xomoni.com/algorithm, made from X’s public code only and written by a person, with the parts of the code that changed, the settings by name and the exact range on GitHub; it says what it can’t tell, since the real weights are hidden."
+      },
+      "fa": {
+        "title": "تغییرهای کد رتبه‌بندی X",
+        "summary": "خلاصه‌ی ماهانه در xomoni.com/algorithm، فقط از کد عمومی X و نوشته‌ی یک انسان، با بخش‌هایی از کد که عوض شد، نام تنظیم‌ها و بازه‌ی دقیق در GitHub؛ و می‌گوید چه چیزی را نمی‌تواند بگوید، چون وزن‌های واقعی پنهان‌اند."
       }
     },
     {

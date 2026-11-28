@@ -11,7 +11,7 @@ import { type Entitlement, entitlementFromAnswer } from '@xomoni/entitlements';
 import { liveQuery } from 'dexie';
 import { db, kvGet, kvSet } from '../shared/db';
 import { asObject } from '../shared/json';
-import { getConnection } from './connection';
+import { CONNECTION_KEY, getConnection, parseConnection } from './connection';
 
 /** The prefix of the `kv` keys a plan is kept under, one per device. */
 export const PLAN_KEY_PREFIX = 'entitlement:';
@@ -94,8 +94,16 @@ export async function salesOpen(): Promise<boolean> {
 
 /** The plan of the browser connected now and whether sales are open, as `hasPlan` takes them. */
 export async function currentPlanState(): Promise<PlanState> {
-  const [entitlement, live] = await Promise.all([currentEntitlement(), salesOpen()]);
-  return { entitlement, live };
+  // All three reads start before the first await, so a live query follows each of them (#459): reading the plan only
+  // after the connection came back left it unwatched on a busy page, and a plan bought then didn't open the gate.
+  const [connectionRow, planRows, liveRow] = await Promise.all([
+    db.kv.get(CONNECTION_KEY),
+    db.kv.where('key').startsWith(PLAN_KEY_PREFIX).toArray(),
+    db.kv.get(LIVE_KEY),
+  ]);
+  const connection = parseConnection(connectionRow?.value);
+  const own = connection?.confirmed ? planRows.find((row) => row.key === planKey(connection.deviceId)) : undefined;
+  return { entitlement: own ? parse(own.value) : null, live: liveRow?.value === true };
 }
 
 /**

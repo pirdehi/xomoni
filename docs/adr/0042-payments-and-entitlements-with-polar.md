@@ -5,7 +5,7 @@
 
 ## Context
 
-Xomoni has never taken a payment. R1, release 0.6.0, brings the first paid plans (#420 to #423). No decision says yet:
+Xomoni has never taken a payment. R1, release 0.7.0, brings the first paid plans (#420 to #423). No decision says yet:
 
 - where a payment happens;
 - what the server keeps about it;

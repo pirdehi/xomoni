@@ -56,6 +56,8 @@ export interface XomoniSite {
   entitlement: SiteEntitlement;
   /** Whether sales are open, as `device_report` answers `billing_live`: closed unless a test opens them. */
   billingLive: boolean;
+  /** Whether `device_report` answers at all: false answers HTTP 500, as xomoni.com down would (#423). */
+  up: boolean;
   /**
    * Signs Xomoni in from a page of xomoni.com, as the website does once its page is signed in (#232, ADR-0025): a
    * one-time code, sent as `xomoni-sign-in`. Returns the extension's answer.
@@ -95,6 +97,7 @@ export async function serveXomoniSite(
     stats: false,
     entitlement,
     billingLive,
+    up: true,
     signIn: async (extensionId) => {
       const page = await context.newPage();
       await page.goto(`${SITE}/dashboard`);
@@ -144,6 +147,7 @@ export async function serveXomoniSite(
       if (!paired || body.token !== TOKEN) return refuse('unknown_device');
       switch (fn) {
         case 'device_report':
+          if (!site.up) return answer(500, { message: 'xomoni.com is down' });
           return answer(200, {
             ...(site.release ?? {}),
             stats: site.stats,

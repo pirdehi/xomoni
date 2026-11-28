@@ -415,3 +415,25 @@ test.describe('Reach', { tag: '@task-429' }, () => {
     await expect(rows(dashboard)).toHaveCount(2);
   });
 });
+
+// The link to the monthly digest of X's open ranking code (docs/scenarios/430-algorithm-digest.md, #430, ADR-0046).
+test(
+  'S430-25 Reach links the digest of X’s ranking code on xomoni.com, in a new tab, fetching nothing',
+  {
+    tag: ['@task-430'],
+  },
+  async ({ dashboard }) => {
+    await openXWindow(dashboard);
+    const sent: string[] = [];
+    dashboard.on('request', (request: Request) => sent.push(request.url()));
+    await openReach(dashboard);
+    const heading = dashboard.getByRole('heading', { level: 2, name: 'What changed in X’s ranking code' });
+    const card = dashboard.locator('section', { has: heading });
+    await expect(card).toContainText('X hides the real weights');
+    const link = card.getByRole('link', { name: 'Read the digests on xomoni.com' });
+    await expect(link).toHaveAttribute('href', 'https://xomoni.com/algorithm');
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(sent.filter((url) => !url.startsWith('chrome-extension://'))).toEqual([]);
+  },
+);

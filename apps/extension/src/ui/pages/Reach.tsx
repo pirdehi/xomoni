@@ -9,7 +9,9 @@ import { labelMonths } from '../../shared/vault/label-months';
 import { LabelHistory } from '../components/reach/LabelHistory';
 import { ReachComparisons } from '../components/reach/ReachComparisons';
 import { ReachDistribution } from '../components/reach/ReachDistribution';
+import { AlgorithmDigestCard } from '../components/reach/AlgorithmDigestCard';
 import { PlusBadge } from '../components/reach/PlusBadge';
+import { PlanGate } from '../components/PlanGate';
 import { ReachTable } from '../components/reach/ReachTable';
 import { SuspectPosts } from '../components/reach/SuspectPosts';
 import { Callout, Card, EmptyState, FieldGroup, PageHeader, Segmented } from '../components/ui';
@@ -32,8 +34,9 @@ const RANGE_LABEL: Readonly<Record<ReachRange, string>> = { '30d': '30 days', '9
 
 /**
  * Reach (#429, ADR-0045): how many times X says each of the person's posts and replies was seen, from X's own numbers,
- * each against its usual. The last 30 days are free; longer periods are part of Plus, open as a preview until sales
- * start (ADR-0042). The numbers come from the views X already showed Xomoni on pages the person opened, and from X's
+ * each against its usual. The last 30 days are free; longer periods and the comparisons are part of Plus (ADR-0042),
+ * each behind `PlanGate`: open as a preview until sales start, then for a plan that includes them. A closed part shows
+ * where plans are, and deletes nothing. The numbers come from the views X already showed Xomoni on pages the person opened, and from X's
  * analytics export once the vault reads it. Xomoni never searches X or opens a page to measure reach.
  */
 export function ReachPage({ account }: Pick<PageProps, 'account'>) {
@@ -73,14 +76,26 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
         ) : (
           <>
             <Sources data={data} />
-            <ReachTable rows={data.rows} handle={account.handle} />
-            <ReachDistribution rows={data.rows} handle={account.handle} />
+            {PLUS_RANGES.has(range) ? (
+              // Longer than 30 days is part of Plus (#423): the same posts stay in Xomoni either way.
+              <PlanGate feature="reach-history">
+                <ReachTable rows={data.rows} handle={account.handle} />
+                <ReachDistribution rows={data.rows} handle={account.handle} />
+              </PlanGate>
+            ) : (
+              <>
+                <ReachTable rows={data.rows} handle={account.handle} />
+                <ReachDistribution rows={data.rows} handle={account.handle} />
+              </>
+            )}
             <section aria-label="Comparisons" className={styles.stack}>
               <div className={styles.period}>
                 <h2 className={styles.heading}>Comparisons</h2>
                 <PlusBadge feature="reach-compare" />
               </div>
-              <ReachComparisons rows={data.rows} periods={data.periods} account={account} />
+              <PlanGate feature="reach-compare">
+                <ReachComparisons rows={data.rows} periods={data.periods} account={account} />
+              </PlanGate>
             </section>
             {months && (
               <section aria-label="Suspected posts" className={styles.stack}>
@@ -94,6 +109,8 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
           </>
         )}
         {months && <LabelHistory months={months} />}
+        {/* What changed in X's ranking code (#430, ADR-0046): a link to xomoni.com, nothing fetched. */}
+        <AlgorithmDigestCard />
       </div>
     </>
   );

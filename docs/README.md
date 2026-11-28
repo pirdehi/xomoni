@@ -20,7 +20,7 @@ The map of `docs/`: what each document is for and when to read it, sorted by kin
 | Document | What it is | Read it |
 | --- | --- | --- |
 | [RELEASING.md](RELEASING.md) | Shipping a version: the release issue, the tag, the stores, the check after | When cutting a release |
-| [guides/](guides/) | Other how-tos, such as [making the store accounts](guides/STORE-ACCOUNTS-GUIDE.fa.md) (in Persian, for the maintainer) | When the task comes up |
+| [guides/](guides/) | Other how-tos, such as [making the store accounts](guides/STORE-ACCOUNTS-GUIDE.fa.md) (in Persian, for the maintainer) and [publishing the algorithm digest](guides/ALGORITHM-DIGEST.md) | When the task comes up |
 
 ## Explanation: why things are the way they are
 

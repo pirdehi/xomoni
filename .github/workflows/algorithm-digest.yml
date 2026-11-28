@@ -1,0 +1,85 @@
+# The monthly digest of X's open ranking code (#430, ADR-0046). On the 20th of each month, and by hand, it reads X's
+# public repository xai-org/x-algorithm through GitHub's REST API, and when something changed since the last digest it
+# opens a pull request with a draft: the commit range, the areas it touched and the parameters that changed
+# (tooling/algorithm-digest.mjs). It never publishes: a maintainer writes the summary, sets `status: "published"` and
+# merges through the same gate as any pull request (docs/guides/ALGORITHM-DIGEST.md).
+# - Public code only: no X data, no Xomoni user's data, no other secret than the workflow's own token.
+# - One job, which runs Node's built-ins, git and gh only: no npm install, so no dependency's code runs with its token.
+# - With no new commit it writes nothing and opens nothing; a GitHub error fails the run with no file written.
+# GitHub runs schedules from main only. Run it by hand from Actions › Algorithm digest › Run workflow, with a month and a
+# commit range for a digest of a past month. Actions are pinned by commit SHA; Dependabot keeps them current.
+name: Algorithm digest
+
+on:
+  schedule:
+    # 06:17 UTC on the 20th: off the hour, when GitHub's queues are busiest.
+    - cron: '17 6 20 * *'
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "The digest's month, yyyy-mm (blank: this month)"
+        required: false
+        default: ''
+      from:
+        description: "The full commit to compare from (blank: the last digest's)"
+        required: false
+        default: ''
+      to:
+        description: 'The full commit to compare to (blank: the newest)'
+        required: false
+        default: ''
+
+permissions: {}
+
+# One draft at a time: a run by hand waits for the scheduled one.
+concurrency:
+  group: algorithm-digest
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # To push the draft's branch.
+      contents: write
+      # To open the draft's pull request.
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Draft the digest from X's public repository
+        id: draft
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MONTH: ${{ inputs.month }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+        run: >-
+          node tooling/algorithm-digest.mjs --month "$MONTH" --from "$FROM" --to "$TO"
+          --body-file "$RUNNER_TEMP/algorithm-digest.md"
+      - name: Open a pull request with the draft
+        if: steps.draft.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MONTH: ${{ steps.draft.outputs.month }}
+        run: |
+          set -euo pipefail
+          branch="algorithm-digest/$MONTH"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add apps/web/src/modules/algorithm/data
+          git commit -m "Algorithm digest for $MONTH: the draft, for review (#430)"
+          # The token reaches git through gh's credential helper, for this push only: nothing is written to .git/config.
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin "HEAD:refs/heads/$branch"
+          if ! gh pr create --base main --head "$branch" --title "Algorithm digest for $MONTH: draft for review" \
+            --body-file "$RUNNER_TEMP/algorithm-digest.md" --label no-changelog --label no-scenarios; then
+            echo "::error::The draft is on the branch $branch, but its pull request couldn't be opened. Open it from $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/main...$branch, or allow GitHub Actions to create pull requests (Settings › Actions › General)."
+            exit 1
+          fi

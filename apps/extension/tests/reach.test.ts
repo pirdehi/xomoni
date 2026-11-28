@@ -348,6 +348,29 @@ describe('each post’s reach (#428, ADR-0045)', () => {
       bulkGet.mockRestore();
     });
 
+    it('reads a span past a year through the primary key, keeping only its days, and a shorter one through the index (#501)', async () => {
+      await db.items.bulkPut([
+        item('1', { createdAt: T - 400 * DAY, views: 1 }),
+        item('2', { createdAt: T, views: 2 }),
+        item('3', { kind: 'reply', createdAt: T - 10 * DAY, views: 3 }),
+        item('4', { createdAt: T + 10 * DAY, views: 4 }),
+        item('5', { accountId: 'other', key: itemKey('other', 'post', '5'), createdAt: T, views: 5 }),
+        item('6', { kind: 'repost', createdAt: T, views: 6 }),
+      ]);
+      const where = vi.spyOn(db.items, 'where');
+      const long = await reachPosts(ME, { from: T - 500 * DAY, to: T + 5 * DAY });
+      expect(long.map((p) => p.id)).toEqual(['1', '3', '2']);
+      expect(where.mock.calls.map(([index]) => index)).toEqual([':id', ':id']);
+      where.mockClear();
+      const short = await reachPosts(ME, { from: T - 20 * DAY, to: T + 5 * DAY });
+      expect(short.map((p) => p.id)).toEqual(['3', '2']);
+      expect(where.mock.calls.map(([index]) => index)).toEqual([
+        '[accountId+kind+createdAt]',
+        '[accountId+kind+createdAt]',
+      ]);
+      where.mockRestore();
+    });
+
     it('reads without the vault: no CSV and no Premium changes', async () => {
       await db.items.put(item('1', { views: 10 }));
       const posts = await reachPosts(ME, { from: T - DAY, to: T + DAY });
@@ -370,15 +393,16 @@ describe('each post’s reach (#428, ADR-0045)', () => {
         vi.spyOn(db.items, 'where').mockImplementation(((index: string) => {
           asked.push(index);
           return {
-            between: (lower: readonly unknown[]) => ({
-              toArray: () => Promise.resolve(lower[1] === 'post' ? many : []),
+            between: (lower: string) => ({
+              toArray: () => Promise.resolve(lower === itemKey(ME, 'post', '') ? many : []),
             }),
           };
         }) as never);
 
         const posts = await reachPosts(ME, { from: 0, to: T + 200 * DAY });
 
-        expect(asked).toEqual(['[accountId+kind+createdAt]', '[accountId+kind+createdAt]']);
+        // Everything is read through the primary key, the quicker read of a whole kind (#501).
+        expect(asked).toEqual([':id', ':id']);
         expect(posts).toHaveLength(200_000);
         expect(posts[0]).toMatchObject({ id: '1000000', impressions: 0, source: 'live' });
         expect(posts.at(-1)).toMatchObject({ id: '1199999', impressions: 199_999, source: 'live' });

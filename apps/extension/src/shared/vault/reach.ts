@@ -3,7 +3,7 @@
 // X's answers ("as last seen"); a post with neither has no source and stays out of every comparison. The daily
 // numbers (ADR-0026) are only an estimate, for a trend, never for one post. Every number stays on the computer.
 import { type DailyStats, localDay } from '../daily';
-import { db } from '../db';
+import { db, itemKey } from '../db';
 import { analyticsPostKey } from './records';
 import type { Account, Item } from '../types';
 import { type ReachFormat, formatOf } from './reach-stats';
@@ -289,8 +289,29 @@ export interface ReachRange {
 }
 
 /**
+ * Past this span, a read takes every item of a kind through the primary key and keeps the span in memory: IndexedDB
+ * reads a range of the primary key (`<account>:<kind>:<id>`, `itemKey`) about twice as fast as the same rows through
+ * an index, which must look each one up again (#501). A shorter span reads only its days, through the index.
+ */
+export const WHOLE_KIND_SPAN_MS = 365 * DAY_MS;
+
+/** The account's items of `kind` made in `range`: through the primary key for a long span, else through the index. */
+async function itemsOf(accountId: string, kind: 'post' | 'reply', range: ReachRange): Promise<Item[]> {
+  if (range.to - range.from > WHOLE_KIND_SPAN_MS) {
+    const prefix = itemKey(accountId, kind, '');
+    const rows = await db.items.where(':id').between(prefix, `${prefix}\uffff`, true, true).toArray();
+    return rows.filter((row) => row.createdAt >= range.from && row.createdAt <= range.to);
+  }
+  return db.items
+    .where('[accountId+kind+createdAt]')
+    .between([accountId, kind, range.from], [accountId, kind, range.to], true, true)
+    .toArray();
+}
+
+/**
  * The person's own posts and replies made from `from` to `to`, each with its reach, oldest first; those Xomoni removed
- * too, since they were seen before. Reads the inventory through its `[accountId+kind+createdAt]` index, the daily
+ * too, since they were seen before. Reads the inventory (`itemsOf`: the primary key for a span past a year, else the
+ * `[accountId+kind+createdAt]` index), the daily
  * numbers for the followers, and `sources` (the vault's, `VAULT_REACH_SOURCES`, unless given) for the analytics CSV and
  * the Premium changes. Any number of posts: nothing spreads them into a call's arguments, which V8 can't take past
  * about 125,000.
@@ -302,12 +323,8 @@ export async function reachPosts(
 ): Promise<ReachPost[]> {
   let items: Item[] = [];
   for (const kind of ['post', 'reply'] as const) {
-    const rows = await db.items
-      .where('[accountId+kind+createdAt]')
-      .between([accountId, kind, range.from], [accountId, kind, range.to], true, true)
-      .toArray();
     // Not `push(...rows)`: spreading 125,000 or more rows into a call's arguments overflows V8's stack.
-    items = items.concat(rows);
+    items = items.concat(await itemsOf(accountId, kind, range));
   }
   const [analytics, events, account, days] = await Promise.all([
     sources.analytics(

@@ -192,7 +192,7 @@ describe('SiteFooter', () => {
     const links = within(screen.getByRole('navigation', { name: 'Site' }))
       .getAllByRole('link')
       .map((link) => [link.textContent, link.getAttribute('href')]);
-    expect(links.slice(3, 7)).toEqual([
+    expect(links.slice(4, 8)).toEqual([
       ['Privacy', '/privacy'],
       ['Terms', '/terms'],
       ['Terms of sale', '/terms-of-sale'],

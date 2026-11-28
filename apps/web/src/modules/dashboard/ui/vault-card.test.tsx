@@ -57,7 +57,7 @@ describe('VaultCard', () => {
     ]);
     expect(screen.getByText(/X made your newest archive on Oct 15, 2026\. 3 imports in all\./)).toBeInTheDocument();
     expect(
-      screen.getByText(/Counts and dates only, read from Xomoni in this browser: nothing here reaches our servers/),
+      screen.getByText(/Only counts and dates, from Xomoni in this browser\. None of it reaches our servers\./),
     ).toBeInTheDocument();
     expect(read).toHaveBeenCalledWith({ what: 'vault' });
   });

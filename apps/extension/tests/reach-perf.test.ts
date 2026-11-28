@@ -72,8 +72,8 @@ describe('Reach at 50,000 posts (#431, P5.4.3)', () => {
   it('reads the posts under a second, compares them under half a second, and guesses over 24 months as fast', async () => {
     const many = Array.from({ length: COUNT }, (_, n) => post(n));
     vi.spyOn(db.items, 'where').mockImplementation((() => ({
-      between: (lower: readonly unknown[]) => ({
-        toArray: () => Promise.resolve(lower[1] === 'post' ? many : []),
+      between: (lower: string) => ({
+        toArray: () => Promise.resolve(lower === itemKey(ME, 'post', '') ? many : []),
       }),
     })) as never);
 

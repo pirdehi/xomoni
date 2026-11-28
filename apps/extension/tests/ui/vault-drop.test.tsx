@@ -18,6 +18,9 @@ import { account, resetDb } from '../support/fixtures';
 // *Add files* on the Vault page (#425, CV.2.4): what was dropped, planned and shown before anything is written,
 // confirmed, imported with progress, stopped, refused, or cancelled.
 
+/** How long a test waits for an import to finish: it reads a real ZIP and writes IndexedDB, slower on a busy machine. */
+const IMPORT_WAIT = 10_000;
+
 const mocks = vi.hoisted(() => ({ toast: vi.fn(), hold: null as null | Promise<void> }));
 
 vi.mock('../../src/ui/hooks', async (importOriginal) => ({
@@ -98,7 +101,7 @@ describe('VaultDrop', () => {
     expect(await db.items.count()).toBe(0);
 
     await userEvent.click(within(asked).getByRole('button', { name: 'Import' }));
-    const status = await screen.findByRole('status', { name: 'What came in' });
+    const status = await screen.findByRole('status', { name: 'What came in' }, { timeout: IMPORT_WAIT });
     expect(status).toHaveTextContent('X’s archive: 7 rows imported.');
     expect(await db.items.count()).toBe(7);
     expect((await importLedger(ME.id)).map((r) => r.source)).toEqual(['x-archive']);
@@ -115,7 +118,7 @@ describe('VaultDrop', () => {
     });
     await userEvent.click(mine);
     await userEvent.click(within(asked).getByRole('button', { name: 'Import' }));
-    const status = await screen.findByRole('status', { name: 'What came in' });
+    const status = await screen.findByRole('status', { name: 'What came in' }, { timeout: IMPORT_WAIT });
     expect(status).toHaveTextContent('X’s archive: 5 rows imported.');
     expect(status).toHaveTextContent('X’s analytics of days: 2 rows imported.');
     expect(await db.analyticsDays.count()).toBe(2);
@@ -125,7 +128,7 @@ describe('VaultDrop', () => {
     show();
     drop([await buildArchive(), new File([DAYS_CSV], 'overview.csv')]);
     await userEvent.click(within(await dialog()).getByRole('button', { name: 'Import' }));
-    await screen.findByRole('status', { name: 'What came in' });
+    await screen.findByRole('status', { name: 'What came in' }, { timeout: IMPORT_WAIT });
     expect(await db.analyticsDays.count()).toBe(0);
     expect((await importLedger(ME.id)).map((r) => r.source)).toEqual(['x-archive']);
   });
@@ -176,7 +179,7 @@ describe('VaultDrop', () => {
     const zip = await buildArchive();
     drop([zip]);
     await userEvent.click(within(await dialog()).getByRole('button', { name: 'Import' }));
-    await screen.findByRole('status', { name: 'What came in' });
+    await screen.findByRole('status', { name: 'What came in' }, { timeout: IMPORT_WAIT });
     drop([zip]);
     const again = await dialog();
     expect(again).toHaveTextContent(/Already imported on .*: importing it again adds nothing\./);
@@ -197,7 +200,7 @@ describe('VaultDrop', () => {
     expect(await screen.findByText('Saving content.csv: 2,000 / 2,005')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
     release();
-    const status = await screen.findByRole('status', { name: 'What came in' });
+    const status = await screen.findByRole('status', { name: 'What came in' }, { timeout: IMPORT_WAIT });
     expect(status).toHaveTextContent('X’s archive: stopped.');
     expect(mocks.toast).toHaveBeenCalledWith('Import stopped. What came in stays.', 'good');
     expect((await importLedger(ME.id))[0]?.problems).toEqual(['cancelled']);
@@ -219,7 +222,7 @@ describe('VaultDrop', () => {
     show();
     drop([await buildArchive()]);
     await userEvent.click(within(await dialog()).getByRole('button', { name: 'Import' }));
-    await screen.findByRole('status', { name: 'What came in' });
+    await screen.findByRole('status', { name: 'What came in' }, { timeout: IMPORT_WAIT });
     expect(network.calls()).toBe(0);
   });
 

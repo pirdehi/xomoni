@@ -58,7 +58,7 @@ export type JobAction = 'pause' | 'cancel' | 'resume';
 export const JOB_ACTIONS: readonly JobAction[] = ['pause', 'cancel', 'resume'];
 
 /** The pages of Xomoni the website may open. */
-export type XomoniPage = 'overview' | 'activity' | 'cleanup' | 'library' | 'reach' | 'watch' | 'settings';
+export type XomoniPage = 'overview' | 'activity' | 'cleanup' | 'library' | 'vault' | 'reach' | 'watch' | 'settings';
 
 /** Every `XomoniPage`, for the parser. */
 export const XOMONI_PAGES: readonly XomoniPage[] = [
@@ -66,6 +66,7 @@ export const XOMONI_PAGES: readonly XomoniPage[] = [
   'activity',
   'cleanup',
   'library',
+  'vault',
   'reach',
   'watch',
   'settings',
@@ -345,9 +346,10 @@ export const READ = 'xomoni-read';
 
 /**
  * What the website may read: `settings` too, under ADR-0029, a cleanup plan's estimate (#235), the person's replies
- * with whom each answers, and the replies other people wrote to the person (`incoming`, ADR-0030) (#256).
+ * with whom each answers, the replies other people wrote to the person (`incoming`, ADR-0030) (#256), and the vault's
+ * summary (`vault`, #426): counts and dates only, never a text or an id of X's.
  */
-export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup' | 'replies' | 'incoming';
+export type ReadWhat = 'library' | 'health' | 'watch' | 'settings' | 'cleanup' | 'replies' | 'incoming' | 'vault';
 
 /** The kinds of item the Library holds. */
 export type LibraryKind = 'post' | 'reply' | 'repost' | 'like';
@@ -389,7 +391,7 @@ export interface RepliesFilter {
  */
 export type ReadMessage =
   | { type: typeof READ; what: 'library'; deviceId: string; kind: LibraryKind; query: string; offset: number }
-  | { type: typeof READ; what: 'health' | 'watch' | 'settings'; deviceId: string }
+  | { type: typeof READ; what: 'health' | 'watch' | 'settings' | 'vault'; deviceId: string }
   | { type: typeof READ; what: 'cleanup'; deviceId: string; plan: CleanupPlan }
   | { type: typeof READ; what: 'replies'; deviceId: string; filter: RepliesFilter; offset: number }
   | { type: typeof READ; what: 'incoming'; deviceId: string; author: string; query: string; offset: number };
@@ -421,7 +423,7 @@ export function parseReadMessage(raw: unknown): ReadMessage | null {
   if (value?.type !== READ) return null;
   const deviceId = matching(value.deviceId, DEVICE_ID);
   if (!deviceId) return null;
-  if (value.what === 'health' || value.what === 'watch' || value.what === 'settings') {
+  if (value.what === 'health' || value.what === 'watch' || value.what === 'settings' || value.what === 'vault') {
     return onlyKeys(value, ['type', 'what', 'deviceId']) ? { type: READ, what: value.what, deviceId } : null;
   }
   if (value.what === 'cleanup') {
@@ -585,7 +587,79 @@ export type ReadAnswer =
   | { ok: true; what: 'cleanup'; estimate: CleanupEstimate }
   | { ok: true; what: 'replies'; page: RepliesPage }
   | { ok: true; what: 'incoming'; page: IncomingPage }
+  | { ok: true; what: 'vault'; vault: VaultSummary }
   | { ok: false; reason: ActionRefusal };
+
+/** How fresh one of X's files in the vault is (#425): never imported, fresh, due for a new copy, or overdue. */
+export type VaultFreshness = 'never' | 'fresh' | 'due' | 'overdue';
+
+/** Every `VaultFreshness`, for the parser. */
+export const VAULT_FRESHNESS: readonly VaultFreshness[] = ['never', 'fresh', 'due', 'overdue'];
+
+/** The vault's sources a summary names: X's archive, its analytics of posts and of days, and the *Under the hood* file. */
+export type VaultSummarySource = 'x-archive' | 'x-analytics-posts' | 'x-analytics-days' | 'x-under-the-hood';
+
+/** Every `VaultSummarySource`, in the order the website shows them. */
+export const VAULT_SUMMARY_SOURCES: readonly VaultSummarySource[] = [
+  'x-archive',
+  'x-analytics-posts',
+  'x-analytics-days',
+  'x-under-the-hood',
+];
+
+/** One source of the vault, as counts and dates only. */
+export interface VaultSourceSummary {
+  source: VaultSummarySource;
+  /** When the newest copy is from (epoch ms), or null when there is none. */
+  lastAt: number | null;
+  freshness: VaultFreshness;
+  /** Rows the vault holds from it. */
+  rows: number;
+}
+
+/**
+ * What the website may read of the vault (#426, ADR-0028 as amended): each source's date, freshness and row count, the
+ * day X made the newest archive, how many imports the ledger holds, and how many reading groups are on (none in R1).
+ * No text, no file name, no id of X's.
+ */
+export interface VaultSummary {
+  handle: string;
+  sources: VaultSourceSummary[];
+  archiveGeneratedAt: number | null;
+  imports: number;
+  captureGroupsOn: number;
+}
+
+/** The most rows or imports a vault summary may count: far beyond any real vault. */
+const MAX_VAULT_COUNT = 1e12;
+
+const vaultCount = (value: unknown) =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= MAX_VAULT_COUNT ? value : null;
+
+/** `raw` as a vault summary, or null unless it has exactly that shape: no extra key, every count a whole number. */
+export function parseVaultSummary(raw: unknown): VaultSummary | null {
+  const v = record(raw);
+  if (!v || !onlyKeys(v, ['handle', 'sources', 'archiveGeneratedAt', 'imports', 'captureGroupsOn'])) return null;
+  const handle = matching(v.handle, HANDLE_TEXT);
+  const archiveGeneratedAt = v.archiveGeneratedAt === null ? null : (time(v.archiveGeneratedAt) ?? undefined);
+  const imports = vaultCount(v.imports);
+  const groups = vaultCount(v.captureGroupsOn);
+  if (handle === null || archiveGeneratedAt === undefined || imports === null || groups === null) return null;
+  if (!Array.isArray(v.sources) || v.sources.length > VAULT_SUMMARY_SOURCES.length) return null;
+  const sources: VaultSourceSummary[] = [];
+  for (const entry of v.sources as unknown[]) {
+    const s = record(entry);
+    if (!s || !onlyKeys(s, ['source', 'lastAt', 'freshness', 'rows'])) return null;
+    const source = VAULT_SUMMARY_SOURCES.find((x) => x === s.source);
+    const freshness = VAULT_FRESHNESS.find((x) => x === s.freshness);
+    const lastAt = s.lastAt === null ? null : (time(s.lastAt) ?? undefined);
+    const rows = vaultCount(s.rows);
+    if (!source || !freshness || lastAt === undefined || rows === null) return null;
+    if (sources.some((x) => x.source === source)) return null;
+    sources.push({ source, lastAt, freshness, rows });
+  }
+  return { handle, sources, archiveGeneratedAt, imports, captureGroupsOn: groups };
+}
 
 const X_ID = /^\d{1,25}$/;
 const HANDLE_TEXT = /^[A-Za-z0-9_]{0,15}$/;
@@ -773,6 +847,9 @@ export function parseReadAnswer(raw: unknown, what: ReadWhat): ReadAnswer {
     } else if (what === 'incoming') {
       const page = parseIncoming(answer.page);
       if (page) return { ok: true, what, page };
+    } else if (what === 'vault') {
+      const vault = parseVaultSummary(answer.vault);
+      if (vault) return { ok: true, what, vault };
     }
   }
   const reason = ACTION_REFUSALS.find((r) => r === answer?.reason);

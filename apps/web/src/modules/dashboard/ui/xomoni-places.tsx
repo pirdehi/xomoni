@@ -77,18 +77,21 @@ function formatTime(ms: number): string {
 
 /**
  * What a place says while Xomoni can't be read from this page, with the way to it. `what` names the place (its
- * region is "`what`: in Xomoni"); `says` replaces the sentence about where its data lives.
+ * region is "`what`: in Xomoni"); `says` replaces the sentence about where its data lives; `open` names its button when
+ * another place on the page has one too.
  */
 export function NotHere({
   xomoni,
   page,
   what,
   says,
+  open,
 }: {
   xomoni: XomoniControls;
   page: XomoniPage;
   what: string;
   says?: string;
+  open?: string;
 }) {
   const s = useStyles();
   return (
@@ -103,7 +106,7 @@ export function NotHere({
               `${what} is read from Xomoni on your computer, in this browser: it never reaches our servers. Open this page in the browser where Xomoni runs, signed in to this account.`}
           </p>
           <div className={s.row}>
-            <OpenInXomoni xomoni={xomoni} page={page} />
+            <OpenInXomoni xomoni={xomoni} page={page} {...(open && { label: open })} />
           </div>
         </>
       )}
@@ -113,18 +116,22 @@ export function NotHere({
 
 /**
  * What a place says when Xomoni didn't give it what it asked for. `invalid` comes from a Xomoni older than the
- * message (it answers `invalid` to a type it doesn't know), so it says to install the newest version.
+ * message (it answers `invalid` to a type it doesn't know), so it says to install the newest version. `about` names
+ * what was asked, for a place beside another on the same page: its words, and its link's name, then differ from the
+ * other place's, for a screen reader as for a test.
  */
-export function NoAnswer({ reason, doing = 'show this' }: { reason: string; doing?: string }) {
+export function NoAnswer({ reason, doing = 'show this', about }: { reason: string; doing?: string; about?: string }) {
   const s = useStyles();
   return reason === 'invalid' ? (
     <p className={s.text}>
       Your Xomoni is older than this page and can’t {doing} here yet.{' '}
-      <TextLink href={INSTALL_URL}>Install the newest version</TextLink>, reload it in your browser’s extensions page,
-      then try again.
+      <TextLink href={INSTALL_URL}>{about ? 'Install the newest Xomoni' : 'Install the newest version'}</TextLink>,
+      reload it in your browser’s extensions page, then try again.
     </p>
   ) : (
-    <p className={s.text}>Xomoni didn’t answer. Open it on this computer and try again.</p>
+    <p className={s.text}>
+      Xomoni didn’t answer{about ? ` about ${about}` : ''}. Open it on this computer and try again.
+    </p>
   );
 }
 

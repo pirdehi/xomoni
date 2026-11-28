@@ -178,6 +178,38 @@
       }
     },
     {
+      "id": "vault",
+      "area": "extension",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [425, 424],
+      "scenarios": "docs/scenarios/425-vault-page.md",
+      "en": {
+        "title": "The vault: X's own files, kept on your computer",
+        "summary": "the *Vault* page takes X's archive and its analytics export, dropped or chosen, says what it recognized before anything is written, and keeps a ledger of every import and your account's timeline. A reminder, at most once a day, says when a file is due for a fresh copy. Nothing leaves your computer, and nothing is done on X."
+      },
+      "fa": {
+        "title": "گاوصندوق: فایل‌های خود X، روی رایانه‌ی شما",
+        "summary": "صفحه‌ی *Vault* آرشیو X و خروجی آمارش را، رها شده یا انتخاب شده، می‌گیرد، پیش از هر نوشتنی می‌گوید چه چیزی را شناخت، و دفتری از هر واردات و خط زمانی حساب شما نگه می‌دارد. یادآوری، حداکثر روزی یک بار، می‌گوید کِی یک فایل نسخه‌ی تازه می‌خواهد. هیچ چیز از رایانه‌ی شما بیرون نمی‌رود و هیچ کاری روی X انجام نمی‌شود."
+      }
+    },
+    {
+      "id": "vault-export",
+      "area": "extension",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [426],
+      "scenarios": "docs/scenarios/426-vault-export.md",
+      "en": {
+        "title": "Export my vault, readable without Xomoni",
+        "summary": "one ZIP of your vault you keep: CSV for spreadsheets (no cell a spreadsheet would run), JSON for other tools, a page any browser opens, a README and a schema. Other people's words only when you tick them. Made on your computer, never sent anywhere, and free on every plan."
+      },
+      "fa": {
+        "title": "خروجی گاوصندوق، خواندنی بدون Xomoni",
+        "summary": "یک ZIP از گاوصندوق شما که نگهش می‌دارید: CSV برای صفحه‌گسترده (بدون سلولی که صفحه‌گسترده اجرایش کند)، JSON برای ابزارهای دیگر، صفحه‌ای که هر مرورگری باز می‌کند، یک README و یک schema. واژه‌های دیگران فقط وقتی خودتان تیک بزنید. روی رایانه‌ی شما ساخته می‌شود، هرگز جایی فرستاده نمی‌شود و در همه‌ی پلن‌ها رایگان است."
+      }
+    },
+    {
       "id": "archive-date-range",
       "area": "extension",
       "status": "shipped",
@@ -351,6 +383,22 @@
       "fa": {
         "title": "یک ورود برای هر دو",
         "summary": "در xomoni.com وارد شوید تا Xomoni در همان مرورگر خودش وارد شود، بدون تایپ هیچ کدی؛ از هر طرف خارج شوید، طرف دیگر هم خارج می‌شود. داشتن حساب همچنان اختیاری است."
+      }
+    },
+    {
+      "id": "website-vault",
+      "area": "website",
+      "status": "shipped",
+      "since": "unreleased",
+      "issues": [426],
+      "scenarios": "docs/scenarios/426-vault-export.md",
+      "en": {
+        "title": "Your vault, on xomoni.com",
+        "summary": "beside the Library, what your vault in Xomoni holds: each of X's files with how fresh it is and what it holds, read in your browser as counts and dates only, and *Open the vault in Xomoni*. Nothing of it reaches our servers."
+      },
+      "fa": {
+        "title": "گاوصندوق شما روی xomoni.com",
+        "summary": "کنار Library، آنچه گاوصندوق شما در Xomoni دارد: هر فایل X با میزان تازگی و آنچه در آن است، که فقط به‌صورت شمارش و تاریخ در مرورگر شما خوانده می‌شود، و *Open the vault in Xomoni*. هیچ چیز از آن به سرورهای ما نمی‌رسد."
       }
     },
     {

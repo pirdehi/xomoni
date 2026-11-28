@@ -12,6 +12,9 @@ import { stubChrome } from '../support/chrome';
 import { accountJs, likeJs, tweetsJs } from '../support/cleanup-pages';
 import { ME, pageProps, resetDb } from '../support/fixtures';
 import { zipFile } from '../support/zip';
+import { ARCHIVE_OWNER, buildArchive } from '../support/archive';
+import { account as accountOf } from '../support/fixtures';
+import { importLedger } from '../../src/shared/vault/db';
 
 const mocks = vi.hoisted(() => {
   const runStatus: { current: RunnerState['status'] } = { current: 'idle' };
@@ -209,6 +212,22 @@ describe('ArchiveImport (#184)', () => {
       await userEvent.upload(folder, [accountJs(ME, 'me'), TWEETS()]);
       await waitFor(() => expect(mocks.toast).toHaveBeenCalledOnce());
       expect(screen.queryByText(error)).not.toBeInTheDocument();
+    });
+
+    it('imports the same ZIP twice as before, and the second time writes nothing but a duplicate ledger row (#424)', async () => {
+      const owner = accountOf({ id: ARCHIVE_OWNER.id, handle: ARCHIVE_OWNER.handle });
+      render(<ArchiveImport account={(await pageProps({ account: owner })).account} />);
+      const zip = await buildArchive();
+      await userEvent.upload(fileInputs().zip, [zip]);
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Imported 3 posts and 2 likes', 'good'));
+      const items = await db.items.count();
+
+      await userEvent.upload(fileInputs().zip, [zip]);
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(2));
+      expect(mocks.toast).toHaveBeenLastCalledWith('Imported 3 posts and 2 likes', 'good');
+      expect(await db.items.count()).toBe(items);
+      expect((await importLedger(owner.id)).map((row) => row.problems)).toEqual([['duplicate'], []]);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
     it('shows that it is working while the archive is read', async () => {

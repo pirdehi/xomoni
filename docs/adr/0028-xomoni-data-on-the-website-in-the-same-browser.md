@@ -36,6 +36,14 @@ Amended 2026-11-20:
 - *Your replies* on Comments reads the person's replies still on X, newest first, 100 at a time (#256). Each comes with the handle it answers, and the read can filter by date, at most a number of likes, that handle and words in the text. The answer also names the 20 people the person replies to most, with how many replies each, leaving the person's own threads out. Other people's replies to the person are not part of this read.
 - *Replies to you* on Comments reads the replies others wrote to the person that Xomoni kept ([ADR-0030](0030-replies-to-you-kept-on-the-computer.md)): replies per day, the 20 people who reply most, and 100 at a time by author and words (#256).
 
+## Amendment (2026-11-24, #426): the vault's summary
+
+The vault ([ADR-0043](0043-the-vault-x-files-kept-on-the-computer.md)) keeps X's own files about the person on their computer. xomoni.com shows *Your vault* beside the Library, read the same way as the other places:
+
+1. **`what: 'vault'`**, with the device only. Xomoni answers it under the same rules (`accessRefusal`): only for a page whose account knows this device, never while signed out.
+2. **Counts and dates only** (`VaultSummary`): for each source X's file comes from, the date of its newest copy, its freshness and the rows the vault holds; the day X made the newest archive; how many imports the ledger holds; and how many page-reading groups are on (none in R1). There is no text, no file name, no fingerprint and no id of X's. The bridge refuses an answer with any other key, a count that isn't a whole number, or a source or freshness it doesn't know.
+3. **It stays in the page's memory,** like every read: never stored, logged or sent. The website never starts an import ([ADR-0006](0006-website-is-view-only.md)); *Open in Xomoni* opens Xomoni's Vault page.
+
 ## Consequences
 
 - The Library, Watch and account health appear on xomoni.com in the browser where Xomoni runs, with nothing new stored anywhere.

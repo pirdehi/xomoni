@@ -22,9 +22,10 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When they press Export everything in Settings › Move your data
 - Then the browser saves xomoni-export-<today>.json, and a toast says Saved xomoni-export-<today>.json. It stays on your
   computer: Xomoni never sends it anywhere.
-- And the file says it is xomoni-export, version 1, from this Xomoni's version, exported a moment ago, with a sha256
+- And the file says it is xomoni-export, version 2, from this Xomoni's version, exported a moment ago, with a sha256
   checksum of its header and data that matches
-- And it holds the 11 tables a move carries, the account with its name, and the 2 posts
+- And it holds the 15 tables a move carries, the 11 of version 1 and the vault's 4 (#424), the account with its name,
+  and the 2 posts
 - Test: apps/web/e2e/extension/move-your-data.spec.ts
 
 ## S300-02 · happy
@@ -258,4 +259,21 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - When they export, and import the file in a new Xomoni
 - Then the file holds that override, and the new Xomoni doesn't take it: Home says Resting after a warning from X, and
   Xomoni can carry on in 11 to 12 hours, at a slower pace
+- Test: apps/web/e2e/extension/move-your-data.spec.ts
+
+## S300-29 · persistence
+
+- Given a file that carries the vault (#424, ADR-0032 as amended for version 2): a row of the import ledger, X's
+  analytics of a post and of a day, and an entry of the account's timeline with markup in its words
+- When the person imports it in a new Xomoni, and reloads the dashboard
+- Then Export everything in that Xomoni writes the same ledger row, the same analytics and the same timeline entry,
+  its words kept as text
+- Test: apps/web/e2e/extension/move-your-data.spec.ts
+
+## S300-30 · happy
+
+- Given a file from a Xomoni before the vault, version 1 with its 11 tables, as Xomoni 0.5 writes it
+- When the person imports it in a new Xomoni
+- Then Import this data? lists @xomoni_fixture with its 2 posts, the import adds them, and the Library lists both
+- And Export everything there writes version 2, with the vault's tables empty
 - Test: apps/web/e2e/extension/move-your-data.spec.ts

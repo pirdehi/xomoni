@@ -21,6 +21,9 @@ import {
   parseSettingsAnswer,
   parseSettingsMessage,
   parseReadMessage,
+  parseVaultSummary,
+  VAULT_FRESHNESS,
+  VAULT_SUMMARY_SOURCES,
   SIGN_IN,
   SIGN_OUT,
   WEBSITE_ORIGIN,
@@ -113,7 +116,7 @@ describe('parseWebsiteMessage', () => {
   });
 
   it('reads a request to open one of Xomoni’s pages, and only those pages', () => {
-    for (const page of ['overview', 'activity', 'cleanup', 'library', 'reach', 'watch', 'settings'] as const) {
+    for (const page of ['overview', 'activity', 'cleanup', 'library', 'vault', 'reach', 'watch', 'settings'] as const) {
       expect(parseWebsiteMessage({ type: OPEN, page, deviceId: DEVICE })).toEqual({
         type: OPEN,
         page,
@@ -777,5 +780,66 @@ describe('replies to you (ADR-0030, #256)', () => {
         reason: 'refused',
       });
     }
+  });
+});
+
+describe('the vault’s summary (#426, ADR-0028 as amended)', () => {
+  const summary = {
+    handle: 'xomoni_fixture',
+    sources: [
+      { source: 'x-archive', lastAt: 1_763_000_000_000, freshness: 'fresh', rows: 1500 },
+      { source: 'x-analytics-posts', lastAt: null, freshness: 'never', rows: 0 },
+    ],
+    archiveGeneratedAt: 1_763_000_000_000,
+    imports: 3,
+    captureGroupsOn: 0,
+  };
+
+  it('reads a request for it, with nothing but the device', () => {
+    expect(parseReadMessage({ type: READ, what: 'vault', deviceId: DEVICE })).toEqual({
+      type: READ,
+      what: 'vault',
+      deviceId: DEVICE,
+    });
+    expect(parseReadMessage({ type: READ, what: 'vault', deviceId: DEVICE, query: 'x' })).toBeNull();
+    expect(parseWebsiteMessage({ type: READ, what: 'vault', deviceId: DEVICE })).toMatchObject({ what: 'vault' });
+  });
+
+  it('takes an answer of exactly its shape: counts and dates, no text', () => {
+    expect(parseReadAnswer({ ok: true, what: 'vault', vault: summary }, 'vault')).toEqual({
+      ok: true,
+      what: 'vault',
+      vault: summary,
+    });
+    expect(VAULT_FRESHNESS).toEqual(['never', 'fresh', 'due', 'overdue']);
+    expect(VAULT_SUMMARY_SOURCES[0]).toBe('x-archive');
+    expect(parseVaultSummary({ ...summary, sources: [], archiveGeneratedAt: null })).toMatchObject({ sources: [] });
+  });
+
+  it.each([
+    ['an extra key, such as a file name', { ...summary, fileName: 'twitter.zip' }],
+    ['an extra key in a source, such as a text', { ...summary, sources: [{ ...summary.sources[0], text: 'hi' }] }],
+    ['a negative count', { ...summary, imports: -1 }],
+    ['a count as text', { ...summary, sources: [{ ...summary.sources[0], rows: '1500' }] }],
+    ['a count that isn’t whole', { ...summary, captureGroupsOn: 0.5 }],
+    ['a source it doesn’t know', { ...summary, sources: [{ ...summary.sources[0], source: 'x-dms' }] }],
+    ['a freshness it doesn’t know', { ...summary, sources: [{ ...summary.sources[0], freshness: 'stale' }] }],
+    ['a source twice', { ...summary, sources: [summary.sources[0], summary.sources[0]] }],
+    ['a handle with markup', { ...summary, handle: '<b>me</b>' }],
+    ['a date that isn’t one', { ...summary, archiveGeneratedAt: 'yesterday' }],
+    ['a source’s date that isn’t one', { ...summary, sources: [{ ...summary.sources[0], lastAt: 'soon' }] }],
+    ['sources that aren’t a list', { ...summary, sources: 'x-archive' }],
+    ['more sources than there are', { ...summary, sources: Array(5).fill(summary.sources[0]) }],
+    ['not an object', 'vault'],
+  ])('refuses %s', (_, vault) => {
+    expect(parseVaultSummary(vault)).toBeNull();
+    expect(parseReadAnswer({ ok: true, what: 'vault', vault }, 'vault')).toEqual({ ok: false, reason: 'refused' });
+  });
+
+  it('refuses an answer to another read', () => {
+    expect(parseReadAnswer({ ok: true, what: 'settings', vault: summary }, 'vault')).toEqual({
+      ok: false,
+      reason: 'refused',
+    });
   });
 });

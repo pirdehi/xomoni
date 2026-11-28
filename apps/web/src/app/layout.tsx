@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ExtensionSessionSync } from '@/modules/extension/ui/extension-session-sync';
+import { billingPagesOn } from '@/shared/config/billing-pages';
+import { BillingPagesProvider } from '@/shared/ui/billing-pages';
 import { SiteFluentProvider } from '@/shared/ui/fluent-provider';
 import './globals.css';
 
@@ -45,14 +47,17 @@ export const viewport: Viewport = {
 /**
  * Root layout: fonts, theme color, Fluent UI with server-rendered styles (ADR-0019) and the page shell, and one sign-in
  * with the Xomoni extension in this browser on every page (#232, ADR-0025). The sync comes first, so it keeps an
- * `#ext=` fragment before a page clears it.
+ * `#ext=` fragment before a page clears it. The footer learns from here whether the pages for paid plans are shown
+ * (`BILLING_PAGES`, #420).
  */
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <ExtensionSessionSync />
-        <SiteFluentProvider>{children}</SiteFluentProvider>
+        <BillingPagesProvider on={billingPagesOn()}>
+          <SiteFluentProvider>{children}</SiteFluentProvider>
+        </BillingPagesProvider>
       </body>
     </html>
   );

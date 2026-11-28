@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GITHUB_URL, ISSUES_URL, RELEASES_URL, SECURITY_URL } from '@/shared/config/site';
+import { BillingPagesProvider } from './billing-pages';
 import { GithubMark, Logo, SiteFooter, SiteHeader } from './site-chrome';
 
 // A visitor: the session cookie names no one.
@@ -168,6 +169,33 @@ describe('SiteFooter', () => {
       ['Security', SECURITY_URL],
       ['Support', ISSUES_URL],
       ['GitHub', GITHUB_URL],
+    ]);
+  });
+
+  it('lists the terms of sale and the refund policy only while the server shows them (#420)', () => {
+    const { unmount } = render(
+      <BillingPagesProvider on={false}>
+        <SiteFooter />
+      </BillingPagesProvider>,
+    );
+    const off = within(screen.getByRole('navigation', { name: 'Site' }));
+    expect(off.queryByRole('link', { name: 'Terms of sale' })).not.toBeInTheDocument();
+    expect(off.queryByRole('link', { name: 'Refunds' })).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <BillingPagesProvider on>
+        <SiteFooter />
+      </BillingPagesProvider>,
+    );
+    const links = within(screen.getByRole('navigation', { name: 'Site' }))
+      .getAllByRole('link')
+      .map((link) => [link.textContent, link.getAttribute('href')]);
+    expect(links.slice(3, 7)).toEqual([
+      ['Privacy', '/privacy'],
+      ['Terms', '/terms'],
+      ['Terms of sale', '/terms-of-sale'],
+      ['Refunds', '/refunds'],
     ]);
   });
 });

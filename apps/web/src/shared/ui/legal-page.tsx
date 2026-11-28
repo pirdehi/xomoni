@@ -1,6 +1,13 @@
 'use client';
 // The privacy policy, terms and risks pages: plain HTML text from the route, set in Fluent's type ramp (ADR-0019).
-import { makeStyles, tokens, typographyStyles } from '@fluentui/react-components';
+import {
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
+  makeStyles,
+  tokens,
+  typographyStyles,
+} from '@fluentui/react-components';
 import { CalendarLtr16Regular } from '@fluentui/react-icons';
 import type { ReactNode } from 'react';
 import { SiteFooter, SiteHeader } from './site-chrome';
@@ -32,6 +39,7 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     ...typographyStyles.caption1,
   },
+  draft: { marginTop: tokens.spacingVerticalL },
   main: {
     boxSizing: 'border-box',
     width: '100%',
@@ -81,9 +89,20 @@ const useStyles = makeStyles({
 
 /**
  * Shared layout for the privacy policy, terms and risks: header, a dated title, the text and the footer. The route
- * writes plain `h2`, `p`, `ul`, `a`, `strong` and `code`; this layout styles them.
+ * writes plain `h2`, `p`, `ul`, `a`, `strong` and `code`; this layout styles them. `draft` says, under the title, that
+ * the text (or which part of it) is a draft not yet in force, until the maintainer approves it (#420).
  */
-export function LegalPage({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
+export function LegalPage({
+  title,
+  updated,
+  draft,
+  children,
+}: {
+  title: string;
+  updated: string;
+  draft?: string;
+  children: ReactNode;
+}) {
   const s = useStyles();
   return (
     <>
@@ -96,6 +115,14 @@ export function LegalPage({ title, updated, children }: { title: string; updated
               <CalendarLtr16Regular aria-hidden />
               Last updated {updated}
             </p>
+            {draft && (
+              <MessageBar intent="warning" layout="multiline" className={s.draft}>
+                <MessageBarBody>
+                  <MessageBarTitle>Draft</MessageBarTitle>
+                  {draft}
+                </MessageBarBody>
+              </MessageBar>
+            )}
           </div>
         </div>
         <div className={s.main}>

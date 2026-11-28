@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import PrivacyPage from './page';
 
 describe('the privacy policy', () => {
@@ -76,5 +76,38 @@ describe('the privacy policy', () => {
     expect(screen.getByText(/Delete my Xomoni account/).closest('p')).toHaveTextContent(
       'with everything kept for the alert when X warns your account',
     );
+  });
+});
+
+describe('the privacy policy and paid plans (#420)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('says nothing of paid plans or Polar while the server keeps those pages off', () => {
+    vi.stubEnv('BILLING_PAGES', undefined);
+    render(<PrivacyPage />);
+    const main = screen.getByRole('main');
+    expect(main.textContent).not.toMatch(/Polar|paid plan|Your plan/);
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
+  });
+
+  it('names Polar as the merchant of record, and says what is kept about a plan, as a draft', () => {
+    vi.stubEnv('BILLING_PAGES', '1');
+    render(<PrivacyPage />);
+    expect(screen.getByText('Draft')).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveTextContent('The parts about paid plans wait for the maintainer’s approval');
+    const plan = screen.getByText('Your plan, only if you buy one:').closest('li');
+    expect(plan).toHaveTextContent('the plan (Free, Plus or Pro), its status, when it ends or renews');
+    expect(plan).toHaveTextContent('never its contents');
+    expect(plan).toHaveTextContent('Never your card, your billing address or anything about your X account.');
+    expect(plan).toHaveTextContent('Deleting your account deletes your plan.');
+    const polar = screen.getByText('Polar', { selector: 'strong' }).closest('li');
+    expect(polar).toHaveTextContent('sells our paid plans as merchant of record');
+    expect(polar).toHaveTextContent('never anything about your X account');
+    expect(screen.getByText(/Polar takes the payment as our merchant of record/)).toHaveTextContent(
+      'We never see your card, and we keep only your plan.',
+    );
+    expect(screen.getByText(/deleting your account cancels your subscription at Polar first/)).toBeInTheDocument();
   });
 });

@@ -37,7 +37,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 - Given a phone
 - When the visitor scrolls to the end of the home page, the install guide, the risks, the privacy policy and the terms
 - Then each ends with the footer: © 2026 Omid Pirdehi, linked to his GitHub, MIT license, Not affiliated with X Corp.,
-  and Install, What's new, Risks, Privacy, Terms, Security, Support and GitHub, in that order
+  and Install, What's new, Risks, Privacy, Terms, Security, Support and GitHub, in that order, with Terms of sale and
+  Refunds after Terms while the pages for paid plans are shown, as in the browser tests (#420)
 - And every link fits within the phone's width, and nothing on the page is wider than the screen
 - Test: apps/web/e2e/phone-menu.spec.ts
 

@@ -1,14 +1,25 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { billingPagesOn } from '@/shared/config/billing-pages';
 import { LegalPage } from '@/shared/ui/legal-page';
 import { CONTACT_EMAIL, GITHUB_URL } from '@/shared/config/site';
 
 export const metadata: Metadata = { title: 'Terms of Use' };
 
-/** `/terms`: the terms of use. */
+/**
+ * `/terms`: the terms of use. While the server shows the pages for paid plans (`BILLING_PAGES=1`, #420), it says paid
+ * plans are sold under the Terms of Sale, as a draft until the maintainer approves it.
+ */
 export default function TermsPage() {
+  const billing = billingPagesOn();
   return (
-    <LegalPage title="Terms of Use" updated="November 1, 2026">
+    <LegalPage
+      title="Terms of Use"
+      updated="November 1, 2026"
+      draft={
+        billing ? 'The part about paid plans waits for the maintainer’s approval, and isn’t in force yet.' : undefined
+      }
+    >
       <p>
         These terms cover the Xomoni browser extension and the xomoni.com website (together, “Xomoni”). By using Xomoni
         you agree to them. If you don’t agree, please don’t use it.
@@ -24,8 +35,15 @@ export default function TermsPage() {
       <h2>A research project</h2>
       <p>
         Xomoni is a research project. It explores ways to clean up your own X account through X’s website while staying
-        well within the limits X announces, and it changes as we learn. It is not a commercial service, and it comes
-        with no guarantee of any result.
+        well within the limits X announces, and it changes as we learn.{' '}
+        {billing ? (
+          <>
+            Paid plans, which open extra features, are sold under the <Link href="/terms-of-sale">Terms of Sale</Link>;
+            with or without one, Xomoni comes with no guarantee of any result.
+          </>
+        ) : (
+          <>It is not a commercial service, and it comes with no guarantee of any result.</>
+        )}
       </p>
 
       <h2>Use it on your own account</h2>

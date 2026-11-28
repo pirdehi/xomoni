@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { emptyDay, localDay } from '../src/shared/daily';
 import { db, itemKey } from '../src/shared/db';
 import type { Item } from '../src/shared/types';
 import { reachPosts } from '../src/shared/vault/reach';
@@ -76,6 +77,10 @@ describe('Reach at 50,000 posts (#431, P5.4.3)', () => {
       }),
     })) as never);
 
+    // A year of daily numbers with the followers, as a heavy user who keeps Xomoni has.
+    await db.daily.bulkPut(
+      Array.from({ length: 365 }, (_, i) => ({ ...emptyDay(ME, localDay(NOW - i * DAY), NOW), followers: 10_000 + i })),
+    );
     const read = await timed(() => reachPosts(ME, { from: 0, to: NOW, timeZone: 'UTC' }));
     expect(read.value).toHaveLength(COUNT);
     expect(read.ms).toBeLessThan(1_000);

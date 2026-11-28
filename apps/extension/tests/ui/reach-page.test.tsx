@@ -198,18 +198,18 @@ describe('the Reach page (#429, ADR-0045)', () => {
     await db.items.bulkPut([post('recent', 10, 50), post('old', 60, 70)]);
     await renderPage();
     await waitFor(() => expect(bodyRows()).toHaveLength(1));
-    // The comparisons and the suspected posts are Plus whatever the period; the period's own badge comes with 90 days
-    // and everything.
+    // The comparisons, the suspected posts and the drop alert (#523) are Plus whatever the period; the period's own
+    // badge comes with 90 days and everything.
     const badges = () => screen.getAllByText('Plus · preview');
-    expect(badges()).toHaveLength(2);
+    await waitFor(() => expect(badges()).toHaveLength(3));
     expect(within(screen.getByRole('group', { name: 'Period' })).queryByText('Plus · preview')).toBeNull();
     expect(within(screen.getByRole('region', { name: 'Comparisons' })).getByText('Plus · preview')).toBeVisible();
     await press('90 days');
     await waitFor(() => expect(bodyRows()).toHaveLength(2));
-    expect(badges()).toHaveLength(3);
+    expect(badges()).toHaveLength(4);
     expect(within(screen.getByRole('group', { name: 'Period' })).getByText('Plus · preview')).toBeVisible();
     await press('Everything');
-    expect(badges()).toHaveLength(3);
+    expect(badges()).toHaveLength(4);
   });
 
   it('draws the spread as a chart and as a table with the same numbers', async () => {

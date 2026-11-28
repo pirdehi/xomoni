@@ -67,6 +67,8 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
             </div>
           </FieldGroup>
         </div>
+        {/* From the daily numbers, not the posts' own: shown whether or not a post has a number yet (#523). */}
+        <ReachDropNote accountId={account.id} />
         {data === undefined ? (
           <div className={styles.loading} aria-busy="true" />
         ) : !data.csv && !data.live ? (
@@ -80,7 +82,6 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
         ) : (
           <>
             <Sources data={data} />
-            <ReachDropNote accountId={account.id} />
             <ReachTable rows={data.rows} handle={account.handle} />
             <ReachDistribution rows={data.rows} handle={account.handle} />
             <section aria-label="Comparisons" className={styles.stack}>

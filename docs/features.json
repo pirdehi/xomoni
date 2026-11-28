@@ -306,6 +306,22 @@
       }
     },
     {
+      "id": "reach-alerts",
+      "area": "extension",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [523, 430],
+      "scenarios": "docs/scenarios/523-reach-alerts.md",
+      "en": {
+        "title": "Reach's alerts",
+        "summary": "a desktop notification, once a month at most, when X's *Under the hood* report you import brings a label that is new or larger than the month before, and a count beside *Reach* in the menu until you open it. On Reach, a note when your views of the last 7 days fall under 0.6 of the 8 weeks before, from your daily numbers and always an estimate, with what may go with it, never why; and *Tell me when my reach drops*, off unless you turn it on. Part of Plus, open as a preview. Nothing leaves your computer."
+      },
+      "fa": {
+        "title": "هشدارهای دیده‌شدن",
+        "summary": "اعلانی روی دسکتاپ، حداکثر یک بار در ماه، وقتی گزارش *Under the hood* که وارد می‌کنید برچسبی تازه یا بزرگ‌تر از ماه قبل دارد، و شماری کنار *Reach* در منو تا آن را باز کنید. در Reach، یادداشتی وقتی بازدیدهای ۷ روز اخیر به زیر ۰٫۶ برابر ۸ هفته‌ی پیش از آن می‌رسد، از عددهای روزانه و همیشه به‌صورت برآورد، با آنچه ممکن است با آن همراه باشد و هرگز چرایی آن؛ و «Tell me when my reach drops» که تا خودتان روشنش نکنید خاموش است. بخشی از Plus که به‌صورت پیش‌نمایش باز است. هیچ چیز از رایانه‌تان بیرون نمی‌رود."
+      }
+    },
+    {
       "id": "sign-out",
       "area": "extension",
       "status": "shipped",

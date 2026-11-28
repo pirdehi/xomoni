@@ -9,10 +9,12 @@ import {
 } from '../../../shared/vault/reach-alerts';
 import { fmtNumber } from '../../format';
 import { Badge, Card } from '../ui';
+import { PlusBadge } from './PlusBadge';
 
 const useStyles = makeStyles({
   stack: { display: 'grid', gap: tokens.spacingVerticalS },
   list: { margin: 0, paddingLeft: tokens.spacingHorizontalL },
+  row: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalS },
 });
 
 /**
@@ -26,12 +28,16 @@ export function ReachDropNote({ accountId }: { accountId: string }) {
   const [now] = useState(() => Date.now());
   const drop = useLiveQuery(async () => await accountReachDrop(accountId, now), [accountId, now]);
   const alertsOn = useLiveQuery(async () => await reachDropAlertsOn(accountId), [accountId]);
+  // Reach's alerts are part of Plus, open as a preview until sales start (ADR-0042).
   const toggle = (
-    <Switch
-      label="Tell me when my reach drops"
-      checked={alertsOn === true}
-      onChange={(_, data) => void setReachDropAlerts(accountId, data.checked)}
-    />
+    <div className={styles.row}>
+      <Switch
+        label="Tell me when my reach drops"
+        checked={alertsOn === true}
+        onChange={(_, data) => void setReachDropAlerts(accountId, data.checked)}
+      />
+      <PlusBadge feature="reach-alerts" />
+    </div>
   );
   if (!drop)
     return (

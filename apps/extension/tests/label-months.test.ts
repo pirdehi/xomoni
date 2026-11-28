@@ -288,7 +288,7 @@ describe('what hears of a report’s new labels (#430)', () => {
       return Promise.reject(new Error('no notifications here'));
     });
     const { results } = await importFiles(jsonFile('aug.json', aug));
-    expect(results.every((r) => !r.failed)).toBe(true);
+    expect(results.every((r) => !r.cancelled && !r.duplicate)).toBe(true);
     expect(heard).toEqual([[ME.id, '2026-08', ['SPAM_HIGH_RECALL', 'SYNTHETIC_UNKNOWN_LABEL']]]);
     onLabelChanges(null);
     await importFiles(jsonFile('sep.json', sepWeb));

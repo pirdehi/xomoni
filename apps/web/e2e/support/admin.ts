@@ -190,6 +190,13 @@ export async function healthAlertQueueOf(userId: string): Promise<QueuedAlert[]>
   );
 }
 
+/** The releases the database records for the update notice (`extension_releases`, #151): each version and whether it fixes a security problem. */
+export async function releasesOf(): Promise<{ version: string; security: boolean }[]> {
+  return call<{ version: string; security: boolean }[]>('/rest/v1/extension_releases?select=version,security', {
+    method: 'GET',
+  });
+}
+
 /**
  * Calls one of the database's own functions with the admin key, as its scheduler would (#407): the website's roles
  * can't. Returns what it answered.

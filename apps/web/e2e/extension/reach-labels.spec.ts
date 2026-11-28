@@ -454,9 +454,10 @@ test.describe('suspected posts on Reach', { tag: '@task-429' }, () => {
     posts.push(own(300, 45, 1_000));
     await withMonths(dashboard, page, context, [{ month: LOW_MONTH(), labels: [SPAM] }], posts);
     await dashboard.getByRole('button', { name: 'Everything', exact: true }).click();
-    await expect(guessFor(dashboard, 'SPAM_HIGH_RECALL', LOW_MONTH())).toContainText(
-      "Xomoni has no impressions or views for this month's posts.",
-    );
+    const guess = guessFor(dashboard, 'SPAM_HIGH_RECALL', LOW_MONTH());
+    await expect(guess).toContainText("Xomoni has no views for this month's posts.");
+    await expect(guess).toContainText('More sources are coming.');
+    await expect(guess).not.toContainText(/analytics export|Premium/);
   });
 
   test('S429-91 when X refuses the profile with its rate limit, no guess is made, and the labels still show', async ({

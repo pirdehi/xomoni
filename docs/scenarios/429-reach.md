@@ -638,7 +638,8 @@ CI runs every scenario in Chromium (`e2e`) and again in Microsoft Edge (`e2e-edg
 
 - Given a labelled month whose posts X showed without views
 - When the person opens Reach, with everything
-- Then it says Xomoni has no impressions or views for this month's posts
+- Then it says Xomoni has no views for this month's posts, where Reach's numbers come from today, and that more
+  sources are coming, offering neither X's analytics export nor Premium
 - Test: apps/web/e2e/extension/reach-labels.spec.ts
 
 ## S429-91 · error

@@ -181,10 +181,10 @@ async function openAlone(page: Page) {
   await page.goto('/dashboard/reach');
 }
 
-const comparisons = (page: Page) => page.getByRole('region', { name: 'Comparisons' });
-const posts = (page: Page) => page.getByRole('region', { name: 'Posts' });
-const guesses = (page: Page) => page.getByRole('region', { name: 'Suspected posts' });
-const labels = (page: Page) => page.getByRole('region', { name: "X's labels" });
+const comparisons = (page: Page) => page.getByRole('region', { name: 'Comparisons', exact: true });
+const posts = (page: Page) => page.getByRole('region', { name: 'Posts', exact: true });
+const guesses = (page: Page) => page.getByRole('region', { name: 'Suspected posts', exact: true });
+const labels = (page: Page) => page.getByRole('region', { name: "X's labels", exact: true });
 const tab = (page: Page, list: 'Period' | 'Order', name: string) =>
   page.getByRole('tablist', { name: list }).getByRole('tab', { name: new RegExp(`^${name}`) });
 const reachReads = (received: readonly Record<string, unknown>[]) =>

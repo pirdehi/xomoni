@@ -16,7 +16,9 @@ import { NoAnswer, NotHere, Notice } from './xomoni-places';
 
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalL },
-  row: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalM },
+  row: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalM, minWidth: 0 },
+  // The periods and the orders wrap on a phone rather than push the page sideways.
+  tabs: { flexWrap: 'wrap', maxWidth: '100%' },
   text: { ...typographyStyles.body1, margin: 0, color: tokens.colorNeutralForeground2 },
   meta: { ...typographyStyles.caption1, margin: 0, color: tokens.colorNeutralForeground3 },
 });
@@ -78,6 +80,7 @@ export function ReachPlace({ xomoni }: { xomoni: XomoniControls }) {
       </Notice>
       <div className={s.row}>
         <TabList
+          className={s.tabs}
           aria-label="Period"
           selectedValue={String(rangeDays)}
           onTabSelect={(_, data) => range(rangeOf(data.value))}
@@ -96,6 +99,7 @@ export function ReachPlace({ xomoni }: { xomoni: XomoniControls }) {
       </div>
       <div className={s.row}>
         <TabList
+          className={s.tabs}
           aria-label="Order"
           size="small"
           selectedValue={order}

@@ -48,7 +48,12 @@ async function makeCheckout(polarUrl: string, successUrl: string) {
   const answer = await fetch(`${polarUrl}/v1/checkouts/`, {
     method: 'POST',
     headers: { authorization: `Bearer ${TEST_ACCESS_TOKEN}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ products: ['prod_plus_monthly_test'], external_customer_id: USER, success_url: successUrl }),
+    body: JSON.stringify({
+      products: ['prod_plus_monthly_test'],
+      external_customer_id: USER,
+      success_url: successUrl,
+      return_url: `${successUrl}?back=1`,
+    }),
   });
   expect(answer.status).toBe(201);
   return (await answer.json()) as { id: string; url: string };
@@ -64,6 +69,7 @@ test('a paid checkout on the fake Polar returns to the site, and its signed even
     expect(checkout.url.startsWith(`${polar.url}/checkout/`)).toBe(true);
 
     await page.goto(checkout.url);
+    await page.getByRole('link', { name: 'Pay' }).click();
     await expect(page).toHaveURL(`${receiver.url}/done?checkout_id=${checkout.id}`);
     await expect(page.getByRole('heading', { name: 'Thanks for buying Plus' })).toBeVisible();
 
@@ -87,6 +93,7 @@ test('an event the fake signs with another secret fails the real check, and the 
   try {
     const checkout = await makeCheckout(polar.url, `${receiver.url}/done`);
     await page.goto(checkout.url);
+    await page.getByRole('link', { name: 'Pay' }).click();
     await expect(page.getByRole('heading', { name: 'Thanks for buying Plus' })).toBeVisible();
     expect(receiver.checks).toEqual([{ ok: false, reason: 'bad-signature' }]);
     expect(polar.deliveries.map(({ status }) => status)).toEqual([401]);

@@ -479,6 +479,49 @@ describe('deleteAccount', () => {
     expect(await useCases.deleteAccount(d)).toMatchObject({ ok: false, code: 'unknown' });
     expect(d.auth.signOut).not.toHaveBeenCalled();
   });
+
+  /** A session that signed in with a password a minute ago, as `delete_account()` needs. */
+  const recent = {
+    currentClaims: async () => ({
+      sub: 'u1',
+      email: 'ada@example.com',
+      amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) - 60 }],
+    }),
+  };
+
+  it('runs the step before deleting, with the person’s id, and deletes after it succeeds (ADR-0042)', async () => {
+    const d = deps(recent);
+    const before = vi.fn(async () => ({ ok: true }) as const);
+    expect(await useCases.deleteAccount(d, before)).toEqual({ ok: true });
+    expect(before).toHaveBeenCalledWith('u1');
+    expect(before.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(d.auth.deleteAccount).mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('deletes nothing when the step fails, and passes its failure on', async () => {
+    const d = deps(recent);
+    const result = await useCases.deleteAccount(d, async () =>
+      authFailure('subscription_not_ended', 'polar_unreachable'),
+    );
+    expect(result).toMatchObject({ ok: false, code: 'subscription_not_ended' });
+    expect(d.auth.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('asks for a recent sign-in before the step, as the database will (#80)', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const d = deps({
+      currentClaims: async () => ({
+        sub: 'u1',
+        email: 'ada@example.com',
+        amr: [{ method: 'password', timestamp: now - 601 }],
+      }),
+    });
+    const before = vi.fn(async () => ({ ok: true }) as const);
+    expect(await useCases.deleteAccount(d, before, now)).toMatchObject({ ok: false, code: 'reauthentication_needed' });
+    expect(before).not.toHaveBeenCalled();
+    expect(d.auth.deleteAccount).not.toHaveBeenCalled();
+  });
 });
 
 describe('signOut (#83)', () => {

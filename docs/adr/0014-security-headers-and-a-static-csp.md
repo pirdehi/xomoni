@@ -4,6 +4,7 @@
 - Date: 2026-10-31
 - Amended: 2026-11-05 (#147: Trusted Types, violation reports, tighter images, a resource policy and an Origin check)
 - Amended: 2026-11-14 (the Vercel Toolbar is off for every deployment)
+- Amended: 2026-11-24 (#421, ADR-0042: `form-action` also admits Polar's checkout and portal origins, named exactly)
 
 ## Context
 
@@ -19,7 +20,7 @@ The site is mostly static (landing, legal and risks pages, the auth pages' shell
 ## Decision
 
 1. Every response carries the headers built by `apps/web/src/shared/config/security-headers.ts`, applied to all paths in `next.config.ts`:
-   - `Content-Security-Policy`: `default-src 'self'`; scripts from the site and Turnstile only (`'unsafe-inline'` allowed, `'unsafe-eval'` only in `next dev`); `connect-src` limited to the site and the deployment's own Supabase project over HTTPS and WebSockets (Realtime); Turnstile as the only frame; images from the site, `data:` and Google's avatar host `https://lh3.googleusercontent.com` (the dashboard drops avatars on any other host); `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`; Trusted Types (below); violation reports (below); `upgrade-insecure-requests` except when the site runs over plain HTTP (local runs and CI).
+   - `Content-Security-Policy`: `default-src 'self'`; scripts from the site and Turnstile only (`'unsafe-inline'` allowed, `'unsafe-eval'` only in `next dev`); `connect-src` limited to the site and the deployment's own Supabase project over HTTPS and WebSockets (Realtime); Turnstile as the only frame; images from the site, `data:` and Google's avatar host `https://lh3.googleusercontent.com` (the dashboard drops avatars on any other host); `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` and Polar's three page origins (`https://polar.sh`, `https://buy.polar.sh`, `https://sandbox.polar.sh`), where a purchase's Server Action sends the browser ([ADR-0042](0042-payments-and-entitlements-with-polar.md)), `frame-ancestors 'none'`; Trusted Types (below); violation reports (below); `upgrade-insecure-requests` except when the site runs over plain HTTP (local runs and CI).
    - `Strict-Transport-Security: max-age=63072000; includeSubDomains` (no `preload` until we decide to join the preload list).
    - `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Cross-Origin-Opener-Policy: same-origin`.
    - `Cross-Origin-Resource-Policy: same-origin`: no other site may load the site's responses as images, scripts or media. The one exception is `/logo.png` (`cross-origin`), which Supabase's auth emails show and mail apps load from their own pages (`EMBEDDABLE_PATHS`; a unit test checks every image the email templates load is in it).

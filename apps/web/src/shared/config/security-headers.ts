@@ -29,6 +29,13 @@ const TURNSTILE = 'https://challenges.cloudflare.com';
 /** Profile pictures from Google sign-in, shown on the dashboard. `viewerFromClaims` keeps no other avatar host. */
 export const GOOGLE_AVATARS = 'https://lh3.googleusercontent.com';
 
+/**
+ * Polar's pages a form may lead to (ADR-0042): its checkout and customer portal, in production and in its sandbox,
+ * named exactly. A purchase's Server Action answers with a redirect to one of them, which a form submitted without
+ * JavaScript follows under `form-action`. `modules/billing` sends the browser to these origins only.
+ */
+export const POLAR_FORM_TARGETS = ['https://polar.sh', 'https://buy.polar.sh', 'https://sandbox.polar.sh'] as const;
+
 /** Where browsers send Content-Security-Policy violation reports (`app/api/csp-report/route.ts`). */
 export const CSP_REPORT_PATH = '/api/csp-report';
 
@@ -65,7 +72,7 @@ export function contentSecurityPolicy({ supabaseUrl, siteUrl, dev }: SecurityHea
     ['frame-src', TURNSTILE],
     ['object-src', "'none'"],
     ['base-uri', "'self'"],
-    ['form-action', "'self'"],
+    ['form-action', "'self'", ...POLAR_FORM_TARGETS],
     ['frame-ancestors', "'none'"],
     ...(dev
       ? []

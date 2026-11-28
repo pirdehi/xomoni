@@ -2,17 +2,20 @@ import { type IncomingMessage, type ServerResponse, createServer } from 'node:ht
 import type { AddressInfo } from 'node:net';
 import type { BrowserContext } from '@playwright/test';
 import {
+  type FakePolar,
   type PolarEvent,
+  TEST_PRODUCTS,
   TEST_WEBHOOK_SECRET,
   fakePolarFetch,
   isRealPolar,
+  orderEvent,
   signTestEvent,
   subscriptionEvent,
 } from '../../test/fakes/polar';
 
 // Polar as the browser tests see it (#420, ADR-0042): a server on localhost that answers Polar's API with the fake of
-// test/fakes/polar.ts, and plays Polar's checkout. Opening a checkout's page "pays": the fake sends a signed event to
-// the webhook it was given, as Polar does, then sends the browser back to the checkout's `success_url`. No test reaches
+// test/fakes/polar.ts, and plays Polar's checkout and customer portal. *Pay* on a checkout's page sends a signed event
+// to the webhook it was given, as Polar does, then sends the browser back to the checkout's `success_url`. No test reaches
 // the real Polar: the website's server is pointed here (`POLAR_API_URL`), the browser resolves none of Polar's hosts
 // (`NO_REAL_POLAR`), and e2e/support/test.ts fails any test whose page asks polar.sh for anything.
 
@@ -28,14 +31,26 @@ export interface PolarDelivery {
   status: number;
 }
 
+/** One checkout made on the fake: its account, its product, where to go after paying and where to go back. */
+export interface FakeCheckout {
+  id: string;
+  externalCustomerId: string;
+  productId: string;
+  successUrl: string | null;
+  returnUrl: string | null;
+  discountId: string | null;
+}
+
 /** The fake Polar, running. */
 export interface FakePolarServer {
   /** Its address, `http://127.0.0.1:<port>`: the Polar client's base URL. */
   url: string;
-  /** Every checkout made on it, with the account and the address to return to. */
-  checkouts: { id: string; externalCustomerId: string; successUrl: string | null }[];
+  /** Every checkout made on it. */
+  checkouts: FakeCheckout[];
   /** Every webhook delivery it made, in order. */
   deliveries: PolarDelivery[];
+  /** Its API: what it was asked (`requests`), its customers and subscriptions, and `failNext`. */
+  api: FakePolar;
   /** Stops it. */
   close(): Promise<void>;
 }
@@ -46,51 +61,89 @@ const read = async (request: IncomingMessage) => {
   return Buffer.concat(chunks).toString('utf8');
 };
 
+const page = (title: string, body: string) =>
+  `<!doctype html><html lang="en"><head><title>${title}</title></head><body><main><h1>${title}</h1>${body}</main></body></html>`;
+
 /**
- * Starts the fake Polar on 127.0.0.1 (`port`, or one the system picks). A paid checkout's event goes to `webhookUrl`,
- * signed with `secret` (the tests' secret unless given), as Polar's `subscription.active` for the checkout's account.
+ * Starts the fake Polar on 127.0.0.1 (`port`, or one the system picks). A checkout's page (`url` in Polar's answer)
+ * offers *Pay* and *Back*, as Polar's does. *Pay* sends the signed event Polar would to `webhookUrl` (the tests' secret
+ * unless given): `subscription.active` for a subscription, `order.paid` for the one-time pass. The account then has
+ * that subscription when asked, and the browser goes to the checkout's `success_url`. *Back* goes to its
+ * `return_url`, paying nothing. With `deliver: false`, *Pay* sends no event, as when Polar's webhook is late.
  */
 export async function startFakePolar({
   webhookUrl,
   secret = TEST_WEBHOOK_SECRET,
   port = 0,
+  deliver = true,
 }: {
   webhookUrl: string;
   secret?: string;
   port?: number;
+  deliver?: boolean;
 }): Promise<FakePolarServer> {
-  let api = fakePolarFetch();
-  const server: FakePolarServer = { url: '', checkouts: [], deliveries: [], close: async () => undefined };
+  const server: FakePolarServer = {
+    url: '',
+    checkouts: [],
+    deliveries: [],
+    api: fakePolarFetch(),
+    close: async () => undefined,
+  };
+
+  /** Pays `checkout`: the account's subscription or pass, and Polar's event for it unless held back. */
+  async function pay(checkout: FakeCheckout) {
+    const pass = checkout.productId === TEST_PRODUCTS.POLAR_PRODUCT_PLUS_PASS;
+    const event = pass
+      ? orderEvent('order.paid', checkout.externalCustomerId, {
+          productId: checkout.productId,
+          discountId: checkout.discountId,
+        })
+      : subscriptionEvent('subscription.active', checkout.externalCustomerId, {
+          productId: checkout.productId,
+          discountId: checkout.discountId,
+        });
+    if (!pass) server.api.subscriptions.set(checkout.externalCustomerId, [event.data]);
+    if (!deliver) return;
+    const { headers, body } = signTestEvent(event, { secret });
+    const status = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body,
+    }).then(
+      (delivered) => delivered.status,
+      () => 0,
+    );
+    server.deliveries.push({ event, status });
+  }
 
   const answer = async (request: IncomingMessage, response: ServerResponse) => {
     const path = request.url ?? '/';
-    const checkout = /^\/checkout\/([\w-]+)$/.exec(path);
-    if (request.method === 'GET' && checkout) {
-      const paid = server.checkouts.find(({ id }) => id === checkout[1]);
-      if (!paid) {
+    const html = (title: string, body: string) =>
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(page(title, body));
+    const match = /^\/checkout\/([\w-]+)(\/pay)?$/.exec(path);
+    if (request.method === 'GET' && match) {
+      const checkout = server.checkouts.find(({ id }) => id === match[1]);
+      if (!checkout) {
         response.writeHead(404).end('No such checkout');
         return;
       }
-      const event = subscriptionEvent('subscription.active', paid.externalCustomerId);
-      const { headers, body } = signTestEvent(event, { secret });
-      const status = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { ...headers, 'content-type': 'application/json' },
-        body,
-      }).then(
-        (delivered) => delivered.status,
-        () => 0,
-      );
-      server.deliveries.push({ event, status });
-      const back = new URL(paid.successUrl ?? `${server.url}/paid`);
-      back.searchParams.set('checkout_id', paid.id);
-      response.writeHead(303, { location: back.href }).end();
+      if (!match[2]) {
+        const back = checkout.returnUrl ? `<a href="${checkout.returnUrl}">Back</a>` : '';
+        html('Checkout (fake Polar)', `<a href="/checkout/${checkout.id}/pay">Pay</a> ${back}`);
+        return;
+      }
+      await pay(checkout);
+      const done = new URL(checkout.successUrl ?? `${server.url}/paid`);
+      done.searchParams.set('checkout_id', checkout.id);
+      response.writeHead(303, { location: done.href }).end();
       return;
     }
-    if (request.method === 'GET' && (path.startsWith('/portal') || path === '/paid')) {
-      response
-        .writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
-        .end('<!doctype html><html lang="en"><title>Polar (fake)</title><h1>Polar (fake)</h1></html>');
+    if (request.method === 'GET' && path.startsWith('/portal')) {
+      html('Customer portal (fake Polar)', '<p>Your subscription, receipts and card are managed here.</p>');
+      return;
+    }
+    if (request.method === 'GET' && path === '/paid') {
+      html('Polar (fake)', '');
       return;
     }
 
@@ -102,14 +155,24 @@ export async function startFakePolar({
         return typeof value === 'string' ? [[name, value]] : [];
       }),
     );
-    const reply = await api.fetch(`${server.url}${path}`, { method: request.method, headers, body });
+    const reply = await server.api.fetch(`${server.url}${path}`, { method: request.method, headers, body });
     const text = await reply.text();
     if (reply.status === 201 && path === '/v1/checkouts/') {
-      const made = JSON.parse(text) as { id: string; external_customer_id: string; success_url: string | null };
+      const made = JSON.parse(text) as {
+        id: string;
+        external_customer_id: string;
+        success_url: string | null;
+        return_url: string | null;
+        discount_id: string | null;
+        products: { id: string }[];
+      };
       server.checkouts.push({
         id: made.id,
         externalCustomerId: made.external_customer_id,
+        productId: made.products[0]?.id ?? '',
         successUrl: made.success_url,
+        returnUrl: made.return_url,
+        discountId: made.discount_id,
       });
     }
     response.writeHead(reply.status, { 'content-type': 'application/json' }).end(text);
@@ -120,9 +183,27 @@ export async function startFakePolar({
   });
   await new Promise<void>((resolve) => http.listen(port, '127.0.0.1', resolve));
   server.url = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
-  api = fakePolarFetch({ url: server.url });
+  server.api = fakePolarFetch({ url: server.url });
   server.close = () => new Promise<void>((resolve) => http.close(() => resolve()));
   return server;
+}
+
+/** The site's own webhook, where the fake Polar sends its events when it runs beside the site. */
+export const SITE_WEBHOOK = 'http://localhost:3000/api/billing/webhook';
+
+/**
+ * Runs `run` while the fake Polar answers where the site's server looks for it (`FAKE_POLAR_PORT`), and stops it
+ * after, even when `run` fails. Deleting an account asks Polar first to end any subscription (#421), and stops if
+ * Polar can't be asked, so a test that deletes an account through the site needs it. The tests run one at a time
+ * (`workers: 1`), so the port is free.
+ */
+export async function withFakePolar<T>(run: (polar: FakePolarServer) => Promise<T>): Promise<T> {
+  const polar = await startFakePolar({ webhookUrl: SITE_WEBHOOK, port: FAKE_POLAR_PORT });
+  try {
+    return await run(polar);
+  } finally {
+    await polar.close();
+  }
 }
 
 /**

@@ -122,6 +122,20 @@ module.exports = {
       to: { path: ['node_modules/@supabase/', '^packages/db/'] },
     },
 
+    {
+      name: 'web-service-role-is-webhook-only',
+      severity: 'error',
+      comment:
+        "Supabase's service-role key bypasses Row Level Security: only billing's writes of a plan may use its client, the webhook's route handler and Refresh's action, both through apply_billing_event (ADR-0042).",
+      from: {
+        pathNot: [
+          `${WEB}/modules/billing/server/(webhook-route|actions)\\.ts$`,
+          `${WEB}/modules/billing/infrastructure/supabase-admin\\.test\\.ts$`,
+        ],
+      },
+      to: { path: `${WEB}/modules/billing/infrastructure/supabase-admin\\.ts$` },
+    },
+
     // ── Extension: areas ──────────────────────────────────────────────────────────────
     {
       name: 'ext-shared-is-the-kernel',

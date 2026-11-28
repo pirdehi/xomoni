@@ -25,6 +25,7 @@ export type AuthErrorCode =
   | 'too_many_factors'
   | 'factor_name_taken'
   | 'factor_not_found'
+  | 'subscription_not_ended'
   | 'unknown';
 
 /** A failed auth action: a stable code, optional per-field messages, and provider detail for logs. */
@@ -70,6 +71,8 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   captcha_failed: 'We couldn’t confirm you’re human. Wait for the check to finish, then try again.',
   rate_limited: 'Too many attempts. Wait a minute and try again.',
   reauthentication_needed: 'For your security, sign in again, then retry.',
+  subscription_not_ended:
+    'We couldn’t cancel your subscription with Polar, our payment provider, so nothing was deleted. Try again in a moment.',
   not_signed_in: 'Your session has ended. Sign in again.',
   signup_disabled: 'New accounts are paused right now. Try again later.',
   provider_error: 'Sign-in with the provider didn’t complete. Try again.',

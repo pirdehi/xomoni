@@ -49,12 +49,18 @@ describe('content security policy (#8)', () => {
     expect(directives(contentSecurityPolicy(LOCAL)).get('script-src')).toContain("'unsafe-eval'");
   });
 
-  it('forbids framing, plugins, base-URL changes and posting forms elsewhere', () => {
+  it('forbids framing, plugins, base-URL changes and posting forms anywhere but the site and Polar', () => {
     const policy = directives(contentSecurityPolicy(PRODUCTION));
     expect(policy.get('frame-ancestors')).toEqual(["'none'"]);
     expect(policy.get('object-src')).toEqual(["'none'"]);
     expect(policy.get('base-uri')).toEqual(["'self'"]);
-    expect(policy.get('form-action')).toEqual(["'self'"]);
+    // Forms post to the site, and a purchase leads on to Polar's checkout or portal only (#421, ADR-0042).
+    expect(policy.get('form-action')).toEqual([
+      "'self'",
+      'https://polar.sh',
+      'https://buy.polar.sh',
+      'https://sandbox.polar.sh',
+    ]);
     expect(policy.get('default-src')).toEqual(["'self'"]);
   });
 

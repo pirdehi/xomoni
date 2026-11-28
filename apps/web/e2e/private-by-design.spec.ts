@@ -2,6 +2,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from './support/a11y';
 import { createConfirmedUser } from './support/admin';
 import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows';
+import { withFakePolar } from './support/polar';
 import { expect, test } from './support/test';
 
 // Private by design (docs/scenarios/143-private-by-design.md, ADR-0004, ADR-0028, #143, #149, #233, #345), on xomoni.com: no tracking,
@@ -316,8 +317,11 @@ test.describe('private by design: xomoni.com', { tag: '@task-143' }, () => {
     const confirm = page.getByRole('dialog', { name: 'Delete your Xomoni account?' });
     await expect(confirm).toContainText('connected browsers and job history on this site. Nothing on X is deleted');
     await confirm.getByLabel('Type DELETE to confirm').fill('DELETE');
-    await confirm.getByRole('button', { name: 'Delete account' }).click();
-    await expect(page).toHaveURL(/\/\?account=deleted$/);
+    // Deleting asks Polar first to end any subscription (#421): the fake answers that there is none.
+    await withFakePolar(async () => {
+      await confirm.getByRole('button', { name: 'Delete account' }).click();
+      await expect(page).toHaveURL(/\/\?account=deleted$/);
+    });
 
     expect(await rowsOf('jobs', userId)).toEqual([]);
     expect(await rowsOf('devices', userId)).toEqual([]);

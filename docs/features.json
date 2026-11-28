@@ -706,6 +706,22 @@
       }
     },
     {
+      "id": "paid-plans",
+      "area": "website",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [421, 422],
+      "scenarios": "docs/scenarios/422-pricing-and-checkout.md",
+      "en": {
+        "title": "Plans and billing",
+        "summary": "xomoni.com/pricing shows Free, Plus and Pro, and a one-time 30 days of Plus, and what stays free on every plan: every safety limit and your data. Polar, the merchant of record, takes the payment; /account/billing shows your plan, opens Polar's portal and checks your plan again. Until sales open, every Plus feature is a preview and nothing can be bought."
+      },
+      "fa": {
+        "title": "پله‌ها و صورت‌حساب",
+        "summary": "صفحه‌ی xomoni.com/pricing پله‌های Free، Plus و Pro و «۳۰ روز Plus» یک‌باره را نشان می‌دهد، و آنچه در هر پله رایگان می‌ماند: همه‌ی محدودیت‌های ایمنی و داده‌های شما. پرداخت را Polar، فروشنده‌ی رسمی، می‌گیرد؛ صفحه‌ی /account/billing پله‌ی شما را نشان می‌دهد، پورتال Polar را باز می‌کند و پله را دوباره می‌پرسد. تا فروش باز نشده، همه‌ی بخش‌های Plus پیش‌نمایش‌اند و چیزی خریدنی نیست."
+      }
+    },
+    {
       "id": "terms-of-sale",
       "area": "website",
       "status": "preview",

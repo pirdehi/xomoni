@@ -86,6 +86,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **An install guide that follows you:** xomoni.com/install gives the steps for your browser and computer, one at a time, with short illustrations, ticks as soon as Xomoni is installed, and answers what goes wrong.
 - **Send to my computer:** Xomoni runs on a computer, so on a phone xomoni.com offers to share or copy the install link, or email it to yourself. Nothing is added to the link or sent to Xomoni's servers.
 - **xomoni.com on a phone:** a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page.
+- **Plans and billing** *(preview)*: xomoni.com/pricing shows Free, Plus and Pro, and a one-time 30 days of Plus, and what stays free on every plan: every safety limit and your data. Polar, the merchant of record, takes the payment; /account/billing shows your plan, opens Polar's portal and checks your plan again. Until sales open, every Plus feature is a preview and nothing can be bought.
 - **Terms of sale and refund policy** *(preview)*: the terms of the coming paid plans, sold by Polar as merchant of record, and a 14-day refund policy, with Polar named on the privacy page. They are drafts waiting for the maintainer's approval: xomoni.com shows them only once they are approved, and they promise nothing about results on X.
 
 *(next release)*: on `main`, and in Xomoni's next release; xomoni.com has its part already. *(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
@@ -249,7 +250,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 45 [features](#features), 5 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 46 [features](#features), 6 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
 
 <!-- END GENERATED: status -->
 

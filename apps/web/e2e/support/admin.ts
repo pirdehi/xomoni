@@ -54,6 +54,28 @@ export async function applyBillingEvent(event: SeedBillingEvent): Promise<string
   return call<string>('/rest/v1/rpc/apply_billing_event', { method: 'POST', body: event });
 }
 
+/** The plan stored for `userId` (`public.entitlements`), read with the service-role key; null without a row. */
+export async function entitlementOf(
+  userId: string,
+): Promise<{ tier: string; status: string; source: string; founding: boolean } | null> {
+  const rows = await call<{ tier: string; status: string; source: string; founding: boolean }[]>(
+    `/rest/v1/entitlements?user_id=eq.${encodeURIComponent(userId)}&select=tier,status,source,founding`,
+    { method: 'GET' },
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Opens or closes sales on the local stack (`billing_settings.live`, #422), with the service-role key, as the
+ * maintainer does in production. A test that opens them closes them again, so other tests see sales closed.
+ */
+export async function setBillingLive(live: boolean): Promise<void> {
+  await call('/rest/v1/billing_settings?id=eq.true', {
+    method: 'PATCH',
+    body: { live, changed_at: new Date().toISOString() },
+  });
+}
+
 /** Adds a browser for the user, seen just now; returns its id. */
 export async function addDevice(userId: string, name: string): Promise<string> {
   const [device] = await call<{ id: string }[]>('/rest/v1/devices', {

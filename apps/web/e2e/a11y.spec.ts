@@ -22,11 +22,12 @@ const PUBLIC = [
   // The pages for paid plans, which playwright.config.ts shows (`BILLING_PAGES=1`, #420).
   '/terms-of-sale',
   '/refunds',
+  '/pricing',
   '/risks',
 ];
 
-/** Every place of the dashboard, in the menu's order, then the account page. */
-const SIGNED_IN = [...SECTIONS.map((section) => sectionHref(section.id)), '/account'];
+/** Every place of the dashboard, in the menu's order, then the account page and its billing page (#422). */
+const SIGNED_IN = [...SECTIONS.map((section) => sectionHref(section.id)), '/account', '/account/billing'];
 
 /** Opens `path` and checks it once its main heading shows; the test goes on to the next page and fails at its end. */
 async function check(page: Page, path: string) {

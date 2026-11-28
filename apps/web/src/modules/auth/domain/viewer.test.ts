@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewerFromClaims } from './viewer';
+import { viewerFromClaims, signedInWithin } from './viewer';
 
 describe('viewerFromClaims', () => {
   it('uses the provider profile', () => {
@@ -55,5 +55,28 @@ describe('viewerFromClaims', () => {
       'email',
       'google',
     ]);
+  });
+});
+
+describe('signedInWithin (#80)', () => {
+  const NOW = 1_800_000_000;
+  it('is true for a sign-in within the window, by the newest method', () => {
+    expect(signedInWithin([{ method: 'password', timestamp: NOW - 60 }], 600, NOW)).toBe(true);
+    expect(
+      signedInWithin(
+        [
+          { method: 'oauth', timestamp: NOW - 7200 },
+          { method: 'totp', timestamp: NOW - 599 },
+        ],
+        600,
+        NOW,
+      ),
+    ).toBe(true);
+  });
+
+  it('is false for an older sign-in, and for a claim that is missing or malformed', () => {
+    expect(signedInWithin([{ method: 'password', timestamp: NOW - 601 }], 600, NOW)).toBe(false);
+    for (const amr of [undefined, null, 'password', [], [{ method: 'password' }], [{ timestamp: '1' }], [null], [7]])
+      expect(signedInWithin(amr, 600, NOW), JSON.stringify(amr)).toBe(false);
   });
 });

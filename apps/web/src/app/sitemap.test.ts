@@ -23,5 +23,6 @@ describe('sitemap.xml', () => {
     vi.stubEnv('BILLING_PAGES', '1');
     expect(sitemap().map(({ url }) => url)).toContain('https://xomoni.com/terms-of-sale');
     expect(sitemap().map(({ url }) => url)).toContain('https://xomoni.com/refunds');
+    expect(sitemap().map(({ url }) => url)).toContain('https://xomoni.com/pricing');
   });
 });

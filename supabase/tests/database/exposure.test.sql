@@ -36,17 +36,18 @@ select is(
     || 'the console''s log and the product plan (#516), which Row Level Security keeps to super-admins');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions where has_function_privilege('anon', oid, 'execute')),
-  'device_report, device_report_stats, device_set_daily_stats, pair_device, stop_health_alert, stop_weekly_email, '
-    || 'unpair_device',
+  'billing_live, device_report, device_report_stats, device_set_daily_stats, pair_device, stop_health_alert, '
+    || 'stop_weekly_email, unpair_device',
   'anon calls only the extension''s functions: pairing, reports, and the daily numbers with their choice (#250), '
-    || 'and stopping the weekly email (ADR-0031) and the health alert (ADR-0047) from their links');
+    || 'stopping the weekly email (ADR-0031) and the health alert (ADR-0047) from their links, and asking whether '
+    || 'sales are open (#422)');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions
    where has_function_privilege('authenticated', oid, 'execute')),
   'admin_audit_log, admin_delete_user, admin_overview, admin_set_banned, admin_sign_out_user, admin_user, '
-    || 'admin_users, create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, '
-    || 'health_alert_status, is_superadmin, mfa_satisfied, my_entitlement, pair_device, set_daily_stats, '
-    || 'set_health_alert, set_weekly_email, stop_health_alert, stop_weekly_email, unpair_device',
+    || 'admin_users, billing_live, create_pairing_code, delete_account, device_report, device_report_stats, '
+    || 'device_set_daily_stats, health_alert_status, is_superadmin, mfa_satisfied, my_entitlement, pair_device, '
+    || 'set_daily_stats, set_health_alert, set_weekly_email, stop_health_alert, stop_weekly_email, unpair_device',
   'a signed-in person calls only those, plus making a code, deleting their account, choosing the daily numbers, '
     || 'the weekly email and the health alert (#407), asking whether their session verified a code where the account '
     || 'needs one (#173), reading their own plan (#420), asking whether they are a super-admin (ADR-0048), and the '

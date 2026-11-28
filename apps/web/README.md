@@ -28,7 +28,7 @@ Local emails (confirmation, password reset) land in Mailpit at http://127.0.0.1:
 src/
   app/            routes only: pages, layouts, route handlers (thin)
   modules/
-    billing/      payments with Polar (ADR-0042): the check of a webhook Polar signed; the webhook and checkout come with #421
+    billing/      payments with Polar (ADR-0042): POST /api/billing/webhook, Polar's signed events, the only writer of plans; a person's plan for the pages
     auth/         identity: sign-up and email confirmation, sign-in, two-step verification (/login/two-factor), password reset, account settings, sessions
     dashboard/    the dashboard's places (/dashboard, /dashboard/<place>), devices and live job status, /connect, where the extension's Sign in finishes, /welcome, which Xomoni opens once installed (#244), and /weekly-email/stop with POST /api/weekly-email/stop, where the weekly email stops (ADR-0031)
     extension/    the Xomoni extension in this browser: one sign-in for the site and the extension (ADR-0025)
@@ -62,7 +62,7 @@ The favicon (`src/app/icon.png`), the Apple touch icon (`src/app/apple-icon.png`
 
 All variables are listed with explanations in [`.env.example`](.env.example). In production they are set in the Vercel project (`xomoni`, personal scope). `npm run docs:check` fails if code reads a variable that isn't documented there.
 
-`BILLING_PAGES` stays unset in Production until the maintainer approves the terms of sale, the refund policy and the privacy page's part about paid plans (#420): /terms-of-sale and /refunds then answer 404 and nothing links to them. Set it to `1` on a Preview to review the drafts, each marked *Draft*; the browser tests run with it on. Approving them means removing the `draft` notices, then setting it in Production; the pages are prerendered, so it takes effect with the next deployment.
+`BILLING_PAGES` stays unset in Production until the maintainer approves the terms of sale, the refund policy, the privacy page's part about paid plans (#420), `/pricing` and `/account/billing` (#422): these pages then answer 404 and nothing links to them. Set it to `1` on a Preview to review the drafts, each marked *Draft*; the browser tests run with it on. Approving them means removing the `draft` notices, then setting it in Production; the pages are prerendered, so it takes effect with the next deployment.
 
 ## Deployment
 

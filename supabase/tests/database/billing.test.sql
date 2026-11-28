@@ -4,7 +4,7 @@
 -- its end; that each person, and each connected browser, reads only their own account's plan; that two-step
 -- verification guards it; and that deleting the account deletes it. Run with `supabase test db`.
 begin;
-select plan(62);
+select plan(68);
 
 -- Bea will pay, Cal never does, Dan has an authenticator app.
 insert into auth.users (id, email, aud, role)
@@ -71,10 +71,12 @@ select ok(
   'only service_role may apply an event');
 select ok(
   not has_function_privilege('anon', 'public.entitlement_of(uuid)', 'execute')
-    and not has_function_privilege('authenticated', 'public.entitlement_of(uuid)', 'execute')
-    and not has_function_privilege('anon', 'public.billing_live()', 'execute')
-    and not has_function_privilege('authenticated', 'public.billing_live()', 'execute'),
-  'nobody asks for another account''s plan, or reads the switch, directly');
+    and not has_function_privilege('authenticated', 'public.entitlement_of(uuid)', 'execute'),
+  'nobody asks for another account''s plan directly');
+select ok(
+  has_function_privilege('anon', 'public.billing_live()', 'execute')
+    and has_function_privilege('authenticated', 'public.billing_live()', 'execute'),
+  'anyone may ask whether sales are open, which the pricing page says to every visitor (#422)');
 select results_eq('select live from public.billing_settings', array[false], 'the switch is one row, and sales are closed');
 select throws_ok($$ insert into public.billing_settings (id, live) values (false, true) $$, '23514', null,
   'there is no second switch');
@@ -238,6 +240,20 @@ select is((public.device_report('cal-token', '0.6.0') ->> 'billing_live')::boole
   'until the maintainer opens them, which needs no release');
 select throws_ok($$ select public.device_report('not-a-token', '0.6.0') $$, 'P0001', null,
   'an unknown token hears no plan at all');
+
+-- ── The switch: anyone may read it through billing_live(), only the admin role turns it (#422) ────
+reset role;
+update public.billing_settings set live = false;
+set local role anon;
+select is(public.billing_live(), false, 'a visitor hears that sales are closed');
+select throws_ok($$ update public.billing_settings set live = true $$, '42501', null, 'and can''t open them');
+set local role service_role;
+select lives_ok($$ update public.billing_settings set live = true, changed_at = now() $$,
+  'the admin role opens sales, as the maintainer does');
+set local role authenticated;
+do $$ begin perform pg_temp.session('00000000-0000-4000-a000-0000000000b2', 'aal1'); end $$;
+select is(public.billing_live(), true, 'a signed-in person hears that sales are open');
+select throws_ok($$ update public.billing_settings set live = false $$, '42501', null, 'and can''t close them');
 
 -- ── Deleting the account deletes its plan ────────────────────────────────────────────────────────
 set local role authenticated;

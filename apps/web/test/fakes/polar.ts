@@ -39,7 +39,33 @@ export interface SubscriptionOptions {
   status?: string;
   periodEnd?: Date;
   cancel?: boolean;
+  /** Polar's product id; Plus monthly in the tests unless given. */
+  productId?: string;
+  /** The discount the subscription was bought with, or none. */
+  discountId?: string | null;
+  /** When it ended, for a revoked one. */
+  endedAt?: Date | null;
 }
+
+/** The product ids the tests give Xomoni's products on Polar (`POLAR_PRODUCT_*`). Made up. */
+export const TEST_PRODUCTS = {
+  POLAR_PRODUCT_PLUS_MONTHLY: 'prod_plus_monthly_test',
+  POLAR_PRODUCT_PLUS_YEARLY: 'prod_plus_yearly_test',
+  POLAR_PRODUCT_PRO_MONTHLY: 'prod_pro_monthly_test',
+  POLAR_PRODUCT_PRO_YEARLY: 'prod_pro_yearly_test',
+  POLAR_PRODUCT_PLUS_PASS: 'prod_plus_pass_test',
+} as const;
+
+/** The founders' discount in the tests (`POLAR_FOUNDING_DISCOUNT_ID`). Made up. */
+export const TEST_FOUNDING_DISCOUNT = 'disc_founding_test';
+
+/** A customer as Polar's payloads carry one; the email is made up, and Xomoni never keeps it. */
+const customerOf = (userId: string | null) => ({
+  id: `cus_${(userId ?? 'nobody').slice(0, 8)}`,
+  external_id: userId,
+  email: 'buyer@example.com',
+  name: 'A Buyer',
+});
 
 /**
  * A subscription event for the Xomoni account `userId`, as Polar would send it after a purchase: `external_id` is the
@@ -47,20 +73,82 @@ export interface SubscriptionOptions {
  */
 export function subscriptionEvent(
   type: string,
-  userId: string,
-  { at = new Date(), status = 'active', periodEnd, cancel = false }: SubscriptionOptions = {},
+  userId: string | null,
+  {
+    at = new Date(),
+    status = 'active',
+    periodEnd,
+    cancel = false,
+    productId = TEST_PRODUCTS.POLAR_PRODUCT_PLUS_MONTHLY,
+    discountId = null,
+    endedAt = null,
+  }: SubscriptionOptions = {},
 ): PolarEvent {
   const end = periodEnd ?? new Date(at.getTime() + 30 * 86_400_000);
   return {
     type,
     timestamp: at.toISOString(),
     data: {
-      id: `sub_${userId.slice(0, 8)}`,
+      id: `sub_${(userId ?? 'nobody').slice(0, 8)}`,
+      created_at: new Date(at.getTime() - 86_400_000).toISOString(),
+      modified_at: at.toISOString(),
       status,
+      current_period_start: new Date(end.getTime() - 30 * 86_400_000).toISOString(),
       current_period_end: end.toISOString(),
       cancel_at_period_end: cancel,
-      customer: { id: `cus_${userId.slice(0, 8)}`, external_id: userId },
-      product: { id: 'prod_plus_monthly_test' },
+      canceled_at: cancel ? at.toISOString() : null,
+      started_at: new Date(at.getTime() - 86_400_000).toISOString(),
+      ends_at: cancel ? end.toISOString() : null,
+      ended_at: endedAt ? endedAt.toISOString() : null,
+      customer_id: customerOf(userId).id,
+      product_id: productId,
+      discount_id: discountId,
+      customer: customerOf(userId),
+      product: { id: productId },
+      metadata: {},
+    },
+  };
+}
+
+/** What `orderEvent` may change. */
+export interface OrderOptions {
+  at?: Date;
+  status?: string;
+  productId?: string | null;
+  billingReason?: string;
+  subscriptionId?: string | null;
+  discountId?: string | null;
+}
+
+/** An order event for the Xomoni account `userId`, as Polar sends one: by default the one-time Plus pass, paid. */
+export function orderEvent(
+  type: string,
+  userId: string | null,
+  {
+    at = new Date(),
+    status = 'paid',
+    productId = TEST_PRODUCTS.POLAR_PRODUCT_PLUS_PASS,
+    billingReason = 'purchase',
+    subscriptionId = null,
+    discountId = null,
+  }: OrderOptions = {},
+): PolarEvent {
+  return {
+    type,
+    timestamp: at.toISOString(),
+    data: {
+      id: `ord_${(userId ?? 'nobody').slice(0, 8)}`,
+      created_at: at.toISOString(),
+      modified_at: at.toISOString(),
+      status,
+      paid: status === 'paid',
+      billing_reason: billingReason,
+      customer_id: customerOf(userId).id,
+      product_id: productId,
+      discount_id: discountId,
+      subscription_id: subscriptionId,
+      customer: customerOf(userId),
+      metadata: {},
     },
   };
 }
@@ -111,6 +199,12 @@ export interface FakePolar {
   requests: PolarRequest[];
   /** Gives the next request `failure`, then answers as usual again. */
   failNext(failure: PolarFailure): void;
+  /** The Xomoni accounts (`external_customer_id`) Polar knows as customers: each checkout adds its account. */
+  customers: Set<string>;
+  /** Each account's subscriptions, in Polar's shape, as `GET /v1/subscriptions/` lists them. */
+  subscriptions: Map<string, Record<string, unknown>[]>;
+  /** The subscriptions revoked with `DELETE /v1/subscriptions/{id}`, in order. */
+  revoked: string[];
 }
 
 /** A request's body: its JSON, or its text when it isn't JSON, or null when empty. */
@@ -132,8 +226,9 @@ const invalid = (field: string, msg: string) =>
 
 /**
  * A fake of Polar's API, in memory, at `url`. It takes `POST /v1/checkouts/` (`products` and `external_customer_id`
- * needed) and `POST /v1/customer-sessions/` (`external_customer_id` needed), each with `TEST_ACCESS_TOKEN` as a bearer
- * token, and answers 404 to anything else. A timeout never answers: the request ends only when its signal aborts, and
+ * needed; the account becomes a customer), `POST /v1/customer-sessions/` (for a customer only, else 422), `GET
+ * /v1/subscriptions/?external_customer_id=…` (from `subscriptions`) and `DELETE /v1/subscriptions/{id}` (404 unknown,
+ * 409 already revoked), each with `TEST_ACCESS_TOKEN` as a bearer token, and answers 404 to anything else. A timeout never answers: the request ends only when its signal aborts, and
  * a request without a signal fails at once, since a client that waits for Polar forever would hang.
  */
 export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}): FakePolar {
@@ -141,6 +236,9 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
   const fake: FakePolar = {
     url,
     requests: [],
+    customers: new Set(),
+    subscriptions: new Map(),
+    revoked: [],
     failNext: (next) => {
       failure = next;
     },
@@ -178,6 +276,7 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
         if (!Array.isArray(products) || products.length === 0 || !products.every((p) => typeof p === 'string'))
           return invalid('products', 'Field required');
         if (typeof fields.external_customer_id !== 'string') return invalid('external_customer_id', 'Field required');
+        fake.customers.add(fields.external_customer_id);
         const id = `chk_${randomUUID()}`;
         return json(201, {
           id,
@@ -185,6 +284,7 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
           status: 'open',
           expires_at: new Date(Date.now() + 3_600_000).toISOString(),
           success_url: fields.success_url ?? null,
+          return_url: fields.return_url ?? null,
           external_customer_id: fields.external_customer_id,
           discount_id: fields.discount_id ?? null,
           products: products.map((product) => ({ id: product })),
@@ -192,6 +292,8 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
       }
       if (request.method === 'POST' && path === '/v1/customer-sessions/') {
         if (typeof fields.external_customer_id !== 'string') return invalid('external_customer_id', 'Field required');
+        if (!fake.customers.has(fields.external_customer_id))
+          return invalid('external_customer_id', 'Customer does not exist.');
         const token = `polar_cst_${randomUUID()}`;
         return json(201, {
           id: randomUUID(),
@@ -199,6 +301,20 @@ export function fakePolarFetch({ url = FAKE_POLAR_URL }: { url?: string } = {}):
           customer_portal_url: `${url}/portal?customer_session_token=${token}`,
           expires_at: new Date(Date.now() + 3_600_000).toISOString(),
         });
+      }
+      const listing = /^\/v1\/subscriptions\/\?(.*)$/.exec(path);
+      if (request.method === 'GET' && listing) {
+        const account = new URLSearchParams(listing[1]).get('external_customer_id') ?? '';
+        return json(200, { items: fake.subscriptions.get(account) ?? [], pagination: { total_count: 0, max_page: 1 } });
+      }
+      const one = /^\/v1\/subscriptions\/([^/?]+)$/.exec(path)?.[1];
+      if (request.method === 'DELETE' && one) {
+        const id = decodeURIComponent(one);
+        const known = [...fake.subscriptions.values()].flat().find((subscription) => subscription.id === id);
+        if (!known) return json(404, { error: 'ResourceNotFound', detail: 'Not found' });
+        if (fake.revoked.includes(id)) return json(409, { error: 'AlreadyCanceledSubscription' });
+        fake.revoked.push(id);
+        return json(200, { ...known, status: 'canceled', ended_at: new Date().toISOString() });
       }
       return json(404, { error: 'ResourceNotFound', detail: 'Not found' });
     },

@@ -34,6 +34,22 @@ export interface IdentityClaims {
   app_metadata?: { providers?: unknown };
   /** Authenticator assurance level of the session, `aal1` or `aal2` (#173); read with `assuranceOf`. */
   aal?: unknown;
+  /** How and when the session signed in (`[{ method, timestamp }]`, seconds); read with `signedInWithin`. */
+  amr?: unknown;
+}
+
+/**
+ * Whether the session signed in within the last `seconds` at `nowSeconds`, by the newest time in its `amr` claim, as
+ * `delete_account()` checks it (#80). A missing or malformed claim counts as no sign-in at all.
+ */
+export function signedInWithin(amr: unknown, seconds: number, nowSeconds: number): boolean {
+  if (!Array.isArray(amr)) return false;
+  const times = amr
+    .map((method: unknown) =>
+      typeof method === 'object' && method !== null ? (method as { timestamp?: unknown }).timestamp : undefined,
+    )
+    .filter((time): time is number => typeof time === 'number' && Number.isFinite(time));
+  return times.length > 0 && Math.max(...times) >= nowSeconds - seconds;
 }
 
 /** Builds the viewer from verified token claims, falling back to the email for a missing name. */

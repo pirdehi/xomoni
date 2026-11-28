@@ -1,14 +1,16 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { DataTrending20Regular, Info20Regular } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fmtAgo, fmtNumber } from '../format';
 import type { PageProps } from '../navigation';
 import { PLUS_RANGES, type ReachData, type ReachRange, useReachData } from '../reach';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { labelMonths } from '../../shared/vault/label-months';
+import { markLabelsSeen } from '../../shared/vault/reach-alerts';
 import { LabelHistory } from '../components/reach/LabelHistory';
 import { ReachComparisons } from '../components/reach/ReachComparisons';
 import { ReachDistribution } from '../components/reach/ReachDistribution';
+import { ReachDropNote } from '../components/reach/ReachDropNote';
 import { PlusBadge } from '../components/reach/PlusBadge';
 import { ReachTable } from '../components/reach/ReachTable';
 import { SuspectPosts } from '../components/reach/SuspectPosts';
@@ -41,6 +43,11 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
   const [range, setRange] = useState<ReachRange>('30d');
   const data = useReachData(account.id, range);
   const months = useLiveQuery(async () => await labelMonths(account.id), [account.id]);
+  // The months shown here are seen: the menu's count of new months of labels goes (#430).
+  const newest = months?.[0]?.month;
+  useEffect(() => {
+    if (newest) void markLabelsSeen(account.id, newest);
+  }, [account.id, newest]);
   return (
     <>
       <PageHeader
@@ -60,6 +67,8 @@ export function ReachPage({ account }: Pick<PageProps, 'account'>) {
             </div>
           </FieldGroup>
         </div>
+        {/* From the daily numbers, not the posts' own: shown whether or not a post has a number yet (#523). */}
+        <ReachDropNote accountId={account.id} />
         {data === undefined ? (
           <div className={styles.loading} aria-busy="true" />
         ) : !data.csv && !data.live ? (

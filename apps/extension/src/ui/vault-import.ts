@@ -1,6 +1,16 @@
 import { CORE_PARSERS } from '../shared/vault/parsers';
-// Reach's parser for X's Under the hood report (#428) registers itself after the core's, with its monthly reminder.
-import '../shared/vault/under-the-hood-parser';
+import { notify } from '../shared/notify';
+import { reachNotificationId } from '../shared/notification-ids';
+import { alertLabelChanges } from '../shared/vault/reach-alerts';
+// Reach's parser for X's Under the hood report (#428) registers itself after the core's, with its monthly reminder;
+// a label it brings, new or larger than the month before, is notified once per month (#430).
+import { onLabelChanges } from '../shared/vault/under-the-hood-parser';
+
+onLabelChanges((account, month, changes) =>
+  alertLabelChanges(account, month, changes, reachNotificationId(account.id), (id, title, message) =>
+    notify(id, title, message),
+  ),
+);
 import {
   type ImportPlan,
   type PartResult,

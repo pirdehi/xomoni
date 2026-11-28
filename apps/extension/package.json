@@ -15,8 +15,8 @@
     "store:images": "node scripts/store-images.mjs"
   },
   "dependencies": {
-    "@fluentui/react-components": "^9.75.2",
-    "@fluentui/react-icons": "^2.0.346",
+    "@fluentui/react-components": "^9.75.3",
+    "@fluentui/react-icons": "^2.0.347",
     "@xomoni/bridge": "*",
     "@xomoni/consent": "*",
     "@xomoni/entitlements": "*",
@@ -30,9 +30,9 @@
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.12",
-    "@types/chrome": "^0.3.7",
-    "@types/react": "^19.3.0",
+    "@testing-library/user-event": "^14.6.13",
+    "@types/chrome": "^0.3.8",
+    "@types/react": "^19.3.2",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "@vitest/coverage-v8": "^5.1.0",

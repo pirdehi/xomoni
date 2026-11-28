@@ -1,8 +1,9 @@
 // What xomoni.com may read of Xomoni's own data in this browser (ADR-0028, #233): the Library, account health,
 // Watch, the settings (ADR-0029), the person's replies with whom each answers, and the replies others wrote to the
-// person, which Xomoni keeps for 90 days (ADR-0030) (#256), and the vault's summary, counts and dates only (#426). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose own account names the
-// device this extension is connected as. The answers are X content: they go to that page in this browser and nowhere
-// else (ADR-0004).
+// person, which Xomoni keeps for 90 days (ADR-0030) (#256), the vault's summary, counts and dates only (#426), and
+// Reach (#431, `reach-read.ts`). A read changes nothing, answers at most `READ_PAGE` items, and only for a page whose
+// own account names the device this extension is connected as. The answers are X content: they go to that page in
+// this browser and nowhere else (ADR-0004).
 import {
   type AccountHealth,
   type IncomingPage,
@@ -33,6 +34,7 @@ import type { Item } from '../shared/types';
 import { importLedger } from '../shared/vault/db';
 import { freshnessOf, freshnessSources } from '../shared/vault/freshness';
 import { normalizeTabs } from '../shared/watch';
+import { readReach } from './reach-read';
 import { accessRefusal, activeAccount } from './website-access';
 import { estimatePlan } from './website-plans';
 import { readSettings } from './website-settings';
@@ -267,7 +269,7 @@ export async function readVault(now = Date.now()): Promise<VaultSummary> {
   for (const followed of freshnessSources()) {
     const source = VAULT_SUMMARY_SOURCES.find((s) => s === followed.source);
     if (!source) continue;
-    const lastAt = await followed.lastAt(account.id);
+    const lastAt = await followed.lastAt(account.id, now);
     const freshness = freshnessOf(lastAt, followed.cadenceDays, followed.graceDays, now);
     sources.push({ source, lastAt, freshness, rows: await rowsOf(source) });
     // The analytics export is followed as one, of posts or of days; the days are counted on their own line.
@@ -307,5 +309,11 @@ export async function answerRead(message: ReadMessage): Promise<ReadAnswer> {
       return { ok: true, what: 'incoming', page: await readIncoming(message.author, message.query, message.offset) };
     case 'vault':
       return { ok: true, what: 'vault', vault: await readVault() };
+    case 'reach':
+      return {
+        ok: true,
+        what: 'reach',
+        reach: await readReach({ rangeDays: message.rangeDays, order: message.order, offset: message.offset }),
+      };
   }
 }

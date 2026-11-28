@@ -61,16 +61,23 @@ export interface LabelMonth {
   generatedAt?: number;
 }
 
+/** One month as the vault keeps it (`labelMonths`, keyed by account and month): whose it is, and when it came. */
+export interface LabelMonthRow extends LabelMonth {
+  accountId: string;
+  /** When the file was imported (epoch ms): of two files for a month, the later import wins. */
+  importedAt: number;
+}
+
 /** Why a file isn't read as an *Under the hood* report. */
 export type UnderTheHoodProblem = 'too-large' | 'not-json' | 'not-under-the-hood' | 'bad-month' | 'bad-count';
 
 /** What the person is told for each `UnderTheHoodProblem`. */
 export const UNDER_THE_HOOD_PROBLEMS: Readonly<Record<UnderTheHoodProblem, string>> = {
-  'too-large': "This file is larger than X's Under the hood file can be (5 MB). Nothing was imported.",
-  'not-json': "This isn't X's Under the hood file: it isn't JSON. Nothing was imported.",
-  'not-under-the-hood': "This isn't X's Under the hood file. Nothing was imported.",
-  'bad-month': "This Under the hood file names a month that can't be right. Nothing was imported.",
-  'bad-count': "This Under the hood file has a count that isn't a whole number of 0 or more. Nothing was imported.",
+  'too-large': 'This file is larger than X’s Under the hood file can be (5 MB). Nothing was imported.',
+  'not-json': 'This isn’t X’s Under the hood file: it isn’t JSON. Nothing was imported.',
+  'not-under-the-hood': 'This isn’t X’s Under the hood file. Nothing was imported.',
+  'bad-month': 'This Under the hood file names a month that can’t be right. Nothing was imported.',
+  'bad-count': 'This Under the hood file has a count that isn’t a whole number of 0 or more. Nothing was imported.',
 };
 
 /** Whose report a file is, when it says: X's numeric id, a handle, or both. */

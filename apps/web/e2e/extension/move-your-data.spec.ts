@@ -56,7 +56,7 @@ const CORE_TABLES = [
 ];
 
 /** The vault's tables, which version 2 adds after the core ones (`VAULT_TABLE_NAMES`, #424). */
-const VAULT_TABLES = ['vaultImports', 'analyticsPosts', 'analyticsDays', 'accountEvents'];
+const VAULT_TABLES = ['vaultImports', 'analyticsPosts', 'analyticsDays', 'accountEvents', 'labelMonths'];
 
 /** The tables a move file carries, in its order (`MOVE_TABLES` in `apps/extension/src/shared/move-file.ts`). */
 const TABLES = [...CORE_TABLES, ...VAULT_TABLES];
@@ -862,7 +862,7 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
     await expect(second.getByRole('main')).toContainText(`Moved in from Xomoni ${VERSION} (exported`);
   });
 
-  test('S300-29 the vault moves: its ledger, analytics and timeline arrive whole, and stay after a reload', async ({
+  test('S300-29 the vault moves: its ledger, analytics, timeline and X’s label months arrive whole, and stay after a reload', async ({
     dashboard,
     page,
     newXomoni,
@@ -902,6 +902,16 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
       analyticsDays: [{ accountId: id, day: '2026-11-01', asOf: at, impressions: 3000, newFollows: 2 }],
       accountEvents: [
         { accountId: id, kind: 'note', at, source: 'person', words: '<img src=x onerror=alert(1)> appealed' },
+      ],
+      // A month of X's Under the hood report (#428), as Dexie version 9 keeps it.
+      labelMonths: [
+        {
+          accountId: id,
+          month: '2026-08',
+          importedAt: at,
+          labels: [{ name: 'SPAM_HIGH_RECALL', count: 2, scope: 'posts', about: '<img src=x onerror=alert(1)>' }],
+          postsInMonth: 40,
+        },
       ],
     };
     const { checksum: _, ...rest } = file;

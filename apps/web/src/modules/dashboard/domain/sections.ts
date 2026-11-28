@@ -9,6 +9,7 @@ export type SectionId =
   | 'content'
   | 'engagement'
   | 'reports'
+  | 'reach'
   | 'library'
   | 'comments'
   | 'cleanup'
@@ -124,6 +125,21 @@ export const SECTIONS: readonly Section[] = [
     issue: 257,
   },
   {
+    id: 'reach',
+    group: 'insights',
+    label: 'Reach',
+    summary: 'How many times X says each of your posts was seen, against your usual.',
+    shows: [
+      'Your posts, most seen, least seen or newest, against your usual',
+      'Comparisons: links, photos or videos, and Premium',
+      'X’s labels month by month, and suspected posts, always as guesses',
+    ],
+    source: 'Xomoni on this computer: your posts never reach our servers',
+    needsXomoni: true,
+    ready: true,
+    issue: 431,
+  },
+  {
     id: 'library',
     group: 'manage',
     label: 'Library',
@@ -223,6 +239,7 @@ export function sectionHref(id: SectionId, query = ''): string {
 }
 
 const XOMONI_PAGE: Partial<Record<SectionId, XomoniPage>> = {
+  reach: 'reach',
   library: 'library',
   comments: 'library',
   cleanup: 'cleanup',

@@ -154,9 +154,9 @@ describe('X’s Under the hood file (#428, ADR-0045)', () => {
       expect(result).toEqual({
         ok: false,
         problem: 'not-under-the-hood',
-        message: "This isn't X's Under the hood file. Nothing was imported.",
+        message: 'This isn’t X’s Under the hood file. Nothing was imported.',
       });
-      expect(UNDER_THE_HOOD_PROBLEMS['not-under-the-hood']).toContain("This isn't X's Under the hood file");
+      expect(UNDER_THE_HOOD_PROBLEMS['not-under-the-hood']).toContain('This isn’t X’s Under the hood file');
     });
 
     it('a file that isn’t JSON, or is cut short', () => {

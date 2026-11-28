@@ -7,8 +7,8 @@ import { FIXTURE_ACCOUNT } from '../support/x-fixtures';
 
 // Xomoni with a heavy X user's history, in the built extension (#390): X's archive of 100,000 posts and 100,000 likes
 // over 15 years imported through the Library, then the Library opened, paged, searched and filtered, Cleanup's count
-// with keep rules, Home, *Export everything* and the move-your-data import into an emptied Xomoni, each timed against
-// a budget. The normal run is a fiftieth of that size (`XOMONI_SCALE`, default 0.02), and proves the same paths in
+// with keep rules, Home, Reach (#431), *Export everything* and the move-your-data import into an emptied Xomoni, each
+// timed against a budget. The normal run is a fiftieth of that size (`XOMONI_SCALE`, default 0.02), and proves the same paths in
 // seconds; `npm run test:e2e:scale -w @xomoni/web` runs the full size (docs/TESTING.md). Budgets are wide, for CI's
 // slower runners: they catch a path that went from seconds to minutes, not a few percent.
 
@@ -23,6 +23,8 @@ const BUDGETS = {
   'Cleanup: count': 15_000,
   'Cleanup: count with keep rules': 15_000,
   Home: 10_000,
+  'Reach opens': 10_000,
+  'Reach: everything': 15_000,
   'Export everything': 120_000,
   'Delete local data': 180_000,
   'move import': 240_000,
@@ -146,6 +148,47 @@ test('a heavy X user’s history: every path within its budget (#390)', async ({
       await expect(counts).toHaveAttribute('aria-busy', 'false', { timeout });
       await expect(chart.locator('svg [data-series]').first()).toBeAttached({ timeout });
     },
+  );
+
+  // Reach (#431, P5.4.3): X's archive brings no views, so each post and reply is given the views X would have shown on
+  // the profile, as Xomoni keeps them; then Reach over the last 30 days, and over every post, each until its sources
+  // say how many posts it read, with the comparisons and the table drawn.
+  await dashboard.evaluate(
+    (now) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('xomoni');
+        open.onerror = () => reject(new Error(String(open.error)));
+        open.onsuccess = () => {
+          const tx = open.result.transaction('items', 'readwrite');
+          const cursor = tx.objectStore('items').openCursor();
+          cursor.onsuccess = () => {
+            const at = cursor.result;
+            if (!at) return;
+            const item = at.value as { kind: string; id: string; seenAt: number; views?: number };
+            if (item.kind === 'post' || item.kind === 'reply')
+              at.update({ ...item, views: 100 + (Number(item.id.slice(-4)) % 900), seenAt: item.seenAt || now });
+            at.continue();
+          };
+          tx.oncomplete = () => {
+            open.result.close();
+            resolve();
+          };
+          tx.onerror = () => reject(new Error(String(tx.error)));
+        };
+      }),
+    NOW,
+  );
+  const seen = (count: RegExp | string) =>
+    dashboard.getByText(typeof count === 'string' ? `Views Xomoni saw on X: ${count} posts` : count);
+  await timed(
+    'Reach opens',
+    () => dashboard.getByRole('navigation').getByRole('button', { name: 'Reach', exact: true }).click(),
+    seen(/Views Xomoni saw on X: [\d,]+ posts?/),
+  );
+  await timed(
+    'Reach: everything',
+    () => dashboard.getByRole('button', { name: 'Everything', exact: true }).click(),
+    seen(fmt(archive.posts + archive.replies)),
   );
 
   // Export everything, then the move-your-data import of that file into an emptied Xomoni.

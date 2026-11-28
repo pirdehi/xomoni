@@ -47,6 +47,7 @@ export const SECTION_ICON: Record<SectionId, FluentIcon> = {
   content: DocumentText20Regular,
   engagement: Heart20Regular,
   reports: DocumentBulletList20Regular,
+  reach: DataTrending20Regular,
   library: Library20Regular,
   comments: Comment20Regular,
   cleanup: Sparkle20Regular,

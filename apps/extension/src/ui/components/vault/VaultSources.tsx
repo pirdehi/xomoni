@@ -53,7 +53,7 @@ export async function vaultHoldings(accountId: string, now: number): Promise<Vau
   );
   const sources: SourceSummary[] = [];
   for (const source of freshnessSources()) {
-    const lastAt = await source.lastAt(accountId);
+    const lastAt = await source.lastAt(accountId, now);
     const last =
       ledger.find(
         (r) => r.source === source.source || (source.source === 'x-analytics-posts' && r.source === 'x-analytics-days'),
@@ -80,6 +80,14 @@ const ageOf = (at: number, now: number) => {
   const days = Math.floor((now - at) / 86_400_000);
   return days <= 0 ? 'today' : days === 1 ? '1 day old' : `${days.toLocaleString('en')} days old`;
 };
+
+/** A day of X's, whose periods are UTC: `Oct 1, 2026`. */
+const utcDay = (ms: number) =>
+  new Date(ms).toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+/** What an import covers, after a dot, when its file says: ` · covers Oct 1, 2026 to Oct 31, 2026`. */
+const coverWords = (row: VaultImport) =>
+  row.coverFrom === null || row.coverTo === null ? '' : ` · covers ${utcDay(row.coverFrom)} to ${utcDay(row.coverTo)}`;
 
 /**
  * *Your sources* on the Vault page (#425): each of X's files the vault follows, how fresh it is, and what it holds:
@@ -141,6 +149,13 @@ export function VaultSources({ account, navigate }: { account: Account; navigate
                     Made by X on {fmtDate(s.lastAt)}, {ageOf(s.lastAt, now)}
                     {parts &&
                       ` · ${(parts.tweets ?? 0).toLocaleString('en')} posts, replies and reposts · ${(parts.likes ?? 0).toLocaleString('en')} likes`}
+                  </Caption1>
+                ) : s.source !== 'x-analytics-posts' ? (
+                  // A feature's source, such as X's Under the hood report: its newest import, and what it covers.
+                  <Caption1>
+                    {s.last
+                      ? `Imported ${fmtDate(s.last.importedAt)}, ${ageOf(s.last.importedAt, now)}${coverWords(s.last)}`
+                      : 'In your vault.'}
                   </Caption1>
                 ) : (
                   <Caption1>

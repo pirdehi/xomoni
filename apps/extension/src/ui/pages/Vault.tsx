@@ -33,7 +33,7 @@ export function VaultPage({ account, navigate }: PageProps) {
     <div className={styles.stack}>
       <PageHeader
         title="Vault"
-        description={`X’s own files about @${account.handle}, kept on this computer: your archive and your analytics, with what came in and when. Nothing here is sent anywhere.`}
+        description={`X’s own files about @${account.handle}, kept on this computer: your archive, your analytics and X’s Under the hood reports, with what came in and when. Nothing here is sent anywhere.`}
       />
       <div className={styles.pair}>
         <VaultSources account={account} navigate={navigate} />

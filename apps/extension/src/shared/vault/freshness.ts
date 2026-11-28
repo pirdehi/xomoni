@@ -23,8 +23,11 @@ export interface FreshnessSource {
   readonly cadenceDays: number;
   /** Days after it is due that it is overdue. */
   readonly graceDays: number;
-  /** When the account's last copy is from (epoch ms), or null when there is none. */
-  lastAt(accountId: string): Promise<number | null>;
+  /**
+   * When the account's last copy is from (epoch ms), or null when there is none. `now` is for a source whose copies come
+   * on a calendar, such as X's monthly *Under the hood* report; the core's ignore it.
+   */
+  lastAt(accountId: string, now: number): Promise<number | null>;
 }
 
 const DAY_MS = 86_400_000;
@@ -94,7 +97,7 @@ export interface Nudge {
 export async function dueNudges(accountId: string, now: number): Promise<Nudge[]> {
   const nudges: Nudge[] = [];
   for (const source of freshnessSources()) {
-    const lastAt = await source.lastAt(accountId);
+    const lastAt = await source.lastAt(accountId, now);
     const freshness = freshnessOf(lastAt, source.cadenceDays, source.graceDays, now);
     if (lastAt === null || (freshness !== 'due' && freshness !== 'overdue')) continue;
     nudges.push({

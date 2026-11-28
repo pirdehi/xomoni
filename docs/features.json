@@ -294,15 +294,15 @@
       "area": "extension",
       "status": "preview",
       "since": "0.6.0",
-      "issues": [429],
+      "issues": [428, 429],
       "scenarios": "docs/scenarios/429-reach.md",
       "en": {
         "title": "Reach",
-        "summary": "how many times X says each of your posts was seen, from X's own numbers, against your usual: the median of your posts of the same kind in the 8 weeks before. A post still growing isn't compared, and nothing is guessed. Comparisons of posts with and without a link, with photos or videos, and with Premium, each in one of five fixed words with its size, a 95% interval and what can mislead it, and your usual reach by day and time. The last 30 days are free; longer periods and the comparisons are part of Plus, open as a preview. Xomoni never searches X to measure reach, and nothing leaves your computer."
+        "summary": "how many times X says each of your posts was seen, from X's own numbers, against your usual: the median of your posts of the same kind in the 8 weeks before. A post still growing isn't compared, and nothing is guessed. Comparisons of posts with and without a link, with photos or videos, and with Premium, each in one of five fixed words with its size, a 95% interval and what can mislead it, and your usual reach by day and time. X's labels month by month from its *Under the hood* report, and the posts that may have got one, always marked as a guess. The last 30 days are free; longer periods and the comparisons are part of Plus, open as a preview. Xomoni never searches X to measure reach, and nothing leaves your computer."
       },
       "fa": {
         "title": "دیده‌شدن",
-        "summary": "اینکه X می‌گوید هر پست شما چند بار دیده شد، از عددهای خود X، در برابر حد معمول شما: میانه‌ی پست‌های هم‌نوع شما در ۸ هفته‌ی پیش از آن. پستی که هنوز در حال رشد است مقایسه نمی‌شود و هیچ چیزی حدس زده نمی‌شود. مقایسه‌ی پست‌های با و بی لینک، با عکس یا ویدیو، و با Premium، هر کدام با یکی از پنج واژه‌ی ثابت، اندازه، بازه‌ی ۹۵٪ و آنچه می‌تواند گمراه کند، و دیده‌شدن معمول شما بر حسب روز و ساعت. ۳۰ روز آخر رایگان است؛ بازه‌های بلندتر و مقایسه‌ها بخشی از Plus است که به‌صورت پیش‌نمایش باز است. Xomoni هرگز برای سنجیدن دیده‌شدن در X جستجو نمی‌کند و چیزی از رایانه‌تان بیرون نمی‌رود."
+        "summary": "اینکه X می‌گوید هر پست شما چند بار دیده شد، از عددهای خود X، در برابر حد معمول شما: میانه‌ی پست‌های هم‌نوع شما در ۸ هفته‌ی پیش از آن. پستی که هنوز در حال رشد است مقایسه نمی‌شود و هیچ چیزی حدس زده نمی‌شود. مقایسه‌ی پست‌های با و بی لینک، با عکس یا ویدیو، و با Premium، هر کدام با یکی از پنج واژه‌ی ثابت، اندازه، بازه‌ی ۹۵٪ و آنچه می‌تواند گمراه کند، و دیده‌شدن معمول شما بر حسب روز و ساعت. برچسب‌های X ماه به ماه از گزارش *Under the hood* آن، و پست‌هایی که شاید یکی گرفته باشند، همیشه با نشان حدس. ۳۰ روز آخر رایگان است؛ بازه‌های بلندتر و مقایسه‌ها بخشی از Plus است که به‌صورت پیش‌نمایش باز است. Xomoni هرگز برای سنجیدن دیده‌شدن در X جستجو نمی‌کند و چیزی از رایانه‌تان بیرون نمی‌رود."
       }
     },
     {
@@ -399,6 +399,22 @@
       "fa": {
         "title": "گاوصندوق شما روی xomoni.com",
         "summary": "کنار Library، آنچه گاوصندوق شما در Xomoni دارد: هر فایل X با میزان تازگی و آنچه در آن است، که فقط به‌صورت شمارش و تاریخ در مرورگر شما خوانده می‌شود، و *Open the vault in Xomoni*. هیچ چیز از آن به سرورهای ما نمی‌رسد."
+      }
+    },
+    {
+      "id": "website-reach",
+      "area": "website",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [431],
+      "scenarios": "docs/scenarios/431-website-reach.md",
+      "en": {
+        "title": "Reach, on xomoni.com",
+        "summary": "*Reach* on the dashboard shows what the Reach page in Xomoni shows, read in your browser: the comparisons in the same five words, your posts 100 at a time with their views and their share of usual, by period and order, X's labels month by month, and the suspected posts, each in a box that says it is a guess. The posts shown can be saved as CSV made in your browser. Nothing of it reaches our servers, and nothing on it leads to a cleanup. Part of Plus, open as a preview."
+      },
+      "fa": {
+        "title": "دیده‌شدن روی xomoni.com",
+        "summary": "*Reach* در داشبورد همان چیزی را نشان می‌دهد که صفحه‌ی Reach در Xomoni نشان می‌دهد و در مرورگر شما خوانده می‌شود: مقایسه‌ها با همان پنج واژه، پست‌های شما صدتا صدتا با بازدید و سهمشان از حد معمول، بر حسب بازه و ترتیب، برچسب‌های X ماه به ماه، و پست‌های مظنون، هر کدام در کادری که می‌گوید حدس است. پست‌های نمایش‌داده را می‌توان به‌صورت CSV ساخته‌شده در مرورگر ذخیره کرد. هیچ چیز از آن به سرورهای ما نمی‌رسد و هیچ چیز در آن به پاک‌سازی نمی‌انجامد. بخشی از Plus که به‌صورت پیش‌نمایش باز است."
       }
     },
     {

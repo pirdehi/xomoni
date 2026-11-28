@@ -2,11 +2,12 @@
 // n of the person's posts, the posts of that month furthest below their baseline, as a guess. X never says which posts
 // got a label, so every candidate is a guess and says so, with the reason it was picked; its confidence is low or
 // medium, never high; the person can dismiss it; and nothing here links to a cleanup. Pure.
+import { REACH_GUESS_NOTICE } from '@xomoni/bridge';
 import { type LabelMonth, monthName, utcMonth } from './under-the-hood';
 import { type ReachFormat, type ReachSample, baseline, isSettled, vsBaseline } from './reach-stats';
 
-/** The words every candidate carries, in a box that can't be hidden (ADR-0045, point 4). */
-export const GUESS_NOTICE = "This is a guess. X doesn't say which posts got a label.";
+/** The words every candidate carries, in a box that can't be hidden (ADR-0045, point 4); the same on xomoni.com. */
+export const GUESS_NOTICE = REACH_GUESS_NOTICE;
 
 /** A candidate is below this share of its baseline: under half. */
 export const SUSPECT_BELOW = 0.5;
@@ -99,14 +100,16 @@ function reasonsFor(post: SuspectInput, base: number, ratio: number, label: stri
  * the candidates are that month's settled posts (UTC, as X's periods are) under half their baseline, lowest first, at
  * most min(3n, 10); a dismissed one is left out, without another taking its place. The guess is *medium* only when the
  * month has at least 20 comparable posts and the n lowest are at most half the lowest of the others; else *low*. A
- * label on the account, or a month without numbers or baselines, gets no candidate and says why.
+ * label on the account, or a month without numbers or baselines, gets no candidate and says why. `bases` are the posts'
+ * baselines, from `posts` themselves unless given: the Reach page gives those it computed from the 8 weeks before its
+ * period too.
  */
 export function suspectPosts(
   posts: readonly SuspectInput[],
   months: readonly LabelMonth[],
   dismissed: ReadonlySet<string> = new Set(),
+  bases: ReadonlyMap<string, number | null> = baseline(posts),
 ): SuspectLabel[] {
-  const bases = baseline(posts);
   const byMonth = new Map<string, SuspectInput[]>();
   for (const post of posts) {
     const month = utcMonth(post.createdAt);

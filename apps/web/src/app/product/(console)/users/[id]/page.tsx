@@ -11,8 +11,11 @@ export const metadata: Metadata = { title: 'Account', robots: { index: false, fo
 // has answered everyone else with the 404 before it runs.
 export const instant = false;
 
+/** The route's one segment: the account's id. */
+type Props = { params: Promise<{ id: string }> };
+
 /** `/product/users/<id>`: one account and the super-admin's actions on it (#516); a 404 for everyone else. */
-export default function ConsoleUserPage({ params }: PageProps<'/product/users/[id]'>) {
+export default function ConsoleUserPage({ params }: Props) {
   return (
     <Suspense fallback={<ConsoleSkeleton />}>
       <User params={params} />

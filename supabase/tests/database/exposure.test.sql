@@ -28,12 +28,12 @@ select is_empty(
 select is(
   (select string_agg(table_name || ' ' || privilege_type, ', ' order by table_name, privilege_type)::text
    from information_schema.role_table_grants where grantee = 'authenticated' and table_schema = 'public'),
-  'daily_stats SELECT, daily_stats_choices SELECT, devices DELETE, devices INSERT, devices SELECT, devices UPDATE, '
-    || 'entitlements SELECT, jobs DELETE, jobs INSERT, jobs SELECT, jobs UPDATE, product_documents INSERT, '
-    || 'product_documents SELECT',
+  'admin_audit SELECT, daily_stats SELECT, daily_stats_choices SELECT, devices DELETE, devices INSERT, '
+    || 'devices SELECT, devices UPDATE, entitlements SELECT, jobs DELETE, jobs INSERT, jobs SELECT, jobs UPDATE, '
+    || 'product_documents INSERT, product_documents SELECT, product_plan SELECT',
   'authenticated has exactly what was granted by name: no TRUNCATE, nothing on the secret tables, only reads of '
-    || 'the daily numbers (#250) and of the plan (#420), and reading and adding product documents, which Row Level '
-    || 'Security keeps to super-admins (ADR-0048)');
+    || 'the daily numbers (#250) and of the plan (#420), reading and adding product documents (ADR-0048), and reading '
+    || 'the console''s log and the product plan (#516), which Row Level Security keeps to super-admins');
 select is(
   (select string_agg(name, ', ' order by name) from own_functions where has_function_privilege('anon', oid, 'execute')),
   'device_report, device_report_stats, device_set_daily_stats, pair_device, stop_health_alert, stop_weekly_email, '
@@ -43,12 +43,14 @@ select is(
 select is(
   (select string_agg(name, ', ' order by name) from own_functions
    where has_function_privilege('authenticated', oid, 'execute')),
-  'create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, '
+  'admin_audit_log, admin_delete_user, admin_overview, admin_set_banned, admin_sign_out_user, admin_user, '
+    || 'admin_users, create_pairing_code, delete_account, device_report, device_report_stats, device_set_daily_stats, '
     || 'health_alert_status, is_superadmin, mfa_satisfied, my_entitlement, pair_device, set_daily_stats, '
     || 'set_health_alert, set_weekly_email, stop_health_alert, stop_weekly_email, unpair_device',
   'a signed-in person calls only those, plus making a code, deleting their account, choosing the daily numbers, '
     || 'the weekly email and the health alert (#407), asking whether their session verified a code where the account '
-    || 'needs one (#173), reading their own plan (#420), and asking whether they are a super-admin (ADR-0048)');
+    || 'needs one (#173), reading their own plan (#420), asking whether they are a super-admin (ADR-0048), and the '
+    || 'console''s functions (#516), which refuse anyone but a super-admin at the right level');
 
 -- ── Something created from now on is exposed to nobody ────────────────────────────────────────────
 create table public.exposure_probe (id integer primary key);

@@ -105,6 +105,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/engine`](../apps/extension/src/engine/README.md) | Job runner, pacing limiter, safety policy, cleanup, scan, watch and archive strategies. |
 | [`apps/extension/src/shared`](../apps/extension/src/shared/README.md) | Types, IndexedDB schema, parsers, filters, settings: the extension's kernel. |
 | [`apps/extension/src/cloud`](../apps/extension/src/cloud/README.md) | Connects the browser to a xomoni.com account with a one-time code and reports job status only (ADR-0018); hears the account's plan in the answer, kept in IndexedDB with 7 days of grace offline (ADR-0042). |
+| [`apps/extension/src/scanner`](../apps/extension/src/scanner/README.md) | The on-device archive scanner every R2 lens shares, which never touches X ([ADR-0049](adr/0049-the-on-device-archive-scanner.md)): its ports so far. |
 | [`apps/extension/src/update`](../apps/extension/src/update/README.md) | One-click updates of a zip install: a signed release from GitHub, checked, then written into Xomoni's own folder ([ADR-0033](adr/0033-one-click-updates-for-the-zip-install.md)). |
 | [`apps/extension/src/ui`](../apps/extension/src/ui/README.md) | The dashboard (React). |
 | [`apps/extension/src/dev`](../apps/extension/src/dev/README.md) | UI preview with demo data; never shipped. |
@@ -196,7 +197,7 @@ The other flows (sign-in, password reset, email change, Google) follow the same 
 
 ## 5. Extension (`apps/extension`)
 
-The extension runs in four JavaScript contexts, which is why it is split into areas:
+The extension runs in four JavaScript contexts, and a fifth for the scanner from R2, which is why it is split into areas:
 
 | Context | Area | Can use |
 | --- | --- | --- |
@@ -204,10 +205,11 @@ The extension runs in four JavaScript contexts, which is why it is split into ar
 | Service worker | `background/` + `cloud/website.ts` | `chrome.*`, IndexedDB, messages from xomoni.com's top frame (`@xomoni/bridge`: a hello, a one-time code to pair or sign in, a sign-out; ADR-0024, ADR-0025), `fetch` to xomoni.com's cloud to trade a code or end a token |
 | x.com tab, isolated world | `content/` | DOM of x.com, `chrome.runtime` messaging |
 | x.com tab, page world | `inject/` | X's `fetch`/XHR responses (read-only), a `MessagePort` to the content script |
+| Scanner worker (a dedicated Web Worker, from CS.2) | `scanner/` | IndexedDB, Web Locks, and the scanner's ports; no `chrome.*`, no X tab, and `fetch` only for a model pack the person asked for (ADR-0049, ADR-0051) |
 
 `shared/` is the kernel every area may use; `shared/vault/` holds the vault (ADR-0043): the one importer of X's files, the analytics CSV, the ledger, the timeline, the reminder and the open export (ADR-0044), with the Vault page in `ui/` and its summary for xomoni.com in `cloud/website-reads.ts`. The other areas don't import each other, with three exceptions: `ui/` drives `engine/`, because the dashboard page runs the engine (`background/` is allowed to as well, but doesn't today), `ui/` starts `cloud/`, which reports job status to xomoni.com while the dashboard is open, and `ui/` offers `update/`, the one-click update of a zip install (ADR-0033). The engine never imports `cloud/`, so work on X never waits on that network. These are the `ext-*` rules below. The engine's core depends on ports, not on Chrome (#11): `engine/ports.ts` defines `XTab` (the worker tab), `Notifier` and `Presence` (whether the person is away, and keeping the display on), `engine/platform.ts` is the composition root that wires the Chrome adapters (`worker-tab.ts`, `shared/notify.ts`, `presence.ts`) and creates the dashboard's `runner`, and `JobContext` and `Runner` receive the ports. Rule `ext-engine-core-uses-ports` and an ESLint rule against `chrome` in the core keep it that way; tests run the engine on fake ports.
 
-A fifth area is decided for R2: `scanner/`, the on-device archive scanner ([ADR-0049](adr/0049-the-on-device-archive-scanner.md), #491). It will read X's archive and the Library already on the computer, in a worker of its own, and import only `scanner/` and `shared/`: no X tab, no content script, and no `fetch` but a model pack the person asked for. Its findings are proposals; only Cleanup, with its consent and typed DELETE, acts on X. The rules `ext-scanner-is-headless` and `ext-scanner-core-uses-ports` come with the area (CS.1.5).
+`scanner/` is the on-device archive scanner every R2 lens shares ([ADR-0049](adr/0049-the-on-device-archive-scanner.md), #491). It reads X's archive and the Library already on the computer, in a worker of its own (CS.2), and imports only `scanner/` and `shared/`: no X tab, no content script, and no `fetch` but a model pack the person asked for. Its core depends on its ports (`scanner/ports.ts`: `ModelRunner`, `ScanStore`, `Clock`), wired in `scanner/platform.ts`. Its findings are proposals; only Cleanup, with its consent and typed DELETE, acts on X. Rules `ext-scanner-is-headless` and `ext-scanner-core-uses-ports`, and an ESLint rule against `chrome` and `fetch` in its core, keep it so.
 
 The extension has a signed-out state of its own ([ADR-0023](adr/0023-sign-out-of-xomoni-in-the-extension.md)), `signedOut` in `kv`.
 - While it is set, the dashboard has no active account and the service worker records nothing from X pages but X's rate limits.
@@ -287,6 +289,8 @@ Xomoni is installed from the browsers' stores once they list it, and from the zi
 | `ext-shared-is-the-kernel` | `shared/` depending on any other extension area. |
 | `ext-engine-is-headless` | The engine importing UI, page scripts or the service worker. |
 | `ext-engine-core-uses-ports` | The engine's core importing the Chrome adapters (`worker-tab.ts`, `presence.ts`, `shared/notify.ts`) instead of its ports; ESLint also forbids `chrome` in the core. |
+| `ext-scanner-is-headless` | The on-device scanner importing anything but `scanner/` and `shared/` (ADR-0049): it never reaches the engine, page scripts, the UI or the cloud. |
+| `ext-scanner-core-uses-ports` | The scanner's core importing the model adapters (`scanner/models/{chrome-ai,transformers,webllm,store}.ts`) instead of its ports; ESLint also forbids `chrome` and `fetch` in it, but in `scanner/platform.ts` and `scanner/models/store.ts`. |
 | `ext-content-is-isolated` | The content script importing anything but `shared/`. |
 | `ext-inject-is-isolated` | The page-world script importing anything but `shared/`. |
 | `ext-background-is-thin` | The service worker importing UI or page scripts. |

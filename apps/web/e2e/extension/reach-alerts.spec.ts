@@ -271,7 +271,12 @@ test.describe('Reach’s alerts', { tag: '@task-523' }, () => {
     await seedWeek(dashboard, 400, 6);
     await openPage(dashboard, 'Reach');
     await expect(dropNote(dashboard)).toBeVisible();
-    expect(sent.filter((url) => !url.startsWith('https://x.com/') && !url.includes('twimg.com'))).toEqual([]);
+    // Only the X pages the person opened, served from the fixtures: x.com and X's image hosts, by their host name.
+    const xHost = (url: string) => {
+      const { hostname } = new URL(url);
+      return hostname === 'x.com' || hostname.endsWith('.x.com') || hostname.endsWith('.twimg.com');
+    };
+    expect(sent.filter((url) => !xHost(url))).toEqual([]);
   });
 
   test('S523-12 a label’s name in markup stays text on Reach after it is noted', async ({ dashboard, page }) => {

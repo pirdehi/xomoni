@@ -103,7 +103,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [20, 200],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/20-login-handoff.md",
       "en": {
         "title": "Login and 2FA hand-off",
         "summary": "when X needs you (login, 2FA, captcha, email code, account unlock, wrong account), the job pauses, sends you a desktop notification, waits while you complete it in the X window, then continues by itself. Xomoni never asks for or stores your password."

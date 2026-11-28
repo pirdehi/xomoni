@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  X's pages that need the person, as Xomoni's browser tests serve them (#20, #200, #345, ADR-0040): the login flow
+  (/i/flow/login, and the newer /i/jf/onboarding/web, PLAYBOOK D2), the account unlock (/account/access, C2) and the
+  code X emails (/account/login_challenge, D3). Synthetic: only the parts a person sees, a heading, the fields X asks
+  for and its button, never X's own words beyond them. Xomoni must never type in these fields nor press the button
+  (D3, ADR-0003): the page counts every key, input and click on them in data attributes on <body>
+  (data-typed, data-clicks), so a test can prove nothing touched them. The page names no account: X shows none there.
+-->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>X</title>
+  </head>
+  <body data-typed="0" data-clicks="0">
+    <div id="react-root">
+      <main role="main">
+        <div data-testid="primaryColumn">
+          <h1 id="heading"></h1>
+          <form id="form" onsubmit="return false;"></form>
+        </div>
+      </main>
+    </div>
+    <script>
+      const path = location.pathname;
+      const page = path.startsWith('/account/access')
+        ? { heading: 'Your account has been locked.', fields: [], button: 'Start' }
+        : path.startsWith('/account/login_challenge')
+          ? {
+              heading: 'Check your email',
+              fields: [{ label: 'Enter your code', type: 'text', autocomplete: 'one-time-code' }],
+              button: 'Next',
+            }
+          : {
+              heading: 'Sign in to X',
+              fields: [
+                { label: 'Phone, email, or username', type: 'text', autocomplete: 'username' },
+                { label: 'Password', type: 'password', autocomplete: 'current-password' },
+              ],
+              button: 'Log in',
+            };
+      document.title = `${page.heading} / X`;
+      document.getElementById('heading').textContent = page.heading;
+      const form = document.getElementById('form');
+      const count = (name) => () => (document.body.dataset[name] = String(Number(document.body.dataset[name]) + 1));
+      for (const field of page.fields) {
+        const label = document.createElement('label');
+        label.textContent = field.label;
+        const input = document.createElement('input');
+        input.type = field.type;
+        input.autocomplete = field.autocomplete;
+        input.name = field.autocomplete;
+        for (const event of ['keydown', 'input']) input.addEventListener(event, count('typed'));
+        label.append(input);
+        form.append(label);
+      }
+      const button = document.createElement('button');
+      button.type = 'submit';
+      button.textContent = page.button;
+      button.addEventListener('click', count('clicks'));
+      form.append(button);
+    </script>
+  </body>
+</html>

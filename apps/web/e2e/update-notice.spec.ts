@@ -1,7 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { createConfirmedUser } from './support/admin';
+import { createConfirmedUser, releasesOf } from './support/admin';
 import { PASSWORD, expectDashboard, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
 
@@ -11,19 +9,18 @@ import { expect, test } from './support/test';
 // a one-time code from Browsers and reports with `device_report`, as Xomoni does. What the dashboard then shows is in
 // e2e/extension/update-notice.spec.ts.
 
-/** The release migrations, which record each published version in `extension_releases`. */
-const MIGRATIONS = path.join(__dirname, '..', '..', '..', 'supabase', 'migrations');
-
 /**
- * The newest release the migrations record (`*_release_X_Y_Z.sql`), which the local stack holds: read from the files,
- * so a new release's migration doesn't break these tests. Each release since 0.5.2 is a security fix.
+ * The newest release the local stack records, read from its database before the tests (`releasesOf`), so a new
+ * release's migration doesn't break them and the version reported is one the database itself gave. Each release since
+ * 0.5.2 is a security fix.
  */
-const NEWEST = readdirSync(MIGRATIONS)
-  .filter((name) => /_release_\d+_\d+_\d+\.sql$/.test(name))
-  .map((name) => /values \('(\d+\.\d+\.\d+)'/.exec(readFileSync(path.join(MIGRATIONS, name), 'utf8'))?.[1] ?? '')
-  .filter(Boolean)
-  .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
-  .at(-1)!;
+let NEWEST = '';
+
+test.beforeAll(async () => {
+  const versions = (await releasesOf()).map((r) => r.version);
+  NEWEST = versions.sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).at(-1) ?? '';
+  expect(NEWEST, 'the local stack records releases').toMatch(/^\d+\.\d+\.\d+$/);
+});
 
 /** Calls one of the extension's functions the way the extension does: no session, the publishable key only. */
 async function asExtension(fn: string, body: Record<string, unknown>) {

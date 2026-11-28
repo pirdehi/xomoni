@@ -27,8 +27,10 @@ test('an ordinary account gets a plain 404 at both addresses', async ({ page: br
   expect(document?.status()).toBe(404);
   await expect(browser.getByText('This page could not be found.')).toBeVisible();
 
-  const manage = await browser.goto('/product/manage');
-  expect(manage?.status()).toBe(404);
+  // The manage page streams, so its 404 comes inside a 200 response; it shows nothing of the document.
+  await browser.goto('/product/manage');
+  await expect(browser.getByText('This page could not be found.')).toBeVisible();
+  await expect(browser.getByRole('heading', { name: 'Product document' })).toHaveCount(0);
 });
 
 test('a super-admin reads the document sandboxed, uploads a version and opens the older one', async ({
@@ -55,7 +57,7 @@ test('a super-admin reads the document sandboxed, uploads a version and opens th
 
   await browser.getByRole('link', { name: 'Versions' }).click();
   await expect(browser).toHaveURL(/\/product\/manage$/);
-  await expect(browser.getByRole('row', { name: new RegExp(first) })).toContainText('current');
+  await expect(browser.getByRole('row', { name: first })).toContainText('current');
 
   const second = `${first} (second)`;
   await browser.getByRole('textbox', { name: /Title/ }).fill(second);
@@ -66,7 +68,7 @@ test('a super-admin reads the document sandboxed, uploads a version and opens th
   });
   await browser.getByRole('button', { name: 'Save version' }).click();
   await expect(browser.getByRole('status')).toContainText(`Saved “${second}” as the current version.`);
-  await expect(browser.getByRole('row', { name: new RegExp(second) })).toContainText('current');
+  await expect(browser.getByRole('row', { name: second })).toContainText('current');
 
   await browser.goto('/product');
   await expect(browser.getByRole('heading', { name: second })).toBeVisible();

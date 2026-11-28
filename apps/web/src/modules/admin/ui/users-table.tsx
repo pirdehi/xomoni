@@ -74,7 +74,6 @@ const useStyles = makeStyles({
     ':hover': { textDecorationLine: 'underline' },
     ':focus-visible': { outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}` },
   },
-  muted: { color: tokens.colorNeutralForeground3 },
   empty: { margin: 0, padding: tokens.spacingHorizontalXL, color: tokens.colorNeutralForeground3 },
   pager: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacingHorizontalM },
   pagerText: { color: tokens.colorNeutralForeground2, fontVariantNumeric: 'tabular-nums' },
@@ -155,6 +154,13 @@ export function UsersTable({ query, page, pageSize }: { query: UserQuery; page: 
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(query.search);
+  // When the address changes its search from elsewhere (the back button), the box follows it, so the pause below
+  // doesn't put the old search back. What the person is typing stays as typed.
+  const [shown, setShown] = useState(query.search);
+  if (shown !== query.search) {
+    setShown(query.search);
+    if (search.trim().slice(0, MAX_SEARCH_LENGTH) !== query.search) setSearch(query.search);
+  }
 
   const go = useCallback(
     (next: UserQuery) => startTransition(() => router.replace(`${CONSOLE_PATHS.users}${userQueryString(next)}`)),
@@ -293,9 +299,6 @@ export function UsersTable({ query, page, pageSize }: { query: UserQuery; page: 
           </Button>
         </nav>
       )}
-      <span className={s.muted} hidden>
-        {/* Keeps the empty-state wording in one place for screen readers. */}
-      </span>
     </ConsolePage>
   );
 }

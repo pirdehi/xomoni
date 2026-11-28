@@ -20,7 +20,7 @@ Nobody else learns the console exists: the proxy answers anyone signed in who is
 ## Routes
 
 - `app/product/(console)/layout.tsx`: the frame around every console page.
-- `app/product/(console)/page.tsx` `/product` (overview), `users/page.tsx` `/product/users`, `users/[id]/page.tsx` `/product/users/<id>`, `roadmap/page.tsx` `/product/roadmap`, `audit/page.tsx` `/product/audit`, `documents/page.tsx` `/product/documents` (product-docs' versions page inside the console).
+- `app/product/(console)/page.tsx` `/product` (overview), `users/page.tsx` `/product/users`, `users/[id]/page.tsx` `/product/users/<id>` (`instant = false`: an account's id is known only at request time, and the root layout reads the address outside a Suspense boundary, so the page may block instead of prerendering a shell), `roadmap/page.tsx` `/product/roadmap`, `audit/page.tsx` `/product/audit`, `documents/page.tsx` `/product/documents` (product-docs' versions page inside the console).
 - `app/product/login/page.tsx` `/product/login`: the console's own sign-in, outside the frame; anyone may open it.
 - `app/product/document/route.ts` `/product/document`: the product document itself (product-docs), sandboxed, opened from the sidebar in a new tab.
 

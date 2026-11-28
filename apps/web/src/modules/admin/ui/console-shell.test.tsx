@@ -82,6 +82,21 @@ describe('ConsoleShell (#516)', () => {
   });
 });
 
+describe('ConsoleShell menu on a phone', () => {
+  beforeEach(() => resetNavigation());
+
+  it('closes the menu with Escape, without going anywhere', async () => {
+    setLocation('/product/audit');
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'Open the console menu' }));
+    const drawer = await screen.findByRole('navigation', { name: 'Console menu' });
+    expect(within(drawer).getByRole('link', { name: 'Audit log' })).toHaveAttribute('aria-current', 'page');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('navigation', { name: 'Console menu' })).not.toBeInTheDocument());
+    expect(router.push).not.toHaveBeenCalled();
+  });
+});
+
 describe('selectedPage', () => {
   it('matches each page and the pages under it, and nothing for an unknown address', () => {
     expect(selectedPage('/product')).toBe('overview');

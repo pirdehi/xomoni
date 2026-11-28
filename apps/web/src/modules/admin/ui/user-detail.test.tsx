@@ -73,6 +73,36 @@ describe('UserDetailView (#516)', () => {
     expect(within(facts('Sessions')).getByRole('row', { name: /Firefox/ })).toHaveTextContent('With a code');
   });
 
+  it('fills in for what an account doesn’t have', () => {
+    render(
+      <UserDetailView
+        user={{
+          ...grace,
+          email: '',
+          providers: [],
+          lastSignInAt: null,
+          mfa: true,
+          plan: null,
+          devices: [
+            { id: 'd', name: 'Edge', extensionVersion: null, lastSeenAt: null, createdAt: '2026-11-02T10:00:00Z' },
+          ],
+          jobs: [{ ...grace.jobs[0]!, title: '', xHandle: '' }],
+          sessions: [{ id: 's', createdAt: null, updatedAt: null, userAgent: null, aal: 'aal1' }],
+        }}
+        viewerId={ADMIN.id}
+      />,
+    );
+    expect(screen.getByRole('heading', { level: 1, name: GRACE_ID })).toBeInTheDocument();
+    const account = facts('Account');
+    expect(account).toHaveTextContent('Last sign-inNever');
+    expect(account).toHaveTextContent('Sign-in methods—');
+    expect(account).toHaveTextContent('Two-step verificationOn');
+    expect(facts('Plan and choices')).toHaveTextContent('PlanFree');
+    expect(within(facts('Browsers')).getByRole('row', { name: /Edge/ })).toHaveTextContent('Edge—Never');
+    expect(within(facts('Recent jobs')).getAllByRole('row')[1]).toHaveTextContent('cleanup—running');
+    expect(within(facts('Sessions')).getAllByRole('row')[1]).toHaveTextContent('Without a code');
+  });
+
   it('offers the actions on someone else’s account only', () => {
     const { rerender } = render(<UserDetailView user={grace} viewerId={ADMIN.id} />);
     expect(within(facts('Actions')).getByRole('button', { name: 'Sign out everywhere' })).toBeInTheDocument();

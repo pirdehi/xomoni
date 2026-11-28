@@ -125,6 +125,16 @@ describe('UsersTable (#516)', () => {
     expect(router.replace).toHaveBeenCalledOnce();
   });
 
+  it('follows a search the address changed from elsewhere, such as the back button, without searching again', async () => {
+    const { rerender } = table({ ...DEFAULT_USER_QUERY, search: 'grace' });
+    const box = screen.getByRole('searchbox', { name: 'Search by email' });
+    expect(box).toHaveValue('grace');
+    rerender(<UsersTable query={DEFAULT_USER_QUERY} page={page} pageSize={25} />);
+    expect(box).toHaveValue('');
+    await new Promise((resolve) => setTimeout(resolve, SEARCH_DELAY_MS + 50));
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
   it('pages forwards and back, and stops at either end', async () => {
     const { unmount } = table();
     expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();

@@ -188,6 +188,24 @@ export async function startFakePolar({
   return server;
 }
 
+/** The site's own webhook, where the fake Polar sends its events when it runs beside the site. */
+export const SITE_WEBHOOK = 'http://localhost:3000/api/billing/webhook';
+
+/**
+ * Runs `run` while the fake Polar answers where the site's server looks for it (`FAKE_POLAR_PORT`), and stops it
+ * after, even when `run` fails. Deleting an account asks Polar first to end any subscription (#421), and stops if
+ * Polar can't be asked, so a test that deletes an account through the site needs it. The tests run one at a time
+ * (`workers: 1`), so the port is free.
+ */
+export async function withFakePolar<T>(run: (polar: FakePolarServer) => Promise<T>): Promise<T> {
+  const polar = await startFakePolar({ webhookUrl: SITE_WEBHOOK, port: FAKE_POLAR_PORT });
+  try {
+    return await run(polar);
+  } finally {
+    await polar.close();
+  }
+}
+
 /**
  * The browser's own resolver sends Polar's hosts nowhere (`--host-resolver-rules`, set by playwright.config.ts), so a
  * page that asks the real Polar for anything gets a refused connection and nothing leaves the computer. No request is

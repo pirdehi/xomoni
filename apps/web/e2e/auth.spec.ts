@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expectNoSeriousA11yViolations } from './support/a11y';
 import { emailsTo, waitForEmail } from './support/mailpit';
+import { withFakePolar } from './support/polar';
 import { canRenew, refreshTokenOf } from './support/session';
 import { expect, test } from './support/test';
 import {
@@ -391,8 +392,15 @@ test.describe('account page', () => {
     await page.getByRole('button', { name: 'Delete my Xomoni account' }).click();
     const confirm = page.getByRole('dialog', { name: 'Delete your Xomoni account?' });
     await confirm.getByLabel('Type DELETE to confirm').fill('DELETE');
-    await confirm.getByRole('button', { name: 'Delete account' }).click();
-    await expect(page).toHaveURL(/\/\?account=deleted$/);
+    await withFakePolar(async (polar) => {
+      await confirm.getByRole('button', { name: 'Delete account' }).click();
+      await expect(page).toHaveURL(/\/\?account=deleted$/);
+      // Polar was asked first for the account's subscriptions (#421); it had none to end.
+      expect(
+        polar.api.requests.some(({ method, path }) => method === 'GET' && path.startsWith('/v1/subscriptions/')),
+      ).toBe(true);
+      expect(polar.api.revoked).toEqual([]);
+    });
 
     await signIn(page, email, PASSWORD);
     await expect(formAlert(page)).toHaveText(NO_MATCH);

@@ -355,9 +355,10 @@ describe('the Reach page’s helpers', () => {
     const many = Array.from({ length: 200_000 }, (_, i) =>
       post(String(1_000_000 + i), (200_000 - i) / 48, i, i === 123_456 ? { seenAt: NOW - 3_600_000 } : {}),
     );
+    // Everything is read through the primary key, the quicker read of a whole kind (#501).
     vi.spyOn(db.items, 'where').mockImplementation((() => ({
-      between: (lower: readonly unknown[]) => ({
-        toArray: () => Promise.resolve(lower[1] === 'post' ? many : []),
+      between: (lower: string) => ({
+        toArray: () => Promise.resolve(lower === itemKey(ME, 'post', '') ? many : []),
       }),
     })) as never);
 

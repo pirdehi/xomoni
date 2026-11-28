@@ -11,10 +11,11 @@ export const ROUTES = {
   oauthCallback: '/auth/callback',
   emailConfirm: '/auth/confirm',
   signOut: '/auth/signout',
+  product: '/product',
 } as const;
 
 /** Paths that need a signed-in session; the proxy sends signed-out visitors to sign in. */
-const PROTECTED_PREFIXES: readonly string[] = [ROUTES.dashboard, ROUTES.account, ROUTES.resetPassword];
+const PROTECTED_PREFIXES: readonly string[] = [ROUTES.dashboard, ROUTES.account, ROUTES.resetPassword, ROUTES.product];
 
 /** Paths only for signed-out visitors; the proxy sends signed-in visitors to the dashboard. */
 const GUEST_ONLY_PATHS: readonly string[] = [ROUTES.signIn, ROUTES.signUp, ROUTES.forgotPassword];

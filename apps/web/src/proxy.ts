@@ -11,6 +11,7 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/account/:path*',
+    '/product/:path*',
     '/reset-password',
     '/login',
     '/login/two-factor',

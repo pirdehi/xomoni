@@ -25,3 +25,9 @@ export type DailyStatsRow = Tables<'daily_stats'>;
  * `apply_billing_event`; the plan that counts now comes from `entitlement_of`, not from `tier` alone.
  */
 export type EntitlementRow = Tables<'entitlements'>;
+
+/**
+ * One version of a private product document (`public.product_documents`, ADR-0048): a whole HTML page that only a
+ * super-admin reads or adds, at xomoni.com/product. Versions are only ever added, never changed.
+ */
+export type ProductDocumentRow = Tables<'product_documents'>;

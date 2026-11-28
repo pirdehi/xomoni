@@ -37,6 +37,9 @@ describe('route policy', () => {
     expect(requiresSession('/dashboard')).toBe(true);
     expect(requiresSession('/dashboard/devices')).toBe(true);
     expect(requiresSession('/dashboards')).toBe(false);
+    expect(requiresSession('/product')).toBe(true);
+    expect(requiresSession('/product/manage')).toBe(true);
+    expect(requiresSession('/products')).toBe(false);
     expect(requiresSession('/')).toBe(false);
   });
 

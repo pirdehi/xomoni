@@ -3,6 +3,24 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      app_admins: {
+        Row: {
+          created_at: string;
+          role: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          role: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          role?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       billing_events: {
         Row: {
           received_at: string;
@@ -430,6 +448,33 @@ export type Database = {
           },
         ];
       };
+      product_documents: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          html: string;
+          id: number;
+          slug: string;
+          title: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          html: string;
+          id?: never;
+          slug: string;
+          title: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          html?: string;
+          id?: never;
+          slug?: string;
+          title?: string;
+        };
+        Relationships: [];
+      };
       weekly_emails: {
         Row: {
           changed_at: string;
@@ -542,6 +587,7 @@ export type Database = {
         }[];
       };
       health_alert_time: { Args: { at_time: string }; Returns: string };
+      is_superadmin: { Args: never; Returns: boolean };
       mask_email: { Args: { email: string }; Returns: string };
       mfa_satisfied: { Args: never; Returns: boolean };
       my_entitlement: { Args: never; Returns: Json };

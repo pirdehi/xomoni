@@ -212,3 +212,23 @@ export async function healthAlertLevelsOf(userId: string): Promise<{ x_handle: s
     { method: 'GET' },
   );
 }
+
+/** Makes an account a super-admin, as the maintainer does with SQL (ADR-0048). */
+export async function makeSuperadmin(userId: string): Promise<void> {
+  await call('/rest/v1/app_admins', {
+    method: 'POST',
+    body: { user_id: userId, role: 'superadmin' },
+    prefer: 'return=minimal',
+  });
+}
+
+/** Stores a version of the product document at `/product`, as the maintainer may with SQL (ADR-0048); returns its id. */
+export async function addProductDocument(authorId: string, title: string, html: string): Promise<number> {
+  const [row] = await call<{ id: number }[]>('/rest/v1/product_documents', {
+    method: 'POST',
+    body: { slug: 'product', title, html, created_by: authorId },
+    prefer: 'return=representation',
+  });
+  if (!row) throw new Error('product_documents: no row returned');
+  return row.id;
+}

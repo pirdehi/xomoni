@@ -24,7 +24,8 @@ const BUDGETS = {
   'Cleanup: count with keep rules': 15_000,
   Home: 10_000,
   'Reach opens': 10_000,
-  'Reach: everything': 15_000,
+  // The first view over every post (#501): 1.2 s at 50,000 posts and replies, 2.3 s at 88,000, on a laptop.
+  'Reach: everything': 6_000,
   'Export everything': 120_000,
   'Delete local data': 180_000,
   'move import': 240_000,

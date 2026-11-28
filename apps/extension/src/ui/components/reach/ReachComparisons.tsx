@@ -5,11 +5,12 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  Spinner,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { REACH_VERDICT_WORDS, type ReachVerdict } from '@xomoni/bridge';
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import {
   DAY_PARTS,
   type ReachComparison,
@@ -115,8 +116,19 @@ export function ReachComparisons({
   const styles = useStyles();
   const [asking, setAsking] = useState(false);
   const compared = useCompared(rows, periods);
-  const comparisons = useMemo(() => reachComparisons(compared.rows, compared.periods), [compared]);
-  const byTime = useMemo(() => reachByTime(compared.rows), [compared]);
+  // Computed after the page has shown the rest (#501): at a heavy user's size the comparisons take a few hundred
+  // milliseconds, which the table and the spread shouldn't wait for. Until then, and while new posts are compared, the
+  // cards say so rather than show the comparisons of other posts.
+  const deferred = useDeferredValue<Compared | null>(compared, null);
+  const current = deferred === compared ? deferred : null;
+  const comparisons = useMemo(() => (current ? reachComparisons(current.rows, current.periods) : null), [current]);
+  const byTime = useMemo(() => (current ? reachByTime(current.rows) : null), [current]);
+  if (!comparisons || !byTime)
+    return (
+      <div className={styles.grid} aria-busy="true">
+        <Spinner size="tiny" label="Comparing your posts…" />
+      </div>
+    );
   return (
     <div className={styles.grid}>
       {comparisons.map((c) => (

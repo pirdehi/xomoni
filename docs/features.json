@@ -39,7 +39,7 @@
       "status": "shipped",
       "since": "0.1.0",
       "issues": [24],
-      "scenarios": null,
+      "scenarios": "docs/scenarios/24-preview-before-acting.md",
       "en": {
         "title": "Preview before acting",
         "summary": "see exactly what matches, an estimated duration at your pacing, a JSON backup download, and a typed `DELETE` confirmation. Before an X account's first job, Xomoni shows the risks and asks you to type `I UNDERSTAND`."

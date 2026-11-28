@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PLAN_JSON } from '@test/fakes/admin-console';
+import { DIRECTION_PLAN_JSON, PLAN_JSON } from '@test/fakes/admin-console';
 import { parsePlan, phasePercent, webAddress } from './plan';
 
 describe('parsePlan', () => {
@@ -78,6 +78,76 @@ describe('parsePlan', () => {
     expect(odd.objectives[0]).toMatchObject({ id: '0', keyResults: [{ id: '0', titleFa: '', direction: 'up' }] });
     expect(odd.lanes[0]?.id).toBe('7');
     expect(odd.horizons.now[0]).toMatchObject({ id: '0', titleFa: 'T' });
+  });
+});
+
+describe('parsePlan: the direction, the program and the sources', () => {
+  const plan = parsePlan({ ...PLAN_JSON, ...DIRECTION_PLAN_JSON });
+
+  it('reads the sources, keeping a link only when it is a web address', () => {
+    expect(plan.sources).toEqual([
+      { id: 'xgaps', titleFa: 'پروژه‌ی جامع X', url: 'https://claude.ai/artifact/x' },
+      { id: 'brand', titleFa: 'موتور برند', url: 'https://xomoni.com/product/document' },
+      { id: 'bad', titleFa: 'منبع خراب', url: null },
+    ]);
+  });
+
+  it('reads the direction’s stages in their order, each with its progress, issues and decisions', () => {
+    const direction = plan.direction;
+    expect(direction).toMatchObject({ titleFa: 'مسیر واحد', statusFa: 'پیشنهاد مدیر محصول' });
+    expect(direction?.decisions).toEqual([{ id: 'd-brand-engine', titleFa: 'جهت تازه', done: false }]);
+    expect(direction?.stages.map((st) => st.id)).toEqual(['st-r1', 'st-brand1']);
+    expect(direction?.stages[0]).toMatchObject({
+      release: '0.7.0',
+      state: 'active',
+      itemsFa: ['پرداخت', 'گاوصندوق'],
+      noteFa: 'اولویت ۱',
+      total: 4,
+      percent: 50,
+      programWave: 'R1',
+      issues: [],
+      decisions: [],
+    });
+    expect(direction?.stages[1]?.decisions).toEqual([{ id: 'd-ai-engine', titleFa: 'موتور AI', done: true }]);
+    expect(direction?.stages[1]?.issues[0]?.url).toBe('https://github.com/pirdehi/xomoni/issues/491');
+    expect(direction?.later).toEqual([{ titleFa: 'بیمه‌ی تعلیق', whyFa: 'بعد از موتور برند', sourceIds: ['xgaps'] }]);
+    expect(direction?.parked[0]?.titleFa).toBe('ایمیل');
+  });
+
+  it('reads the program’s R1, lanes, phases and what waits on the founder, dropping labels that aren’t words', () => {
+    const program = plan.program;
+    expect(program?.r1).toEqual({ total: 56, counts: { done: 12, ci: 20, now: 1, ready: 18, todo: 4, you: 1 } });
+    expect(program?.labels).toEqual({ done: 'ادغام شد' });
+    expect(program?.staleCount).toBe(2);
+    expect(program?.lanes[0]).toMatchObject({ id: 'billing', agent: 'now', nextFa: ['ادغام #462'], total: 14 });
+    expect(program?.lanes[0]?.phases).toEqual([
+      { id: 'CB.1', nameFa: 'تصمیم و داده', issue: 420, closed: false, counts: { done: 4, now: 1 }, total: 5 },
+      { id: 'CB.0', nameFa: 'پیش از کد', issue: null, closed: true, counts: { done: 2 }, total: 2 },
+    ]);
+    expect(program?.founder).toEqual([
+      { pr: 462, whatFa: 'تأیید متن‌های حقوقی', blocksFa: 'صفحه‌های فروش' },
+      { pr: null, whatFa: 'حساب Polar', blocksFa: '' },
+    ]);
+    expect(program?.merged).toEqual([{ pr: 447, dateFa: '۲۸ نوامبر', titleFa: 'Polar ساختگی' }]);
+  });
+
+  it('reads a plan from before the direction as having none, and odd values as empty', () => {
+    const old = parsePlan(PLAN_JSON);
+    expect(old.direction).toBeNull();
+    expect(old.program).toBeNull();
+    expect(old.sources).toEqual([]);
+    const odd = parsePlan({
+      direction: { stages: 'x', later: [null] },
+      program: { lanes: [{ phases: [5] }] },
+      sources: [7],
+    });
+    expect(odd.direction).toMatchObject({
+      titleFa: '',
+      stages: [],
+      later: [{ titleFa: '', whyFa: '', sourceIds: [] }],
+    });
+    expect(odd.program?.lanes[0]?.phases[0]).toMatchObject({ id: '0', issue: null, closed: false, total: 0 });
+    expect(odd.sources).toEqual([{ id: '0', titleFa: '', url: null }]);
   });
 });
 

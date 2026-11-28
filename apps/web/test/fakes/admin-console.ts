@@ -120,6 +120,85 @@ export const AUDIT_JSON = [
 ];
 
 /** The maintainer's published plan, as their tool writes it (Persian words as they come). */
+/** A plan with the single direction, the X gaps program's R1 and its sources, as the maintainer's tool publishes them. */
+export const DIRECTION_PLAN_JSON = {
+  sources: [
+    { id: 'xgaps', titleFa: 'پروژه‌ی جامع X', url: 'https://claude.ai/artifact/x' },
+    { id: 'brand', titleFa: 'موتور برند', url: 'https://xomoni.com/product/document' },
+    { id: 'bad', titleFa: 'منبع خراب', url: 'javascript:alert(1)' },
+  ],
+  direction: {
+    titleFa: 'مسیر واحد',
+    statusFa: 'پیشنهاد مدیر محصول',
+    decisions: [{ id: 'd-brand-engine', status: 'open', titleFa: 'جهت تازه' }],
+    stages: [
+      {
+        id: 'st-brand1',
+        order: 2,
+        titleFa: 'کشف برند',
+        whenFa: 'دسامبر',
+        release: '0.8.0',
+        state: 'waiting-decision',
+        itemsFa: ['تحلیل‌گر برند'],
+        gateFa: 'هشتاد درصد',
+        sourceIds: ['brand', 'xgaps', 'missing'],
+        counts: { done: 0, review: 1 },
+        total: 1,
+        progress: 0,
+        issueList: [
+          { number: 491, title: 'Scanner', status: 'review', url: 'https://github.com/pirdehi/xomoni/issues/491' },
+        ],
+        decisions: [{ id: 'd-ai-engine', status: 'done', titleFa: 'موتور AI' }],
+      },
+      {
+        id: 'st-r1',
+        order: 1,
+        titleFa: 'اولین نسخه‌ی فروشی',
+        whenFa: 'الان',
+        release: '0.7.0',
+        state: 'active',
+        itemsFa: ['پرداخت', 'گاوصندوق'],
+        gateFa: 'دروازه‌ی انتشار',
+        noteFa: 'اولویت ۱',
+        sourceIds: ['xgaps'],
+        counts: { done: 2, review: 2 },
+        total: 4,
+        programWave: 'R1',
+      },
+    ],
+    later: [{ titleFa: 'بیمه‌ی تعلیق', whyFa: 'بعد از موتور برند', sourceIds: ['xgaps'] }],
+    parked: [{ titleFa: 'ایمیل', whyFa: 'LinkedIn دوم است', sourceIds: ['brand'] }],
+  },
+  program: {
+    name: 'پروژه‌ی جامع X',
+    updatedFa: '۲۸ نوامبر',
+    releaseFa: 'R1 به‌صورت 0.7.0',
+    labels: { done: 'ادغام شد', bad: 3 },
+    r1: { total: 56, counts: { done: 12, ci: 20, now: 1, ready: 18, todo: 4, you: 1 } },
+    lanes: [
+      {
+        key: 'billing',
+        nameFa: 'مسیر ۱: پرداخت',
+        agent: 'now',
+        doingNowFa: 'متن‌های حقوقی',
+        nextFa: ['ادغام #462'],
+        counts: { done: 4, now: 1, ready: 9 },
+        total: 14,
+        phases: [
+          { id: 'CB.1', nameFa: 'تصمیم و داده', issue: 420, issueState: 'open', counts: { done: 4, now: 1 }, total: 5 },
+          { id: 'CB.0', nameFa: 'پیش از کد', issue: null, issueState: 'closed', counts: { done: 2 }, total: 2 },
+        ],
+      },
+    ],
+    founder: [
+      { pr: 462, whatFa: 'تأیید متن‌های حقوقی', blocksFa: 'صفحه‌های فروش' },
+      { pr: null, whatFa: 'حساب Polar', blocksFa: '' },
+    ],
+    merged: [{ pr: 447, dateFa: '۲۸ نوامبر', titleFa: 'Polar ساختگی' }],
+    staleCount: 2,
+  },
+};
+
 export const PLAN_JSON = {
   generatedAt: '2026-11-28T06:00:00Z',
   release: { latest: '0.6.1', pending: ['Vault export', { title: 'Console' }] },

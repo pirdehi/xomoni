@@ -1,6 +1,16 @@
 // The maintainer's private plan, as their own tool publishes it to `public.product_plan` (#516). The tool is outside
 // this repository and may add, rename or drop fields, so every reader here tolerates a missing or odd field.
-import { asArray, asBoolean, asCounts, asNullableNumber, asNullableString, asNumber, asObject, asString } from './json';
+import {
+  asArray,
+  asBoolean,
+  asCounts,
+  asNullableNumber,
+  asNullableString,
+  asNumber,
+  asObject,
+  asString,
+  asStringList,
+} from './json';
 
 /** An issue in a plan item's list. */
 export interface PlanIssue {
@@ -116,6 +126,120 @@ export interface Lane {
   readonly overLimit: boolean;
 }
 
+/** A document the plan is built from, such as the X gaps program or the brand engine. */
+export interface PlanSource {
+  readonly id: string;
+  /** Its name (Persian). */
+  readonly titleFa: string;
+  /** Its address, only when it is a web address. */
+  readonly url: string | null;
+}
+
+/** A founder decision a stage waits on, and whether it is made. */
+export interface StageDecision {
+  readonly id: string;
+  /** What is decided (Persian). */
+  readonly titleFa: string;
+  /** Whether the founder has made it. */
+  readonly done: boolean;
+}
+
+/** One stage of the single direction the product follows, in order. Its words are Persian. */
+export interface DirectionStage {
+  readonly id: string;
+  readonly titleFa: string;
+  /** When it runs, in words. */
+  readonly whenFa: string;
+  /** The release it ships in, when it has one. */
+  readonly release: string | null;
+  /** `active`, `next`, `planned` or `waiting-decision`. */
+  readonly state: string;
+  /** What it delivers. */
+  readonly itemsFa: readonly string[];
+  /** What has to be true before the next stage starts. */
+  readonly gateFa: string;
+  readonly noteFa: string;
+  /** The ids of the sources it comes from. */
+  readonly sourceIds: readonly string[];
+  /** Its issues by status, as a plan item counts them. */
+  readonly counts: ItemCounts;
+  readonly total: number;
+  readonly percent: number;
+  readonly issues: readonly PlanIssue[];
+  /** The decisions it waits on. */
+  readonly decisions: readonly StageDecision[];
+  /** The X gaps program wave it is, such as `R1`, whose live task counts the page shows with it. */
+  readonly programWave: string | null;
+}
+
+/** Work kept for after the direction's stages, or parked, and why. */
+export interface DirectionNote {
+  readonly titleFa: string;
+  readonly whyFa: string;
+  readonly sourceIds: readonly string[];
+}
+
+/** The single direction: the stages the product goes through, in order, and what waits or is parked. */
+export interface Direction {
+  readonly titleFa: string;
+  /** Where the direction stands: proposed, approved, and on what. */
+  readonly statusFa: string;
+  /** The decisions the whole direction waits on. */
+  readonly decisions: readonly StageDecision[];
+  readonly stages: readonly DirectionStage[];
+  readonly later: readonly DirectionNote[];
+  readonly parked: readonly DirectionNote[];
+}
+
+/** Tasks counted by state: `done`, `ci`, `now`, `ready`, `todo` and `you` (waiting on the founder). */
+export type TaskCounts = Readonly<Record<string, number>>;
+
+/** A phase of the X gaps program within a lane, tied to its GitHub issue. */
+export interface ProgramPhase {
+  readonly id: string;
+  readonly nameFa: string;
+  readonly issue: number | null;
+  /** Whether its issue is closed on GitHub. */
+  readonly closed: boolean;
+  readonly counts: TaskCounts;
+  readonly total: number;
+}
+
+/** A lane of the X gaps program: one agent's line of work, and what it does now and next. */
+export interface ProgramLane {
+  readonly id: string;
+  readonly nameFa: string;
+  /** The lane's agent's state, such as `now` or `ci`. */
+  readonly agent: string;
+  readonly doingNowFa: string;
+  readonly nextFa: readonly string[];
+  readonly counts: TaskCounts;
+  readonly total: number;
+  readonly phases: readonly ProgramPhase[];
+}
+
+/** The X gaps program's first release (R1), task by task, as its coordinating session last wrote it. */
+export interface Program {
+  readonly name: string;
+  /** When the program's state was written, in words. */
+  readonly updatedFa: string;
+  readonly releaseFa: string;
+  /** Each task state's name (Persian). */
+  readonly labels: Readonly<Record<string, string>>;
+  /** R1's tasks: how many in all, and by state. */
+  readonly r1: { readonly total: number; readonly counts: TaskCounts };
+  readonly lanes: readonly ProgramLane[];
+  /** What the program waits on the founder for. */
+  readonly founder: readonly { readonly pr: number | null; readonly whatFa: string; readonly blocksFa: string }[];
+  /** Pull requests merged lately. */
+  readonly merged: readonly { readonly pr: number | null; readonly dateFa: string; readonly titleFa: string }[];
+  /** Tasks the program still shows as open though GitHub has merged their pull request. */
+  readonly staleCount: number;
+}
+
+/** The task states in the order the program moves through them, for bars and legends. */
+export const TASK_STATES = ['done', 'ci', 'now', 'ready', 'todo', 'you'] as const;
+
 /** The plan as the console's roadmap page shows it. */
 export interface ProductPlan {
   /** When the tool built it. */
@@ -147,6 +271,12 @@ export interface ProductPlan {
   readonly issueCounts: Readonly<Record<string, number>>;
   readonly flow: Flow;
   readonly lanes: readonly Lane[];
+  /** The single direction, when the tool publishes one. */
+  readonly direction: Direction | null;
+  /** The X gaps program's R1, when the tool publishes it. */
+  readonly program: Program | null;
+  /** The documents the plan is built from. */
+  readonly sources: readonly PlanSource[];
 }
 
 /** The plan and when it was published. */
@@ -175,10 +305,9 @@ function idOf(value: unknown, index: number): string {
   return String(index);
 }
 
-function parseItem(raw: unknown, index: number): PlanItem {
-  const item = asObject(raw);
-  const c = asObject(item.counts);
-  const counts: ItemCounts = {
+function parseCounts(raw: unknown): ItemCounts {
+  const c = asObject(raw);
+  return {
     done: asNumber(c.done),
     review: asNumber(c.review),
     progress: asNumber(c.progress),
@@ -186,9 +315,31 @@ function parseItem(raw: unknown, index: number): PlanItem {
     todo: asNumber(c.todo),
     dropped: asNumber(c.dropped),
   };
-  const total = asNumber(item.total);
-  const given = asNullableNumber(item.progress);
+}
+
+/** Progress as 0 to 100: `progress` as the tool gives it (a fraction or a percent), else done of all. */
+function percentOf(counts: ItemCounts, total: number, progress: unknown): number {
+  const given = asNullableNumber(progress);
   const fraction = given === null ? (total > 0 ? counts.done / total : 0) : given <= 1 ? given : given / 100;
+  return Math.round(Math.min(1, Math.max(0, fraction)) * 100);
+}
+
+function parseIssues(raw: unknown): PlanIssue[] {
+  return asArray(raw).map((rawIssue) => {
+    const issue = asObject(rawIssue);
+    return {
+      number: asNullableNumber(issue.number),
+      title: asString(issue.title),
+      status: asString(issue.status),
+      url: webAddress(issue.url),
+    };
+  });
+}
+
+function parseItem(raw: unknown, index: number): PlanItem {
+  const item = asObject(raw);
+  const counts = parseCounts(item.counts);
+  const total = asNumber(item.total);
   return {
     id: idOf(item.id, index),
     titleFa: asString(item.titleFa) || asString(item.title),
@@ -197,16 +348,110 @@ function parseItem(raw: unknown, index: number): PlanItem {
     state: asString(item.state),
     counts,
     total,
-    percent: Math.round(Math.min(1, Math.max(0, fraction)) * 100),
-    issues: asArray(item.issueList).map((rawIssue) => {
-      const issue = asObject(rawIssue);
+    percent: percentOf(counts, total, item.progress),
+    issues: parseIssues(item.issueList),
+  };
+}
+
+function parseDecisions(raw: unknown): StageDecision[] {
+  return asArray(raw).map((rawDecision, index) => {
+    const d = asObject(rawDecision);
+    return {
+      id: idOf(d.id, index),
+      titleFa: asString(d.titleFa) || asString(d.title),
+      done: asString(d.status) === 'done',
+    };
+  });
+}
+
+function parseNotes(raw: unknown): DirectionNote[] {
+  return asArray(raw).map((rawNote) => {
+    const n = asObject(rawNote);
+    return { titleFa: asString(n.titleFa), whyFa: asString(n.whyFa), sourceIds: asStringList(n.sourceIds) };
+  });
+}
+
+/** The single direction, or null when the tool publishes none. */
+function parseDirection(raw: unknown): Direction | null {
+  const d = asObject(raw);
+  if (Object.keys(d).length === 0) return null;
+  const stages = asArray(d.stages).map((rawStage, index): { order: number; stage: DirectionStage } => {
+    const st = asObject(rawStage);
+    const counts = parseCounts(st.counts);
+    const total = asNumber(st.total);
+    const stage: DirectionStage = {
+      id: idOf(st.id, index),
+      titleFa: asString(st.titleFa),
+      whenFa: asString(st.whenFa),
+      release: asNullableString(st.release),
+      state: asString(st.state),
+      itemsFa: asStringList(st.itemsFa),
+      gateFa: asString(st.gateFa),
+      noteFa: asString(st.noteFa),
+      sourceIds: asStringList(st.sourceIds),
+      counts,
+      total,
+      percent: percentOf(counts, total, st.progress),
+      issues: parseIssues(st.issueList),
+      decisions: parseDecisions(st.decisions),
+      programWave: asNullableString(st.programWave),
+    };
+    return { order: asNumber(st.order, index + 1), stage };
+  });
+  return {
+    titleFa: asString(d.titleFa),
+    statusFa: asString(d.statusFa),
+    decisions: parseDecisions(d.decisions),
+    stages: [...stages].sort((a, b) => a.order - b.order).map(({ stage }) => stage),
+    later: parseNotes(d.later),
+    parked: parseNotes(d.parked),
+  };
+}
+
+/** The X gaps program's R1, or null when the tool publishes none. */
+function parseProgram(raw: unknown): Program | null {
+  const p = asObject(raw);
+  if (Object.keys(p).length === 0) return null;
+  const r1 = asObject(p.r1);
+  const labels = asObject(p.labels);
+  return {
+    name: asString(p.name),
+    updatedFa: asString(p.updatedFa),
+    releaseFa: asString(p.releaseFa),
+    labels: Object.fromEntries(Object.entries(labels).filter((e): e is [string, string] => typeof e[1] === 'string')),
+    r1: { total: asNumber(r1.total), counts: asCounts(r1.counts) },
+    lanes: asArray(p.lanes).map((rawLane, index) => {
+      const l = asObject(rawLane);
       return {
-        number: asNullableNumber(issue.number),
-        title: asString(issue.title),
-        status: asString(issue.status),
-        url: webAddress(issue.url),
+        id: idOf(l.key ?? l.id, index),
+        nameFa: asString(l.nameFa),
+        agent: asString(l.agent),
+        doingNowFa: asString(l.doingNowFa),
+        nextFa: asStringList(l.nextFa),
+        counts: asCounts(l.counts),
+        total: asNumber(l.total),
+        phases: asArray(l.phases).map((rawPhase, phaseIndex) => {
+          const ph = asObject(rawPhase);
+          return {
+            id: idOf(ph.id, phaseIndex),
+            nameFa: asString(ph.nameFa),
+            issue: asNullableNumber(ph.issue),
+            closed: asString(ph.issueState) === 'closed',
+            counts: asCounts(ph.counts),
+            total: asNumber(ph.total),
+          };
+        }),
       };
     }),
+    founder: asArray(p.founder).map((rawItem) => {
+      const f = asObject(rawItem);
+      return { pr: asNullableNumber(f.pr), whatFa: asString(f.whatFa), blocksFa: asString(f.blocksFa) };
+    }),
+    merged: asArray(p.merged).map((rawItem) => {
+      const m = asObject(rawItem);
+      return { pr: asNullableNumber(m.pr), dateFa: asString(m.dateFa), titleFa: asString(m.titleFa) };
+    }),
+    staleCount: asNumber(p.staleCount),
   };
 }
 
@@ -306,6 +551,16 @@ export function parsePlan(json: unknown): ProductPlan {
         openPrs: asNumber(l.openPrs),
         limit: asNullableNumber(l.limit),
         overLimit: asBoolean(l.overLimit),
+      };
+    }),
+    direction: parseDirection(root.direction),
+    program: parseProgram(root.program),
+    sources: asArray(root.sources).map((raw, index) => {
+      const src = asObject(raw);
+      return {
+        id: idOf(src.id, index),
+        titleFa: asString(src.titleFa) || asString(src.title),
+        url: webAddress(src.url),
       };
     }),
   };

@@ -1,13 +1,78 @@
 // @vitest-environment happy-dom
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { PLAN_JSON } from '@test/fakes/admin-console';
+import { DIRECTION_PLAN_JSON, PLAN_JSON } from '@test/fakes/admin-console';
 import { parsePlan } from '../domain/plan';
 import { Roadmap } from './roadmap';
 
 const published = { plan: parsePlan(PLAN_JSON), updatedAt: '2026-11-28T06:05:00Z' };
 
 describe('Roadmap (#516)', () => {
+  const steered = { plan: parsePlan({ ...PLAN_JSON, ...DIRECTION_PLAN_JSON }), updatedAt: '2026-11-28T06:05:00Z' };
+
+  it('leads with the sources, linking only web addresses', () => {
+    render(<Roadmap published={steered} />);
+    const sources = screen.getByRole('region', { name: 'Sources' });
+    expect(within(sources).getByRole('link', { name: 'موتور برند' })).toHaveAttribute(
+      'href',
+      'https://xomoni.com/product/document',
+    );
+    expect(within(sources).queryByRole('link', { name: 'منبع خراب' })).not.toBeInTheDocument();
+    expect(within(sources).getByText('منبع خراب')).toBeInTheDocument();
+  });
+
+  it('shows the single direction, stage by stage in order, with R1’s live tasks in its stage', () => {
+    render(<Roadmap published={steered} />);
+    const direction = screen.getByRole('region', { name: 'Direction' });
+    expect(within(direction).getByRole('heading', { name: 'مسیر واحد' })).toHaveAttribute('dir', 'auto');
+    const stages = within(direction).getAllByRole('article', { name: /^Stage / });
+    expect(stages.map((st) => st.getAttribute('aria-label'))).toEqual(['Stage 1', 'Stage 2']);
+    const [first, second] = stages as [HTMLElement, HTMLElement];
+    expect(within(first).getByText('اولین نسخه‌ی فروشی')).toBeInTheDocument();
+    expect(first).toHaveTextContent('In progress');
+    expect(first).toHaveTextContent('0.7.0');
+    expect(first).toHaveTextContent('Gate: دروازه‌ی انتشار');
+    expect(
+      within(first).getByRole('img', { name: /R1 tasks, 12 of 56 merged: 12 merged, 20 in ci/ }),
+    ).toBeInTheDocument();
+    expect(first).toHaveTextContent('Issues: 2 of 4 closed');
+    expect(second).toHaveTextContent('Waits on your decision');
+    expect(second).toHaveTextContent('Decided موتور AI');
+    // A source the plan doesn't list is left out rather than shown as a bare id.
+    expect(within(second).getByRole('link', { name: 'پروژه‌ی جامع X' })).toBeInTheDocument();
+    expect(second).not.toHaveTextContent('missing');
+    expect(within(direction).getByRole('group', { name: 'Later' })).toHaveTextContent('بیمه‌ی تعلیق');
+    expect(within(direction).getByRole('group', { name: 'Parked' })).toHaveTextContent('ایمیل');
+  });
+
+  it('shows the program’s R1 lane by lane, what waits on the founder, and a note when it is behind GitHub', () => {
+    render(<Roadmap published={steered} />);
+    const program = screen.getByRole('region', { name: 'X gaps program, R1' });
+    expect(program).toHaveTextContent('2 tasks merged on GitHub still show as open in the program');
+    expect(program).toHaveTextContent('Merged 12');
+    expect(program).toHaveTextContent('Waiting on you 1');
+    expect(within(program).getByRole('link', { name: 'CB.1 #420' })).toHaveAttribute(
+      'href',
+      'https://github.com/pirdehi/xomoni/issues/420',
+    );
+    expect(program).toHaveTextContent('تصمیم و داده · 4 of 5 merged');
+    expect(program).toHaveTextContent('پیش از کد · 2 of 2 merged · closed');
+    const waits = within(program).getByRole('group', { name: 'The program waits on you for' });
+    expect(within(waits).getByRole('link', { name: '#462' })).toHaveAttribute(
+      'href',
+      'https://github.com/pirdehi/xomoni/pull/462',
+    );
+    expect(waits).toHaveTextContent('حساب Polar');
+    expect(within(program).getByRole('group', { name: 'Merged lately' })).toHaveTextContent('#447 Polar ساختگی');
+  });
+
+  it('leaves the direction, program and sources out of a plan published before them', () => {
+    render(<Roadmap published={published} />);
+    expect(screen.queryByRole('region', { name: 'Direction' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Sources' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'X gaps program, R1' })).not.toBeInTheDocument();
+  });
+
   it('says when it was published, and how work flows', () => {
     render(<Roadmap published={published} />);
     expect(screen.getByText('Published 28 Nov 2026, 06:05 UTC')).toBeInTheDocument();

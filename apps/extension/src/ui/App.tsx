@@ -2,6 +2,7 @@ import {
   Body1,
   Body1Strong,
   Caption1,
+  CounterBadge,
   Button as FluentButton,
   MessageBar,
   MessageBarBody,
@@ -53,6 +54,7 @@ import { Button, OutsideModals, type Tone, useModalHost } from './components/ui'
 import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
+import { ReachFollowUp } from './components/ReachFollowUp';
 import { VaultFollowUp } from './components/VaultFollowUp';
 import { ConsentDialog } from './components/ConsentDialog';
 import { PageBoundary } from './components/PageBoundary';
@@ -73,6 +75,7 @@ import {
 } from './hooks';
 import { finishSignOutMadeElsewhere } from './sign-out';
 import { tabShare } from './tab-share';
+import { useReachNewMonths } from './reach';
 import { useWatchBadge } from './watch-badge';
 import { ActivityPage } from './pages/Activity';
 import { CleanupPage } from './pages/Cleanup';
@@ -328,6 +331,7 @@ export function App() {
       <WebsiteRequests />
       {account && <ArchiveFollowUp account={account} libraryOpen={page === 'library'} />}
       {account && <VaultFollowUp account={account} />}
+      {account && <ReachFollowUp account={account} />}
     </div>
   );
 }
@@ -366,6 +370,7 @@ function Sidebar({
   account: Account | null;
   worker: WorkerStatus;
 }) {
+  const reachNew = useReachNewMonths(account?.id ?? null);
   const styles = useStyles();
   return (
     <aside className={styles.sidebar}>
@@ -383,10 +388,18 @@ function Sidebar({
               key={id}
               value={id}
               icon={<Icon />}
+              // The count of new months of labels is said without changing the item's name (#430).
+              {...(id === 'reach' &&
+                reachNew > 0 && {
+                  'aria-description': `${String(reachNew)} new ${reachNew === 1 ? 'month' : 'months'} of X's labels`,
+                })}
               onClick={() => navigate(id)}
               className={mergeClasses(styles.navItem, navItemOf(page) === id && styles.navItemCurrent)}
             >
               {label}
+              {id === 'reach' && reachNew > 0 && (
+                <CounterBadge count={reachNew} size="small" appearance="filled" color="brand" aria-hidden />
+              )}
             </NavItem>
           ))}
         </Nav>

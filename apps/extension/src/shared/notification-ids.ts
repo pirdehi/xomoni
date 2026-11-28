@@ -19,3 +19,17 @@ export const vaultNotificationId = (accountId: string) => `${VAULT_ID}:${account
 export function vaultNotificationAccount(id: string): string | null {
   return id.startsWith(`${VAULT_ID}:`) ? id.slice(VAULT_ID.length + 1) || null : null;
 }
+
+/**
+ * A label X applied, new or larger than the month before, in an *Under the hood* report just imported (#430):
+ * `<REACH_ID>:<account id>`, one per account. Clicking it opens Reach.
+ */
+export const REACH_ID = 'xomoni-reach';
+
+/** The label notification for one account: `<REACH_ID>:<account id>`. */
+export const reachNotificationId = (accountId: string) => `${REACH_ID}:${accountId}`;
+
+/** The account a label notification is for, or null for another notification. */
+export function reachNotificationAccount(id: string): string | null {
+  return id.startsWith(`${REACH_ID}:`) ? id.slice(REACH_ID.length + 1) || null : null;
+}

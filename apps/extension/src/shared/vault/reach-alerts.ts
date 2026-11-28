@@ -3,8 +3,9 @@
 // opened Reach on yet, for the menu's badge; and the note when the last 7 days' views fall well under the 8 weeks
 // before, from the daily numbers, always an estimate. Everything is read and kept on the computer; nothing here asks X
 // for anything or sends anything anywhere, and no word says why reach fell, only what may go with it.
-import { kvGet, kvSet } from '../db';
-import type { DailyReach } from './reach';
+import { localDay } from '../daily';
+import { db, kvGet, kvSet } from '../db';
+import { type DailyReach, dailyReachSeries } from './reach';
 import { type LabelChange, type LabelMonthRow, labelEventWords, monthName } from './under-the-hood';
 
 /** Where the months whose labels were already notified are kept, per account (`kv`): once per month, ever. */
@@ -114,4 +115,60 @@ export function reachDrop(series: readonly DailyReach[], today: string, postsLas
   if (usual <= 0) return null;
   const ratio = mean(recent) / usual;
   return ratio < REACH_DROP_RATIO ? { recent: mean(recent), usual, ratio } : null;
+}
+
+/** Where the person's choice to be notified of a drop is kept, per account (`kv`); off unless they turn it on. */
+export const reachDropAlertsKey = (accountId: string) => `reachDropAlerts:${accountId}`;
+
+/** Where the time of the last drop notification is kept, per account (`kv`): at most one a week. */
+export const reachDropNotifiedKey = (accountId: string) => `reachDropNotified:${accountId}`;
+
+/** Whether the person asked to be notified when the account's reach drops. */
+export async function reachDropAlertsOn(accountId: string): Promise<boolean> {
+  return (await kvGet<unknown>(reachDropAlertsKey(accountId), false)) === true;
+}
+
+/** Turns the drop notifications on or off for the account. */
+export function setReachDropAlerts(accountId: string, on: boolean): Promise<void> {
+  return kvSet(reachDropAlertsKey(accountId), on);
+}
+
+/**
+ * The account's drop at `now`, if any (`reachDrop`): its daily numbers over the last 9 weeks, and how many of its
+ * posts and replies were made in the last 7 days, counted through `[accountId+kind+createdAt]`.
+ */
+export async function accountReachDrop(accountId: string, now: number): Promise<ReachDrop | null> {
+  const series = await dailyReachSeries(accountId, 63, now);
+  let posts = 0;
+  for (const kind of ['post', 'reply'] as const) {
+    posts += await db.items
+      .where('[accountId+kind+createdAt]')
+      .between([accountId, kind, now - 7 * DAY_MS], [accountId, kind, now], true, true)
+      .count();
+  }
+  return reachDrop(series, localDay(now), posts);
+}
+
+/**
+ * Notifies the person of a drop at `now` when they asked for it, at most once a week per account; answers the drop
+ * notified, or null. The dashboard calls it while it is open; nothing runs in the background for it.
+ */
+export async function notifyReachDrop(
+  account: { id: string; handle: string },
+  now: number,
+  notificationId: string,
+  show: ShowAlert,
+): Promise<ReachDrop | null> {
+  if (!(await reachDropAlertsOn(account.id))) return null;
+  const last = await kvGet<unknown>(reachDropNotifiedKey(account.id), 0);
+  if (typeof last === 'number' && now - last < 7 * DAY_MS) return null;
+  const drop = await accountReachDrop(account.id, now);
+  if (!drop) return null;
+  await show(
+    notificationId,
+    `@${account.handle}’s views fell this week`,
+    `About ${String(Math.round(drop.ratio * 100))}% of the usual, from the daily numbers (an estimate). Reach shows what may go with it.`,
+  );
+  await kvSet(reachDropNotifiedKey(account.id), now);
+  return drop;
 }

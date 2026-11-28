@@ -9,7 +9,7 @@ import { saveIncoming } from '../shared/incoming';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
 import { ATTENTION_ID, notify } from '../shared/notify';
-import { vaultNotificationAccount } from '../shared/notification-ids';
+import { reachNotificationAccount, vaultNotificationAccount } from '../shared/notification-ids';
 import { getSignedOut } from '../shared/session';
 import { remindIfDue, snoozeVault } from '../shared/vault/freshness';
 // The monthly reminder for X's Under the hood report (#428) follows with the core's sources.
@@ -64,7 +64,9 @@ chrome.action.onClicked.addListener(() => void openDashboard());
 chrome.notifications.onClicked.addListener((id) => {
   void chrome.notifications.clear(id);
   // A vault reminder opens the Vault page (#425); it never opens X or starts anything.
-  void (id === ATTENTION_ID ? focusWorker() : openDashboard(vaultNotificationAccount(id) ? '#/vault' : ''));
+  void (id === ATTENTION_ID
+    ? focusWorker()
+    : openDashboard(vaultNotificationAccount(id) ? '#/vault' : reachNotificationAccount(id) ? '#/reach' : ''));
 });
 
 // A vault reminder's *Not now* (#425): no reminder for that account for 7 days.

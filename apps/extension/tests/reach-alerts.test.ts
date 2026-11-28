@@ -1,9 +1,16 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usesBannedReachWord } from '@xomoni/bridge';
+import { db, itemKey, kvSet } from '../src/shared/db';
+import { REACH_ID, reachNotificationAccount, reachNotificationId } from '../src/shared/notification-ids';
 import {
   REACH_DROP_MIN_POSTS,
+  accountReachDrop,
   alertLabelChanges,
+  notifyReachDrop,
+  reachDropAlertsOn,
+  reachDropNotifiedKey,
+  setReachDropAlerts,
   labelAlertWords,
   labelSeen,
   markLabelsSeen,
@@ -97,5 +104,76 @@ describe('the note when reach drops', () => {
     expect(reachDrop([...days(7, 56, 1_000), ...days(0, 3, 100)], '2026-11-28', 9)).toBeNull();
     expect(reachDrop([...days(7, 56, 0), ...days(0, 7, 0)], '2026-11-28', 9)).toBeNull();
     expect(reachDrop(series(100), 'today', 9)).toBeNull();
+  });
+});
+
+describe('the drop, read from the database, and its weekly notification', () => {
+  const NOW = Date.UTC(2026, 10, 28, 12);
+  const DAY = 86_400_000;
+
+  /** 63 days of daily numbers: 1,000 views a day, then `recent` a day for the last 7; and `posts` posts this week. */
+  async function seed(recent: number, posts: number) {
+    await db.daily.bulkPut(
+      Array.from({ length: 63 }, (_, i) => {
+        const day = new Date(NOW - i * DAY);
+        return {
+          accountId: ME.id,
+          day: `${String(day.getFullYear())}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`,
+          receivedViews: i < 7 ? recent : 1_000,
+        } as never;
+      }),
+    );
+    await db.items.bulkPut(
+      Array.from({ length: posts }, (_, i) => ({
+        key: itemKey(ME.id, 'post', String(i)),
+        accountId: ME.id,
+        kind: 'post',
+        id: String(i),
+        targetId: String(i),
+        createdAt: NOW - (i + 1) * 3_600_000,
+        likedAt: null,
+        text: '',
+        author: 'me',
+        inReplyToId: null,
+        selfReply: false,
+        likes: 0,
+        reposts: 0,
+        replies: 0,
+        sources: ['scan'],
+        status: 'present',
+        seenAt: NOW,
+        statusAt: NOW,
+        lastJobId: null,
+      })) as never,
+    );
+  }
+
+  it('finds a drop from the daily numbers and the week’s posts, and none with too few posts', async () => {
+    await seed(400, 6);
+    expect((await accountReachDrop(ME.id, NOW))?.ratio).toBeCloseTo(0.4);
+    await db.items.clear();
+    await seed(400, 4);
+    expect(await accountReachDrop(ME.id, NOW)).toBeNull();
+  });
+
+  it('notifies only when the person asked, at most once a week', async () => {
+    await seed(400, 6);
+    const show = vi.fn(() => Promise.resolve());
+    const id = reachNotificationId(ME.id);
+    expect(await reachDropAlertsOn(ME.id)).toBe(false);
+    expect(await notifyReachDrop(ME, NOW, id, show)).toBeNull();
+    await setReachDropAlerts(ME.id, true);
+    expect(await notifyReachDrop(ME, NOW, id, show)).not.toBeNull();
+    expect(show).toHaveBeenCalledWith(id, '@xomoni_fixture’s views fell this week', expect.stringContaining('40%'));
+    expect(await notifyReachDrop(ME, NOW + 6 * DAY, id, show)).toBeNull();
+    expect(show).toHaveBeenCalledOnce();
+    await kvSet(reachDropNotifiedKey(ME.id), NOW - 8 * DAY);
+    expect(await notifyReachDrop(ME, NOW, id, show)).not.toBeNull();
+  });
+
+  it('names the account in the notification’s id, and reads it back', () => {
+    expect(reachNotificationAccount(reachNotificationId(ME.id))).toBe(ME.id);
+    expect(reachNotificationAccount(`${REACH_ID}:`)).toBeNull();
+    expect(reachNotificationAccount('xomoni-vault:1')).toBeNull();
   });
 });

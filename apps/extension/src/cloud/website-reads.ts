@@ -269,7 +269,7 @@ export async function readVault(now = Date.now()): Promise<VaultSummary> {
   for (const followed of freshnessSources()) {
     const source = VAULT_SUMMARY_SOURCES.find((s) => s === followed.source);
     if (!source) continue;
-    const lastAt = await followed.lastAt(account.id);
+    const lastAt = await followed.lastAt(account.id, now);
     const freshness = freshnessOf(lastAt, followed.cadenceDays, followed.graceDays, now);
     sources.push({ source, lastAt, freshness, rows: await rowsOf(source) });
     // The analytics export is followed as one, of posts or of days; the days are counted on their own line.

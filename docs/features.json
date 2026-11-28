@@ -294,7 +294,7 @@
       "area": "extension",
       "status": "preview",
       "since": "0.6.0",
-      "issues": [429],
+      "issues": [428, 429],
       "scenarios": "docs/scenarios/429-reach.md",
       "en": {
         "title": "Reach",

@@ -23,9 +23,12 @@ const useStyles = makeStyles({
   meta: { ...typographyStyles.caption1, margin: 0, color: tokens.colorNeutralForeground3 },
 });
 
-/** What the page says while Xomoni knows no post's views and no month of X's labels. */
+/**
+ * What the page says while Xomoni knows no post's views and no month of X's labels: where Reach's numbers come from
+ * today, as the extension's Reach says (#498), offering neither X's analytics export nor Premium.
+ */
 export const REACH_EMPTY_WORDS =
-  'Xomoni doesn’t know how many times any of your posts was seen yet. In Xomoni, import your X analytics export (it needs X Premium) on the Vault page, or open your profile on X so Xomoni sees your views.';
+  'Xomoni doesn’t know how many times any of your posts was seen yet. Reach’s numbers come from the views X shows on your own posts and replies: open your profile on X in the browser where Xomoni runs, and Xomoni keeps the views it shows. More sources are coming.';
 
 /** The period a tab names (`'30'`, … `'null'` for everything); the free 30 days for anything else. */
 const rangeOf = (value: unknown): ReachRange => {

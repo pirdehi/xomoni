@@ -287,8 +287,9 @@ test.describe('Reach on xomoni.com', { tag: '@task-431' }, () => {
     await openReach(page, {
       reach: { ...SUMMARY, csv: 0, live: 0, months: [], posts: [], total: 0, suspects: [], comparisons: [] },
     });
-    await expect(page.getByRole('main')).toContainText('import your X analytics export');
+    await expect(page.getByRole('main')).toContainText('the views X shows on your own posts and replies');
     await expect(page.getByRole('main')).toContainText('open your profile on X');
+    await expect(page.getByRole('main')).not.toContainText(/analytics export|Premium/);
     await expect(comparisons(page)).toHaveCount(0);
   });
 

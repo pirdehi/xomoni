@@ -80,7 +80,8 @@ CI runs them in Chromium and again in Microsoft Edge.
 
 - Given Xomoni here, with no post whose views it knows
 - When the person opens Reach
-- Then it says no post has a number yet, and how to get them in Xomoni: X's analytics export, or the person's profile on X
+- Then it says no post has a number yet, and where Reach's numbers come from: the views X shows on the person's own
+  posts, kept by Xomoni when they open their profile on X; it offers neither X's analytics export nor Premium
 - Test: apps/web/e2e/website-reach.spec.ts
 
 ## S431-10 · empty

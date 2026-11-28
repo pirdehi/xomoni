@@ -87,18 +87,28 @@ export const NO_REACH_SOURCES: ReachSources = {
   premiumEvents: () => Promise.resolve([]),
 };
 
+/** Past this many posts, the CSV's numbers are read by the account rather than post by post. */
+export const BULK_LOOKUP = 2_000;
+
 /**
  * The vault's (ADR-0043): X's analytics CSV of posts (`analyticsPosts`, a post's impressions as of the newest import
  * that had them) and the account's timeline (`accountEvents`: X Premium seen on or off on the profile, or dated by the
  * person).
  */
 export const VAULT_REACH_SOURCES: ReachSources = {
-  /** The CSV's numbers of these posts that have impressions. */
+  /**
+   * The CSV's numbers of these posts that have impressions: each by its key for a page of posts, and for more than
+   * `BULK_LOOKUP` the account's rows in one pass of the `accountId` index, which is far quicker than as many lookups.
+   */
   async analytics(accountId, ids) {
-    const rows = await db.analyticsPosts.bulkGet(ids.map((id) => analyticsPostKey(accountId, id)));
+    const rows =
+      ids.length > BULK_LOOKUP
+        ? await db.analyticsPosts.where('accountId').equals(accountId).toArray()
+        : await db.analyticsPosts.bulkGet(ids.map((id) => analyticsPostKey(accountId, id)));
+    const wanted = ids.length > BULK_LOOKUP ? new Set(ids) : null;
     const out = new Map<string, AnalyticsNumbers>();
     for (const row of rows) {
-      if (row?.impressions === undefined) continue;
+      if (row?.impressions === undefined || (wanted && !wanted.has(row.postId))) continue;
       out.set(row.postId, {
         impressions: row.impressions,
         asOf: row.asOf,

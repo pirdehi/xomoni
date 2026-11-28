@@ -56,7 +56,8 @@ function archiveRun(
     mode = 'get',
     press = (): ArchivePressResult => ({ outcome: 'done', state: 'preparing', message: '' }),
     path = '/home',
-  }: { mode?: ArchiveMode; press?: () => ArchivePressResult; path?: string } = {},
+    accountId = ACCOUNT,
+  }: { mode?: ArchiveMode; press?: () => ArchivePressResult; path?: string; accountId?: string } = {},
 ) {
   const reads = [...states];
   const commands: ActorCommand[] = [];
@@ -64,7 +65,7 @@ function archiveRun(
   const ctx = {
     job: {
       id: 'a',
-      accountId: ACCOUNT,
+      accountId,
       archive: mode,
       phase: '',
       stats: { matched: 0, done: 0, skipped: 0, failed: 0, scanned: 0 },
@@ -117,6 +118,19 @@ describe('the archive job (#186)', () => {
     expect(await archiveRequest(ACCOUNT)).toEqual({ requestedAt: NOW, checkedAt: NOW, downloadedAt: null });
     expect(ctx.notes).toEqual([ARCHIVE_PREPARING]);
     expect(logs).toContain('Pressed “Request archive” on X’s archive page');
+    // A made-up account whose id isn't X's keeps no timeline, and the job goes on (#425).
+    expect(await db.accountEvents.count()).toBe(0);
+  });
+
+  it('puts a request on the account’s timeline once, however often the dashboard looks again (#425)', async () => {
+    const accountId = '9000000000000000001';
+    await archiveRun(['request', 'preparing'], { accountId }).run();
+    await archiveRun(['preparing'], { mode: 'look', accountId }).run();
+    await archiveRun(['preparing'], { mode: 'look', accountId }).run();
+    const events = await db.accountEvents.toArray();
+    expect(events.map((e) => [e.accountId, e.kind, e.at, e.source, e.ref])).toEqual([
+      [accountId, 'archive_requested', NOW, 'xomoni', `archive-request:${String(NOW)}`],
+    ]);
   });
 
   it('waits for the person when X asks for the password, and never presses anything then', async () => {

@@ -16,7 +16,15 @@ import {
   mergeItem,
   moveOfferShown,
 } from '../src/shared/move';
-import { LEFT_OUT_TABLES, MOVE_TABLES, type MoveData, type MoveFile, checkMoveText } from '../src/shared/move-file';
+import {
+  LEFT_OUT_TABLES,
+  MOVE_TABLES,
+  type MoveData,
+  type MoveFile,
+  VAULT_TABLE_NAMES,
+  checkMoveText,
+} from '../src/shared/move-file';
+import { analyticsPostKey } from '../src/shared/vault/records';
 import { RUNNER_LOCK } from '../src/shared/runner-lock';
 import { PRESETS } from '../src/shared/settings';
 import type { Settings } from '../src/shared/types';
@@ -28,7 +36,11 @@ import {
   SECRET_TOKEN,
   THEN,
   moverAccount,
+  moverAnalyticsDay,
+  moverAnalyticsPost,
   moverDay,
+  moverEvent,
+  moverImport,
   moverItem,
   moverJob,
   moverLog,
@@ -65,6 +77,10 @@ const empty = (): MoveData => ({
   daily: [],
   incoming: [],
   kv: [],
+  vaultImports: [],
+  analyticsPosts: [],
+  analyticsDays: [],
+  accountEvents: [],
 });
 
 async function imported(file: MoveFile): Promise<MoveResult> {
@@ -650,5 +666,126 @@ describe('the import’s result, until the person dismisses it (#357)', () => {
       await kvSet('moveImported', value);
       expect(await importNotice()).toBeNull();
     }
+  });
+});
+
+describe('the vault in a move (#424, version 2)', () => {
+  it('carries every vault row of the old Xomoni into an empty one, unchanged', async () => {
+    await seedEverything();
+    const before = await snapshot();
+    const file = await exported();
+    for (const table of VAULT_TABLE_NAMES) expect(file.data[table].length, table).toBeGreaterThan(0);
+    await resetDb();
+
+    const result = await imported(file);
+    const after = await snapshot();
+    for (const table of VAULT_TABLE_NAMES) expect(after[table], table).toEqual(before[table]);
+    expect(result.added).toMatchObject({ vaultImports: 1, analyticsPosts: 1, analyticsDays: 1, accountEvents: 2 });
+  });
+
+  it('exports one account’s vault alone', async () => {
+    await seedEverything();
+    await db.vaultImports.put(moverImport({ accountId: OTHER }));
+    await db.analyticsPosts.put(moverAnalyticsPost('7', { accountId: OTHER, key: analyticsPostKey(OTHER, '7') }));
+    await db.analyticsDays.put(moverAnalyticsDay('2026-11-01', { accountId: OTHER }));
+    await db.accountEvents.add(moverEvent({ accountId: OTHER }));
+
+    const { data } = await exported(MOVER);
+    for (const table of VAULT_TABLE_NAMES) {
+      const rows = data[table] as { accountId: string }[];
+      expect(rows.length, table).toBeGreaterThan(0);
+      expect(
+        rows.every((r) => r.accountId === MOVER),
+        table,
+      ).toBe(true);
+    }
+    expect(data.accountEvents.every((e) => !('seq' in e))).toBe(true);
+  });
+
+  it('adds nothing to the vault the second time the same file is imported', async () => {
+    await seedEverything();
+    const file = await exported();
+    await resetDb();
+    await imported(file);
+    const again = await imported(file);
+    for (const table of VAULT_TABLE_NAMES) {
+      expect(again.added[table], table).toBe(0);
+      expect(again.updated[table], table).toBe(0);
+    }
+    expect(await db.accountEvents.count()).toBe(2);
+  });
+
+  it('merges each vault table by its rule, and never deletes what is here', async () => {
+    // Here: a ledger row the file also has (changed there), one of its own, a post with higher likes, an older day.
+    await db.vaultImports.bulkPut([
+      moverImport(),
+      moverImport({ importedAt: THEN - 5_000, source: 'x-analytics-days', parser: 'x-analytics-days@1' }),
+    ]);
+    await db.analyticsPosts.put(
+      moverAnalyticsPost('1000000001', { likes: 50, impressions: 900, asOf: THEN - 9_000_000 }),
+    );
+    await db.analyticsDays.put(moverAnalyticsDay('2026-11-19', { impressions: 10, asOf: THEN - 9_000_000 }));
+    await db.accountEvents.bulkAdd([moverEvent(), moverEvent({ words: 'Only here.', at: THEN - 60_000 })]);
+
+    const result = await imported(
+      await fileOf({
+        ...empty(),
+        vaultImports: [moverImport({ bytes: 1 }), moverImport({ importedAt: THEN - 9_000 })],
+        analyticsPosts: [moverAnalyticsPost('1000000001', { likes: 9, impressions: 1_200, asOf: THEN - 3_600_000 })],
+        analyticsDays: [moverAnalyticsDay('2026-11-19', { impressions: 3_000 })],
+        accountEvents: [moverEvent(), moverEvent({ kind: 'premium_on', source: 'profile', words: 'X Premium on.' })],
+      }),
+    );
+
+    expect(result.added).toMatchObject({ vaultImports: 1, analyticsPosts: 0, analyticsDays: 0, accountEvents: 1 });
+    expect(result.updated).toMatchObject({ vaultImports: 0, analyticsPosts: 1, analyticsDays: 1, accountEvents: 0 });
+    // The ledger is joined by id: the row here stays as it is.
+    expect(await db.vaultImports.count()).toBe(3);
+    expect((await db.vaultImports.get(moverImport().id))?.bytes).toBe(moverImport().bytes);
+    // A post keeps the highest of each number, never lower, with the newer date.
+    expect(await db.analyticsPosts.get(analyticsPostKey(MOVER, '1000000001'))).toMatchObject({
+      likes: 50,
+      impressions: 1_200,
+      asOf: THEN - 3_600_000,
+    });
+    // A day takes the newer import's numbers.
+    expect((await db.analyticsDays.get([MOVER, '2026-11-19']))?.impressions).toBe(3_000);
+    // The timeline gains what it lacked and keeps its own.
+    expect((await db.accountEvents.toArray()).map((e) => e.words).sort()).toEqual(
+      ['Asked X about the label.', 'Only here.', 'X Premium on.'].sort(),
+    );
+  });
+
+  it('brings a file from a Xomoni before the vault in, leaving the vault here as it is', async () => {
+    await db.accountEvents.add(moverEvent());
+    const { vaultImports: _a, analyticsPosts: _b, analyticsDays: _c, accountEvents: _d, ...core } = empty();
+    const checked = await checkMoveText(await signedFile({ ...core, accounts: [moverAccount()] }, { version: 1 }), NOW);
+    if (!checked.ok) throw new Error(checked.message);
+    const result = await imported(checked.file);
+    expect(result.added.accounts).toBe(1);
+    expect(result.added.accountEvents).toBe(0);
+    expect(await db.accountEvents.count()).toBe(1);
+  });
+
+  it('writes nothing to the vault while a job runs', async () => {
+    await seedEverything();
+    const file = await exported();
+    await resetDb();
+    const lock = await holdRunnerLock();
+    try {
+      expect(await importData(file, NOW)).toBe('busy');
+    } finally {
+      await lock.release();
+    }
+    for (const table of VAULT_TABLE_NAMES) expect(await db.table(table).count(), table).toBe(0);
+  });
+
+  it('reads an import’s result kept before version 2 with no vault counts as nothing added to the vault', async () => {
+    const core = Object.fromEntries(
+      MOVE_TABLES.filter((t) => !(VAULT_TABLE_NAMES as readonly string[]).includes(t)).map((t) => [t, 1]),
+    );
+    await kvSet('moveImported', { app: '0.5.0', at: NOW, result: { added: core, updated: core } });
+    const notice = await importNotice();
+    expect(notice?.result.added).toMatchObject({ items: 1, vaultImports: 0, accountEvents: 0 });
   });
 });

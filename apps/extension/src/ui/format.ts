@@ -140,6 +140,16 @@ export function downloadFile(name: string, content: string, type = 'application/
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Saves a `Blob` (a ZIP, say) as a file named `name`, through a temporary object URL, as `downloadFile` does. */
+export function downloadBlob(name: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** A thrown value as text for a toast: an `Error`'s message, or the value itself. */
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

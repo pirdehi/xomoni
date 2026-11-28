@@ -67,6 +67,7 @@ src/
     scan.ts               profile, replies, likes, full-history and date-range scans
     worker-tab.ts         the x.com worker window
   shared/                 types, Dexie database, parsers, rules, settings, notifications
+    vault/                X's official files kept on the computer: importer, analytics CSV, ledger, timeline, export (ADR-0043)
   update/                 one-click updates of a zip install: a signed release, written into Xomoni's folder (ADR-0033)
   ui/                     React 19 dashboard on Fluent UI v9 (ADR-0019)
   dev/                    UI preview with demo data (not shipped)

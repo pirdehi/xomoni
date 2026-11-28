@@ -200,6 +200,7 @@ describe('App navigation', () => {
     for (const [label, id] of [
       ['Cleanup', 'cleanup'],
       ['Library', 'library'],
+      ['Vault', 'vault'],
       ['Reach', 'reach'],
       ['Activity', 'jobs'],
       ['Watch', 'watch'],
@@ -210,8 +211,8 @@ describe('App navigation', () => {
       expect(window.location.hash).toBe(`#/${id}`);
       expect(await pageHeading(label)).toBeInTheDocument();
     }
-    // Seven places, not eight: Jobs and the log are one page (#202).
-    expect(within(within(sidebar()).getByRole('navigation')).getAllByRole('button')).toHaveLength(7);
+    // Eight places, not nine: Jobs and the log are one page (#202), and the vault (#425) and Reach (#429) have their own.
+    expect(within(within(sidebar()).getByRole('navigation')).getAllByRole('button')).toHaveLength(8);
   });
 
   it('marks the current page in the sidebar', async () => {

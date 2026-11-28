@@ -38,6 +38,8 @@ import {
   Settings20Regular,
   Sparkle20Filled,
   Sparkle20Regular,
+  Vault20Filled,
+  Vault20Regular,
   Warning16Filled,
   bundleIcon,
 } from '@fluentui/react-icons';
@@ -51,6 +53,7 @@ import { Button, OutsideModals, type Tone, useModalHost } from './components/ui'
 import { AccountPanel } from './components/AccountPanel';
 import { UpdateNotice } from './components/UpdateNotice';
 import { ArchiveFollowUp } from './components/ArchiveFollowUp';
+import { VaultFollowUp } from './components/VaultFollowUp';
 import { ConsentDialog } from './components/ConsentDialog';
 import { PageBoundary } from './components/PageBoundary';
 import { SignOutDialog } from './components/SignOutDialog';
@@ -77,6 +80,7 @@ import { LibraryPage } from './pages/Library';
 import { OverviewPage } from './pages/Overview';
 import { ReachPage } from './pages/Reach';
 import { SettingsPage } from './pages/Settings';
+import { VaultPage } from './pages/Vault';
 import { WatchPage } from './pages/Watch';
 import type { Account } from '../shared/types';
 import { MOVED_PAGES, type PageId, type PageProps } from './navigation';
@@ -87,6 +91,7 @@ const NAV: { id: PageId; label: string; icon: FluentIcon }[] = [
   { id: 'overview', label: 'Home', icon: bundleIcon(Home20Filled, Home20Regular) },
   { id: 'cleanup', label: 'Cleanup', icon: bundleIcon(Sparkle20Filled, Sparkle20Regular) },
   { id: 'library', label: 'Library', icon: bundleIcon(Library20Filled, Library20Regular) },
+  { id: 'vault', label: 'Vault', icon: bundleIcon(Vault20Filled, Vault20Regular) },
   { id: 'reach', label: 'Reach', icon: bundleIcon(DataTrending20Filled, DataTrending20Regular) },
   // Jobs and the log are one Activity page with two tabs (#202); the item opens its Jobs tab.
   { id: 'jobs', label: 'Activity', icon: bundleIcon(History20Filled, History20Regular) },
@@ -322,6 +327,7 @@ export function App() {
       <SignOutDialog />
       <WebsiteRequests />
       {account && <ArchiveFollowUp account={account} libraryOpen={page === 'library'} />}
+      {account && <VaultFollowUp account={account} />}
     </div>
   );
 }
@@ -332,6 +338,8 @@ function PageSwitch({ page, ...props }: PageProps & { page: PageId }) {
       return <CleanupPage {...props} />;
     case 'library':
       return <LibraryPage {...props} />;
+    case 'vault':
+      return <VaultPage {...props} />;
     case 'reach':
       return <ReachPage {...props} />;
     case 'watch':

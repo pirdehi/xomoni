@@ -57,6 +57,7 @@ import { Engagement } from './engagement';
 import { ColumnChart, LineChart, formatCount } from './charts';
 import { Delta } from './delta';
 import { HealthPlace, LibraryPlace, WatchPlace } from './xomoni-places';
+import { VaultCard } from './vault-card';
 import { SettingsPlace } from './settings-place';
 import { CleanupPlace } from './cleanup-place';
 import { CommentsPlace } from './comments-place';
@@ -524,7 +525,13 @@ export function Dashboard({
       />
     );
   } else if (section.id === 'library') {
-    content = <LibraryPlace xomoni={xomoni} />;
+    // The vault (#426) sits with the Library: both are Xomoni's own data, read in this browser.
+    content = (
+      <>
+        <VaultCard xomoni={xomoni} now={now} />
+        <LibraryPlace xomoni={xomoni} />
+      </>
+    );
   } else if (section.id === 'watch') {
     content = <WatchPlace xomoni={xomoni} now={now} />;
   } else if (section.id === 'health') {

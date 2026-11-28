@@ -6,12 +6,16 @@ import type { DailyStats } from './daily';
 import { db, kvGet, kvSet } from './db';
 import { incomingSince, trimIncoming } from './incoming';
 import {
+  CORE_MOVE_TABLES,
   MOVE_TABLES,
   MOVED_ACCOUNT_VALUES,
   type MoveCounts,
   type MoveData,
   type MoveFile,
   type MoveTable,
+  VAULT_MOVE_TABLES,
+  VAULT_TABLE_NAMES,
+  type VaultMoveTableName,
   moveCounts,
   moveRecord,
   movedValueName,
@@ -57,7 +61,20 @@ const TABLES = () => [
   db.daily,
   db.incoming,
   db.kv,
+  db.vaultImports,
+  db.analyticsPosts,
+  db.analyticsDays,
+  db.accountEvents,
 ];
+
+/** The vault's rows (#424), all of them or one account's, read through `VAULT_MOVE_TABLES`; inside `readTables`. */
+async function readVault(accountId?: string): Promise<Record<VaultMoveTableName, unknown[]>> {
+  const rows = await Promise.all(VAULT_TABLE_NAMES.map((table) => VAULT_MOVE_TABLES[table].read(accountId)));
+  return Object.fromEntries(VAULT_TABLE_NAMES.map((table, i) => [table, rows[i] ?? []])) as Record<
+    VaultMoveTableName,
+    unknown[]
+  >;
+}
 
 /** The rows of every moved table, or of one X account's, read in one transaction so the file is one moment's copy. */
 async function readTables(accountId?: string): Promise<Record<MoveTable, unknown[]>> {
@@ -80,7 +97,7 @@ async function readTables(accountId?: string): Promise<Record<MoveTable, unknown
         db.daily.toArray(),
         db.incoming.toArray(),
       ]);
-      return { accounts, items, jobs, logs, limits, reads, risk, checks, daily, incoming, kv };
+      return { accounts, items, jobs, logs, limits, reads, risk, checks, daily, incoming, kv, ...(await readVault()) };
     }
     const id = accountId;
     const [from, to] = [
@@ -99,7 +116,20 @@ async function readTables(accountId?: string): Promise<Record<MoveTable, unknown
       db.daily.where('accountId').equals(id).toArray(),
       db.incoming.where('accountId').equals(id).toArray(),
     ]);
-    return { accounts: account ? [account] : [], items, jobs, logs, limits, reads, risk, checks, daily, incoming, kv };
+    return {
+      accounts: account ? [account] : [],
+      items,
+      jobs,
+      logs,
+      limits,
+      reads,
+      risk,
+      checks,
+      daily,
+      incoming,
+      kv,
+      ...(await readVault(id)),
+    };
   });
 }
 
@@ -488,7 +518,8 @@ async function logImport(file: MoveFile, now: number) {
  * (`mergeItem`, `mergeAccount`, `mergeDaily`); a job here is kept unless the file's copy is newer, and a job that
  * hadn't finished arrives cancelled (`arrivedJob`); log lines, page loads, risk events and sampled checks are added
  * unless already here; the person's typed overrides of the risk ladder are not taken (a file can't lift a stop);
- * settings and Watch fill in only what is missing; nothing is ever deleted. In the same transaction it keeps what it did
+ * settings and Watch fill in only what is missing; the vault's tables merge by `VAULT_MOVE_TABLES` (the ledger joined,
+ * analytics never lowered, the timeline's missing events added); nothing is ever deleted. In the same transaction it keeps what it did
  * for the dashboard to show until the person dismisses it (`importNotice`, #357). Returns `'busy'`, having written
  * nothing, when a job runs in any dashboard tab; while the import runs, it holds the runner's lock, so no job can start.
  */
@@ -540,6 +571,17 @@ export async function importData(file: MoveFile, now = Date.now()): Promise<Move
       await mergeDays(data.daily, result);
       await mergeIncoming(data, result, now);
       await mergeValues(data, result);
+      // The vault (#424): the ledger joined, analytics never lowered, the timeline's missing events added.
+      for (const table of VAULT_TABLE_NAMES) {
+        const merged = await (
+          VAULT_MOVE_TABLES[table].merge as (
+            rows: readonly unknown[],
+            now: number,
+          ) => Promise<{ added: number; updated: number }>
+        )(data[table], now);
+        result.added[table] = merged.added;
+        result.updated[table] = merged.updated;
+      }
       await logImport(file, now);
       await kvSet(IMPORTED_KEY, { app: file.app, at: now, result } satisfies ImportNotice);
       return result;
@@ -578,11 +620,18 @@ export interface ImportNotice {
   result: MoveResult;
 }
 
-/** Whether `counts` has a number for every table, as `MoveResult`'s counts do. */
-const isCounts = (counts: unknown): counts is MoveResult['added'] =>
-  typeof counts === 'object' &&
-  counts !== null &&
-  MOVE_TABLES.every((table) => typeof (counts as Record<string, unknown>)[table] === 'number');
+/**
+ * `counts` as `MoveResult`'s counts, or null: a number for every core table, and for each vault table, 0 where a notice
+ * kept before version 2 of the move file has none.
+ */
+function asCounts(counts: unknown): MoveResult['added'] | null {
+  if (typeof counts !== 'object' || counts === null) return null;
+  const record = counts as Record<string, unknown>;
+  if (!CORE_MOVE_TABLES.every((table) => typeof record[table] === 'number')) return null;
+  return Object.fromEntries(
+    MOVE_TABLES.map((table) => [table, typeof record[table] === 'number' ? record[table] : 0]),
+  ) as MoveResult['added'];
+}
 
 /**
  * What the last import did, until the person dismisses it (#357), so the dashboard keeps saying so: an import from the
@@ -595,7 +644,8 @@ export async function importNotice(): Promise<ImportNotice | null> {
   const { app, at, result } = value as Partial<Record<keyof ImportNotice, unknown>>;
   if (typeof app !== 'string' || typeof at !== 'number' || typeof result !== 'object' || result === null) return null;
   const { added, updated } = result as Partial<Record<keyof MoveResult, unknown>>;
-  return isCounts(added) && isCounts(updated) ? { app, at, result: { added, updated } } : null;
+  const [a, u] = [asCounts(added), asCounts(updated)];
+  return a && u ? { app, at, result: { added: a, updated: u } } : null;
 }
 
 /** Forgets the last import's result: the person has read it. */

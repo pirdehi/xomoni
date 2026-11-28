@@ -18,6 +18,7 @@ import {
 } from '../support/cleanup';
 import { expect, openXWindow, tabTo, test } from '../support/extension';
 import type { ReleaseFile } from '../support/release';
+import { GENERATED_AT, buildArchive } from '../support/archive';
 import { ARCHIVE_ZIP_NAME, type ArchivedTweet, archiveFiles, archiveZip, dropFiles, ytd } from '../support/x-archive';
 import { FIXTURE_ACCOUNT, FRIEND_ACCOUNT, servePage } from '../support/x-fixtures';
 
@@ -559,8 +560,66 @@ test.describe('X’s archive, requested and imported', { tag: '@task-184' }, () 
     await expect(toasts(dashboard)).toContainText('Imported 4 posts and 2 likes');
     expect(await shown(dashboard, 'Posts')).toHaveLength(3);
     expect(await shown(dashboard, 'Likes')).toHaveLength(2);
+    // The ZIP is known by its fingerprint: the second import is a duplicate in the ledger, and nothing more (#424).
+    await expect
+      .poll(async () => (await stored(dashboard, 'vaultImports')).map((row) => row.problems))
+      .toEqual([[], ['duplicate']]);
+  });
+
+  test('S184-27 the import ledger and the timeline keep the archive, with the date X made it', async ({
+    dashboard,
+    page,
+  }) => {
+    await withAccount(dashboard, page);
+    const archive = buildArchive();
+    await byHand(dashboard);
+    await dropFiles(dropZone(dashboard), [{ name: archive.name, data: archive.data }]);
+    await expect(toasts(dashboard)).toContainText('Imported 4 posts and 2 likes');
+
+    await expect.poll(async () => (await stored(dashboard, 'vaultImports')).length).toBe(1);
+    const [row] = await stored(dashboard, 'vaultImports');
+    expect(row).toMatchObject({
+      accountId: FIXTURE_ACCOUNT.id,
+      source: 'x-archive',
+      fileName: archive.name,
+      bytes: archive.data.length,
+      coverTo: GENERATED_AT,
+      counts: { parts: { tweets: 4, likes: 2 } },
+      parser: 'x-archive@1',
+      problems: [],
+    });
+    expect(String(row?.fingerprint)).toMatch(/^zip:[0-9a-f]{64}$/);
+    const events = await stored(dashboard, 'accountEvents');
+    expect(events).toEqual([
+      expect.objectContaining({
+        accountId: FIXTURE_ACCOUNT.id,
+        kind: 'archive_imported',
+        words: 'Imported X’s archive made on 2026-11-08: 4 posts, replies and reposts, and 2 likes.',
+        ref: row?.id,
+      }),
+    ]);
   });
 });
+
+/** Every row of one of Xomoni's tables, read with IndexedDB itself from the dashboard, oldest first. */
+function stored(dashboard: Page, store: string): Promise<Record<string, unknown>[]> {
+  return dashboard.evaluate(async (name) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const opening = indexedDB.open('xomoni');
+      opening.onsuccess = () => resolve(opening.result);
+      opening.onerror = () => reject(opening.error ?? new Error('IndexedDB refused to open xomoni'));
+    });
+    try {
+      return await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+        const request = db.transaction(name, 'readonly').objectStore(name).getAll();
+        request.onsuccess = () => resolve(request.result as Record<string, unknown>[]);
+        request.onerror = () => reject(request.error ?? new Error(`IndexedDB refused to read ${name}`));
+      });
+    } finally {
+      db.close();
+    }
+  }, store);
+}
 
 /** An archived post of the fixture account with `text`, from 2018, as X writes it. */
 function archiveTweet(id: string, text: string): ArchivedTweet {

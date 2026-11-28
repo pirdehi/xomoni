@@ -46,6 +46,8 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **Keeps going while you do other things:** *Keep going while away* keeps the display on and brings a covered X window forward, and *Run hidden* shares the X tab with the dashboard so a job continues with the X window minimized. Nothing of the shared tab is recorded or sent.
 - **Your X archive, requested and imported:** *Get my archive* asks X for your archive on X's own page and downloads it once X has made it. The ZIP is imported as it is, from Downloads › Xomoni or dropped on the Library, and only `account.js`, `tweets.js` and `like.js` are read.
 - **Your copy, in the Library:** shows how much of your account Xomoni has and where it came from, with a search. *Complete my copy* reads your posts, replies, likes and full history from X in one job.
+- **The vault: X's own files, kept on your computer** *(next release)*: the *Vault* page takes X's archive and its analytics export, dropped or chosen, says what it recognized before anything is written, and keeps a ledger of every import and your account's timeline. A reminder, at most once a day, says when a file is due for a fresh copy. Nothing leaves your computer, and nothing is done on X.
+- **Export my vault, readable without Xomoni** *(next release)*: one ZIP of your vault you keep: CSV for spreadsheets (no cell a spreadsheet would run), JSON for other tools, a page any browser opens, a README and a schema. Other people's words only when you tick them. Made on your computer, never sent anywhere, and free on every plan.
 - **Archive a date range:** pick the dates, let Xomoni read them from X (read-only, at the same careful pace), and download your posts, replies and reposts from that range as a page you can open in any browser, or as JSON. It is saved on your computer only. Your official X archive stays the complete copy, with media.
 - **Watch X search:** follow up to five phrases or #hashtags in X's search. Xomoni checks each about once a minute, within its read limits, and shows the 10 newest posts, each linked to X. It only reads: nothing is liked, replied to or posted.
 - **Watch what is said about you:** two ready Watch searches for your own account, Mentions of you and Replies to you, off until you turn them on. A post from an account made in the last 30 days is marked with its age, from X's own search answer, and Xomoni's toolbar button counts the ones you haven't seen. Read only, and nothing leaves your computer.
@@ -73,6 +75,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 
 ### On xomoni.com
 
+- **Your vault, on xomoni.com:** beside the Library, what your vault in Xomoni holds: each of X's files with how fresh it is and what it holds, read in your browser as counts and dates only, and *Open the vault in Xomoni*. Nothing of it reaches our servers.
 - **Two-step verification:** turn it on in Account with an authenticator app, and every sign-in on xomoni.com asks for its 6-digit code before any private page opens. The website's server and the database both check it, so a password or a copied session alone reads and changes nothing. Changing your email or password, or resetting it by email, asks for a code too, and every app added or removed is emailed to you.
 - **The dashboard on xomoni.com:** Overview, Audience, Content, Engagement, Reports, Library, Comments, Cleanup, Watch, Activity, Account health, Browsers and Settings, each at its own address, with an account and period picker. A sidebar on a computer, a bottom bar on a phone.
 - **Overview, Audience, Content and Engagement:** your followers, what you published and what it received, each against the period before, in charts that answer on hover and by keyboard, with a table view. What was received is marked as an estimate.
@@ -83,7 +86,7 @@ Xomoni takes a different approach. It is a Chrome extension that works **inside 
 - **xomoni.com on a phone:** a menu with *How it works*, *Safety*, *Privacy*, *Install* and *GitHub*, which works with the keyboard too, and a full footer on every page.
 - **Terms of sale and refund policy** *(preview)*: the terms of the coming paid plans, sold by Polar as merchant of record, and a 14-day refund policy, with Polar named on the privacy page. They are drafts waiting for the maintainer's approval: xomoni.com shows them only once they are approved, and they promise nothing about results on X.
 
-*(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
+*(next release)*: on `main`, and in Xomoni's next release; xomoni.com has its part already. *(preview)*: built, and waiting on something outside the code, such as the stores listing Xomoni.
 
 <!-- END GENERATED: features -->
 
@@ -244,7 +247,7 @@ How the parts fit together, the layer rules and the documentation rules are in [
 
 <!-- BEGIN GENERATED: status (npm run readme) -->
 
-**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 41 [features](#features), 1 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
+**Latest release: [0.6.0](https://github.com/pirdehi/xomoni/releases/tag/v0.6.0), 2026-11-24.** Xomoni has 44 [features](#features), 4 of them added since 0.6.0. xomoni.com gets a change as soon as it is merged; the extension, with the next release.
 
 <!-- END GENERATED: status -->
 

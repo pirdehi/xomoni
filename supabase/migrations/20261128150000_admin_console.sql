@@ -1,4 +1,4 @@
--- The super-admin console (#516): what the site's super-admins (ADR-0048) see and do at /admin, through functions the
+-- The super-admin console (#516): what the site's super-admins (ADR-0048) see and do at xomoni.com/product, through functions the
 -- signed-in person calls, so the website still holds no service-role key. Each function first checks that the caller
 -- is a super-admin whose session meets the two-step rule (an account with an authenticator app needs aal2, ADR-0036),
 -- and otherwise refuses with 42501. They show counts, dates, plans and choices about accounts: never a password hash,

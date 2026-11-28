@@ -20,7 +20,8 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.{ts,tsx}'],
+    // The fakes' own tests sit beside them in test/.
+    include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
     environment: 'node',
     setupFiles: ['test/setup.ts'],
     testTimeout: 15_000,

@@ -24,6 +24,16 @@ export interface CloudCall {
   body: Record<string, unknown>;
 }
 
+/** The plan `device_report` answers, in the database's shape (`entitlement_of`). */
+export interface SiteEntitlement {
+  tier: 'free' | 'plus' | 'pro';
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'revoked' | null;
+  valid_until: string | null;
+}
+
+/** An account that never paid. */
+export const FREE: SiteEntitlement = { tier: 'free', status: null, valid_until: null };
+
 /** xomoni.com as one test's browser sees it. */
 export interface XomoniSite {
   /** Every call the extension made to xomoni.com's functions, in order. */
@@ -39,6 +49,13 @@ export interface XomoniSite {
    * while it is on.
    */
   stats: boolean;
+  /**
+   * The account's plan as `device_report` answers it (ADR-0042, #420): the plan that counts, its status and when it
+   * ends. Free, never paid, unless a test sets another; a test may change it, as a purchase does.
+   */
+  entitlement: SiteEntitlement;
+  /** Whether sales are open, as `device_report` answers `billing_live`: closed unless a test opens them. */
+  billingLive: boolean;
   /**
    * Signs Xomoni in from a page of xomoni.com, as the website does once its page is signed in (#232, ADR-0025): a
    * one-time code, sent as `xomoni-sign-in`. Returns the extension's answer.
@@ -60,17 +77,24 @@ const TOKEN = 'e2e-device-token-not-a-secret';
 
 /**
  * Serves xomoni.com and answers its functions in `context` from now on, with `release` as the newest release
- * `device_report` names (none unless given). Pages of xomoni.com are a bare page titled Xomoni: enough for the
- * extension's own pages and for sending its messages.
+ * `device_report` names (none unless given), and the account's plan and the sales switch (Free and closed unless
+ * given). Pages of xomoni.com are a bare page titled Xomoni: enough for the extension's own pages and for sending its
+ * messages.
  */
 export async function serveXomoniSite(
   context: BrowserContext,
-  { release = null }: { release?: XomoniSite['release'] } = {},
+  {
+    release = null,
+    entitlement = FREE,
+    billingLive = false,
+  }: { release?: XomoniSite['release']; entitlement?: SiteEntitlement; billingLive?: boolean } = {},
 ): Promise<XomoniSite> {
   const site: XomoniSite = {
     calls: [],
     release,
     stats: false,
+    entitlement,
+    billingLive,
     signIn: async (extensionId) => {
       const page = await context.newPage();
       await page.goto(`${SITE}/dashboard`);
@@ -120,7 +144,12 @@ export async function serveXomoniSite(
       if (!paired || body.token !== TOKEN) return refuse('unknown_device');
       switch (fn) {
         case 'device_report':
-          return answer(200, { ...(site.release ?? {}), stats: site.stats });
+          return answer(200, {
+            ...(site.release ?? {}),
+            stats: site.stats,
+            entitlement: site.entitlement,
+            billing_live: site.billingLive,
+          });
         case 'unpair_device':
           paired = false;
           return answer(200, null);

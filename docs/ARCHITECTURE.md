@@ -109,6 +109,7 @@ The repository is an npm workspaces monorepo ([ADR-0007](adr/0007-npm-workspaces
 | [`apps/extension/src/ui`](../apps/extension/src/ui/README.md) | The dashboard (React). |
 | [`apps/extension/src/dev`](../apps/extension/src/dev/README.md) | UI preview with demo data; never shipped. |
 | [`apps/web`](../apps/web/README.md) | xomoni.com: landing and legal pages, sign-in, the live dashboard. |
+| [`apps/web/src/modules/billing`](../apps/web/src/modules/billing/README.md) | Payments with Polar ([ADR-0042](adr/0042-payments-and-entitlements-with-polar.md)): today the check of a webhook Polar signed (Standard Webhooks, Web Crypto); the webhook, checkout and the customer portal come with #421, the pages with #422. |
 | [`apps/web/src/modules/auth`](../apps/web/src/modules/auth/README.md) | Identity: sign-up with email confirmation, sign-in (password or Google), two-step verification with an authenticator app, password reset, email and password changes, sessions, account deletion. |
 | [`apps/web/src/modules/dashboard`](../apps/web/src/modules/dashboard/README.md) | Devices and live job status. |
 | [`apps/web/src/modules/extension`](../apps/web/src/modules/extension/README.md) | The Xomoni extension in this browser: finding it, and one sign-in for the site and the extension (ADR-0025). |

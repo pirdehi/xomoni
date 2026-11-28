@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { type Project, defineConfig, devices } from '@playwright/test';
 import { TEST_EXTENSION_ID } from './e2e/support/fixed-id';
+import { FAKE_POLAR_PORT, NO_REAL_POLAR } from './e2e/support/polar';
 import { type BrowserName, browsersToTest } from './e2e/support/projects';
 
 /**
@@ -40,6 +41,8 @@ const env = {
   NEXT_PUBLIC_XOMONI_TEST_EXTENSION_ID: TEST_EXTENSION_ID,
   // Lets a test choose the store listings /install shows (e2e/store-install.spec.ts, #304). Only this build reads them.
   NEXT_PUBLIC_E2E_STORE_LISTINGS: '1',
+  // Polar is the fake of e2e/support/polar.ts, never the real one (#420): a test that pays starts it on this port.
+  POLAR_API_URL: `http://127.0.0.1:${FAKE_POLAR_PORT}`,
 };
 process.env.MAILPIT_URL = env.MAILPIT_URL;
 // For seeding devices and jobs (e2e/support/admin.ts): the local stack's fixed development keys.
@@ -91,6 +94,8 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // No page reaches the real Polar (#420): the browser resolves none of its hosts.
+    launchOptions: { args: [NO_REAL_POLAR] },
   },
   projects: browsersToTest().map((name) => PROJECTS[name]),
   webServer: {

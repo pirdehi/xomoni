@@ -3,6 +3,33 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      admin_audit: {
+        Row: {
+          action: string;
+          actor: string | null;
+          created_at: string;
+          detail: Json;
+          id: number;
+          target: string | null;
+        };
+        Insert: {
+          action: string;
+          actor?: string | null;
+          created_at?: string;
+          detail?: Json;
+          id?: never;
+          target?: string | null;
+        };
+        Update: {
+          action?: string;
+          actor?: string | null;
+          created_at?: string;
+          detail?: Json;
+          id?: never;
+          target?: string | null;
+        };
+        Relationships: [];
+      };
       app_admins: {
         Row: {
           created_at: string;
@@ -475,6 +502,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      product_plan: {
+        Row: {
+          data: Json;
+          id: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          data: Json;
+          id?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          data?: Json;
+          id?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       weekly_emails: {
         Row: {
           changed_at: string;
@@ -504,6 +549,25 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_audit_log: { Args: { page_size?: number }; Returns: Json };
+      admin_delete_user: { Args: { target: string }; Returns: undefined };
+      admin_overview: { Args: never; Returns: Json };
+      admin_set_banned: {
+        Args: { banned: boolean; target: string };
+        Returns: undefined;
+      };
+      admin_sign_out_user: { Args: { target: string }; Returns: number };
+      admin_user: { Args: { target: string }; Returns: Json };
+      admin_users: {
+        Args: {
+          descending?: boolean;
+          page_index?: number;
+          page_size?: number;
+          search?: string;
+          sort?: string;
+        };
+        Returns: Json;
+      };
       apply_billing_event: {
         Args: {
           cancel_at_period_end?: boolean;

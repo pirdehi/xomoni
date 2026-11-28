@@ -325,6 +325,15 @@ The first release with paid plans: the extension 0.6.0 and xomoni.com. Payments 
 | ⬜ | P5.3 · Reach: the new-label alert, and the monthly digest of X's ranking code on xomoni.com/algorithm | [#430](https://github.com/pirdehi/xomoni/issues/430) | |
 | ⬜ | P5.4 · Reach on xomoni.com in the same browser, performance at 50,000 posts, accessibility and the release | [#431](https://github.com/pirdehi/xomoni/issues/431) | |
 
+## Phase 21 · R2: old posts, read on the computer (0.8.0) 🔄
+
+The extension 0.8.0, which reads a person's old posts on their own computer: the on-device archive scanner, the context lens for old posts, and the AI exposure timeline. Green modes only; only Cleanup acts on X. Milestone: [Phase 21 · R2 (0.8.0)](https://github.com/pirdehi/xomoni/milestone/13).
+
+| | Task | Issue | Pull request |
+| --- | --- | --- | --- |
+| 🔄 | P6.1 · AI exposure: the decision, X's AI policy windows with their sources, the person's own dates, and what X infers from the archive. Done: the AI exposure audit's ADR ([ADR-0048](adr/0048-the-ai-exposure-audit.md)), proposed | [#518](https://github.com/pirdehi/xomoni/issues/518) | |
+| ⬜ | P6.2 · AI exposure: the timeline, its page and dates card, the monthly chart, what X infers, and the posts of a window sent to Review | [#519](https://github.com/pirdehi/xomoni/issues/519) | |
+
 ## Dropped
 
 | | Task | Issue | Why |

@@ -16,6 +16,7 @@ type Refresh = { name: string; value: string; options: { path: string; maxAge?: 
 
 const getClaims = vi.fn();
 const listFactors = vi.fn();
+const rpc = vi.fn();
 
 /** A verified authenticator app, as Supabase lists it (#173). */
 const PHONE = { id: 'f1', factor_type: 'totp', status: 'verified', friendly_name: 'Phone', created_at: '2026-11-01' };
@@ -25,15 +26,30 @@ const PHONE = { id: 'f1', factor_type: 'totp', status: 'verified', friendly_name
  * writes those cookies first, as Supabase does when it renews an expiring token or clears an invalid one. `aal` is the
  * token's assurance level and `factors` the account's MFA factors (#173).
  */
-function supabaseSession(signedIn: boolean, refresh?: Refresh, { aal = 'aal1', factors = [] as object[] } = {}) {
+function supabaseSession(
+  signedIn: boolean,
+  refresh?: Refresh,
+  {
+    aal = 'aal1',
+    factors = [] as object[],
+    superadmin = false,
+  }: { aal?: string; factors?: object[]; superadmin?: boolean | 'error' } = {},
+) {
   getClaims.mockReset();
   listFactors.mockReset().mockResolvedValue({ data: { all: factors }, error: null });
+  rpc
+    .mockReset()
+    .mockResolvedValue(
+      superadmin === 'error'
+        ? { data: null, error: { message: 'JWT expired', code: 'PGRST301' } }
+        : { data: superadmin, error: null },
+    );
   createServerClient.mockImplementation((_url, _key, options) => {
     getClaims.mockImplementation(async () => {
       if (refresh) await options.cookies.setAll?.(refresh, NO_STORE_HEADERS);
       return { data: signedIn ? { claims: { sub: 'u1', aal } } : null, error: null };
     });
-    return { auth: { getClaims, mfa: { listFactors } } };
+    return { auth: { getClaims, mfa: { listFactors } }, rpc };
   });
 }
 
@@ -203,6 +219,100 @@ describe('updateSession: a session that owes a code from the account’s authent
   it('asks nothing more on a page that is neither guarded nor guest-only', async () => {
     expectPassThrough(await visit('/login/two-factor'));
     expect(listFactors).not.toHaveBeenCalled();
+  });
+});
+
+/** Where a rewrite sends the request, as Next.js reads it from the proxy's response. */
+function rewriteTarget(response: Response): URL {
+  const header = response.headers.get('x-middleware-rewrite');
+  expect(header).not.toBeNull();
+  return new URL(header!);
+}
+
+describe('updateSession: the super-admin console (#516)', () => {
+  it.each(['/product', '/product/users', '/product/users/u2?x=1', '/product/audit', '/product/documents'])(
+    'sends a signed-out visitor on %s to the console’s own sign-in, then back',
+    async (path) => {
+      supabaseSession(false);
+      const target = redirectTarget(await visit(path));
+
+      expect(target.origin).toBe(SITE);
+      expect(target.pathname).toBe('/product/login');
+      expect(target.searchParams.get('next')).toBe(path);
+      expect(rpc).not.toHaveBeenCalled();
+    },
+  );
+
+  it('sends a signed-out visitor on the document route to the console’s sign-in too', async () => {
+    supabaseSession(false);
+    const target = redirectTarget(await visit('/product/document?v=2'));
+    expect(target.pathname).toBe('/product/login');
+    expect(target.searchParams.get('next')).toBe('/product/document?v=2');
+  });
+
+  it.each(['/product', '/product/users', '/product/documents', '/product/users/u2'])(
+    'answers anyone signed in who isn’t a super-admin on %s with the site’s 404, before the page renders',
+    async (path) => {
+      supabaseSession(true, undefined, { aal: 'aal2' });
+      const response = await visit(path);
+
+      expect(response.headers.get('location')).toBeNull();
+      expect(rewriteTarget(response).href).toBe(`${SITE}/_console-not-found`);
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(rpc).toHaveBeenCalledWith('is_superadmin');
+    },
+  );
+
+  it('keeps the console closed when the database can’t say who is a super-admin', async () => {
+    supabaseSession(true, undefined, { aal: 'aal2', superadmin: 'error' });
+    expect(rewriteTarget(await visit('/product')).pathname).toBe('/_console-not-found');
+  });
+
+  it('answers a stranger who owes a code with the 404 too, never the code page: nothing says the console exists', async () => {
+    supabaseSession(true, undefined, { aal: 'aal1', factors: [PHONE] });
+    const response = await visit('/product/users');
+    expect(response.headers.get('location')).toBeNull();
+    expect(rewriteTarget(response).pathname).toBe('/_console-not-found');
+  });
+
+  it('lets a super-admin through to the console, never cached', async () => {
+    supabaseSession(true, undefined, { aal: 'aal2', superadmin: true });
+    for (const path of ['/product', '/product/users?q=ada', '/product/audit']) {
+      const response = await visit(path);
+      expectPassThrough(response);
+      expect(response.headers.get('x-middleware-rewrite')).toBeNull();
+    }
+  });
+
+  it('sends a super-admin who owes a code to the code page, then back to the console', async () => {
+    supabaseSession(true, undefined, { aal: 'aal1', factors: [PHONE], superadmin: true });
+    const target = redirectTarget(await visit('/product/users'));
+    expect(target.pathname).toBe('/login/two-factor');
+    expect(target.searchParams.get('next')).toBe('/product/users');
+  });
+
+  it('carries a renewed session cookie on the 404 too', async () => {
+    supabaseSession(true, [{ name: 'sb-auth-token', value: 'fresh', options: { path: '/', httpOnly: true } }], {
+      aal: 'aal2',
+    });
+    const response = await visit('/product');
+    expect(rewriteTarget(response).pathname).toBe('/_console-not-found');
+    expect(response.headers.get('set-cookie')).toMatch(/^sb-auth-token=fresh;/);
+  });
+
+  it.each([
+    ['signed out', false],
+    ['signed in', true],
+  ])('lets anyone %s open the console’s sign-in page, asking the database nothing', async (_label, signedIn) => {
+    supabaseSession(signedIn, undefined, { aal: 'aal2' });
+    expectPassThrough(await visit('/product/login?next=%2Fproduct'));
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('leaves the document route to answer for itself once signed in', async () => {
+    supabaseSession(true, undefined, { aal: 'aal2' });
+    expectPassThrough(await visit('/product/document'));
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

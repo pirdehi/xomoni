@@ -12,6 +12,8 @@ export interface ProxySupabase {
   response: () => NextResponse;
   /** Builds a redirect that keeps the refreshed cookies. */
   redirect: (url: URL) => NextResponse;
+  /** Builds a rewrite (another page answers at this address) that keeps the refreshed cookies. */
+  rewrite: (url: URL) => NextResponse;
 }
 
 /**
@@ -37,15 +39,17 @@ export function createProxySupabase(request: NextRequest): ProxySupabase {
     },
   });
 
+  // Keep the refreshed cookies, and the no-store headers Supabase sends with them, on a redirect or rewrite too.
+  const carrySession = (next: NextResponse) => {
+    response.cookies.getAll().forEach((cookie) => next.cookies.set(cookie));
+    Object.entries(sessionHeaders).forEach(([key, value]) => next.headers.set(key, value));
+    return next;
+  };
+
   return {
     supabase,
     response: () => response,
-    redirect(url) {
-      // Keep the refreshed cookies, and the no-store headers Supabase sends with them, on the redirect too.
-      const redirect = NextResponse.redirect(url);
-      response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
-      Object.entries(sessionHeaders).forEach(([key, value]) => redirect.headers.set(key, value));
-      return redirect;
-    },
+    redirect: (url) => carrySession(NextResponse.redirect(url)),
+    rewrite: (url) => carrySession(NextResponse.rewrite(url, { request })),
   };
 }

@@ -1,6 +1,12 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
-import { EMBEDDABLE_PATHS, embeddableHeaders, securityHeaders } from './src/shared/config/security-headers';
+import {
+  EMBEDDABLE_PATHS,
+  PRIVATE_DOCUMENT_PATHS,
+  embeddableHeaders,
+  privateDocumentHeaders,
+  securityHeaders,
+} from './src/shared/config/security-headers';
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -22,6 +28,7 @@ const nextConfig: NextConfig = {
     return Promise.resolve([
       { source: '/:path*', headers: securityHeaders(settings) },
       ...EMBEDDABLE_PATHS.map((source) => ({ source, headers: embeddableHeaders() })),
+      ...PRIVATE_DOCUMENT_PATHS.map((source) => ({ source, headers: privateDocumentHeaders() })),
     ]);
   },
   turbopack: {

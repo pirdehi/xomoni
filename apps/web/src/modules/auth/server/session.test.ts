@@ -10,7 +10,14 @@ import {
 } from '@test/server-helpers';
 import type { AuthGateway, FactorList } from '../application/ports';
 import { authDeps } from './deps';
-import { currentViewer, requireAccount, requireSecondFactorStep, requireViewer } from './session';
+import {
+  currentViewer,
+  requireAccount,
+  requireSecondFactorStep,
+  requireViewer,
+  sameSitePath,
+  secondFactorPath,
+} from './session';
 
 vi.mock('./deps', () => ({ authDeps: vi.fn() }));
 
@@ -94,6 +101,13 @@ describe('requireViewer', () => {
     const destination = await redirectOf(requireViewer(returnTo));
 
     expect(signInNext(destination)).toBe(returnTo);
+  });
+
+  it('sends a signed-out visitor on the way to the super-admin console to the console’s own sign-in (#516)', async () => {
+    for (const returnTo of ['/product', '/product/users?q=ada', '/product/document?v=2']) {
+      session(SIGNED_OUT);
+      expect(await redirectOf(requireViewer(returnTo))).toBe(`/product/login?next=${encodeURIComponent(returnTo)}`);
+    }
   });
 
   it('always redirects to this site’s sign-in page, whatever it is asked to return to', async () => {
@@ -209,5 +223,21 @@ describe('requireAccount', () => {
   it('treats an account record without verified claims as signed out', async () => {
     session({ currentClaims: () => Promise.resolve(null) });
     expect(await redirectOf(requireAccount('/account?tab=security'))).toBe('/login?next=%2Faccount%3Ftab%3Dsecurity');
+  });
+});
+
+describe('sign-in helpers for the console (#516)', () => {
+  it('keeps a same-site path and turns anything else into the fallback', () => {
+    expect(sameSitePath('/product/users?q=ada', '/product')).toBe('/product/users?q=ada');
+    for (const raw of ['https://evil.example/', '//evil.example', '/\\evil.example', null, undefined, '']) {
+      expect(sameSitePath(raw, '/product')).toBe('/product');
+    }
+  });
+
+  it('builds the code page that returns to a console page', () => {
+    expect(secondFactorPath('/product')).toBe('/login/two-factor?next=%2Fproduct');
+    expect(secondFactorPath('/product/users?q=a&page=2')).toBe(
+      '/login/two-factor?next=%2Fproduct%2Fusers%3Fq%3Da%26page%3D2',
+    );
   });
 });

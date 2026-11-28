@@ -84,6 +84,9 @@ Legend: ✅ done · 🔄 in progress · ⬜ to do · ⏸ waiting on the maintain
 | ✅ | Sign out of every session | [#83](https://github.com/pirdehi/xomoni/issues/83) | [#87](https://github.com/pirdehi/xomoni/pull/87) |
 | ✅ | Realtime channel private to each user; public access to channels off in Supabase since 14 November | [#81](https://github.com/pirdehi/xomoni/issues/81) | [#89](https://github.com/pirdehi/xomoni/pull/89) |
 | ⏸ | Google brand verification, so the consent screen says Xomoni | [#9](https://github.com/pirdehi/xomoni/issues/9) | |
+| ✅ | A private product document at `/product/document`, for super-admins only, kept only in the database ([ADR-0048](adr/0048-a-private-product-document-for-super-admins.md)) | [#514](https://github.com/pirdehi/xomoni/issues/514) | [#517](https://github.com/pirdehi/xomoni/pull/517) |
+| ✅ | A super-admin console at `/product` with its own sign-in: an overview, every account with sign out everywhere, suspend and delete, an audit log, and the private plan ([ADR-0048](adr/0048-a-private-product-document-for-super-admins.md#amended-2026-11-28-the-super-admin-console-516)) | [#516](https://github.com/pirdehi/xomoni/issues/516) | [#517](https://github.com/pirdehi/xomoni/pull/517) |
+| ✅ | The console's roadmap leads with the single direction, stage by stage, the program's live R1 and the plan's sources | [#522](https://github.com/pirdehi/xomoni/issues/522) | [#517](https://github.com/pirdehi/xomoni/pull/517) |
 
 ## Phase 4 · Extension: real-account pilot
 

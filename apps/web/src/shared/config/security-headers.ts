@@ -107,3 +107,37 @@ export function securityHeaders(settings: SecurityHeaderSettings): Header[] {
 export function embeddableHeaders(): Header[] {
   return [{ key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' }];
 }
+
+/**
+ * Where xomoni.com serves a private document, a whole HTML page with its own inline scripts and styles, to
+ * super-admins only (ADR-0048): the product document, linked from the super-admin console (#516). The console's own
+ * pages around it keep the site's policy. The page's routes are in the product-docs module.
+ */
+export const PRIVATE_DOCUMENT_PATHS = ['/product/document'] as const;
+
+/**
+ * The Content-Security-Policy of a private document, which replaces the site's on `PRIVATE_DOCUMENT_PATHS`. The page
+ * runs sandboxed with an opaque origin, so its scripts can never read xomoni.com's cookies, storage or session, even
+ * though they are allowed inline. It may load Google Fonts and data: images; it may not fetch anything, post a form,
+ * set a base URL or be framed. Links to other sites open in a new tab (`allow-popups-to-escape-sandbox`, so the new tab
+ * is an ordinary page).
+ */
+export function privateDocumentPolicy(): string {
+  return [
+    "default-src 'none'",
+    "script-src 'unsafe-inline'",
+    "style-src 'unsafe-inline' https://fonts.googleapis.com",
+    'font-src https://fonts.gstatic.com',
+    'img-src data:',
+    "connect-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+    'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox',
+  ].join('; ');
+}
+
+/** The headers that replace `securityHeaders`' for `PRIVATE_DOCUMENT_PATHS`: the document's own policy. */
+export function privateDocumentHeaders(): Header[] {
+  return [{ key: 'Content-Security-Policy', value: privateDocumentPolicy() }];
+}

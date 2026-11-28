@@ -33,6 +33,10 @@ src/
     dashboard/    the dashboard's places (/dashboard, /dashboard/<place>), devices and live job status, /connect, where the extension's Sign in finishes, /welcome, which Xomoni opens once installed (#244), and /weekly-email/stop with POST /api/weekly-email/stop, where the weekly email stops (ADR-0031)
     extension/    the Xomoni extension in this browser: one sign-in for the site and the extension (ADR-0025)
     landing/      the landing page at / and the install guide at /install
+    admin/        the super-admin console at /product (#516): its own sign-in at /product/login, the overview, users and
+                  their actions, the audit log and the maintainer's plan, for super-admins only
+    product-docs/ the private product document at /product/document and its versions at /product/documents, in the
+                  console, for super-admins only (ADR-0048)
   shared/
     config/       public site constants, the site URL and the security headers
     supabase/     Supabase client factories (server, browser, proxy)

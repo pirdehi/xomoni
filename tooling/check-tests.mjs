@@ -28,9 +28,11 @@ const EXEMPT = {
   'apps/extension/src/shared/messages.ts': 'message types only',
   'apps/extension/src/ui/navigation.ts': 'types only',
   'apps/extension/src/ui/main.tsx': 'entry point: mounts <App />, which has its own tests',
+  'apps/web/src/modules/admin/application/ports.ts': 'interfaces only',
   'apps/web/src/modules/auth/application/ports.ts': 'interfaces only',
   'apps/web/src/modules/dashboard/application/ports.ts': 'interfaces only',
   'apps/web/src/modules/extension/application/ports.ts': 'interfaces only',
+  'apps/web/src/modules/product-docs/application/ports.ts': 'interfaces only',
   'packages/db/src/database.types.ts': 'generated from the migrations; checked by the CI types-drift step',
   'packages/db/src/index.ts': 'type re-exports only',
 };

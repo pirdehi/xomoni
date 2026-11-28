@@ -1,14 +1,31 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
 import { getAccount, getSessionState } from '../application/use-cases';
-import { ROUTES, safeNextPath, twoFactorPath } from '../domain/routes';
+import { ROUTES, safeNextPath, signInPathFor, twoFactorPath } from '../domain/routes';
 import type { AccountDetails, Viewer } from '../domain/viewer';
 import { authDeps } from './deps';
 
 export type { AccountDetails, Viewer } from '../domain/viewer';
 
+// The super-admin console's pages have their own sign-in page (#516); every other page uses the site's.
 const signInFor = (returnTo?: string) =>
-  returnTo ? `${ROUTES.signIn}?next=${encodeURIComponent(returnTo)}` : ROUTES.signIn;
+  returnTo ? `${signInPathFor(returnTo)}?next=${encodeURIComponent(returnTo)}` : ROUTES.signIn;
+
+/**
+ * Turns an untrusted `next` value (a query parameter) into a same-site path, or `fallback`: absolute URLs,
+ * protocol-relative `//host` and backslash tricks fall back, so a link can't turn a sign-in into an open redirect.
+ */
+export function sameSitePath(raw: string | null | undefined, fallback: string): string {
+  return safeNextPath(raw, fallback);
+}
+
+/**
+ * The page that asks for a code from the account's authenticator app (#173), returning to `next` (a same-site path)
+ * afterwards.
+ */
+export function secondFactorPath(next: string): string {
+  return twoFactorPath(next);
+}
 
 /**
  * Data Access Layer entry point: the signed-in viewer, or `null`. A session that still owes a code from the account's
@@ -21,8 +38,9 @@ export async function currentViewer(): Promise<Viewer | null> {
 }
 
 /**
- * Like {@link currentViewer}, but sends signed-out visitors to sign in and back here afterwards, and a session that
- * owes a code to the code page and back (#173). This is the server's check of the session's `aal` claim: a page
+ * Like {@link currentViewer}, but sends signed-out visitors to sign in and back here afterwards (on the console's own
+ * sign-in page when `returnTo` is one of the console's pages, #516), and a session that owes a code to the code page
+ * and back (#173). This is the server's check of the session's `aal` claim: a page
  * behind it never renders for a stolen password or session alone when the account has an authenticator app.
  */
 export async function requireViewer(returnTo?: string): Promise<Viewer> {

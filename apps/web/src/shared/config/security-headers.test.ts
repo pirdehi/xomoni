@@ -8,6 +8,9 @@ import {
   GOOGLE_AVATARS,
   contentSecurityPolicy,
   embeddableHeaders,
+  PRIVATE_DOCUMENT_PATHS,
+  privateDocumentHeaders,
+  privateDocumentPolicy,
   securityHeaders,
 } from './security-headers';
 
@@ -130,5 +133,43 @@ describe('Trusted Types, reports, images and resource policy (#147)', () => {
     }
     expect(loaded.size).toBeGreaterThan(0);
     for (const file of loaded) expect(EMBEDDABLE_PATHS).toContain(file);
+  });
+});
+
+describe('private documents (ADR-0048)', () => {
+  const policy = privateDocumentPolicy();
+  const directives = new Map(
+    policy.split('; ').map((d) => {
+      const [name, ...values] = d.split(' ');
+      return [name!, values] as const;
+    }),
+  );
+
+  it('replaces the site’s policy only on /product/document, never on the console’s own pages (#516)', () => {
+    expect(PRIVATE_DOCUMENT_PATHS).toEqual(['/product/document']);
+    expect(privateDocumentHeaders()).toEqual([{ key: 'Content-Security-Policy', value: policy }]);
+  });
+
+  it('runs the document in a sandbox with an opaque origin: it never shares the site’s cookies or storage', () => {
+    const sandbox = directives.get('sandbox') ?? [];
+    expect(sandbox).toEqual(['allow-scripts', 'allow-popups', 'allow-popups-to-escape-sandbox']);
+    expect(sandbox).not.toContain('allow-same-origin');
+    expect(sandbox).not.toContain('allow-top-navigation');
+    expect(sandbox).not.toContain('allow-forms');
+  });
+
+  it('lets the document fetch nothing, post nothing and be framed by nothing', () => {
+    expect(directives.get('default-src')).toEqual(["'none'"]);
+    expect(directives.get('connect-src')).toEqual(["'none'"]);
+    expect(directives.get('form-action')).toEqual(["'none'"]);
+    expect(directives.get('frame-ancestors')).toEqual(["'none'"]);
+    expect(directives.get('base-uri')).toEqual(["'none'"]);
+  });
+
+  it('allows only its own inline scripts and styles, Google Fonts and data: images', () => {
+    expect(directives.get('script-src')).toEqual(["'unsafe-inline'"]);
+    expect(directives.get('style-src')).toEqual(["'unsafe-inline'", 'https://fonts.googleapis.com']);
+    expect(directives.get('font-src')).toEqual(['https://fonts.gstatic.com']);
+    expect(directives.get('img-src')).toEqual(['data:']);
   });
 });

@@ -2,9 +2,10 @@ import { addProductDocument, createConfirmedUser, makeSuperadmin } from './suppo
 import { PASSWORD, signIn, uniqueEmail } from './support/flows';
 import { expect, test } from './support/test';
 
-// The private product document at /product (ADR-0048): only a super-admin reads or updates it. The page runs in a
-// sandbox under its own Content-Security-Policy, so its scripts can't reach the site's cookies. Versions are seeded
-// with the local stack's service-role key, as the maintainer would with SQL.
+// The private product document at /product/document (ADR-0048), linked from the super-admin console (#516): only a
+// super-admin reads or updates it, its versions at /product/documents in the console. The page runs in a sandbox under
+// its own Content-Security-Policy, so its scripts can't reach the site's cookies. Versions are seeded with the local
+// stack's service-role key, as the maintainer would with SQL.
 
 /** A page whose script records whether it can read the site's cookies. */
 const page = (heading: string) =>
@@ -12,9 +13,9 @@ const page = (heading: string) =>
   `<script>try { document.body.dataset.cookies = String(document.cookie.length); } catch (e) { document.body.dataset.cookies = 'blocked'; }</script>` +
   `</body></html>`;
 
-test('a signed-out visitor is sent to sign in and back', async ({ page: browser }) => {
-  await browser.goto('/product');
-  await expect(browser).toHaveURL(/\/login\?next=%2Fproduct$/);
+test('a signed-out visitor is sent to the console’s sign-in and back', async ({ page: browser }) => {
+  await browser.goto('/product/document');
+  await expect(browser).toHaveURL(/\/product\/login\?next=%2Fproduct%2Fdocument$/);
 });
 
 test('an ordinary account gets a plain 404 at both addresses', async ({ page: browser }) => {
@@ -23,12 +24,13 @@ test('an ordinary account gets a plain 404 at both addresses', async ({ page: br
   await signIn(browser, email, PASSWORD);
   await expect(browser).toHaveURL(/\/dashboard$/);
 
-  const document = await browser.goto('/product');
+  const document = await browser.goto('/product/document');
   expect(document?.status()).toBe(404);
   await expect(browser.getByText('This page could not be found.')).toBeVisible();
 
-  // The manage page streams, so its 404 comes inside a 200 response; it shows nothing of the document.
-  await browser.goto('/product/manage');
+  // The versions page is a console page: the proxy answers anyone but a super-admin with a real 404 (#516).
+  const versions = await browser.goto('/product/documents');
+  expect(versions?.status()).toBe(404);
   await expect(browser.getByText('This page could not be found.')).toBeVisible();
   await expect(browser.getByRole('heading', { name: 'Product document' })).toHaveCount(0);
 });
@@ -44,7 +46,7 @@ test('a super-admin reads the document sandboxed, uploads a version and opens th
   await signIn(browser, email, PASSWORD);
   await expect(browser).toHaveURL(/\/dashboard$/);
 
-  const response = await browser.goto('/product');
+  const response = await browser.goto('/product/document');
   expect(response?.status()).toBe(200);
   const headers = response?.headers() ?? {};
   expect(headers['content-security-policy']).toContain('sandbox allow-scripts allow-popups');
@@ -56,7 +58,9 @@ test('a super-admin reads the document sandboxed, uploads a version and opens th
   await expect(browser.locator('body')).toHaveAttribute('data-cookies', 'blocked');
 
   await browser.getByRole('link', { name: 'Versions' }).click();
-  await expect(browser).toHaveURL(/\/product\/manage$/);
+  await expect(browser).toHaveURL(/\/product\/documents$/);
+  // In the console, with its sidebar.
+  await expect(browser.getByRole('navigation', { name: 'Console' })).toBeVisible();
   await expect(browser.getByRole('row', { name: first })).toContainText('current');
 
   const second = `${first} (second)`;
@@ -70,8 +74,8 @@ test('a super-admin reads the document sandboxed, uploads a version and opens th
   await expect(browser.getByRole('status')).toContainText(`Saved “${second}” as the current version.`);
   await expect(browser.getByRole('row', { name: second })).toContainText('current');
 
-  await browser.goto('/product');
+  await browser.goto('/product/document');
   await expect(browser.getByRole('heading', { name: second })).toBeVisible();
-  await browser.goto(`/product?v=${firstId}`);
+  await browser.goto(`/product/document?v=${firstId}`);
   await expect(browser.getByRole('heading', { name: first, exact: true })).toBeVisible();
 });

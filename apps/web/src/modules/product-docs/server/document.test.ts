@@ -36,14 +36,14 @@ function deps(
   return { signedIn: vi.fn(() => Promise.resolve({ id: 'u1' })), store: () => Promise.resolve(s) };
 }
 
-const get = (query = '') => new Request(`https://xomoni.com/product${query}`);
+const get = (query = '') => new Request(`https://xomoni.com/product/document${query}`);
 
 describe('versionParam', () => {
   it('reads a positive whole number, nothing, or anything else as invalid', () => {
-    expect(versionParam('https://xomoni.com/product')).toBeNull();
-    expect(versionParam('https://xomoni.com/product?v=12')).toBe(12);
+    expect(versionParam('https://xomoni.com/product/document')).toBeNull();
+    expect(versionParam('https://xomoni.com/product/document?v=12')).toBe(12);
     for (const bad of ['0', '-1', '1.5', 'abc', '', '01', '1e3', '9'.repeat(16)]) {
-      expect(versionParam(`https://xomoni.com/product?v=${bad}`)).toBe('invalid');
+      expect(versionParam(`https://xomoni.com/product/document?v=${bad}`)).toBe('invalid');
     }
   });
 });
@@ -60,14 +60,14 @@ describe('handleProductDocument', () => {
     expect(body).toContain('<h1>Brand engine</h1>');
     expect(body).toContain(MANAGE_LINK);
     expect(body).toContain(LINK_SCRIPT);
-    expect(d.signedIn).toHaveBeenCalledWith('/product');
+    expect(d.signedIn).toHaveBeenCalledWith('/product/document');
   });
 
   it('serves the version ?v= names, and returns to it after signing in', async () => {
     const d = deps(true);
     const response = await handleProductDocument(get('?v=1'), d);
     expect(await response.text()).toContain('old');
-    expect(d.signedIn).toHaveBeenCalledWith('/product?v=1');
+    expect(d.signedIn).toHaveBeenCalledWith('/product/document?v=1');
   });
 
   it('answers anyone signed in who is not a super-admin with a plain 404, whatever exists', async () => {
@@ -95,8 +95,10 @@ describe('handleProductDocument', () => {
 
   it('sends a signed-out visitor to sign in before touching the store', async () => {
     const storeFn = vi.fn();
-    const signedIn = vi.fn(() => Promise.reject(new NavigationThrow('/login?next=%2Fproduct')));
-    expect(await redirectOf(handleProductDocument(get(), { signedIn, store: storeFn }))).toBe('/login?next=%2Fproduct');
+    const signedIn = vi.fn(() => Promise.reject(new NavigationThrow('/product/login?next=%2Fproduct%2Fdocument')));
+    expect(await redirectOf(handleProductDocument(get(), { signedIn, store: storeFn }))).toBe(
+      '/product/login?next=%2Fproduct%2Fdocument',
+    );
     expect(storeFn).not.toHaveBeenCalled();
   });
 
@@ -115,7 +117,7 @@ describe('loadManageView', () => {
     expect(await loadManageView(d)).toEqual({
       versions: [{ id: 2, slug: 'product', title: 'New', createdAt: '2026-11-28T10:00:00Z' }],
     });
-    expect(d.signedIn).toHaveBeenCalledWith('/product/manage');
+    expect(d.signedIn).toHaveBeenCalledWith('/product/documents');
   });
 
   it('gives anyone else the site’s 404', async () => {

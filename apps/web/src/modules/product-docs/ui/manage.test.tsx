@@ -36,9 +36,12 @@ describe('ProductDocsManage', () => {
     expect(current).toHaveTextContent('Brand engine v2 · current');
     expect(current).toHaveTextContent('28 Nov 2026, 10:00 UTC');
     expect(older).not.toHaveTextContent('current');
-    expect(within(current).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/product');
-    expect(within(older).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/product?v=1');
-    expect(screen.getByRole('link', { name: 'Open the current version' })).toHaveAttribute('href', '/product');
+    expect(within(current).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/product/document');
+    expect(within(older).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/product/document?v=1');
+    const open = screen.getByRole('link', { name: 'Open the current version' });
+    expect(open).toHaveAttribute('href', '/product/document');
+    // The sandboxed document is a whole page of its own: it opens beside the console, not in place of it (#516).
+    for (const link of screen.getAllByRole('link')) expect(link).toHaveAttribute('target', '_blank');
   });
 
   it('says so when there is no version yet', () => {

@@ -2,7 +2,7 @@
 export interface ProductDocumentVersion {
   /** The version's id; versions are only ever added, never changed. */
   readonly id: number;
-  /** Which document this is a version of, e.g. `product` for xomoni.com/product. */
+  /** Which document this is a version of, e.g. `product` for xomoni.com/product/document. */
   readonly slug: string;
   /** The title shown above the document and in its version list. */
   readonly title: string;
@@ -16,8 +16,11 @@ export interface ProductDocument extends ProductDocumentVersion {
   readonly html: string;
 }
 
-/** The document xomoni.com/product shows. */
+/** The document xomoni.com/product/document shows. */
 export const PRODUCT_DOCUMENT_SLUG = 'product';
+
+/** Where the product document is served: xomoni.com/product/document, linked from the console's sidebar (#516). */
+export const PRODUCT_PATH = '/product/document';
 
 /**
  * The largest page that may be stored, in bytes. The database refuses anything over 1,000,000; this leaves room for
@@ -66,8 +69,8 @@ export function checkDocument(input: { readonly title: string; readonly html: st
 export const LINK_SCRIPT =
   '<script>document.addEventListener("click",function(e){var a=e.target instanceof Element?e.target.closest("a[href]"):null;if(a&&/^https?:/i.test(a.getAttribute("href")||"")){a.target="_blank";a.rel="noopener noreferrer";}},true);</script>';
 
-/** Where a super-admin uploads a new version and opens an older one. */
-export const MANAGE_PATH = '/product/manage';
+/** Where a super-admin uploads a new version and opens an older one: the console's *Versions* page (#516). */
+export const MANAGE_PATH = '/product/documents';
 
 /**
  * A small fixed link to {@link MANAGE_PATH}, added to every served document, in the page's lower left corner. It

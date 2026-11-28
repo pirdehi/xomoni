@@ -50,6 +50,7 @@ describe('prepareDocumentHtml', () => {
     expect(out).toContain(`${MANAGE_LINK}\n${LINK_SCRIPT}\n</body>`);
     expect(out.indexOf(LINK_SCRIPT)).toBeGreaterThan(out.indexOf('<p>hi</p>'));
     expect(MANAGE_LINK).toContain(`href="${MANAGE_PATH}"`);
+    expect(MANAGE_PATH).toBe('/product/documents');
   });
 
   it('opens only links to other sites in a new tab, so links inside the document keep working', () => {

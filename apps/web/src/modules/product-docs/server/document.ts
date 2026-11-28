@@ -7,17 +7,18 @@ import type { ProductDocumentStore } from '../application/ports';
 import {
   MANAGE_PATH,
   PRODUCT_DOCUMENT_SLUG,
+  PRODUCT_PATH,
   prepareDocumentHtml,
   type ProductDocumentVersion,
 } from '../domain/document';
 import { createSupabaseProductDocumentStore } from '../infrastructure/supabase-product-docs';
 
-/** Where the product document is served: xomoni.com/product (ADR-0048). */
-export const PRODUCT_PATH = '/product';
-
 /** What the document's routes need; tests replace them. */
 export interface ProductDocsDeps {
-  /** Sends a signed-out visitor to sign in and back to `returnTo`; resolves once someone is signed in. */
+  /**
+   * Sends a signed-out visitor to sign in (the console's sign-in, for these paths) and back to `returnTo`; resolves once
+   * someone is signed in.
+   */
   readonly signedIn: (returnTo: string) => Promise<unknown>;
   /** The store, as the signed-in person. */
   readonly store: () => Promise<ProductDocumentStore>;
@@ -52,7 +53,7 @@ export function versionParam(url: string): number | null | 'invalid' {
 }
 
 /**
- * `GET /product`: the product document, for super-admins only (ADR-0048). A signed-out visitor is sent to sign in and
+ * `GET /product/document`: the product document, for super-admins only (ADR-0048). A signed-out visitor is sent to sign in and
  * back. Anyone else signed in gets the same 404 as an address that doesn't exist, so the route says nothing about
  * what it holds. A super-admin gets the newest version, or the one `?v=` names, as a whole page with the versions link
  * and the link script added; the page runs sandboxed under its own policy, so its scripts can't reach the site.
@@ -84,7 +85,7 @@ export interface ManageView {
 }
 
 /**
- * The manage page's data (`/product/manage`): sends a signed-out visitor to sign in and back; anyone signed in who
+ * The versions page's data (`/product/documents`, in the console, #516): sends a signed-out visitor to sign in and back; anyone signed in who
  * isn't a super-admin gets the site's 404.
  */
 export async function loadManageView(deps: ProductDocsDeps = defaultDeps): Promise<ManageView> {

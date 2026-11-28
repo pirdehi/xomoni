@@ -1,19 +1,32 @@
 import 'server-only';
 import type { NextRequest, NextResponse } from 'next/server';
 import { createProxySupabase } from '@/shared/supabase/proxy';
-import { isGuestOnly, requiresSession, ROUTES, safeNextPath } from '../domain/routes';
+import {
+  isConsolePage,
+  isGuestOnly,
+  NOT_FOUND_PATH,
+  requiresSession,
+  ROUTES,
+  safeNextPath,
+  signInPathFor,
+} from '../domain/routes';
 import { assuranceOf, secondFactorNeeded } from '../domain/two-factor';
 import type { IdentityClaims } from '../domain/viewer';
+import { isSuperadmin } from '../infrastructure/supabase-superadmin';
 import { createSupabaseTwoFactorGateway } from '../infrastructure/supabase-two-factor-gateway';
 
 /**
  * Runs in the proxy for auth-related paths: refreshes the session cookie, then does the optimistic
- * redirects (signed out on a protected page → sign in; signed in on a guest-only page → dashboard; a session that
- * still owes a code from the account's authenticator app → the code page, #173). Pages still verify the viewer
- * themselves (`requireViewer`); this is not the security boundary.
+ * redirects (signed out on a protected page → sign in, on the console's own sign-in page for the console's pages, #516;
+ * signed in on a guest-only page → dashboard; a session that still owes a code from the account's authenticator app →
+ * the code page, #173). Pages still verify the viewer themselves (`requireViewer`); this is not the security boundary.
+ *
+ * The super-admin console's pages (#516) open only to a super-admin: anyone else signed in gets the site's 404 page with
+ * a real 404 status before anything renders (a page's own `notFound()` streams inside a 200 under Cache Components), and
+ * before any request for a code, so nothing tells them the console exists. The pages and actions check again.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
-  const { supabase, response, redirect } = createProxySupabase(request);
+  const { supabase, response, redirect, rewrite } = createProxySupabase(request);
 
   // Must run before anything else so a refreshed token reaches the response.
   const { data } = await supabase.auth.getClaims();
@@ -39,7 +52,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // page: otherwise the sign-in page and a protected page would send the browser back and forth.
   const signedIn = !!claims && factors !== null;
 
-  if (!signedIn && requiresSession(path)) return redirect(onThisSite(ROUTES.signIn, here));
+  // The console's pages send to the console's own sign-in (#516).
+  if (!signedIn && requiresSession(path)) return redirect(onThisSite(signInPathFor(path), here));
+  if (signedIn && isConsolePage(path) && !(await isSuperadmin(supabase))) {
+    const notFound = rewrite(onThisSite(NOT_FOUND_PATH));
+    notFound.headers.set('Cache-Control', 'private, no-store');
+    return notFound;
+  }
   if (signedIn && guarded) {
     if (secondFactorNeeded(level, (factors?.verified.length ?? 0) > 0)) {
       // A guest page's own `next` is untrusted: only a same-site path is kept.

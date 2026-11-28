@@ -145,8 +145,8 @@ describe('private documents (ADR-0048)', () => {
     }),
   );
 
-  it('replaces the site’s policy only on /product', () => {
-    expect(PRIVATE_DOCUMENT_PATHS).toEqual(['/product']);
+  it('replaces the site’s policy only on /product/document, never on the console’s own pages (#516)', () => {
+    expect(PRIVATE_DOCUMENT_PATHS).toEqual(['/product/document']);
     expect(privateDocumentHeaders()).toEqual([{ key: 'Content-Security-Policy', value: policy }]);
   });
 

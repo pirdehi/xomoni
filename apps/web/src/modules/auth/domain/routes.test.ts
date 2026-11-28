@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { isGuestOnly, requiresSession, ROUTES, safeNextPath, twoFactorPath, withNext } from './routes';
+import {
+  isConsolePage,
+  isGuestOnly,
+  NOT_FOUND_PATH,
+  requiresSession,
+  ROUTES,
+  safeNextPath,
+  signInPathFor,
+  twoFactorPath,
+  withNext,
+} from './routes';
 
 describe('safeNextPath', () => {
   it('keeps same-site paths with query and hash', () => {
@@ -38,9 +48,15 @@ describe('route policy', () => {
     expect(requiresSession('/dashboard/devices')).toBe(true);
     expect(requiresSession('/dashboards')).toBe(false);
     expect(requiresSession('/product')).toBe(true);
-    expect(requiresSession('/product/manage')).toBe(true);
+    expect(requiresSession('/product/users')).toBe(true);
+    expect(requiresSession('/product/document')).toBe(true);
     expect(requiresSession('/products')).toBe(false);
     expect(requiresSession('/')).toBe(false);
+  });
+
+  it('lets anyone open the console’s own sign-in page, signed in or not (#516)', () => {
+    expect(requiresSession('/product/login')).toBe(false);
+    expect(isGuestOnly('/product/login')).toBe(false);
   });
 
   it('treats the sign-in page as guest-only', () => {
@@ -96,5 +112,32 @@ describe('twoFactorPath (#173)', () => {
   it('is neither guest-only nor behind the session check itself: its page guards it', () => {
     expect(isGuestOnly(ROUTES.twoFactor)).toBe(false);
     expect(requiresSession(ROUTES.twoFactor)).toBe(false);
+  });
+});
+
+describe('the super-admin console (#516)', () => {
+  it('names the console’s pages: everything under /product but its sign-in and the document route', () => {
+    for (const path of ['/product', '/product/users', '/product/users/u2', '/product/audit', '/product/documents']) {
+      expect(isConsolePage(path)).toBe(true);
+    }
+    for (const path of ['/product/login', '/product/document', '/products', '/dashboard', '/']) {
+      expect(isConsolePage(path)).toBe(false);
+    }
+  });
+
+  it('sends a visitor on the way to the console to the console’s own sign-in, and everyone else to the site’s', () => {
+    expect(signInPathFor('/product')).toBe('/product/login');
+    expect(signInPathFor('/product/users?q=ada&page=2')).toBe('/product/login');
+    expect(signInPathFor('/product/document?v=3')).toBe('/product/login');
+    expect(signInPathFor('/product/login')).toBe('/login');
+    expect(signInPathFor('/products')).toBe('/login');
+    expect(signInPathFor('/dashboard')).toBe('/login');
+    expect(signInPathFor(null)).toBe('/login');
+  });
+
+  it('answers a stranger with an address no page has, so the site’s own 404 shows', () => {
+    expect(NOT_FOUND_PATH.startsWith('/_')).toBe(true);
+    expect(isConsolePage(NOT_FOUND_PATH)).toBe(false);
+    expect(requiresSession(NOT_FOUND_PATH)).toBe(false);
   });
 });

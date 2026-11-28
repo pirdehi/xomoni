@@ -15,17 +15,10 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type SubmitEvent } from 'react';
 import { browserProductDocs } from '../client/product-docs';
-import { ADD_PROBLEM_MESSAGES, type ProductDocumentVersion } from '../domain/document';
+import { ADD_PROBLEM_MESSAGES, PRODUCT_PATH, type ProductDocumentVersion } from '../domain/document';
 
 const useStyles = makeStyles({
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalXXL,
-    maxWidth: '760px',
-    margin: '0 auto',
-    padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalL}`,
-  },
+  page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXL, maxWidth: '760px' },
   title: { ...typographyStyles.title2, margin: 0 },
   section: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   heading: { ...typographyStyles.subtitle1, margin: 0 },
@@ -44,8 +37,9 @@ const when = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC';
 
 /**
- * `/product/manage` for a super-admin (ADR-0048): open the product document, upload a new version as an HTML file,
- * and open any earlier version. Versions are never changed or deleted, only added.
+ * `/product/documents` for a super-admin (ADR-0048), inside the console (#516), which draws the page around it: open the
+ * product document, upload a new version as an HTML file, and open any earlier version. Versions are never changed or
+ * deleted, only added. Each version opens in a new tab, as the sandboxed document is a whole page of its own.
  */
 export function ProductDocsManage({ versions }: { versions: readonly ProductDocumentVersion[] }) {
   const s = useStyles();
@@ -74,10 +68,12 @@ export function ProductDocsManage({ versions }: { versions: readonly ProductDocu
   }
 
   return (
-    <main className={s.page}>
+    <div className={s.page}>
       <h1 className={s.title}>Product document</h1>
       <p>
-        <Link href="/product">Open the current version</Link>
+        <Link href={PRODUCT_PATH} target="_blank" rel="noopener">
+          Open the current version
+        </Link>
       </p>
 
       <section className={s.section} aria-labelledby="upload-heading">
@@ -145,7 +141,13 @@ export function ProductDocsManage({ versions }: { versions: readonly ProductDocu
                   </td>
                   <td className={s.cell}>{when(version.createdAt)}</td>
                   <td className={s.cell}>
-                    <Link href={index === 0 ? '/product' : `/product?v=${version.id}`}>Open</Link>
+                    <Link
+                      href={index === 0 ? PRODUCT_PATH : `${PRODUCT_PATH}?v=${version.id}`}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      Open
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -153,6 +155,6 @@ export function ProductDocsManage({ versions }: { versions: readonly ProductDocu
           </table>
         )}
       </section>
-    </main>
+    </div>
   );
 }

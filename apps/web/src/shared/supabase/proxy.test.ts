@@ -104,4 +104,27 @@ describe('createProxySupabase', () => {
 
     expect(redirect(new URL('https://xomoni.test/login')).headers.get('cache-control')).toBe(NO_STORE);
   });
+
+  it('builds rewrites that keep the refreshed cookies and their no-store headers (#516)', async () => {
+    const { rewrite } = createProxySupabase(request('sb-auth-token=old'));
+    await cookieAdapter().setAll?.([{ name: 'sb-auth-token', value: 'new', options: { path: '/' } }], {
+      'Cache-Control': NO_STORE,
+    });
+
+    const res = rewrite(new URL('https://xomoni.test/_console-not-found'));
+
+    expect(res.headers.get('x-middleware-rewrite')).toBe('https://xomoni.test/_console-not-found');
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.cookies.get('sb-auth-token')?.value).toBe('new');
+    expect(res.headers.get('cache-control')).toBe(NO_STORE);
+  });
+
+  it('builds plain rewrites when nothing was refreshed', () => {
+    const { rewrite } = createProxySupabase(request());
+
+    const res = rewrite(new URL('https://xomoni.test/_console-not-found'));
+
+    expect(res.headers.get('x-middleware-rewrite')).toBe('https://xomoni.test/_console-not-found');
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
 });

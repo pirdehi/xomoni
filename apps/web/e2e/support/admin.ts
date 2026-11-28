@@ -222,7 +222,10 @@ export async function makeSuperadmin(userId: string): Promise<void> {
   });
 }
 
-/** Stores a version of the product document at `/product`, as the maintainer may with SQL (ADR-0048); returns its id. */
+/**
+ * Stores a version of the product document at `/product/document`, as the maintainer may with SQL (ADR-0048); returns
+ * its id.
+ */
 export async function addProductDocument(authorId: string, title: string, html: string): Promise<number> {
   const [row] = await call<{ id: number }[]>('/rest/v1/product_documents', {
     method: 'POST',

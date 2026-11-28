@@ -110,9 +110,10 @@ export function embeddableHeaders(): Header[] {
 
 /**
  * Where xomoni.com serves a private document, a whole HTML page with its own inline scripts and styles, to
- * super-admins only (ADR-0048). The page's routes are in the product-docs module.
+ * super-admins only (ADR-0048): the product document, linked from the super-admin console (#516). The console's own
+ * pages around it keep the site's policy. The page's routes are in the product-docs module.
  */
-export const PRIVATE_DOCUMENT_PATHS = ['/product'] as const;
+export const PRIVATE_DOCUMENT_PATHS = ['/product/document'] as const;
 
 /**
  * The Content-Security-Policy of a private document, which replaces the site's on `PRIVATE_DOCUMENT_PATHS`. The page

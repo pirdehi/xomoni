@@ -40,8 +40,26 @@ const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&
 /** The text of the fixture account's two posts, newest first, as the Library lists them. */
 const POSTS = ["Another made-up post, with no one's words in it.", "A made-up post for Xomoni's browser tests."];
 
+/** The tables of version 1 of the move file, in its order (`CORE_MOVE_TABLES` in `apps/extension/src/shared/move-file.ts`). */
+const CORE_TABLES = [
+  'accounts',
+  'items',
+  'jobs',
+  'logs',
+  'limits',
+  'reads',
+  'risk',
+  'checks',
+  'daily',
+  'incoming',
+  'kv',
+];
+
+/** The vault's tables, which version 2 adds after the core ones (`VAULT_TABLE_NAMES`, #424). */
+const VAULT_TABLES = ['vaultImports', 'analyticsPosts', 'analyticsDays', 'accountEvents'];
+
 /** The tables a move file carries, in its order (`MOVE_TABLES` in `apps/extension/src/shared/move-file.ts`). */
-const TABLES = ['accounts', 'items', 'jobs', 'logs', 'limits', 'reads', 'risk', 'checks', 'daily', 'incoming', 'kv'];
+const TABLES = [...CORE_TABLES, ...VAULT_TABLES];
 
 /** What a move file says about itself, which its checksum covers with the data. */
 interface MoveHeader {
@@ -204,7 +222,7 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
     await expect(toasts(dashboard)).toContainText(
       `Saved ${name}. It stays on your computer: Xomoni never sends it anywhere.`,
     );
-    expect(file).toMatchObject({ format: 'xomoni-export', version: 1, app: VERSION });
+    expect(file).toMatchObject({ format: 'xomoni-export', version: 2, app: VERSION });
     expect(Date.parse(file.exportedAt)).toBeGreaterThan(Date.now() - 60_000);
     // The checksum covers the header and the data, so a change anywhere shows.
     expect(file.checksum).toBe(checksumOf(file));
@@ -373,7 +391,7 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
       const { checksum: _, ...rest } = file;
       await pick(
         moveCard(dashboard).getByRole('button', { name: 'Import from a file' }),
-        upload(sealed({ ...rest, version: 2 })),
+        upload(sealed({ ...rest, version: 3 })),
       );
       await expect(refusal(dashboard)).toContainText(
         'This file was made by a newer Xomoni. Update this Xomoni first, then import it. Nothing was imported.',
@@ -842,5 +860,91 @@ test.describe('move your data to a new Xomoni', { tag: '@task-300' }, () => {
     await openPage(second, 'Activity');
     await second.getByRole('tab', { name: 'Log' }).click();
     await expect(second.getByRole('main')).toContainText(`Moved in from Xomoni ${VERSION} (exported`);
+  });
+
+  test('S300-29 the vault moves: its ledger, analytics and timeline arrive whole, and stay after a reload', async ({
+    dashboard,
+    page,
+    newXomoni,
+  }) => {
+    const { file } = await exportedCopy(dashboard, page);
+    const id = FIXTURE_ACCOUNT.id;
+    const at = Date.now() - 3_600_000;
+    // Synthetic rows, shaped as the vault writes them (ADR-0043); the post id is one X never issued.
+    const vault = {
+      vaultImports: [
+        {
+          id: `${id}:x-archive:${at}:abc123`,
+          accountId: id,
+          source: 'x-archive',
+          fileName: 'twitter-2026-11-08-abc.zip',
+          bytes: 2048,
+          fingerprint: 'zip:00112233445566778899aabbccddeeff',
+          importedAt: at,
+          coverFrom: null,
+          coverTo: at - 86_400_000,
+          counts: { read: 2, merged: 2, skipped: 0, parts: { tweets: 2 } },
+          parser: 'x-archive@1',
+          problems: [],
+        },
+      ],
+      analyticsPosts: [
+        {
+          key: `${id}:9000000000000000001`,
+          accountId: id,
+          postId: '9000000000000000001',
+          createdAt: at - 86_400_000,
+          asOf: at,
+          impressions: 1200,
+          likes: 9,
+        },
+      ],
+      analyticsDays: [{ accountId: id, day: '2026-11-01', asOf: at, impressions: 3000, newFollows: 2 }],
+      accountEvents: [
+        { accountId: id, kind: 'note', at, source: 'person', words: '<img src=x onerror=alert(1)> appealed' },
+      ],
+    };
+    const { checksum: _, ...rest } = file;
+    const withVault = sealed({ ...rest, data: { ...rest.data, ...vault } });
+
+    const other = await newXomoni();
+    const fresh = other.dashboard;
+    await pick(offer(fresh).getByRole('button', { name: 'Import your data' }), upload(withVault));
+    await importDialog(fresh).getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(imported(fresh)).toBeVisible();
+    await fresh.reload();
+    await expect(fresh.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+    // The markup stays text: nothing on the page ran it.
+    await expect(fresh.locator('img[src="x"]')).toHaveCount(0);
+
+    const again = await exportEverything(fresh);
+    for (const table of VAULT_TABLES) {
+      expect(rows(again.file, table), table).toEqual(vault[table as keyof typeof vault]);
+    }
+  });
+
+  test('S300-30 a file from a Xomoni before the vault, version 1, still imports', async ({
+    dashboard,
+    page,
+    newXomoni,
+  }) => {
+    const { file } = await exportedCopy(dashboard, page);
+    const { checksum: _, ...rest } = file;
+    const core = Object.fromEntries(CORE_TABLES.map((table) => [table, rest.data[table]]));
+    const versionOne = sealed({ ...rest, version: 1, data: core });
+
+    const { dashboard: fresh } = await newXomoni();
+    await pick(offer(fresh).getByRole('button', { name: 'Import your data' }), upload(versionOne));
+    await expect(importDialog(fresh)).toContainText(
+      `@${FIXTURE_ACCOUNT.handle}: 2 posts, replies and reposts · 0 likes`,
+    );
+    await importDialog(fresh).getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(imported(fresh)).toBeVisible();
+    await openLibrary(fresh);
+    await expect(libraryRows(fresh)).toHaveCount(2);
+
+    const again = await exportEverything(fresh);
+    expect(again.file.version).toBe(2);
+    for (const table of VAULT_TABLES) expect(rows(again.file, table), table).toEqual([]);
   });
 });

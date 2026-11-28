@@ -213,6 +213,10 @@ describe('Move your data in Settings (#300)', () => {
       daily: 0,
       incoming: 0,
       kv: 0,
+      vaultImports: 0,
+      analyticsPosts: 0,
+      analyticsDays: 0,
+      accountEvents: 0,
     };
     expect(describeResult({ added: none, updated: none })).toBe(
       'Everything in the file was already here. Nothing was replaced with less or deleted, and nothing started on X.',

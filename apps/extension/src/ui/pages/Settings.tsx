@@ -334,6 +334,12 @@ export function SettingsPage({ account, worker }: PageProps) {
                 )}
               </div>
               <Toggle
+                checked={settings.vaultReminders}
+                onChange={(vaultReminders) => save((s) => ({ ...s, vaultReminders }))}
+                label="Vault reminders"
+                description="A reminder on this computer, at most once a day, when X’s archive or analytics export in your vault is due for a fresh copy. It never opens X or starts anything."
+              />
+              <Toggle
                 checked={settings.whileAway}
                 onChange={(whileAway) => save((s) => ({ ...s, whileAway }))}
                 label="Keep going while I’m away"

@@ -83,7 +83,8 @@ export type XomoniReadRequest =
   | { what: 'settings' }
   | { what: 'cleanup'; plan: CleanupPlan }
   | { what: 'replies'; filter: RepliesFilter; offset: number }
-  | { what: 'incoming'; author: string; query: string; offset: number };
+  | { what: 'incoming'; author: string; query: string; offset: number }
+  | { what: 'vault' };
 
 /** What `useXomoni` gives a page. */
 export interface XomoniControls {
@@ -484,8 +485,20 @@ export function XomoniJobActions({
   );
 }
 
-/** *Open in Xomoni* for a place whose data and actions live in Xomoni: opens that page, or the dialog. */
-export function OpenInXomoni({ xomoni, page }: { xomoni: XomoniControls; page: XomoniPage }) {
+/**
+ * *Open in Xomoni* for a place whose data and actions live in Xomoni: opens that page, or the dialog. `label` names the
+ * button where a page shows two places with one, such as *Open the vault in Xomoni* beside the Library's, so that each
+ * button's name says where it goes.
+ */
+export function OpenInXomoni({
+  xomoni,
+  page,
+  label = 'Open in Xomoni',
+}: {
+  xomoni: XomoniControls;
+  page: XomoniPage;
+  label?: string;
+}) {
   const busy = xomoni.busy === `open:${page}`;
   return (
     <Button
@@ -494,7 +507,7 @@ export function OpenInXomoni({ xomoni, page }: { xomoni: XomoniControls; page: X
       disabled={xomoni.busy !== null}
       onClick={() => void xomoni.request({ kind: 'open', page })}
     >
-      Open in Xomoni
+      {label}
     </Button>
   );
 }

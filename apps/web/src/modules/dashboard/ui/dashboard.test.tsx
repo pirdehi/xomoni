@@ -24,6 +24,8 @@ vi.mock('@/modules/extension/ui/extension-session-sync', () => ({
 const xomoni = vi.hoisted(() => ({
   ask: vi.fn((_request: unknown) => Promise.resolve({ ok: true as const, outcome: 'stopping' as const })),
   recheck: vi.fn(() => Promise.resolve()),
+  // The places that read from Xomoni (the Library, the vault) get no answer here: what they show has its own tests.
+  read: vi.fn((_request: unknown) => Promise.resolve(null)),
 }));
 vi.mock('@/modules/extension/client/xomoni-actions', () => ({ createXomoniActionServices: () => xomoni }));
 
@@ -851,9 +853,22 @@ describe('Dashboard', () => {
       unmount();
       const library = renderDashboard({ devices: [device()], jobs: [] }, 'library');
       expect(screen.getByRole('region', { name: 'Your Library: in Xomoni' })).toBeInTheDocument();
+      // The vault sits beside the Library (#426).
+      expect(screen.getByRole('region', { name: 'Your vault: in Xomoni' })).toBeInTheDocument();
       library.unmount();
       renderDashboard({ devices: [device()], jobs: [] }, 'cleanup');
       expect(screen.getByRole('heading', { name: '1 · What to remove' })).toBeInTheDocument();
+    });
+
+    it('names the vault’s button apart from the Library’s beside it, so each says where it goes (#426)', async () => {
+      xomoni.ask.mockClear().mockResolvedValueOnce({ ok: true, outcome: 'opened' } as never);
+      link.current = { status: 'signed-in', deviceId: 'dev-1' };
+      renderDashboard({ devices: [device()], jobs: [] }, 'library');
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Open the vault in Xomoni' }));
+
+      expect(xomoni.ask).toHaveBeenCalledWith({ kind: 'open', page: 'vault', deviceId: 'dev-1' });
+      expect(screen.queryAllByRole('button', { name: 'Open in Xomoni' }).length).toBeLessThanOrEqual(1);
     });
 
     it('offers no Open in Xomoni where the data will come from the cloud', () => {

@@ -4,9 +4,28 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Changed
+
+- **The privacy policy names the vault** (#426). It says the files of X's you import into the vault, your archive and X's analytics, stay on your computer and are never sent anywhere; that *Export my vault* saves one ZIP in your Downloads, never uploaded; and that xomoni.com sees only how many rows the vault holds and how recent its files are.
+
+- **X's archive, known when it comes again** (#424). Each import of X's archive in the Library is now kept in Xomoni's import ledger, on your computer only, with the date X made the archive, and it goes on your account's timeline. Drop the same ZIP again and Xomoni knows it: nothing is read or written twice. The Library's words, its limits and its checks, another account's archive first of all, are the same as before.
+
 ### Added
 
 - **Terms of sale and a refund policy, as drafts for approval** (#420). xomoni.com has the terms of the coming paid plans, sold by Polar as merchant of record, a refund policy, and the privacy page's part about what is kept when you buy a plan (the plan and its dates, never your card or anything about your X account). They promise nothing about results on X. They are drafts waiting for the maintainer's approval, so xomoni.com shows them only once they are approved; until then /terms-of-sale and /refunds aren't found and nothing links to them.
+
+- **A reminder to keep your X files fresh** (#425). Once X's archive in your vault is 30 days old, or X's analytics export 60, Xomoni reminds you on this computer, at most once a day and only within your active hours. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off. It never opens X or starts anything, and asks for no new permission.
+
+- **The vault: X's own files, kept on your computer** (#425, #424). A new *Vault* page in the dashboard:
+  - drop or choose X's archive (the ZIP) and its analytics export (CSV of posts or of days), together if you like. *Import these files?* says what was recognized, for which account and with what warning, before anything is written: a file already imported, a CSV whose owner you confirm, and every refused file with why;
+  - *Your sources* says how fresh each file is and what it holds, *Imports* lists every import with what it left out, and *Account timeline* keeps X Premium seen on or off, your archive's request and import, and your own notes, with *Export CSV*;
+  - a reminder, at most once a day and within your active hours, says when the archive (30 days) or the analytics (60) is due for a fresh copy. *Not now* quiets it for a week, and *Vault reminders* in Settings turns it off.
+
+  Everything stays on your computer. The vault never opens X, scrolls, clicks or starts anything there, and asks for no new permission.
+
+- **Export my vault** (#426). On the Vault page, one ZIP of your vault that you keep and read without Xomoni: each part as CSV for spreadsheets and JSON for other tools, `README.txt` with every column, `schema.json` (`xomoni-vault-export@1`) and a page any browser opens, with no script. Choose the parts, the formats and the dates; the replies others wrote to you come only if you tick them. A cell that starts like a formula gets a `'`, so a spreadsheet never runs it. The ZIP is made on your computer and saved in Downloads; *Cancel* saves nothing.
+
+- **Your vault, on xomoni.com** (#426). Beside the Library, *Your vault* shows what the vault in Xomoni holds: each of X's files with how fresh it is and what it holds, the day X made your newest archive and how many imports, read in your browser as counts and dates only, and *Open the vault in Xomoni*. Nothing of it reaches our servers, and the website never imports anything.
 
 ## [0.6.0] - 2026-11-24
 

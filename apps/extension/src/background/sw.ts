@@ -8,8 +8,11 @@ import { db, kvSet, recordProfileDay, upsertAccount, upsertItems } from '../shar
 import { saveIncoming } from '../shared/incoming';
 import { fromXPage, parseRuntimeMessage } from '../shared/inbound';
 import type { RuntimeMessage } from '../shared/messages';
-import { ATTENTION_ID } from '../shared/notify';
+import { ATTENTION_ID, notify } from '../shared/notify';
+import { vaultNotificationAccount } from '../shared/notification-ids';
 import { getSignedOut } from '../shared/session';
+import { remindIfDue, snoozeVault } from '../shared/vault/freshness';
+import { notePremium } from '../shared/vault/timeline';
 import { recentUpdate } from '../shared/update-record';
 import { suggestArchivePath } from './archive-downloads';
 
@@ -58,8 +61,23 @@ chrome.action.onClicked.addListener(() => void openDashboard());
 
 chrome.notifications.onClicked.addListener((id) => {
   void chrome.notifications.clear(id);
-  void (id === ATTENTION_ID ? focusWorker() : openDashboard());
+  // A vault reminder opens the Vault page (#425); it never opens X or starts anything.
+  void (id === ATTENTION_ID ? focusWorker() : openDashboard(vaultNotificationAccount(id) ? '#/vault' : ''));
 });
+
+// A vault reminder's *Not now* (#425): no reminder for that account for 7 days.
+chrome.notifications.onButtonClicked.addListener((id, button) => {
+  const accountId = vaultNotificationAccount(id);
+  if (!accountId || button !== 0) return;
+  void chrome.notifications.clear(id);
+  void snoozeVault(accountId);
+});
+
+/** Whether a dashboard tab is open: then it gives the vault's reminders itself (`VaultFollowUp`). */
+async function dashboardOpen(): Promise<boolean> {
+  const tabs = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] });
+  return tabs.some((c) => c.documentUrl?.startsWith(DASHBOARD));
+}
 
 // X's archive goes into Downloads/Xomoni while Xomoni expects it, since Chrome won't let Xomoni read Downloads (#196).
 chrome.downloads.onDeterminingFilename.addListener(suggestArchivePath);
@@ -118,7 +136,13 @@ async function handle(message: RuntimeMessage) {
     case 'profile': {
       const { profile } = message;
       const at = Date.now();
+      const before = await db.accounts.get(profile.id);
       await upsertAccount({ ...profile, profileAt: at });
+      // A change of X Premium on the person's own profile goes on the timeline once (#425), never at every sighting.
+      await notePremium(before, profile.verified, at);
+      // The vault's reminder when X's page is seen and no dashboard is open to give it (#425): no alarm, no new
+      // permission, at most once a day per account, within active hours.
+      if (!(await dashboardOpen())) await remindIfDue({ id: profile.id, handle: profile.handle }, at, notify);
       // The day's profile counts, from the page X already showed (#249): never a request of its own.
       await recordProfileDay(profile.id, profile, at);
       break;

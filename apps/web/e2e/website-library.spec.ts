@@ -233,7 +233,9 @@ test.describe('the Library, Watch and account health on xomoni.com', { tag: '@ta
     page,
   }) => {
     const fake = await openPlace(page, 'library');
-    await expect(page.getByText('Read from Xomoni in this browser: nothing here reaches our servers.')).toBeVisible();
+    await expect(
+      page.getByText('Read from Xomoni in this browser: nothing here reaches our servers.', { exact: true }),
+    ).toBeVisible();
     await expect(tab(page, /^Posts 2$/)).toHaveAttribute('aria-selected', 'true');
     await expect(tab(page, /^Replies 1$/)).toBeVisible();
     await expect(tab(page, /^Reposts 1$/)).toBeVisible();

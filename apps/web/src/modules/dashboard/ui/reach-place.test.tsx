@@ -174,6 +174,9 @@ describe('ReachPlace', () => {
     );
     render(<ReachPlace xomoni={xomoni} />);
     expect(await screen.findByText(REACH_EMPTY_WORDS)).toBeInTheDocument();
+    // Honest about today's one source, as the extension's Reach: no analytics export and no Premium on offer.
+    expect(REACH_EMPTY_WORDS).toContain('the views X shows on your own posts and replies');
+    expect(REACH_EMPTY_WORDS).not.toMatch(/analytics|premium/i);
     expect(screen.queryByRole('region', { name: 'Comparisons' })).not.toBeInTheDocument();
   });
 

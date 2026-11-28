@@ -42,4 +42,24 @@ describe('LegalPage', () => {
       'true',
     );
   });
+
+  it('says under the title that a text is a draft, not yet in force, until it is approved (#420)', () => {
+    render(
+      <LegalPage title="Terms of Sale" updated="November 23, 2026" draft="Waiting for the maintainer’s approval.">
+        <p>Polar is the merchant of record.</p>
+      </LegalPage>,
+    );
+    const main = screen.getByRole('main');
+    expect(within(main).getByText('Draft')).toBeInTheDocument();
+    expect(within(main).getByText('Waiting for the maintainer’s approval.')).toBeInTheDocument();
+  });
+
+  it('shows no draft notice for an approved text', () => {
+    render(
+      <LegalPage title="Risks" updated="November 1, 2026">
+        <p>Deletions are permanent.</p>
+      </LegalPage>,
+    );
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
+  });
 });

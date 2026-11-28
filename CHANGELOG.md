@@ -4,6 +4,10 @@ Notable changes to the Xomoni extension and xomoni.com. The format follows [Keep
 
 ## [Unreleased]
 
+### Added
+
+- **Terms of sale and a refund policy, as drafts for approval** (#420). xomoni.com has the terms of the coming paid plans, sold by Polar as merchant of record, a refund policy, and the privacy page's part about what is kept when you buy a plan (the plan and its dates, never your card or anything about your X account). They promise nothing about results on X. They are drafts waiting for the maintainer's approval, so xomoni.com shows them only once they are approved; until then /terms-of-sale and /refunds aren't found and nothing links to them.
+
 ## [0.6.0] - 2026-11-24
 
 New in this version: Watch follows what is said about you, an email when X warns your account (on xomoni.com, if you ask for it), and a much faster Xomoni with a large copy of your account. It also carries a safety fix: two quick changes in Settings could put back the first, so a job could work in hours you had excluded. Update now.

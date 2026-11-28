@@ -58,6 +58,8 @@ The favicon (`src/app/icon.png`), the Apple touch icon (`src/app/apple-icon.png`
 
 All variables are listed with explanations in [`.env.example`](.env.example). In production they are set in the Vercel project (`xomoni`, personal scope). `npm run docs:check` fails if code reads a variable that isn't documented there.
 
+`BILLING_PAGES` stays unset in Production until the maintainer approves the terms of sale, the refund policy and the privacy page's part about paid plans (#420): /terms-of-sale and /refunds then answer 404 and nothing links to them. Set it to `1` on a Preview to review the drafts, each marked *Draft*; the browser tests run with it on. Approving them means removing the `draft` notices, then setting it in Production; the pages are prerendered, so it takes effect with the next deployment.
+
 ## Deployment
 
 Vercel builds this app with Root Directory `apps/web` on every push that changes what it is built from (`vercel.json`'s `ignoreCommand`: this app, `packages/`, the root `package.json`, lockfile and `tsconfig.base.json`; `tooling/vercel.test.mjs` keeps the list complete), so pushes that touch only the extension, docs or tooling don't use up the plan's daily deployments; `main` deploys to https://xomoni.com. The Vercel Toolbar stays off in the project's settings: its loader breaks the site under Trusted Types ([ADR-0014](../../docs/adr/0014-security-headers-and-a-static-csp.md)). Database and auth settings are deployed separately from [`supabase/`](../../supabase/README.md).

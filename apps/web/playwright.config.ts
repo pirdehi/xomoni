@@ -43,7 +43,11 @@ const env = {
   NEXT_PUBLIC_E2E_STORE_LISTINGS: '1',
   // Polar is the fake of e2e/support/polar.ts, never the real one (#420): a test that pays starts it on this port.
   POLAR_API_URL: `http://127.0.0.1:${FAKE_POLAR_PORT}`,
+  // The pages for paid plans (#420): on, as on a Preview where the maintainer reviews their drafts, so their scenarios
+  // run. Production keeps them off until the texts are approved; unit tests prove that state.
+  BILLING_PAGES: '1',
 };
+process.env.BILLING_PAGES = env.BILLING_PAGES;
 process.env.MAILPIT_URL = env.MAILPIT_URL;
 // For seeding devices and jobs (e2e/support/admin.ts): the local stack's fixed development keys.
 process.env.SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;

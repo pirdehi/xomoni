@@ -640,6 +640,22 @@
         "title": "xomoni.com روی گوشی",
         "summary": "منویی با *How it works*، *Safety*، *Privacy*، *Install* و *GitHub* که با صفحه‌کلید هم کار می‌کند، و یک پانویس کامل در همه‌ی صفحه‌ها."
       }
+    },
+    {
+      "id": "terms-of-sale",
+      "area": "website",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [420],
+      "scenarios": "docs/scenarios/420-terms-of-sale.md",
+      "en": {
+        "title": "Terms of sale and refund policy",
+        "summary": "the terms of the coming paid plans, sold by Polar as merchant of record, and a 14-day refund policy, with Polar named on the privacy page. They are drafts waiting for the maintainer's approval: xomoni.com shows them only once they are approved, and they promise nothing about results on X."
+      },
+      "fa": {
+        "title": "شرایط فروش و سیاست بازپرداخت",
+        "summary": "شرایط پله‌های پولی که در راه‌اند، با فروش از طریق Polar به‌عنوان فروشنده‌ی رسمی، و سیاست بازپرداخت ۱۴ روزه، و نام Polar در صفحه‌ی حریم خصوصی. این‌ها پیش‌نویس‌اند و منتظر تأیید نگه‌دارنده‌ی پروژه: xomoni.com فقط پس از تأیید نشانشان می‌دهد، و هیچ وعده‌ای درباره‌ی نتیجه روی X نمی‌دهند."
+      }
     }
   ],
   "notFeatures": [

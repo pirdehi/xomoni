@@ -19,6 +19,9 @@ const PUBLIC = [
   '/connect',
   '/privacy',
   '/terms',
+  // The pages for paid plans, which playwright.config.ts shows (`BILLING_PAGES=1`, #420).
+  '/terms-of-sale',
+  '/refunds',
   '/risks',
 ];
 

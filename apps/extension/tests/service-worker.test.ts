@@ -4,7 +4,7 @@ import { localDay } from '../src/shared/daily';
 import { db, itemKey, kvGet, kvSet, saveArchiveRequest, setArchiveFolderChosen } from '../src/shared/db';
 import type { RuntimeMessage } from '../src/shared/messages';
 import { ATTENTION_ID, FINISHED_ID } from '../src/shared/notify';
-import { vaultNotificationId } from '../src/shared/notification-ids';
+import { reachNotificationId, vaultNotificationId } from '../src/shared/notification-ids';
 import { recordImport } from '../src/shared/vault/db';
 import { getConnection, saveConnection } from '../src/cloud/connection';
 import { PAIR_MESSAGE, startWebConnect } from '../src/cloud/web-connect';
@@ -192,6 +192,12 @@ describe('service worker: notification clicks', () => {
     await vi.waitFor(() => expect(chrome.tabs.create).toHaveBeenCalledWith({ url: DASHBOARD }));
     expect(chrome.notifications.clear).toHaveBeenCalledWith(FINISHED_ID);
     expect(chrome.storage.session.get).not.toHaveBeenCalled();
+  });
+
+  it('opens Reach from a label notification (#430)', async () => {
+    on.notification!(reachNotificationId(X_ME));
+    await vi.waitFor(() => expect(chrome.tabs.create).toHaveBeenCalledWith({ url: `${DASHBOARD}#/reach` }));
+    expect(chrome.notifications.clear).toHaveBeenCalledWith(reachNotificationId(X_ME));
   });
 
   it('opens the Vault page from a vault reminder, and its Not now snoozes the reminder for 7 days (#425)', async () => {

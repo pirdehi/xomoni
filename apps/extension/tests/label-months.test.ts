@@ -17,7 +17,7 @@ import {
   readLabelMonths,
   saveLabelMonth,
 } from '../src/shared/vault/label-months';
-import { UNDER_THE_HOOD_PARSER } from '../src/shared/vault/under-the-hood-parser';
+import { UNDER_THE_HOOD_PARSER, onLabelChanges } from '../src/shared/vault/under-the-hood-parser';
 import type { LabelMonth, LabelMonthRow } from '../src/shared/vault/under-the-hood';
 import { resetDb } from './support/fixtures';
 import { zipFile } from './support/zip';
@@ -275,5 +275,23 @@ describe('X’s Under the hood months in the vault (#428, ADR-0043, ADR-0045)', 
       expect(plan.parts).toEqual([]);
       expect(await db.labelMonths.count()).toBe(0);
     });
+  });
+});
+
+describe('what hears of a report’s new labels (#430)', () => {
+  beforeEach(resetDb);
+
+  it('hears the labels new or larger than the month before, and a listener’s failure fails nothing', async () => {
+    const heard: unknown[] = [];
+    onLabelChanges((account, m, changes) => {
+      heard.push([account.id, m, changes.map((c) => c.name)]);
+      return Promise.reject(new Error('no notifications here'));
+    });
+    const { results } = await importFiles(jsonFile('aug.json', aug));
+    expect(results.every((r) => !r.failed)).toBe(true);
+    expect(heard).toEqual([[ME.id, '2026-08', ['SPAM_HIGH_RECALL', 'SYNTHETIC_UNKNOWN_LABEL']]]);
+    onLabelChanges(null);
+    await importFiles(jsonFile('sep.json', sepWeb));
+    expect(heard).toHaveLength(1);
   });
 });

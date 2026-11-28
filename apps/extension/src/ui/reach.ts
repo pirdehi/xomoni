@@ -11,6 +11,8 @@ import {
   premiumPeriods,
   reachPosts,
 } from '../shared/vault/reach';
+import { labelMonths } from '../shared/vault/label-months';
+import { labelSeen, unseenLabelMonths } from '../shared/vault/reach-alerts';
 import { BASELINE_DAYS, YOUNG_POST_DAYS, baseline, vsBaseline } from '../shared/vault/reach-stats';
 
 const DAY_MS = 86_400_000;
@@ -171,4 +173,17 @@ export function bestAndWorst(rows: readonly ReachRow[], n = 10): { best: ReachRo
 export function vsUsualWords(ratio: number | null): string {
   if (ratio === null) return '—';
   return `${Math.round(ratio * 100).toLocaleString('en-US')}% of usual`;
+}
+
+/**
+ * How many months of X's labels the person hasn't opened Reach on yet, for the menu's count (#430): months with a label
+ * newer than the newest one seen (`unseenLabelMonths`); 0 without an account.
+ */
+export function useReachNewMonths(accountId: string | null): number {
+  return (
+    useLiveQuery(
+      async () => (accountId ? unseenLabelMonths(await labelMonths(accountId), await labelSeen(accountId)) : 0),
+      [accountId],
+    ) ?? 0
+  );
 }

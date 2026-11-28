@@ -215,6 +215,34 @@ describe('App navigation', () => {
     expect(within(within(sidebar()).getByRole('navigation')).getAllByRole('button')).toHaveLength(8);
   });
 
+  it('counts the months of X’s labels not seen yet on Reach, keeping its name, until Reach is opened (#430)', async () => {
+    const X = '9000000000000000001';
+    await upsertAccount(account({ id: X }));
+    await db.labelMonths.bulkPut([
+      {
+        accountId: X,
+        month: '2026-08',
+        importedAt: 1,
+        labels: [{ name: 'SPAM_HIGH_RECALL', count: 2, scope: 'posts' }],
+      },
+      {
+        accountId: X,
+        month: '2026-09',
+        importedAt: 1,
+        labels: [{ name: 'SPAM_HIGH_RECALL', count: 1, scope: 'posts' }],
+      },
+      { accountId: X, month: '2026-10', importedAt: 1, labels: [] },
+    ] as never);
+    render(<App />);
+    await pageHeading('Home');
+    const reach = within(sidebar()).getByRole('button', { name: 'Reach' });
+    await waitFor(() => expect(reach).toHaveAttribute('aria-description', "2 new months of X's labels"));
+    expect(reach).toHaveTextContent('Reach2');
+    await userEvent.click(reach);
+    await pageHeading('Reach');
+    await waitFor(() => expect(reach).not.toHaveAttribute('aria-description'));
+  });
+
   it('marks the current page in the sidebar', async () => {
     window.location.hash = '#/jobs';
     render(<App />);

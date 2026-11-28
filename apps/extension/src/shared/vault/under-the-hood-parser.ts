@@ -8,11 +8,37 @@ import { type OwnerVerdict, type VaultBatch, type VaultFile, type VaultParser, r
 import { saveLabelMonth } from './label-months';
 import './under-the-hood-freshness';
 import {
+  type LabelChange,
   UNDER_THE_HOOD_MAX_BYTES,
   UNDER_THE_HOOD_PROBLEMS,
   type UnderTheHoodResult,
   parseUnderTheHoodText,
 } from './under-the-hood';
+
+/** What hears of the labels a report brought, new or larger than the month before: the Vault page's notification. */
+export type LabelChangeListener = (
+  account: { id: string; handle: string },
+  month: string,
+  changes: readonly LabelChange[],
+) => Promise<unknown>;
+
+let labelChangeListener: LabelChangeListener | null = null;
+
+/**
+ * Sets what hears of the labels each imported report brings (#430): the Vault page notifies the person once per month
+ * (`alertLabelChanges`); null stops it. A listener's failure fails nothing but its own notice.
+ */
+export function onLabelChanges(listener: LabelChangeListener | null): void {
+  labelChangeListener = listener
+    ? async (...args) => {
+        try {
+          return await listener(...args);
+        } catch {
+          return null;
+        }
+      }
+    : null;
+}
 
 /** What was read of each file the parser takes, so a file is read once while an import is planned and run. */
 const readResults = new WeakMap<VaultFile, UnderTheHoodResult>();
@@ -94,7 +120,8 @@ export const UNDER_THE_HOOD_PARSER: VaultParser = {
         read: 1,
         skipped,
         write: async () => {
-          await saveLabelMonth(ctx.account.id, month, ctx.now, ctx.now);
+          const changes = await saveLabelMonth(ctx.account.id, month, ctx.now, ctx.now);
+          if (changes.length) await labelChangeListener?.(ctx.account, month.month, changes);
           return 1;
         },
       };

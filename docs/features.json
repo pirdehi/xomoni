@@ -290,6 +290,22 @@
       }
     },
     {
+      "id": "plan-in-xomoni",
+      "area": "extension",
+      "status": "preview",
+      "since": "unreleased",
+      "issues": [423],
+      "scenarios": "docs/scenarios/423-plan-in-xomoni.md",
+      "en": {
+        "title": "Your plan, in Xomoni",
+        "summary": "the plan of your xomoni.com account, heard with the status report Xomoni already sends, kept for 7 days offline, and named in Settings; Reach's longer periods and comparisons open with Plus, and a closed part deletes nothing. Until sales open, every part is a free preview."
+      },
+      "fa": {
+        "title": "پله‌ی شما در Xomoni",
+        "summary": "پله‌ی حساب xomoni.com شما، از همان گزارش وضعیتی که Xomoni می‌فرستد، تا ۷ روز آفلاین نگه داشته می‌شود و در تنظیمات دیده می‌شود؛ بازه‌های بلندتر Reach و مقایسه‌ها با Plus باز می‌شوند و بخش بسته هیچ داده‌ای را پاک نمی‌کند. تا آغاز فروش، همه‌ی بخش‌ها پیش‌نمایش رایگان‌اند."
+      }
+    },
+    {
       "id": "reach-diagnosis",
       "area": "extension",
       "status": "preview",
